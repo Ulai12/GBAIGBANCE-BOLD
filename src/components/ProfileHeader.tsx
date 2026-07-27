@@ -13,27 +13,82 @@ interface ProfileHeaderProps {
 export function ProfileHeader({ profile, eventsCount, followersCount, followingCount }: ProfileHeaderProps) {
   const { t } = useApp();
   const flag = COUNTRY_FLAGS[profile.country] || '';
+
   return (
-    <div className="relative">
-      <div className="h-32 bg-gradient-to-br from-[#6600FF] via-[#7C3AED] to-[#A885FF] rounded-b-[2.5rem]" />
-      <div className="px-5 -mt-16">
-        <div className="relative inline-block">
-          <div className="w-28 h-28 rounded-full ring-4 ring-white overflow-hidden bg-white">
-            {profile.avatar_url ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-extrabold text-[#6600FF]">{profile.name.charAt(0).toUpperCase()}</div>}
+    <div className="relative px-4 pt-8 pb-4">
+      {/* Fond décoratif doux (flou d’arrière-plan) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-indigo-300/20 to-purple-300/20 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Carte en verre dépoli */}
+      <div className="relative bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-6 pt-14 shadow-xl shadow-black/5 border border-white/60">
+        {/* Avatar qui dépasse de la carte */}
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+          <div className="w-24 h-24 rounded-full ring-4 ring-white/90 shadow-lg overflow-hidden bg-white">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-indigo-500 bg-indigo-50">
+                {profile.name.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
-          <div className="absolute bottom-1 right-1 bg-[#6600FF] rounded-full p-1"><BadgeCheck className="w-5 h-5 text-white" /></div>
+          {/* Badge de vérification */}
+          <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 ring-2 ring-white shadow">
+            <BadgeCheck className="w-4 h-4 text-white" />
+          </div>
         </div>
-        <div className="mt-3">
-          <h1 className="text-2xl font-extrabold text-[#1A1A2E]">{profile.name}</h1>
-          <p className="flex items-center gap-1 text-sm text-gray-500 mt-1"><MapPin className="w-4 h-4" />{flag} {profile.city}</p>
-          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold bg-[#6600FF]/10 text-[#6600FF]">{t('common', profile.role)}</span>
+
+        {/* Contenu centré */}
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {profile.name}
+          </h1>
+          <p className="flex items-center justify-center gap-1 mt-1 text-sm text-gray-500">
+            <MapPin className="w-4 h-4" />
+            {flag} {profile.city}
+          </p>
+          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium bg-white/60 backdrop-blur-sm border border-white/50 text-gray-700">
+            {t('common', profile.role)}
+          </span>
         </div>
-        {profile.bio && <p className="mt-4 text-sm text-gray-600 leading-relaxed">{profile.bio}</p>}
+
+        {profile.bio && (
+          <p className="mt-4 text-sm text-gray-600 text-center leading-relaxed px-2">
+            {profile.bio}
+          </p>
+        )}
+
+        {/* Statistiques (affichées uniquement si au moins une valeur est fournie) */}
         {(eventsCount !== undefined || followersCount !== undefined || followingCount !== undefined) && (
-          <div className="flex gap-6 mt-4">
-            {eventsCount !== undefined && <div><span className="text-xl font-extrabold text-[#1A1A2E]">{eventsCount}</span><p className="text-xs text-gray-500">événements</p></div>}
-            {followersCount !== undefined && <div><span className="text-xl font-extrabold text-[#1A1A2E]">{followersCount}</span><p className="text-xs text-gray-500">followers</p></div>}
-            {followingCount !== undefined && <div><span className="text-xl font-extrabold text-[#1A1A2E]">{followingCount}</span><p className="text-xs text-gray-500">abonnements</p></div>}
+          <div className="flex justify-center gap-8 mt-5 pt-4 border-t border-gray-200/60">
+            {eventsCount !== undefined && (
+              <div className="text-center">
+                <span className="text-lg font-semibold text-gray-900">
+                  {eventsCount}
+                </span>
+                <p className="text-xs text-gray-500">événements</p>
+              </div>
+            )}
+            {followersCount !== undefined && (
+              <div className="text-center">
+                <span className="text-lg font-semibold text-gray-900">
+                  {followersCount}
+                </span>
+                <p className="text-xs text-gray-500">followers</p>
+              </div>
+            )}
+            {followingCount !== undefined && (
+              <div className="text-center">
+                <span className="text-lg font-semibold text-gray-900">
+                  {followingCount}
+                </span>
+                <p className="text-xs text-gray-500">abonnements</p>
+              </div>
+            )}
           </div>
         )}
       </div>
