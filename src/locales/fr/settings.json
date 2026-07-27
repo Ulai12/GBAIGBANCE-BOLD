@@ -1,0 +1,54 @@
+{
+  "notifSettings": {
+    "title": "Réglages notifications",
+    "subtitle": "Choisissez les types de notifications que vous souhaitez recevoir.",
+    "newComments": "Nouveaux commentaires",
+    "newCommentsDesc": "Quand quelqu'un commente vos événements",
+    "commentReplies": "Réponses à vos commentaires",
+    "commentRepliesDesc": "Quand on répond à vos commentaires",
+    "newQuestions": "Nouvelles questions",
+    "newQuestionsDesc": "Quand on pose une question sur votre événement",
+    "questionAnswered": "Réponses à vos questions",
+    "questionAnsweredDesc": "Quand l'organisateur répond à votre question",
+    "newFollowers": "Nouveaux abonnés",
+    "newFollowersDesc": "Quand quelqu'un commence à vous suivre",
+    "inviteAccepted": "Invitations acceptées",
+    "inviteAcceptedDesc": "Quand un artiste ou co-organisateur accepte",
+    "eventReminders": "Rappels d'événements",
+    "eventRemindersDesc": "Avant le début des événements suivis",
+    "pushSection": "Notifications push",
+    "pushEnabled": "Notifications push",
+    "pushDesc": "Recevoir des notifications même quand l'app est fermée",
+    "pushHint": "Les notifications push seront activées sur cet appareil. Vous pouvez les désactiver à tout moment.",
+    "loadError": "Impossible de charger les réglages",
+    "saveError": "Erreur"
+  },
+  "subscriptions": {
+    "title": "Abonnements",
+    "artists": "Artistes",
+    "organizers": "Organisateurs",
+    "users": "Particuliers",
+    "noArtists": "Aucun artiste suivi",
+    "noArtistsDesc": "Suivez des artistes pour les retrouver ici",
+    "noOrganizers": "Aucun organisateur suivi",
+    "noOrganizersDesc": "Suivez des organisateurs pour les retrouver ici",
+    "noUsers": "Aucun particulier suivi",
+    "noUsersDesc": "Suivez d'autres participants pour les retrouver ici"
+  },
+  "userProfile": {
+    "follow": "Suivre",
+    "following": "Abonné",
+    "unfollowed": "Désabonné",
+    "followers": "Abonnés",
+    "followingCount": "Abonnements",
+    "bio": "Bio",
+    "memberSince": "Membre depuis",
+    "notFound": "Profil introuvable",
+    "loginToFollow": "Connectez-vous pour suivre",
+    "message": "Message"
+  },
+  "views": {
+    "views": "vues",
+    "participants": "participants"
+  }
+}
