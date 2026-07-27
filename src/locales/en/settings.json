@@ -1,0 +1,54 @@
+{
+  "notifSettings": {
+    "title": "Notification settings",
+    "subtitle": "Choose which types of notifications you want to receive.",
+    "newComments": "New comments",
+    "newCommentsDesc": "When someone comments on your events",
+    "commentReplies": "Replies to your comments",
+    "commentRepliesDesc": "When someone replies to your comments",
+    "newQuestions": "New questions",
+    "newQuestionsDesc": "When someone asks a question about your event",
+    "questionAnswered": "Answers to your questions",
+    "questionAnsweredDesc": "When the organizer answers your question",
+    "newFollowers": "New followers",
+    "newFollowersDesc": "When someone starts following you",
+    "inviteAccepted": "Invitations accepted",
+    "inviteAcceptedDesc": "When an artist or co-organizer accepts",
+    "eventReminders": "Event reminders",
+    "eventRemindersDesc": "Before followed events start",
+    "pushSection": "Push notifications",
+    "pushEnabled": "Push notifications",
+    "pushDesc": "Receive notifications even when the app is closed",
+    "pushHint": "Push notifications will be enabled on this device. You can disable them at any time.",
+    "loadError": "Unable to load settings",
+    "saveError": "Error"
+  },
+  "subscriptions": {
+    "title": "Subscriptions",
+    "artists": "Artists",
+    "organizers": "Organizers",
+    "users": "People",
+    "noArtists": "No followed artists",
+    "noArtistsDesc": "Follow artists to find them here",
+    "noOrganizers": "No followed organizers",
+    "noOrganizersDesc": "Follow organizers to find them here",
+    "noUsers": "No followed people",
+    "noUsersDesc": "Follow other participants to find them here"
+  },
+  "userProfile": {
+    "follow": "Follow",
+    "following": "Following",
+    "unfollowed": "Unfollowed",
+    "followers": "Followers",
+    "followingCount": "Following",
+    "bio": "Bio",
+    "memberSince": "Member since",
+    "notFound": "Profile not found",
+    "loginToFollow": "Log in to follow",
+    "message": "Message"
+  },
+  "views": {
+    "views": "views",
+    "participants": "attendees"
+  }
+}
