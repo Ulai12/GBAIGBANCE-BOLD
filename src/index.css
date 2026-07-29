@@ -14,6 +14,17 @@
     --text-muted: #9CA3AF;
     --text-on-dark: #FFFFFF;
     --border: rgba(102, 0, 255, 0.1);
+
+    --glass-intensity: 1;
+    --glass-blur: calc(20px * var(--glass-intensity));
+    --glass-saturate: calc(100% + 80% * var(--glass-intensity));
+
+    --glass-tint: rgba(255, 255, 255, 0.42);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-highlight: rgba(255, 255, 255, 0.75);
+    --glass-highlight-soft: rgba(255, 255, 255, 0.35);
+    --glass-shadow-ambient: rgba(107, 33, 168, 0.16);
+    --glass-shadow-contact: rgba(46, 16, 94, 0.22);
   }
 
   * {
@@ -39,6 +50,14 @@
   ::-webkit-scrollbar { width: 0; height: 0; display: none; }
   * { -ms-overflow-style: none; scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --glass-intensity: 0;
+      --glass-tint: rgba(255, 255, 255, 0.94);
+      --glass-border: rgba(255, 255, 255, 0.8);
+    }
+  }
 }
 
 @layer components {
@@ -52,13 +71,38 @@
     border-radius: 1.75rem;
     overflow: hidden;
   }
+
+  /* Refonte du .glass-ticket : le reflet spéculaire est désormais géré par un élément dédié */
   .glass-ticket {
+    position: relative;
+    isolation: isolate;
     background: linear-gradient(135deg, rgba(196, 179, 255, 0.55) 0%, rgba(168, 133, 255, 0.35) 40%, rgba(139, 92, 246, 0.2) 100%);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1.5px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 8px 32px rgba(102, 0, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.6);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1.5px solid var(--glass-border);
+    border-radius: 1.75rem;
+    box-shadow:
+      0 8px 32px var(--glass-shadow-ambient),
+      inset 0 1px 0 var(--glass-highlight),
+      inset 0 -14px 22px -14px var(--glass-shadow-contact);
   }
+
+  /* On retire le ::before obsolète */
+  .glass-ticket::before {
+    display: none;
+  }
+
+  .glass-text-scrim { position: relative; }
+  .glass-text-scrim::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0) 45%, rgba(26, 26, 46, 0.5) 100%);
+    pointer-events: none;
+  }
+  .glass-text-scrim > * { position: relative; z-index: 1; }
+
   .search-bar {
     background: #FFFFFF;
     border-radius: 999px;
@@ -88,17 +132,38 @@
   }
   .btn-purple:hover { background: #5500D4; transform: translateY(-1px); box-shadow: 0 8px 32px rgba(102, 0, 255, 0.45); }
   .btn-purple:active { transform: scale(0.97); }
+
   .bottom-nav {
-    background: #FFFFFF;
+    position: relative;
+    isolation: isolate;
+    background: var(--glass-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
     border-radius: 999px;
-    box-shadow: 0 8px 32px rgba(107, 33, 168, 0.12);
+    box-shadow:
+      0 8px 32px rgba(107, 33, 168, 0.12),
+      inset 0 1px 0 var(--glass-highlight-soft);
   }
   .nav-pill-active {
-    background: #6600FF;
+    background: linear-gradient(180deg, #7A1AFF 0%, #6600FF 100%);
     color: #fff;
     border-radius: 999px;
-    box-shadow: 0 4px 16px rgba(102, 0, 255, 0.4);
+    box-shadow:
+      0 4px 16px rgba(102, 0, 255, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
+
+  .nav-fab {
+    background: linear-gradient(160deg, #7A1AFF 0%, #6600FF 55%, #5500D4 100%);
+    box-shadow:
+      0 6px 20px rgba(102, 0, 255, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -6px 10px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s ease;
+  }
+  .nav-fab:hover { transform: scale(1.1); }
+
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .rating-badge {
@@ -113,12 +178,15 @@
     gap: 0.2rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
+
   .countdown-box {
+    position: relative;
     background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(calc(var(--glass-blur) * 0.6)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.6)) saturate(var(--glass-saturate));
     border: 1px solid rgba(255,255,255,0.25);
     border-radius: 1rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
   }
 }
 
@@ -127,6 +195,7 @@
   .bg-purple-brand { background: #6600FF; }
   .border-purple-brand { border-color: #6600FF; }
   .bg-lavender { background: #EDE8FF; }
+  .squircle { border-radius: 1.5rem; } /* fallback pour les navigateurs sans corner-shape */
   .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
   .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -158,6 +227,43 @@
   .animate-stagger > *:nth-child(7) { animation-delay: 0.35s; }
   .animate-stagger > *:nth-child(8) { animation-delay: 0.4s; }
   .animate-stagger > *:nth-child(n+9) { animation-delay: 0.45s; }
+
+  /* --- Nouvelle classe utilitaire : double masque intersecté --- */
+  .mask-glass-blend {
+    /* Variables personnalisables localement */
+    --mgb-linear-dir: to bottom;
+    --mgb-linear-stops: black 30%, transparent 100%;
+    --mgb-radial-shape: ellipse 70% 50% at 30% 30%;
+    --mgb-radial-stops: black 40%, transparent 100%;
+
+    mask-image:
+      linear-gradient(var(--mgb-linear-dir), var(--mgb-linear-stops)),
+      radial-gradient(var(--mgb-radial-shape), var(--mgb-radial-stops));
+    mask-composite: intersect;
+    -webkit-mask-composite: source-in;
+  }
+
+  /* Classes pratiques pour les cas 2 et 4 */
+  /* 2. Halo lumineux pour carte hero */
+  .hero-glow {
+    background: radial-gradient(circle at 30% 20%, rgba(196,179,255,0.6), transparent 70%);
+  }
+  .hero-glow.mask-glass-blend {
+    /* On surcharge les variables pour obtenir un fondu progressif vers les coins */
+    --mgb-linear-dir: to top;
+    --mgb-linear-stops: transparent 0%, black 100%;
+    --mgb-radial-shape: ellipse 80% 70% at 50% 40%;
+    --mgb-radial-stops: black 30%, transparent 100%;
+  }
+
+  /* 4. Carrousel avec vignettage progressif */
+  .carousel-mask {
+    /* Par défaut, masque horizontal doux + radial */
+    --mgb-linear-dir: to right;
+    --mgb-linear-stops: transparent 0%, black 15%, black 85%, transparent 100%;
+    --mgb-radial-shape: ellipse 90% 100% at center;
+    --mgb-radial-stops: black 40%, transparent 100%;
+  }
 }
 
 @keyframes fadeIn   { from { opacity:0 } to { opacity:1 } }
@@ -198,4 +304,13 @@
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite;
   border-radius: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
