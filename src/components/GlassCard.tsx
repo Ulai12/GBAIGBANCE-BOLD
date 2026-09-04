@@ -11,5 +11,13 @@ interface GlassCardProps {
 export function GlassCard({ children, className = '', variant = 'default', onClick, style }: GlassCardProps) {
   const base = variant === 'strong' ? 'glass-strong' : 'glass-card';
   const clickable = onClick ? 'cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]' : '';
-  return <div className={`${base} rounded-3xl ${clickable} ${className}`} onClick={onClick} style={style}>{children}</div>;
+  return (
+    <div
+      className={`${base} rounded-3xl ${clickable} ${className}`}
+      onClick={onClick}
+      style={style}
+    >
+      {children}
+    </div>
+  );
 }

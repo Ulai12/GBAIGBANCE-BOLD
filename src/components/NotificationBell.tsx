@@ -33,9 +33,17 @@ export function NotificationBell({ onOpen }: NotificationBellProps) {
   if (!user) return null;
 
   return (
-    <button onClick={onOpen} className="relative w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-md active:scale-90 transition-transform" aria-label="Notifications">
+    <button
+      onClick={onOpen}
+      className="glass-surface relative w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+      aria-label="Notifications"
+    >
       <Bell className="w-5 h-5 text-[#6600FF]" />
-      {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pop">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+      {unreadCount > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pop">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
