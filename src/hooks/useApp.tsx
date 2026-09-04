@@ -25,13 +25,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [session, setSession] = useState<AppContextValue['session']>(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguageState] = useState<Language>(() => (localStorage.getItem('gba_lang') as Language) || 'fr');
+  const [language, setLanguageState] = useState<Language>(() => {
+    return (localStorage.getItem('gba_lang') as Language) || 'fr';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('gba_theme');
     if (saved === 'dark' || saved === 'light') return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-  const [dynamicBg, setDynamicBg] = useState<boolean>(() => localStorage.getItem('gba_dynamic_bg') === 'true');
+  const [dynamicBg, setDynamicBg] = useState<boolean>(() => {
+    return localStorage.getItem('gba_dynamic_bg') === 'true';
+  });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -43,26 +47,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) { fetchProfile(session.user.id).then(setUser).finally(() => setLoading(false)); }
-      else { setLoading(false); }
+      if (session?.user) {
+        fetchProfile(session.user.id).then(setUser).catch(() => {}).finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    }).catch(() => {
+      setLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user) { (async () => { const profile = await fetchProfile(session.user.id); setUser(profile); })(); }
-      else { setUser(null); }
+      if (session?.user) {
+        (async () => {
+          try {
+            const profile = await fetchProfile(session.user.id);
+            setUser(profile);
+          } catch {}
+        })();
+      } else {
+        setUser(null);
+      }
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  const setLanguage = useCallback((lang: Language) => { setLanguageState(lang); localStorage.setItem('gba_lang', lang); }, []);
-  const toggleTheme = useCallback(() => { setTheme((prev) => (prev === 'light' ? 'dark' : 'light')); }, []);
-  const toggleDynamicBg = useCallback(() => { setDynamicBg((prev) => { const next = !prev; localStorage.setItem('gba_dynamic_bg', String(next)); return next; }); }, []);
-  const refreshProfile = useCallback(async () => { if (session?.user) { const profile = await fetchProfile(session.user.id); setUser(profile); } }, [session]);
-  const handleSignOut = useCallback(async () => { await supabase.auth.signOut(); setUser(null); setSession(null); }, []);
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('gba_lang', lang);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
+
+  const toggleDynamicBg = useCallback(() => {
+    setDynamicBg((prev) => {
+      const next = !prev;
+      localStorage.setItem('gba_dynamic_bg', String(next));
+      return next;
+    });
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (session?.user) {
+      try {
+        const profile = await fetchProfile(session.user.id);
+        setUser(profile);
+      } catch {}
+    }
+  }, [session]);
+
+  const handleSignOut = useCallback(async () => {
+    try { await supabase.auth.signOut(); } catch {}
+    setUser(null);
+    setSession(null);
+  }, []);
+
   const t = useCallback((domain: string, key: string) => translate(language, domain, key), [language]);
 
   return (
-    <AppContext.Provider value={{ user, session, loading, language, theme, dynamicBg, setLanguage, toggleTheme, toggleDynamicBg, refreshProfile, signOut: handleSignOut, t }}>
+    <AppContext.Provider value={{
+      user, session, loading, language, theme, dynamicBg,
+      setLanguage, toggleTheme, toggleDynamicBg, refreshProfile,
+      signOut: handleSignOut, t,
+    }}>
       {children}
     </AppContext.Provider>
   );
