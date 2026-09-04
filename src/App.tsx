@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { BookingModal } from '@/components/BookingModal';
 import { AppProvider, useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
@@ -47,7 +48,7 @@ type Screen =
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
 
 function AppContent() {
-  const { loading, session, user, dynamicBg } = useApp();
+  const { loading, session, user, dynamicBg, theme } = useApp();
   const [screen, setScreen] = useState<Screen>('onboarding');
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -55,6 +56,7 @@ function AppContent() {
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [bookingEvent, setBookingEvent] = useState<Event | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,9 +73,23 @@ function AppContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event);
+    setScreen('eventDetail');
+  };
+
+  const handleBookEvent = useCallback((event: Event) => {
+    if (!session) {
+      addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
+      setScreen('login');
+      return;
+    }
+    setBookingEvent(event);
+  }, [session, addToast]);
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#EDE8FF]">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="w-16 h-16 rounded-full border-4 border-[#6600FF]/30 border-t-[#6600FF] animate-spin" />
       </div>
     );
@@ -172,7 +188,10 @@ function AppContent() {
   if (screen === 'notifications') {
     return (
       <>
-        <NotificationsScreen onBack={() => setScreen(activeTab)} onToast={addToast} />
+        <NotificationsScreen
+          onBack={() => setScreen(activeTab)}
+          onToast={addToast}
+        />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
     );
@@ -181,7 +200,10 @@ function AppContent() {
   if (screen === 'notificationSettings') {
     return (
       <>
-        <NotificationSettingsScreen onBack={() => setScreen(activeTab)} onToast={addToast} />
+        <NotificationSettingsScreen
+          onBack={() => setScreen(activeTab)}
+          onToast={addToast}
+        />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
     );
@@ -246,11 +268,6 @@ function AppContent() {
     setScreen(tab);
   };
 
-  const handleEventClick = (event: Event) => {
-    setSelectedEvent(event);
-    setScreen('eventDetail');
-  };
-
   const handleArtistClick = (artist: Artist) => {
     setSelectedArtist(artist);
     setScreen('artistDetail');
@@ -265,11 +282,11 @@ function AppContent() {
 
   return (
     <>
-      <DynamicBackground enabled={dynamicBg} />
-      <div ref={scrollRef} className={'min-h-screen relative z-10 ' + (dynamicBg ? 'bg-transparent' : 'bg-[#EDE8FF]')}>
+      <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
         {activeTab === 'home' && (
           <HomeScreen
             onEventClick={handleEventClick}
+            onBookEvent={handleBookEvent}
             onSearchClick={() => { setActiveTab('explore'); setScreen('explore'); }}
             onOpenNotifications={() => setScreen('notifications')}
             onProfileClick={() => { setActiveTab('profile'); setScreen('profile'); }}
@@ -310,6 +327,15 @@ function AppContent() {
         }}
         canCreate={canCreate}
       />
+      <BookingModal
+        open={!!bookingEvent}
+        event={bookingEvent}
+        onClose={() => setBookingEvent(null)}
+        onSuccess={(qrCode) => {
+          addToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' });
+          setBookingEvent(null);
+        }}
+      />
       <ToastContainer toasts={toasts} onClose={closeToast} />
     </>
   );
@@ -318,9 +344,15 @@ function AppContent() {
 function App() {
   return (
     <AppProvider>
+      <AppBackground />
       <AppContent />
     </AppProvider>
   );
+}
+
+function AppBackground() {
+  const { dynamicBg, theme } = useApp();
+  return <DynamicBackground enabled={dynamicBg} theme={theme} />;
 }
 
 export default App;
