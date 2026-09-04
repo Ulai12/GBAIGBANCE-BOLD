@@ -159,6 +159,15 @@ export interface EventComment {
   body: string;
   is_organizer_reply: boolean;
   created_at: string;
+  reactions?: CommentReaction[];
+}
+
+export interface CommentReaction {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
 }
 
 export interface EventReaction {

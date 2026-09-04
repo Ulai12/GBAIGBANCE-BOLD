@@ -2,9 +2,21 @@ import { supabase } from '@/services/supabase';
 import type { Profile, UserRole } from '@/types';
 
 export async function signUp(email: string, password: string, name: string, role: UserRole = 'participant') {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, role } } });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name, role } },
+  });
   if (error) throw error;
-  if (data.user) { await supabase.from('profiles').upsert({ id: data.user.id, email, name, role }); }
+
+  if (data.user) {
+    await supabase.from('profiles').upsert({
+      id: data.user.id,
+      email,
+      name,
+      role,
+    });
+  }
   return data;
 }
 
@@ -20,13 +32,22 @@ export async function signOut() {
 }
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
   if (error) throw error;
   return data as Profile | null;
 }
 
 export async function updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId).select().maybeSingle();
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .maybeSingle();
   if (error) throw error;
   return data as Profile | null;
 }

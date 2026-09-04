@@ -1,14 +1,14 @@
 import type { EventCategory } from '@/types';
 
 export const EVENT_CATEGORIES: { value: EventCategory; icon: string; color: string }[] = [
-  { value: 'concert', icon: 'Music', color: 'from-[#6600FF] to-[#9D4EDD]' },
-  { value: 'festival', icon: 'PartyPopper', color: 'from-[#FF6B6B] to-[#FF8E53]' },
-  { value: 'conference', icon: 'Mic', color: 'from-[#0EA5E9] to-[#0284C7]' },
-  { value: 'formation', icon: 'GraduationCap', color: 'from-[#10B981] to-[#059669]' },
-  { value: 'exposition', icon: 'Palette', color: 'from-[#F59E0B] to-[#D97706]' },
-  { value: 'spectacle', icon: 'Theater', color: 'from-[#EC4899] to-[#DB2777]' },
+  { value: 'concert', icon: 'Music', color: 'from-[#6600FF] to-[#9333EA]' },
+  { value: 'festival', icon: 'PartyPopper', color: 'from-[#8B5CF6] to-[#A855F7]' },
+  { value: 'conference', icon: 'Mic', color: 'from-[#7C3AED] to-[#6600FF]' },
+  { value: 'formation', icon: 'GraduationCap', color: 'from-[#9333EA] to-[#8B5CF6]' },
+  { value: 'exposition', icon: 'Palette', color: 'from-[#A855F7] to-[#7C3AED]' },
+  { value: 'spectacle', icon: 'Theater', color: 'from-[#6600FF] to-[#8B5CF6]' },
   { value: 'cultural', icon: 'Landmark', color: 'from-[#8B5CF6] to-[#7C3AED]' },
-  { value: 'private', icon: 'Lock', color: 'from-[#64748B] to-[#475569]' },
+  { value: 'private', icon: 'Lock', color: 'from-[#7C3AED] to-[#9333EA]' },
 ];
 
 export const CITIES = [
