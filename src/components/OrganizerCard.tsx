@@ -39,7 +39,7 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
       <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500 dark:text-zinc-400">
         <span className="flex items-center gap-1">
           <Calendar className="w-3.5 h-3.5" />
-          {formatNumber(organization.events_count, language)} evenements
+          {formatNumber(organization.events_count, language)} événements
         </span>
         <span>{formatNumber(organization.followers_count, language)} followers</span>
       </div>

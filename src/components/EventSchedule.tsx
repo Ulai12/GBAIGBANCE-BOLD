@@ -50,7 +50,7 @@ export function EventSchedule({ event, onArtistClick, isDark }: EventSchedulePro
               onClick={() => setActiveDay(day)}
               className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${
                 activeDay === day ? 'bg-[#6600FF] text-white shadow-purple scale-105' : isDark ? 'bg-white/10 text-white/60' : 'bg-[#EDE8FF] text-gray-600'
-              }`}
+              }`
             >
               {day}
             </button>

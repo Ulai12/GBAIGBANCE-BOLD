@@ -72,7 +72,7 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
             onPointerDown={() => setPressed('create')}
             onPointerUp={() => setPressed(null)}
             onPointerLeave={() => setPressed(null)}
-            aria-label="Creer un evenement"
+            aria-label="Créer un événement"
             className={`nav-fab mx-2 w-12 h-12 rounded-full flex items-center justify-center animate-pulse-glow transition-transform duration-200 ${
               pressed === 'create' ? 'scale-90' : ''
             }`}

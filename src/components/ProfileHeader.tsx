@@ -62,7 +62,7 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
             {eventsCount !== undefined && (
               <div className="text-center">
                 <span className="text-lg font-semibold text-gray-900">{eventsCount}</span>
-                <p className="text-xs text-gray-500">evenements</p>
+                <p className="text-xs text-gray-500">événements</p>
               </div>
             )}
             {followersCount !== undefined && (
