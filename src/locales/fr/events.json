@@ -47,5 +47,22 @@
     "thisMonth": "Ce mois",
     "apply": "Appliquer",
     "reset": "Réinitialiser"
+  },
+  "explore": {
+    "tabs": {
+      "categories": "Catégories",
+      "collections": "Collections",
+      "results": "Résultats"
+    },
+    "collections": {
+      "thisWeekend": "Ce week-end",
+      "free": "Gratuits",
+      "lastMinute": "Dernière minute",
+      "forFamilies": "En famille",
+      "forStudents": "Pour les étudiants",
+      "night": "Nuit",
+      "outdoor": "Plein air",
+      "indoor": "Indoor"
+    }
   }
 }

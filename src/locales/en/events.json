@@ -43,9 +43,26 @@
     "free": "Free",
     "paid": "Paid",
     "today": "Today",
-    "thisWeek": "This week",
+ "thisWeek": "This week",
     "thisMonth": "This month",
     "apply": "Apply",
     "reset": "Reset"
+  },
+  "explore": {
+    "tabs": {
+      "categories": "Categories",
+      "collections": "Collections",
+      "results": "Results"
+    },
+    "collections": {
+      "thisWeekend": "This Weekend",
+      "free": "Free",
+      "lastMinute": "Last Minute",
+      "forFamilies": "For Families",
+      "forStudents": "For Students",
+      "night": "Night",
+      "outdoor": "Outdoor",
+      "indoor": "Indoor"
+    }
   }
 }
