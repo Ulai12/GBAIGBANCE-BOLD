@@ -14,23 +14,22 @@ interface BottomNavProps {
 interface NavItem {
   id: Tab;
   icon: typeof Home;
-  label?: string;
+  label: string;
 }
 
 const LEFT_ITEMS: NavItem[] = [
-  { id: 'home', icon: Home, label: 'Home' },
-  { id: 'explore', icon: Search },
+  { id: 'home', icon: Home, label: 'Accueil' },
+  { id: 'explore', icon: Search, label: 'Explorer' },
 ];
 
 const RIGHT_ITEMS: NavItem[] = [
-  { id: 'tickets', icon: Ticket, label: 'Tickets' },
-  { id: 'favorites', icon: Heart },
+  { id: 'tickets', icon: Ticket, label: 'Billets' },
+  { id: 'favorites', icon: Heart, label: 'Favoris' },
 ];
 
 export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCreate = false }: BottomNavProps) {
   const [pressed, setPressed] = useState<string | null>(null);
 
-  // Rendu unique pour les 2 groupes — avant : le même JSX était dupliqué 2x
   const renderItem = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = active === item.id;
@@ -45,8 +44,8 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
         onPointerUp={() => setPressed(null)}
         onPointerLeave={() => setPressed(null)}
         aria-current={isActive ? 'page' : undefined}
-        aria-label={item.label ?? item.id}
-        className={`relative flex items-center gap-2 min-w-11 min-h-11 px-4 py-3 transition-all duration-300 ${
+        aria-label={item.label}
+        className={`relative flex items-center justify-center min-w-11 min-h-11 w-11 h-11 rounded-full transition-all duration-300 ${
           isActive ? 'nav-pill-active' : 'text-zinc-400 hover:text-zinc-600'
         } ${pressed === item.id ? 'scale-90' : 'scale-100'}`}
       >
@@ -54,13 +53,8 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
           className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'text-white scale-110' : ''}`}
           strokeWidth={isActive ? 2.5 : 2}
         />
-        {isActive && item.label && (
-          <span className="text-sm font-bold text-white whitespace-nowrap animate-slide-in-right">
-            {item.label}
-          </span>
-        )}
         {showBadge && (
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pop" />
+          <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pop" />
         )}
       </button>
     );
@@ -78,8 +72,8 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
             onPointerDown={() => setPressed('create')}
             onPointerUp={() => setPressed(null)}
             onPointerLeave={() => setPressed(null)}
-            aria-label="Créer un événement"
-            className={`nav-fab mx-1 w-12 h-12 rounded-full flex items-center justify-center animate-pulse-glow ${
+            aria-label="Creer un evenement"
+            className={`nav-fab mx-2 w-12 h-12 rounded-full flex items-center justify-center animate-pulse-glow transition-transform duration-200 ${
               pressed === 'create' ? 'scale-90' : ''
             }`}
           >
@@ -91,7 +85,7 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
             />
           </button>
         ) : (
-          <div className="mx-1 w-12 h-12" aria-hidden="true" />
+          <div className="mx-2 w-12 h-12" aria-hidden="true" />
         )}
 
         {RIGHT_ITEMS.map(renderItem)}

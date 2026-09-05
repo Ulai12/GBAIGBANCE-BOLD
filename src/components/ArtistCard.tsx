@@ -2,6 +2,7 @@ import { BadgeCheck, Music2 } from 'lucide-react';
 import type { Artist } from '@/types';
 import { formatNumber } from '@/utils/format';
 import { useApp } from '@/hooks/useApp';
+import { SmartImage } from '@/components/SmartImage';
 
 interface ArtistCardProps {
   artist: Artist;
@@ -19,7 +20,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
         className="flex flex-col items-center gap-2 w-24 shrink-0 cursor-pointer group"
       >
         <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-primary-500/30 group-hover:ring-primary-500 transition-all">
-          <img
+          <SmartImage
             src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200'}
             alt={artist.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -43,14 +44,14 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
       className="glass-card rounded-3xl overflow-hidden cursor-pointer group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] w-56 shrink-0"
     >
       <div className="relative h-40 overflow-hidden">
-        <img
+        <SmartImage
           src={artist.cover_url || artist.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=400'}
           alt={artist.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <img
+          <SmartImage
             src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100'}
             alt={artist.name}
             className="w-10 h-10 rounded-full object-cover ring-2 ring-white/50"
@@ -67,7 +68,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
       <div className="p-3">
         <div className="flex flex-wrap gap-1">
           {artist.genres.slice(0, 2).map((genre) => (
-            <span key={genre} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+            <span key={genre} className="glass-surface flex items-center gap-1 text-xs px-2 py-1 rounded-full text-zinc-600 dark:text-zinc-300">
               <Music2 className="w-3 h-3" />
               {genre}
             </span>
