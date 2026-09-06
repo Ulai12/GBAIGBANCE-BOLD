@@ -61,18 +61,49 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
   const heroEvent = featured[0] || trending[0];
 
   return (
-    <div className="min-h-screen pb-32 bg-lavender">
-      <div className="px-5 pt-7 pb-2">
-        <div className="flex items-center justify-between mb-6">
-          <div><p className="text-xs uppercase tracking-[0.16em] text-gray-500 font-bold">{new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'}</p><h1 className="mt-1 text-2xl font-extrabold text-[#171726] tracking-tight">{user?.name?.split(' ')[0] || 'Invité'}</h1></div>
-          <div className="flex items-center gap-2.5">
-            <NotificationBell onOpen={onOpenNotifications} />
-            <button onClick={() => setLocationOpen(true)} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-md flex items-center justify-center text-lg active:scale-90 transition-transform" aria-label="Localisation">{COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}</button>
-            <button onClick={onProfileClick} className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/20 overflow-hidden bg-[#6600FF]/10 shadow-md active:scale-90 transition-transform" aria-label="Profil">{user?.avatar_url ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-sm font-extrabold text-[#6600FF]">{user?.name?.charAt(0).toUpperCase() || '?'}</span>}</button>
-          </div>
-        </div>
-        <button onClick={onSearchClick} className="w-full"><div className="search-bar flex items-center gap-3 px-5 py-4 text-left hover:shadow-md transition-shadow"><Search className="w-5 h-5 text-[#6600FF]/70" /><span className="text-sm text-gray-500">Rechercher un événement, un artiste...</span><span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-gray-400">⌘ K</span></div></button>
+    {/* En-tête */}
+<div className="px-5 pt-6 pb-2">
+  {/* Logo */}
+  <div className="flex items-center gap-2 mb-5">
+    <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 flex items-center justify-center text-base">
+      🎟️
+    </div>
+    <div className="leading-none">
+      <p className="text-[15px] font-extrabold text-[#171726] tracking-tight">GBAIGBANCE</p>
+      <p className="text-[9px] font-bold text-gray-400 tracking-[0.16em] uppercase mt-0.5">Billetterie & événements</p>
+    </div>
+  </div>
+
+  {/* Greeting */}
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h1 className="text-2xl font-extrabold text-[#171726] tracking-tight">
+        {new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'} {user?.name?.split(' ')[0] || 'Invité'} 👋
+      </h1>
+      <p className="text-sm text-gray-400 mt-0.5">Trouve ta prochaine sortie</p>
+    </div>
+    <div className="flex items-center gap-2.5">
+      <NotificationBell onOpen={onOpenNotifications} />
+      <button onClick={onProfileClick} className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/20 overflow-hidden bg-[#6600FF]/10 shadow-md active:scale-90 transition-transform" aria-label="Profil">
+        {user?.avatar_url ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-sm font-extrabold text-[#6600FF]">{user?.name?.charAt(0).toUpperCase() || '?'}</span>}
+      </button>
+    </div>
+  </div>
+
+  {/* Recherche */}
+  <div className="flex items-center gap-2.5">
+    <button onClick={onSearchClick} className="flex-1">
+      <div className="search-bar flex items-center gap-3 px-5 py-4 text-left">
+        <Search className="w-5 h-5 text-[#6600FF]/70" />
+        <span className="text-sm text-gray-500">Rechercher un événement, un artiste...</span>
       </div>
+    </button>
+    <button onClick={() => setLocationOpen(true)} className="w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
+      {COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}
+    </button>
+  </div>
+</div>
+
 
       {!loading && heroEvent && (
         <section className="mt-4 px-5">
@@ -100,12 +131,30 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
         </section>
       )}
 
-      <section className="mt-6 px-5">
-        <h2 className="text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
-        <div className="grid grid-cols-4 gap-2.5 animate-stagger">
-          {EVENT_CATEGORIES.map((cat) => { const Icon = CATEGORY_ICONS[cat.icon] || Music; const isActive = selectedCategory === cat.value; return (<button key={cat.value} onClick={() => setSelectedCategory(isActive ? null : cat.value)} className={`flex flex-col items-center gap-2 p-3 rounded-[1.35rem] transition-all border ${isActive ? 'bg-[#6600FF] border-[#6600FF] shadow-purple scale-[1.03]' : 'bg-white/60 border-white/70 hover:shadow-card-hover'}`}><div className={`w-10 h-10 rounded-[1rem] flex items-center justify-center bg-gradient-to-br ${cat.color}`}><Icon className="w-5 h-5 text-white" /></div><span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>{t('events', `categories.${cat.value}`)}</span></button>); })}
-        </div>
-      </section>
+      <section className="mt-6">
+  <h2 className="px-5 text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
+  <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pb-1 snap-x snap-mandatory">
+    {EVENT_CATEGORIES.map((cat) => {
+      const Icon = CATEGORY_ICONS[cat.icon] || Music;
+      const isActive = selectedCategory === cat.value;
+      return (
+        <button
+          key={cat.value}
+          onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+          className={`flex flex-col items-center justify-center gap-1.5 shrink-0 w-[4.75rem] h-[4.75rem] rounded-[1.35rem] snap-start transition-all active:scale-95 ${
+            isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/70 border border-white/70'
+          }`}
+        >
+          <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#171726]'}`} strokeWidth={1.8} />
+          <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>
+            {t('events', `categories.${cat.value}`)}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+</section>
+
 
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
