@@ -3,8 +3,6 @@ import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket } from 'lucide-react'
 import { useRef } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
-import { toggleEventLike } from '@/services/events';
-import { useApp } from '@/hooks/useApp';
 
 interface TrendingDeckCardProps {
   event: Event;
@@ -31,8 +29,6 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
   const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
   const dragging = useRef(false);
-  const { user } = useApp();
-  const [liked, setLiked] = useState(false);
   const offset = index;
   const isBehind = !active;
 
@@ -81,7 +77,7 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
           Tendance {String(index + 1).padStart(2, '0')}
         </span>
         <button type="button" aria-label="Ajouter aux favoris" onClick={(eventClick) => eventClick.stopPropagation()} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/15 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90">
-          <Heart className={`h-4 w-4 ${liked ? 'fill-red-400 text-red-400' : ''}`} />
+          <Heart className="h-4 w-4" />
         </button>
       </div>
       <motion.div style={{ opacity: likeOpacity }} className="absolute left-5 top-24 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl">
