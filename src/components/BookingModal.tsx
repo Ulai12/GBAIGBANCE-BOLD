@@ -37,6 +37,8 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
 
   const totalPrice = selectedOption ? selectedOption.price * quantity : 0;
   const available = selectedOption ? selectedOption.quantity_total - selectedOption.quantity_sold : 0;
+  const eventUnavailable = !event || event.status !== 'published' || Boolean(event.ends_at && new Date(event.ends_at) <= new Date()) || Boolean(event.sales_end_at && new Date(event.sales_end_at) <= new Date()) || Boolean(event.sales_start_at && new Date(event.sales_start_at) > new Date());
+  const soldOut = options.length > 0 && options.every((option) => option.quantity_total - option.quantity_sold <= 0);
 
   const handleBook = async () => {
     if (!event || !selectedOption) return;
@@ -105,7 +107,13 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
           </div>
         </div>
 
-        {loading ? (
+        {eventUnavailable ? (
+          <div className="text-center py-8">
+            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-[#171726]">Réservation indisponible</p>
+            <p className="text-xs text-gray-400 mt-1">{event.status === 'paused' ? 'Les ventes sont temporairement suspendues.' : event.status === 'suspended' ? 'Cet événement est momentanément suspendu.' : event.status === 'completed' ? 'Cet événement est terminé.' : event.status === 'cancelled' ? 'Cet événement a été annulé.' : 'Les ventes ne sont pas ouvertes.'}</p>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 text-[#6600FF] animate-spin" />
           </div>
@@ -114,6 +122,12 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-sm text-gray-500">Aucune option de billet disponible pour cet événement.</p>
             <p className="text-xs text-gray-400 mt-1">L'organisateur n'a pas encore configuré les billets.</p>
+          </div>
+        ) : soldOut ? (
+          <div className="text-center py-8">
+            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-[#171726]">Complet</p>
+            <p className="text-xs text-gray-400 mt-1">Tous les billets disponibles ont été vendus.</p>
           </div>
         ) : (
           <>
@@ -126,7 +140,8 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
                   <button
                     key={opt.id}
                     onClick={() => { setSelectedOption(opt); setQuantity(1); }}
-                    className={`glass-surface w-full p-4 rounded-2xl border-2 transition-all text-left ${
+                    disabled={optAvailable <= 0}
+                    className={`glass-surface w-full p-4 rounded-2xl border-2 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected ? 'border-[#6600FF] bg-[#6600FF]/10' : 'border-transparent hover:border-[#6600FF]/20'
                     }`}
                   >

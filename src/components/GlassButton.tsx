@@ -28,10 +28,10 @@ export function GlassButton({
   };
 
   const variants = {
-    primary: 'bg-primary-500 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/30',
-    secondary: 'glass text-zinc-900 dark:text-white hover:bg-white/30 dark:hover:bg-zinc-700/30',
-    ghost: 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    danger: 'bg-error-500 text-white hover:bg-error-600 shadow-lg shadow-error-500/30',
+    primary: 'bg-[#6600FF] text-white hover:bg-[#5500D4] shadow-lg shadow-[#6600FF]/30',
+    secondary: 'glass text-[#171726] hover:bg-white/30',
+    ghost: 'text-[#4d4d5d] hover:bg-white/30',
+    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30',
   };
 
   return (

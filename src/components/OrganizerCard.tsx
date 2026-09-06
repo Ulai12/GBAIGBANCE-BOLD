@@ -25,18 +25,18 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
             className="w-14 h-14 rounded-2xl object-cover"
           />
           {isVerified && (
-            <div className="absolute -bottom-1 -right-1 bg-primary-500 rounded-full p-0.5">
+            <div className="absolute -bottom-1 -right-1 bg-[#6600FF] rounded-full p-0.5">
               <BadgeCheck className="w-4 h-4 text-white" />
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1">{organization.name}</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">{organization.city}</p>
+          <h3 className="font-bold text-sm text-[#171726] line-clamp-1">{organization.name}</h3>
+          <p className="text-xs text-[#7b7e8f]">{organization.city}</p>
         </div>
       </div>
-      <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-3 line-clamp-2">{organization.description}</p>
-      <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-[#4d4d5d] mt-3 line-clamp-2">{organization.description}</p>
+      <div className="flex items-center gap-4 mt-3 text-xs text-[#7b7e8f]">
         <span className="flex items-center gap-1">
           <Calendar className="w-3.5 h-3.5" />
           {formatNumber(organization.events_count, language)} événements

@@ -6,6 +6,7 @@ import {
   fetchEventLiveLinks, addEventLiveLink, toggleLiveLink, deleteEventLiveLink,
   fetchEventSponsors, addEventSponsor, deleteEventSponsor,
   getFaviconUrl, searchArtists,
+  setEventStatus,
 } from '@/services/events';
 import type { Event, EventScheduleSlot, EventLiveLink, EventSponsor, Artist, SponsorTier } from '@/types';
 
@@ -69,11 +70,27 @@ export function EventManagementModal({ event, onClose, onToast }: EventManagemen
   const handleAddSponsor = async () => { if (!event || !sponsorForm.name) return; try { const logoUrl = sponsorForm.logo_source === 'auto' && sponsorForm.website_url ? getFaviconUrl(sponsorForm.website_url) : sponsorForm.logo_url; await addEventSponsor({ event_id: event.id, name: sponsorForm.name, website_url: sponsorForm.website_url || undefined, logo_url: logoUrl || undefined, tier: sponsorForm.tier, logo_source: sponsorForm.logo_source }); setSponsorForm({ name: '', website_url: '', tier: 'partner', logo_url: '', logo_source: 'manual' }); const data = await fetchEventSponsors(event.id); setSponsors(data); onToast({ message: 'Sponsor ajouté', type: 'success' }); } catch { onToast({ message: 'Erreur', type: 'error' }); } };
   const handleDeleteSponsor = async (id: string) => { try { await deleteEventSponsor(id); setSponsors(sponsors.filter((s) => s.id !== id)); } catch { onToast({ message: 'Erreur', type: 'error' }); } };
   const handleAutoFetchLogo = () => { if (!sponsorForm.website_url) return; const fav = getFaviconUrl(sponsorForm.website_url); setSponsorForm({ ...sponsorForm, logo_url: fav, logo_source: 'auto' }); onToast({ message: 'Logo récupéré automatiquement', type: 'success' }); };
+  const handleStatusChange = async (status: 'published' | 'paused' | 'cancelled') => {
+    try {
+      await setEventStatus(event.id, status, status === 'cancelled' ? 'Annulé par l’organisateur' : undefined);
+      onToast({ message: status === 'published' ? 'Ventes ouvertes' : status === 'paused' ? 'Ventes mises en pause' : 'Événement annulé', type: 'success' });
+      onClose();
+    } catch (error) {
+      onToast({ message: error instanceof Error ? error.message : 'Transition impossible', type: 'error' });
+    }
+  };
 
   const tabs = [{ id: 'schedule' as Tab, label: 'Programme', icon: Calendar }, { id: 'live' as Tab, label: 'Live', icon: Video }, { id: 'sponsors' as Tab, label: 'Sponsors', icon: Award }];
 
   return (
     <Modal open={!!event} onClose={onClose} title={`Gérer: ${event.title}`}>
+      <div className="mb-4 p-3 rounded-2xl bg-[#6600FF]/5">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Cycle de vie</p>
+        <div className="flex gap-2">
+          {event.status === 'paused' ? <button onClick={() => handleStatusChange('published')} className="flex-1 py-2 rounded-xl bg-[#6600FF] text-white text-xs font-bold">Reprendre les ventes</button> : <button onClick={() => handleStatusChange('paused')} disabled={event.status !== 'published'} className="flex-1 py-2 rounded-xl bg-white text-[#6600FF] text-xs font-bold disabled:opacity-40">Mettre en pause</button>}
+          {event.status === 'cancelled' ? <span className="flex-1 py-2 text-center rounded-xl bg-red-100 text-red-600 text-xs font-bold">Annulé</span> : <button onClick={() => handleStatusChange('cancelled')} className="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold">Annuler</button>}
+        </div>
+      </div>
       <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl mb-4">
         {tabs.map((t) => { const Icon = t.icon; return <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${tab === t.id ? 'bg-white shadow-sm text-[#6600FF] scale-105' : 'text-gray-500'}`}><Icon className="w-3.5 h-3.5" /> {t.label}</button>; })}
       </div>

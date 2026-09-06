@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase';
-import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, Profile, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier } from '@/types';
+import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, Profile, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier, EventStatus } from '@/types';
 import type { EventCategory } from '@/types';
 
 // ==================== IMAGE UPLOAD ====================
@@ -57,6 +57,17 @@ export async function cancelTicket(ticketId: string): Promise<{ success: boolean
   const result = data as { success?: boolean; error?: string };
   if (result.error) return { success: false, error: result.error };
   return { success: true };
+}
+
+export async function setEventStatus(eventId: string, status: Exclude<EventStatus, 'pending'>, reason?: string): Promise<void> {
+  const { data, error } = await supabase.rpc('set_event_status', {
+    p_event_id: eventId,
+    p_status: status,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+  const result = data as { success?: boolean; error?: string };
+  if (!result.success) throw new Error(result.error || 'Transition de statut impossible');
 }
 
 export async function fetchUserTickets(userId: string) {

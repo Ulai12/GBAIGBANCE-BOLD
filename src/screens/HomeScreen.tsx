@@ -61,25 +61,25 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
 
   return (
     <div className="min-h-screen pb-32 bg-lavender">
-      <div className="px-5 pt-6 pb-2">
-        <div className="flex items-center justify-between mb-5">
-          <div><p className="text-sm text-gray-500 font-medium">{new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'}, {user?.name?.split(' ')[0] || 'Invité'}!</p><h1 className="text-2xl font-extrabold text-[#1A1A2E] tracking-tight">GBAIGBANCE</h1></div>
+      <div className="px-5 pt-7 pb-2">
+        <div className="flex items-center justify-between mb-6">
+          <div><p className="text-xs uppercase tracking-[0.16em] text-gray-500 font-bold">{new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'}</p><h1 className="mt-1 text-2xl font-extrabold text-[#171726] tracking-tight">{user?.name?.split(' ')[0] || 'Invité'}</h1></div>
           <div className="flex items-center gap-2.5">
             <NotificationBell onOpen={onOpenNotifications} />
             <button onClick={() => setLocationOpen(true)} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-md flex items-center justify-center text-lg active:scale-90 transition-transform" aria-label="Localisation">{COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}</button>
             <button onClick={onProfileClick} className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/20 overflow-hidden bg-[#6600FF]/10 shadow-md active:scale-90 transition-transform" aria-label="Profil">{user?.avatar_url ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-sm font-extrabold text-[#6600FF]">{user?.name?.charAt(0).toUpperCase() || '?'}</span>}</button>
           </div>
         </div>
-        <button onClick={onSearchClick} className="w-full"><div className="search-bar flex items-center gap-3 px-5 py-3.5 text-left hover:shadow-md transition-shadow"><Search className="w-5 h-5 text-gray-400" /><span className="text-sm text-gray-400">Rechercher un événement, un artiste...</span></div></button>
+        <button onClick={onSearchClick} className="w-full"><div className="search-bar flex items-center gap-3 px-5 py-4 text-left hover:shadow-md transition-shadow"><Search className="w-5 h-5 text-[#6600FF]/70" /><span className="text-sm text-gray-500">Rechercher un événement, un artiste...</span><span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-gray-400">⌘ K</span></div></button>
       </div>
 
       {!loading && heroEvent && (
         <section className="mt-4 px-5">
-          <div onClick={() => onEventClick(heroEvent)} className="relative h-56 rounded-3xl overflow-hidden cursor-pointer group animate-slide-up">
+          <div onClick={() => onEventClick(heroEvent)} className="relative h-60 rounded-[2rem] overflow-hidden cursor-pointer group animate-slide-up shadow-[0_20px_45px_rgba(37,20,72,0.2)]">
             <img src={heroEvent.cover_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'} alt={heroEvent.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#6600FF] to-[#8B5CF6] shadow-lg"><Sparkles className="w-3.5 h-3.5 text-white" /><span className="text-xs font-bold text-white">À la une</span></div>
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/90 backdrop-blur"><span className="w-2 h-2 bg-white rounded-full animate-pulse" /><span className="text-xs font-bold text-white">Tendance</span></div>
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/18 backdrop-blur-xl border border-white/25 shadow-lg"><Sparkles className="w-3.5 h-3.5 text-white" /><span className="text-xs font-bold text-white">À la une</span></div>
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/25 backdrop-blur-xl border border-white/15"><span className="w-2 h-2 bg-[#ff5b66] rounded-full animate-pulse" /><span className="text-xs font-bold text-white">Tendance</span></div>
             <div className="absolute bottom-0 left-0 right-0 p-5">
               <div className="flex items-center gap-2 mb-2"><span className="text-xs text-white/90 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full font-medium">{t('events', `categories.${heroEvent.category}`)}</span><span className="flex items-center gap-1 text-xs text-white/80"><MapPin className="w-3 h-3" />{heroEvent.city}</span></div>
               <h2 className="text-white font-extrabold text-xl leading-tight line-clamp-2">{heroEvent.title}</h2>
@@ -90,9 +90,9 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
       )}
 
       <section className="mt-6 px-5">
-        <h2 className="text-lg font-bold text-[#1A1A2E] mb-3">Explorer par catégorie</h2>
-        <div className="grid grid-cols-4 gap-3 animate-stagger">
-          {EVENT_CATEGORIES.map((cat) => { const Icon = CATEGORY_ICONS[cat.icon] || Music; const isActive = selectedCategory === cat.value; return (<button key={cat.value} onClick={() => setSelectedCategory(isActive ? null : cat.value)} className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${isActive ? 'bg-[#6600FF] shadow-purple scale-105' : 'bg-white hover:shadow-card-hover'}`}><div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${cat.color}`}><Icon className="w-5 h-5 text-white" /></div><span className={`text-[10px] font-semibold ${isActive ? 'text-white' : 'text-[#1A1A2E]'}`}>{t('events', `categories.${cat.value}`)}</span></button>); })}
+        <h2 className="text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
+        <div className="grid grid-cols-4 gap-2.5 animate-stagger">
+          {EVENT_CATEGORIES.map((cat) => { const Icon = CATEGORY_ICONS[cat.icon] || Music; const isActive = selectedCategory === cat.value; return (<button key={cat.value} onClick={() => setSelectedCategory(isActive ? null : cat.value)} className={`flex flex-col items-center gap-2 p-3 rounded-[1.35rem] transition-all border ${isActive ? 'bg-[#6600FF] border-[#6600FF] shadow-purple scale-[1.03]' : 'bg-white/60 border-white/70 hover:shadow-card-hover'}`}><div className={`w-10 h-10 rounded-[1rem] flex items-center justify-center bg-gradient-to-br ${cat.color}`}><Icon className="w-5 h-5 text-white" /></div><span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>{t('events', `categories.${cat.value}`)}</span></button>); })}
         </div>
       </section>
 

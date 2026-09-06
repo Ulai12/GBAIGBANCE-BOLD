@@ -1,28 +1,29 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider, useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
 import { DynamicBackground } from '@/components/DynamicBackground';
-import { OnboardingScreen } from '@/screens/OnboardingScreen';
-import { AuthScreen } from '@/screens/AuthScreen';
-import { ForgotPasswordScreen } from '@/screens/ForgotPasswordScreen';
-import { OtpScreen } from '@/screens/OtpScreen';
-import { HomeScreen } from '@/screens/HomeScreen';
-import { ExploreScreen } from '@/screens/ExploreScreen';
-import { EventDetailScreen } from '@/screens/EventDetailScreen';
-import { TicketsScreen } from '@/screens/TicketsScreen';
-import { ProfileScreen } from '@/screens/ProfileScreen';
-import { OrganizerDashboardScreen } from '@/screens/OrganizerDashboardScreen';
-import { CreateEventScreen } from '@/screens/CreateEventScreen';
-import { FavoritesScreen } from '@/screens/FavoritesScreen';
-import { ArtistDetailScreen } from '@/screens/ArtistDetailScreen';
-import { OrganizerDetailScreen } from '@/screens/OrganizerDetailScreen';
-import { NotificationsScreen } from '@/screens/NotificationsScreen';
-import { NotificationSettingsScreen } from '@/screens/NotificationSettingsScreen';
-import { SubscriptionsScreen } from '@/screens/SubscriptionsScreen';
-import { UserProfileScreen } from '@/screens/UserProfileScreen';
 import type { Event, Artist, Organization } from '@/types';
+
+const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then((module) => ({ default: module.OnboardingScreen })));
+const AuthScreen = lazy(() => import('@/screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
+const ForgotPasswordScreen = lazy(() => import('@/screens/ForgotPasswordScreen').then((module) => ({ default: module.ForgotPasswordScreen })));
+const OtpScreen = lazy(() => import('@/screens/OtpScreen').then((module) => ({ default: module.OtpScreen })));
+const HomeScreen = lazy(() => import('@/screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
+const ExploreScreen = lazy(() => import('@/screens/ExploreScreen').then((module) => ({ default: module.ExploreScreen })));
+const EventDetailScreen = lazy(() => import('@/screens/EventDetailScreen').then((module) => ({ default: module.EventDetailScreen })));
+const TicketsScreen = lazy(() => import('@/screens/TicketsScreen').then((module) => ({ default: module.TicketsScreen })));
+const ProfileScreen = lazy(() => import('@/screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
+const OrganizerDashboardScreen = lazy(() => import('@/screens/OrganizerDashboardScreen').then((module) => ({ default: module.OrganizerDashboardScreen })));
+const CreateEventScreen = lazy(() => import('@/screens/CreateEventWizardScreen').then((module) => ({ default: module.CreateEventWizardScreen })));
+const FavoritesScreen = lazy(() => import('@/screens/FavoritesScreen').then((module) => ({ default: module.FavoritesScreen })));
+const ArtistDetailScreen = lazy(() => import('@/screens/ArtistDetailScreen').then((module) => ({ default: module.ArtistDetailScreen })));
+const OrganizerDetailScreen = lazy(() => import('@/screens/OrganizerDetailScreen').then((module) => ({ default: module.OrganizerDetailScreen })));
+const NotificationsScreen = lazy(() => import('@/screens/NotificationsScreen').then((module) => ({ default: module.NotificationsScreen })));
+const NotificationSettingsScreen = lazy(() => import('@/screens/NotificationSettingsScreen').then((module) => ({ default: module.NotificationSettingsScreen })));
+const SubscriptionsScreen = lazy(() => import('@/screens/SubscriptionsScreen').then((module) => ({ default: module.SubscriptionsScreen })));
+const UserProfileScreen = lazy(() => import('@/screens/UserProfileScreen').then((module) => ({ default: module.UserProfileScreen })));
 
 type Screen =
   | 'onboarding'
@@ -330,7 +331,9 @@ function App() {
   return (
     <AppProvider>
       <AppBackground />
-      <AppContent />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-transparent"><div className="w-12 h-12 rounded-full border-4 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" /></div>}>
+        <AppContent />
+      </Suspense>
     </AppProvider>
   );
 }

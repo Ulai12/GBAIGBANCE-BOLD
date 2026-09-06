@@ -19,19 +19,19 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
         onClick={onClick}
         className="flex flex-col items-center gap-2 w-24 shrink-0 cursor-pointer group"
       >
-        <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-primary-500/30 group-hover:ring-primary-500 transition-all">
+        <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all">
           <SmartImage
             src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200'}
             alt={artist.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           {artist.is_verified && (
-            <div className="absolute bottom-0 right-0 bg-primary-500 rounded-full p-0.5">
+            <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5">
               <BadgeCheck className="w-3.5 h-3.5 text-white" />
             </div>
           )}
         </div>
-        <span className="text-xs font-semibold text-zinc-900 dark:text-white text-center line-clamp-1 w-full">
+        <span className="text-xs font-semibold text-[#171726] text-center line-clamp-1 w-full">
           {artist.name}
         </span>
       </div>
@@ -59,7 +59,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
           <div>
             <div className="flex items-center gap-1">
               <h3 className="text-white font-bold text-sm">{artist.name}</h3>
-              {artist.is_verified && <BadgeCheck className="w-4 h-4 text-primary-400" />}
+              {artist.is_verified && <BadgeCheck className="w-4 h-4 text-[#A885FF]" />}
             </div>
             <p className="text-white/70 text-xs">{formatNumber(artist.followers_count, language)} followers</p>
           </div>
@@ -68,7 +68,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
       <div className="p-3">
         <div className="flex flex-wrap gap-1">
           {artist.genres.slice(0, 2).map((genre) => (
-            <span key={genre} className="glass-surface flex items-center gap-1 text-xs px-2 py-1 rounded-full text-zinc-600 dark:text-zinc-300">
+            <span key={genre} className="glass-surface flex items-center gap-1 text-xs px-2 py-1 rounded-full text-[#4d4d5d]">
               <Music2 className="w-3 h-3" />
               {genre}
             </span>

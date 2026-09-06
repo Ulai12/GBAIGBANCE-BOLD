@@ -15,10 +15,10 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
   const flag = COUNTRY_FLAGS[profile.country] || '';
 
   return (
-    <div className="relative px-4 pt-8 pb-4">
+    <div className="relative px-4 pt-10 pb-4">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-indigo-300/20 to-purple-300/20 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative glass-surface rounded-[2.5rem] p-6 pt-14">
+      <div className="relative glass-surface rounded-[2rem] p-6 pt-14 shadow-[0_18px_42px_rgba(76,29,149,0.12)]">
         <div className="absolute -top-12 left-1/2 -translate-x-1/2">
           <div className="w-24 h-24 rounded-full ring-4 ring-white/90 shadow-lg overflow-hidden glass-surface">
             {profile.avatar_url ? (
@@ -39,7 +39,7 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-[#171726] tracking-tight">
             {profile.name}
           </h1>
           <p className="flex items-center justify-center gap-1 mt-1 text-sm text-gray-500">

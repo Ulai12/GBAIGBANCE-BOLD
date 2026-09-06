@@ -53,6 +53,18 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const [liveAttendees, setLiveAttendees] = useState<number>(event.attendees_count || 0);
   const countdown = useCountdown(event.starts_at);
 
+  const handleShare = async () => {
+    const shareData = { title: displayEvent.title, text: `Découvrez ${displayEvent.title} sur Gbaigbance`, url: window.location.href };
+    try {
+      const nativeShare = typeof navigator.share === 'function';
+      if (nativeShare) await navigator.share(shareData);
+      else await navigator.clipboard.writeText(window.location.href);
+      onToast({ message: nativeShare ? 'Événement partagé' : 'Lien copié', type: 'success' });
+    } catch {
+      // L'utilisateur peut fermer la feuille de partage sans que ce soit une erreur.
+    }
+  };
+
   useEffect(() => {
     fetchEventById(event.id).then((data) => { setFullEvent(data); if (data) { setLiveViews(data.views_count || 0); setLiveAttendees(data.attendees_count || 0); } }).catch(() => setFullEvent(null));
     fetchCollaborators(event.id).then(setCollaborators).catch(() => {});
@@ -71,18 +83,21 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const flag = COUNTRY_FLAGS[event.country] || '';
   const displayEvent = fullEvent || event;
   const isOrganizer = !!(user && displayEvent.organizer_user_id === user.id);
+  const eventHasEnded = Boolean(displayEvent.ends_at ? new Date(displayEvent.ends_at) <= new Date() : new Date(displayEvent.starts_at) <= new Date());
+  const canBook = displayEvent.status === 'published' && !eventHasEnded;
+  const statusLabel = displayEvent.status === 'paused' ? 'Ventes en pause' : displayEvent.status === 'suspended' ? 'Événement suspendu' : displayEvent.status === 'cancelled' ? 'Événement annulé' : displayEvent.status === 'completed' || eventHasEnded ? 'Événement terminé' : null;
 
   return (
     <div className="min-h-screen pb-32 bg-lavender">
-      <div className="relative h-[22rem]">
+      <div className="relative h-[24rem]">
         <img src={displayEvent.cover_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'} alt={displayEvent.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] via-transparent to-black/20" />
         <div className="absolute top-4 left-0 right-0 px-5 flex items-center justify-between">
-          <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-md"><ChevronLeft className="w-5 h-5 text-[#1A1A2E]" /></button>
+          <button onClick={onBack} aria-label="Retour" className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><ChevronLeft className="w-5 h-5 text-[#171726]" /></button>
           <div className="flex gap-2">
-            {isOrganizer && <button onClick={() => setShowManage(true)} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-md active:scale-90 transition-transform"><Settings className="w-5 h-5 text-[#1A1A2E]" /></button>}
-            <button className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-md"><Share2 className="w-5 h-5 text-[#1A1A2E]" /></button>
-            <button onClick={handleLike} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-md"><Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-[#1A1A2E]'}`} /></button>
+            {isOrganizer && <button onClick={() => setShowManage(true)} aria-label="Gérer l’événement" className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><Settings className="w-5 h-5 text-[#171726]" /></button>}
+            <button onClick={handleShare} aria-label="Partager l’événement" className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><Share2 className="w-5 h-5 text-[#171726]" /></button>
+            <button onClick={handleLike} aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'} className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-[#171726]'}`} /></button>
           </div>
         </div>
         <div className="absolute bottom-20 left-5"><span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#6600FF] text-white shadow-purple">{t('events', `categories.${event.category}`)}</span></div>
@@ -90,6 +105,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
 
       <div className="max-w-md mx-auto px-5 -mt-8 relative">
         <div className="animate-slide-up">
+          {statusLabel && <div className="mb-3 inline-flex items-center px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">{statusLabel}</div>}
           <div className="flex items-center gap-2 mb-1"><div className="rating-badge text-[#1A1A2E]"><Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />4.8</div><span className="text-xs text-gray-500">· 234 avis</span></div>
           <h1 className="text-2xl font-extrabold text-[#1A1A2E] leading-tight">{displayEvent.title}</h1>
         </div>
@@ -144,7 +160,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
       <div className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-5 pt-3 bg-gradient-to-t from-[#EDE8FF] via-[#EDE8FF] to-transparent">
         <div className="max-w-md mx-auto flex items-center gap-4">
           <div><p className="text-xs text-gray-500">À partir de</p><p className="text-xl font-extrabold text-[#1A1A2E]">{displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}</p></div>
-          <button onClick={() => { if (!user) { onToast({ message: 'Connectez-vous pour réserver', type: 'info' }); onBook(displayEvent as Event); } else { setShowBooking(true); } }} className="btn-purple flex-1 py-4 flex items-center justify-center gap-2"><Ticket className="w-5 h-5" />Acheter un billet</button>
+          <button disabled={!canBook} onClick={() => { if (!user) { onToast({ message: 'Connectez-vous pour réserver', type: 'info' }); onBook(displayEvent as Event); } else { setShowBooking(true); } }} className="btn-purple flex-1 py-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"><Ticket className="w-5 h-5" />{canBook ? 'Acheter un billet' : statusLabel || 'Réservation indisponible'}</button>
         </div>
       </div>
 

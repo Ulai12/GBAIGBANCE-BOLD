@@ -10,7 +10,8 @@ export type EventCategory =
   | 'cultural'
   | 'private';
 
-export type EventStatus = 'draft' | 'pending' | 'published' | 'cancelled' | 'completed';
+export type EventStatus = 'draft' | 'pending' | 'published' | 'paused' | 'suspended' | 'cancelled' | 'completed';
+export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | 'unavailable';
 
 export type TicketType = 'free' | 'standard' | 'vip' | 'vvip';
 
@@ -97,6 +98,10 @@ export interface Event {
   organizer_id: string | null;
   organizer_user_id: string | null;
   status: EventStatus;
+  sales_start_at?: string | null;
+  sales_end_at?: string | null;
+  cancellation_reason?: string | null;
+  suspension_reason?: string | null;
   is_featured: boolean;
   likes_count: number;
   views_count: number;
@@ -139,10 +144,12 @@ export interface Ticket {
   event_id: string;
   user_id: string;
   ticket_type: TicketType;
+  ticket_option_id: string | null;
   price_paid: number;
   currency: string;
   qr_code: string | null;
   status: TicketStatus;
+  quantity: number;
   seat_info: string | null;
   created_at: string;
   event?: Event;

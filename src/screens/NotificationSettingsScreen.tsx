@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Bell, MessageSquare, MessageCircle, HelpCircle, UserPlus, Check, Calendar, Smartphone, Loader2 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';

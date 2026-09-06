@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
-import { supabase } from '@/services/supabase';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile } from '@/services/auth';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
@@ -45,10 +45,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        fetchProfile(session.user.id).then(setUser).catch(() => {}).finally(() => setLoading(false));
+        fetchProfile(session.user.id).then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -63,7 +68,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           try {
             const profile = await fetchProfile(session.user.id);
             setUser(profile);
-          } catch {}
+          } catch { setUser(null); }
         })();
       } else {
         setUser(null);
@@ -95,12 +100,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const profile = await fetchProfile(session.user.id);
         setUser(profile);
-      } catch {}
+      } catch { setUser(null); }
     }
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
-    try { await supabase.auth.signOut(); } catch {}
+    try { await supabase.auth.signOut(); } catch { setSession(null); }
     setUser(null);
     setSession(null);
   }, []);
@@ -118,6 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');

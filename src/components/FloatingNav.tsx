@@ -17,10 +17,10 @@ export function FloatingNav({ title, onBack, right, transparent = false }: Float
             onClick={onBack}
             className="w-10 h-10 rounded-full glass flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
           >
-            <ChevronLeft className="w-5 h-5 text-zinc-900 dark:text-white" />
+            <ChevronLeft className="w-5 h-5 text-[#171726]" />
           </button>
         )}
-        {title && <h1 className="text-lg font-bold text-zinc-900 dark:text-white flex-1 text-center">{title}</h1>}
+        {title && <h1 className="text-lg font-bold text-[#171726] flex-1 text-center">{title}</h1>}
         {right || <div className="w-10" />}
       </div>
     </div>

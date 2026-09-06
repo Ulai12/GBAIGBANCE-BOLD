@@ -61,8 +61,8 @@ export function BottomNav({ active, onNavigate, onCreate, ticketCount = 0, canCr
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <nav className="bottom-nav flex items-center gap-1 px-3 py-2.5">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+      <nav className="bottom-nav flex items-center gap-1 px-2.5 py-2">
         {LEFT_ITEMS.map(renderItem)}
 
         {canCreate ? (

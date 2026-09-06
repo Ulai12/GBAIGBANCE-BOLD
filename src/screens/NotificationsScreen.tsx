@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Bell, Check, MessageCircle, MessageSquare, HelpCircle, UserPlus, CheckCheck } from 'lucide-react';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/services/events';
