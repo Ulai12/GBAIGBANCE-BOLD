@@ -29,10 +29,11 @@ interface HomeScreenProps {
   onSearchClick: () => void;
   onOpenNotifications: () => void;
   onProfileClick: () => void;
+  onArtistClick?: (artist: Artist) => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
 
-export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, onProfileClick, onBookEvent }: HomeScreenProps & { onBookEvent?: (event: Event) => void }) {
+export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, onProfileClick, onArtistClick, onBookEvent }: HomeScreenProps & { onBookEvent?: (event: Event) => void }) {
   const { user, t } = useApp();
   const [locationOpen, setLocationOpen] = useState(false);
   const [trending, setTrending] = useState<Event[]>([]);
@@ -46,7 +47,7 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
   const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number } | null>(null);
   useEffect(() => {
     Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
-      .then(([feat, up, trend, art]) => { setFeatured(feat.slice(0, 5)); setTrending(trend.slice(0, 5)); setNearby(up); setArtists(art.slice(0, 6)); })
+      .then(([feat, up, trend, art]) => { setFeatured(feat.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5)); setTrending(trend.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5)); setNearby(up.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date())); setArtists(art.slice(0, 6)); })
       .catch(() => {}).finally(() => setLoading(false));
     fetchPlatformStats().then(setPlatformStats).catch(() => {});
   }, []);
@@ -86,6 +87,16 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
               <div className="flex items-center justify-between mt-3"><span className="text-lg font-extrabold text-white">{heroEvent.price_min === 0 ? 'Gratuit' : `Dès ${heroEvent.price_min.toLocaleString('fr-FR')} FCFA`}</span><div className="flex items-center gap-1.5 text-white/80 text-sm"><Users className="w-4 h-4" /><span>{heroEvent.attendees_count > 1000 ? `${(heroEvent.attendees_count / 1000).toFixed(1)}K` : heroEvent.attendees_count}</span><ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></div></div>
             </div>
           </div>
+          {featured.length > 1 && (
+            <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar pb-1" aria-label="Autres événements à la une">
+              {featured.slice(1).map((event) => (
+                <button key={event.id} type="button" onClick={() => onEventClick(event)} className="flex min-w-[15rem] items-center gap-3 rounded-2xl border border-white/70 bg-white/60 p-2 text-left shadow-sm backdrop-blur transition-transform active:scale-[0.98]">
+                  <img src={event.cover_url || event.images?.[0] || ''} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
+                  <span className="min-w-0"><span className="block truncate text-sm font-extrabold text-[#171726]">{event.title}</span><span className="mt-1 block text-xs text-gray-500">{new Date(event.starts_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {event.city}</span></span>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -116,11 +127,11 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
           <div className="px-5 flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#1A1A2E]"><Star className="w-5 h-5 text-yellow-400" />Artistes en vedette</h2><button className="text-sm font-semibold text-[#6600FF]">Tout voir</button></div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2">
             {artists.map((artist) => (
-              <div key={artist.id} className="flex flex-col items-center gap-2 w-24 shrink-0 cursor-pointer group">
+              <button type="button" key={artist.id} onClick={() => onArtistClick?.(artist)} className="flex flex-col items-center gap-2 w-24 shrink-0 cursor-pointer group">
                 <div className="relative"><img src={artist.photo_url || `https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=200`} alt={artist.name} className="w-20 h-20 rounded-full object-cover ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all" />{artist.is_verified && <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5"><svg className="w-3.5 h-3.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z"/></svg></div>}</div>
                 <span className="text-xs font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full">{artist.name}</span>
                 <span className="text-[10px] text-gray-500">{artist.followers_count > 1000 ? `${(artist.followers_count / 1000).toFixed(1)}K` : artist.followers_count} fans</span>
-              </div>
+              </button>
             ))}
           </div>
         </section>

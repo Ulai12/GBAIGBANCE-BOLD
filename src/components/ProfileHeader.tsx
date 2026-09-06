@@ -16,8 +16,6 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
 
   return (
     <div className="relative px-4 pt-10 pb-4">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-indigo-300/20 to-purple-300/20 rounded-full blur-3xl pointer-events-none" />
-
       <div className="relative glass-surface rounded-[2rem] p-6 pt-14 shadow-[0_18px_42px_rgba(76,29,149,0.12)]">
         <div className="absolute -top-12 left-1/2 -translate-x-1/2">
           <div className="w-24 h-24 rounded-full ring-4 ring-white/90 shadow-lg overflow-hidden glass-surface">
@@ -28,14 +26,12 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-indigo-500 bg-indigo-50">
+              <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#6600FF] bg-[#6600FF]/10">
                 {profile.name.charAt(0).toUpperCase()}
               </div>
             )}
           </div>
-          <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 ring-2 ring-white shadow">
-            <BadgeCheck className="w-4 h-4 text-white" />
-          </div>
+          {profile.role !== 'participant' && <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-1 ring-2 ring-white shadow"><BadgeCheck className="w-4 h-4 text-white" /></div>}
         </div>
 
         <div className="text-center">
@@ -46,7 +42,7 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
             <MapPin className="w-4 h-4" />
             {flag} {profile.city}
           </p>
-          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium glass-surface text-gray-700">
+          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold glass-surface text-[#6600FF]">
             {t('common', profile.role)}
           </span>
         </div>

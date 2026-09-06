@@ -185,25 +185,27 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
               <p className="text-sm text-gray-500">Soyez le premier à commenter !</p>
             </div>
           ) : (
-            <div className="space-y-3 mb-4">
+            <div className="divide-y divide-black/[0.07] mb-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/45">
               {comments.map((c) => (
-                <div key={c.id} className={`flex gap-3 p-3 rounded-2xl transition-opacity ${c.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'} ${c.is_organizer_reply ? 'bg-[#6600FF]/5 border border-[#6600FF]/20' : 'bg-white'}`}>
-                  <img src={c.profile?.avatar_url || `https://i.pravatar.cc/100?u=${c.user_id}`} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                <div key={c.id} className={`flex gap-3 p-4 transition-opacity ${c.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'} ${c.is_organizer_reply ? 'bg-[#6600FF]/[0.04]' : ''}`}>
+                  <img src={c.profile?.avatar_url || `https://i.pravatar.cc/100?u=${c.user_id}`} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-[#1A1A2E]">{c.profile?.name || 'Anonyme'}</span>
+                      <span className="text-xs text-gray-400">· {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                       {c.is_organizer_reply && <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#6600FF] bg-[#6600FF]/10 px-1.5 py-0.5 rounded-full"><BadgeCheck className="w-3 h-3" /> Organisateur</span>}
                       {!c.id.startsWith('temp-') && (c.user_id === user?.id || isOrganizer) && <button onClick={() => handleDeleteComment(c.id)} className="ml-auto text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>}
                     </div>
-                    <p className="text-sm text-gray-700 mt-0.5 break-words">{c.body}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">{new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-sm leading-relaxed text-gray-700 mt-1 break-words">{c.body}</p>
+                    <div className="mt-3 flex items-center gap-5 text-xs text-gray-400"><span>Discussion</span>{c.is_organizer_reply && <span className="text-[#6600FF]">Réponse officielle</span>}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
           {user ? (
-            <div className="flex gap-2 items-end">
+            <div className="flex gap-2 items-end rounded-2xl border border-black/[0.07] bg-white/60 p-2">
+              <img src={user.avatar_url || `https://i.pravatar.cc/100?u=${user.id}`} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
               <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }} placeholder="Ajouter un commentaire..." className="flex-1 px-4 py-3 bg-gray-50 rounded-2xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 resize-none min-h-[44px] max-h-24" rows={1} />
               <button onClick={handleAddComment} disabled={!commentText.trim() || submittingComment} className="w-11 h-11 rounded-full bg-[#6600FF] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform shrink-0"><Send className="w-4 h-4" /></button>
             </div>

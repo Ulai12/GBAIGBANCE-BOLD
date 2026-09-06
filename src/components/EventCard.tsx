@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { MapPin, Star, Users, Heart, Calendar } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
+import { toggleEventLike } from '@/services/events';
+import { useApp } from '@/hooks/useApp';
 
 function formatCardDate(dateString: string): string {
   const date = new Date(dateString);
@@ -17,6 +19,7 @@ interface EventCardProps {
 
 export function EventCard({ event, onClick }: EventCardProps) {
   const [liked, setLiked] = useState(false);
+  const { user } = useApp();
   const rating = 4 + ((event.id.charCodeAt(0) || 0) % 9) / 10;
 
   return (
@@ -36,7 +39,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
           {rating.toFixed(1)}
         </div>
         <button
-          onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
+          onClick={async (e) => { e.stopPropagation(); if (!user) return; try { const nextLiked = await toggleEventLike(event.id, user.id); setLiked(nextLiked); } catch { /* La carte reste utilisable même si le réseau échoue. */ } }}
           aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
           className="absolute top-3 right-3 w-8 h-8 rounded-full glass-surface flex items-center justify-center hover:scale-110 active:scale-90 transition-transform"
         >

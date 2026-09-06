@@ -3,7 +3,6 @@ import { BookingModal } from '@/components/BookingModal';
 import { AppProvider, useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
-import { DynamicBackground } from '@/components/DynamicBackground';
 import type { Event, Artist, Organization } from '@/types';
 
 const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then((module) => ({ default: module.OnboardingScreen })));
@@ -276,6 +275,7 @@ function AppContent() {
             onSearchClick={() => { setActiveTab('explore'); setScreen('explore'); }}
             onOpenNotifications={() => setScreen('notifications')}
             onProfileClick={() => { setActiveTab('profile'); setScreen('profile'); }}
+            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
             onToast={addToast}
           />
         )}
@@ -330,17 +330,11 @@ function AppContent() {
 function App() {
   return (
     <AppProvider>
-      <AppBackground />
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-transparent"><div className="w-12 h-12 rounded-full border-4 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" /></div>}>
         <AppContent />
       </Suspense>
     </AppProvider>
   );
-}
-
-function AppBackground() {
-  const { dynamicBg, theme } = useApp();
-  return <DynamicBackground enabled={dynamicBg} theme={theme} />;
 }
 
 export default App;

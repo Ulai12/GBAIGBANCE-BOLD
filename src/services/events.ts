@@ -432,16 +432,19 @@ export function getFaviconUrl(websiteUrl: string): string {
 // ==================== STATS ====================
 
 export async function fetchPlatformStats(): Promise<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number }> {
-  const [events, artists, orgs, tickets, participants] = await Promise.all([
-    supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-    supabase.from('artists').select('id', { count: 'exact', head: true }),
+  const now = new Date().toISOString();
+  const [events, artists, artistProfiles, orgs, tickets, participants] = await Promise.all([
+    supabase.from('events').select('id, attendees_count', { count: 'exact' }).eq('status', 'published').gte('starts_at', now),
+    supabase.from('artists').select('id, user_id'),
+    supabase.from('profiles').select('id').eq('role', 'artist'),
     supabase.from('organizations').select('id', { count: 'exact', head: true }),
-    supabase.from('tickets').select('id', { count: 'exact', head: true }).neq('status', 'cancelled'),
-    supabase.from('events').select('attendees_count'),
+    supabase.from('tickets').select('quantity').in('status', ['active', 'used']),
+    supabase.from('events').select('attendees_count').eq('status', 'published').gte('starts_at', now),
   ]);
+  const artistIds = new Set([...(artists.data || []).map((artist) => artist.user_id || artist.id), ...(artistProfiles.data || []).map((profile) => profile.id)]);
   return {
-    totalEvents: events.count || 0, totalArtists: artists.count || 0, totalOrganizers: orgs.count || 0,
-    totalTickets: tickets.count || 0,
+    totalEvents: events.count || 0, totalArtists: artistIds.size, totalOrganizers: orgs.count || 0,
+    totalTickets: (tickets.data || []).reduce((sum, ticket) => sum + (ticket.quantity || 1), 0),
     totalParticipants: (participants.data || []).reduce((sum: number, e: { attendees_count: number }) => sum + (e.attendees_count || 0), 0),
   };
 }
@@ -484,7 +487,7 @@ export async function fetchArtistStats(artistId: string): Promise<{ totalEvents:
 // ==================== EXISTING QUERIES ====================
 
 export async function fetchFeaturedEvents(): Promise<Event[]> {
-  const { data, error } = await supabase.from('events').select('*').eq('status', 'published').order('is_featured', { ascending: false }).order('starts_at', { ascending: true }).limit(10);
+  const { data, error } = await supabase.from('events').select('*').eq('status', 'published').gte('starts_at', new Date().toISOString()).order('is_featured', { ascending: false }).order('starts_at', { ascending: true }).limit(10);
   if (error) throw error;
   return data as Event[];
 }
@@ -496,7 +499,7 @@ export async function fetchEventsByCategory(category: EventCategory): Promise<Ev
 }
 
 export async function fetchTrendingEvents(): Promise<Event[]> {
-  const { data, error } = await supabase.from('events').select('*').eq('status', 'published').order('views_count', { ascending: false }).limit(10);
+  const { data, error } = await supabase.from('events').select('*').eq('status', 'published').gte('starts_at', new Date().toISOString()).order('views_count', { ascending: false }).order('starts_at', { ascending: true }).limit(10);
   if (error) throw error;
   return data as Event[];
 }
@@ -521,9 +524,25 @@ export async function searchEvents(query: string): Promise<Event[]> {
 }
 
 export async function fetchFeaturedArtists(): Promise<Artist[]> {
-  const { data, error } = await supabase.from('artists').select('*').order('followers_count', { ascending: false }).limit(10);
-  if (error) throw error;
-  return data as Artist[];
+  const [{ data: seeded, error: seededError }, { data: profiles, error: profilesError }] = await Promise.all([
+    supabase.from('artists').select('*').order('followers_count', { ascending: false }).limit(20),
+    supabase.from('profiles').select('*').eq('role', 'artist').order('created_at', { ascending: false }).limit(20),
+  ]);
+  if (seededError) throw seededError;
+  if (profilesError) throw profilesError;
+  const profileArtists = (profiles || []).map((profile: Profile) => ({
+    id: profile.id, user_id: profile.id, name: profile.name, bio: profile.bio, photo_url: profile.avatar_url,
+    cover_url: null, genres: [], city: profile.city, country: profile.country, instagram_url: null,
+    twitter_url: null, youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0,
+    is_verified: false, created_at: profile.created_at,
+  } as Artist));
+  const seen = new Set<string>();
+  return [...(seeded || []), ...profileArtists].filter((artist) => {
+    const key = artist.user_id || artist.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 10) as Artist[];
 }
 
 export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
@@ -535,13 +554,23 @@ export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
 export async function fetchArtistById(id: string): Promise<Artist | null> {
   const { data, error } = await supabase.from('artists').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
-  return data as Artist | null;
+  if (data) return data as Artist;
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('*').eq('id', id).eq('role', 'artist').maybeSingle();
+  if (profileError) throw profileError;
+  if (!profile) return null;
+  return { id: profile.id, user_id: profile.id, name: profile.name, bio: profile.bio, photo_url: profile.avatar_url, cover_url: null, genres: [], city: profile.city, country: profile.country, instagram_url: null, twitter_url: null, youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0, is_verified: false, created_at: profile.created_at } as Artist;
 }
 
 export async function fetchEventsByArtist(artistId: string): Promise<Event[]> {
-  const { data, error } = await supabase.from('events').select(`*, event_artists!inner (artist_id)`).eq('event_artists.artist_id', artistId).eq('status', 'published').order('starts_at', { ascending: false });
+  const now = new Date().toISOString();
+  const { data, error } = await supabase.from('events').select(`*, event_artists!inner (artist_id)`).eq('event_artists.artist_id', artistId).eq('status', 'published').gte('starts_at', now).order('starts_at', { ascending: true });
   if (error) throw error;
-  return (data as unknown as Event[]) ?? [];
+  if (data?.length) return data as unknown as Event[];
+  const { data: linkedArtist } = await supabase.from('artists').select('id').eq('user_id', artistId).maybeSingle();
+  if (!linkedArtist) return [];
+  const { data: linkedEvents, error: linkedError } = await supabase.from('events').select(`*, event_artists!inner (artist_id)`).eq('event_artists.artist_id', linkedArtist.id).eq('status', 'published').gte('starts_at', now).order('starts_at', { ascending: true });
+  if (linkedError) throw linkedError;
+  return (linkedEvents as unknown as Event[]) ?? [];
 }
 
 export async function toggleEventLike(eventId: string, userId: string): Promise<boolean> {

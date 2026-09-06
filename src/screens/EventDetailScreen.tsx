@@ -13,6 +13,7 @@ import { EventSchedule } from '@/components/EventSchedule';
 import { EventLiveLinks } from '@/components/EventLiveLinks';
 import { EventSponsors } from '@/components/EventSponsors';
 import { EventManagementModal } from '@/components/EventManagementModal';
+import { Lightbox } from '@/components/Lightbox';
 import type { Event, EventWithRelations, Artist, EventCollaborator } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -51,6 +52,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const [collaborators, setCollaborators] = useState<EventCollaborator[]>([]);
   const [liveViews, setLiveViews] = useState<number>(event.views_count || 0);
   const [liveAttendees, setLiveAttendees] = useState<number>(event.attendees_count || 0);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const countdown = useCountdown(event.starts_at);
 
   const handleShare = async () => {
@@ -86,11 +88,13 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const eventHasEnded = Boolean(displayEvent.ends_at ? new Date(displayEvent.ends_at) <= new Date() : new Date(displayEvent.starts_at) <= new Date());
   const canBook = displayEvent.status === 'published' && !eventHasEnded;
   const statusLabel = displayEvent.status === 'paused' ? 'Ventes en pause' : displayEvent.status === 'suspended' ? 'Événement suspendu' : displayEvent.status === 'cancelled' ? 'Événement annulé' : displayEvent.status === 'completed' || eventHasEnded ? 'Événement terminé' : null;
+  const galleryImages = Array.from(new Set([displayEvent.cover_url, ...(displayEvent.images || [])].filter((image): image is string => Boolean(image))));
+  const coverImage = galleryImages[0] || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800';
 
   return (
     <div className="min-h-screen pb-32 bg-lavender">
       <div className="relative h-[24rem]">
-        <img src={displayEvent.cover_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'} alt={displayEvent.title} className="w-full h-full object-cover" />
+        <button type="button" onClick={() => setLightboxSrc(coverImage)} className="absolute inset-0 z-0 cursor-zoom-in" aria-label="Ouvrir la galerie"><img src={coverImage} alt={displayEvent.title} className="w-full h-full object-cover" /></button>
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] via-transparent to-black/20" />
         <div className="absolute top-4 left-0 right-0 px-5 flex items-center justify-between">
           <button onClick={onBack} aria-label="Retour" className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><ChevronLeft className="w-5 h-5 text-[#171726]" /></button>
@@ -100,7 +104,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
             <button onClick={handleLike} aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'} className="w-10 h-10 rounded-full glass-surface flex items-center justify-center shadow-md active:scale-90 transition-transform"><Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-[#171726]'}`} /></button>
           </div>
         </div>
-        <div className="absolute bottom-20 left-5"><span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#6600FF] text-white shadow-purple">{t('events', `categories.${event.category}`)}</span></div>
+        <div className="absolute bottom-20 left-5 flex items-center gap-2"><span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#6600FF] text-white shadow-purple">{t('events', `categories.${event.category}`)}</span>{galleryImages.length > 1 && <span className="rounded-full bg-black/35 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">{galleryImages.length} photos</span>}</div>
       </div>
 
       <div className="max-w-md mx-auto px-5 -mt-8 relative">
@@ -131,6 +135,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
           <div className="mt-3 h-28 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center"><MapPin className="w-8 h-8 text-[#6600FF] opacity-50" /></div>
         </div>
 
+        {galleryImages.length > 1 && <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar">{galleryImages.map((image, index) => <button type="button" key={image} onClick={() => setLightboxSrc(image)} className="h-16 w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/10" aria-label={`Voir la photo ${index + 1}`}><img src={image} alt="" className="h-full w-full object-cover" /></button>)}</div>}
         <div className="mt-5"><h2 className="text-lg font-bold text-[#1A1A2E] mb-2">À propos</h2><p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{displayEvent.description}</p></div>
 
         {artists.length > 0 && (
@@ -166,6 +171,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
 
       <BookingModal open={showBooking} event={displayEvent as Event} onClose={() => setShowBooking(false)} onSuccess={(qrCode) => { onToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' }); }} />
       {isOrganizer && <EventManagementModal event={showManage ? (displayEvent as Event) : null} onClose={() => setShowManage(false)} onToast={onToast} />}
+      {lightboxSrc && <Lightbox src={lightboxSrc} alt={displayEvent.title} onClose={() => setLightboxSrc(null)} />}
     </div>
   );
 }

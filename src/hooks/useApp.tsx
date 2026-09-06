@@ -10,10 +10,8 @@ interface AppContextValue {
   loading: boolean;
   language: Language;
   theme: 'light' | 'dark';
-  dynamicBg: boolean;
   setLanguage: (lang: Language) => void;
   toggleTheme: () => void;
-  toggleDynamicBg: () => void;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
   t: (domain: string, key: string) => string;
@@ -32,9 +30,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem('gba_theme');
     if (saved === 'dark' || saved === 'light') return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-  const [dynamicBg, setDynamicBg] = useState<boolean>(() => {
-    return localStorage.getItem('gba_dynamic_bg') === 'true';
   });
 
   useEffect(() => {
@@ -87,14 +82,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const toggleDynamicBg = useCallback(() => {
-    setDynamicBg((prev) => {
-      const next = !prev;
-      localStorage.setItem('gba_dynamic_bg', String(next));
-      return next;
-    });
-  }, []);
-
   const refreshProfile = useCallback(async () => {
     if (session?.user) {
       try {
@@ -114,8 +101,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, session, loading, language, theme, dynamicBg,
-      setLanguage, toggleTheme, toggleDynamicBg, refreshProfile,
+      user, session, loading, language, theme,
+      setLanguage, toggleTheme, refreshProfile,
       signOut: handleSignOut, t,
     }}>
       {children}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Globe, LogOut, Calendar, Settings, BadgeCheck, Music2, ChevronRight, Building2, Mail, Check, X, Loader2, Bell, Pencil, Sparkles, BellRing, Heart } from 'lucide-react';
+import { Moon, Sun, Globe, LogOut, Calendar, Settings, BadgeCheck, Music2, ChevronRight, Building2, Mail, Check, X, Loader2, Bell, Pencil, BellRing, Heart } from 'lucide-react';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { EventCard } from '@/components/EventCard';
 import { EditProfileModal } from '@/components/EditProfileModal';
@@ -20,7 +20,7 @@ interface ProfileScreenProps {
 }
 
 export function ProfileScreen({ onEventClick, onLogin, onOrganizerDashboard, onOpenNotifications, onOpenNotificationSettings, onOpenSubscriptions, onToast }: ProfileScreenProps) {
-  const { user, session, theme, toggleTheme, dynamicBg, toggleDynamicBg, language, setLanguage, signOut, t, refreshProfile } = useApp();
+  const { user, session, theme, toggleTheme, language, setLanguage, signOut, t, refreshProfile } = useApp();
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [invitations, setInvitations] = useState<(EventCollaborator & { event?: Event })[]>([]);
@@ -69,7 +69,6 @@ export function ProfileScreen({ onEventClick, onLogin, onOrganizerDashboard, onO
         <div className="px-5 mt-8 space-y-2">
           <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Paramètres</h2>
           <button onClick={toggleTheme} className="w-full card p-4 flex items-center justify-between"><div className="flex items-center gap-3">{theme === 'dark' ? <Moon className="w-5 h-5 text-[#6600FF]" /> : <Sun className="w-5 h-5 text-[#6600FF]" />}<span className="font-medium text-[#1A1A2E]">Thème</span></div><span className="text-sm text-gray-500">{theme === 'dark' ? 'Sombre' : 'Clair'}</span></button>
-          <button onClick={toggleDynamicBg} className="w-full card p-4 flex items-center justify-between"><div className="flex items-center gap-3"><Sparkles className="w-5 h-5 text-[#6600FF]" /><span className="font-medium text-[#1A1A2E]">Fond dynamique</span></div><div className={'w-11 h-6 rounded-full transition-colors relative ' + (dynamicBg ? 'bg-[#6600FF]' : 'bg-gray-200')}><div className={'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ' + (dynamicBg ? 'translate-x-5' : 'translate-x-0.5')} /></div></button>
           <button onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')} className="w-full card p-4 flex items-center justify-between"><div className="flex items-center gap-3"><Globe className="w-5 h-5 text-[#6600FF]" /><span className="font-medium text-[#1A1A2E]">Langue</span></div><span className="text-sm text-gray-500">{language === 'fr' ? 'Français' : 'English'}</span></button>
           <button onClick={signOut} className="w-full card p-4 flex items-center gap-3 text-red-500"><LogOut className="w-5 h-5" /><span className="font-medium">Se déconnecter</span></button>
         </div>

@@ -1,6 +1,6 @@
 import { AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Event } from '@/types';
 import { TrendingDeckCard } from '@/components/TrendingDeckCard';
 
@@ -12,11 +12,16 @@ interface TrendingDeckProps {
 
 export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeckProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const visibleEvents = events.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date());
 
-  if (events.length === 0) return null;
+  useEffect(() => {
+    setActiveIndex((current) => Math.min(current, Math.max(visibleEvents.length - 1, 0)));
+  }, [visibleEvents.length]);
 
-  const advance = () => setActiveIndex((current) => (current + 1) % events.length);
-  const previous = () => setActiveIndex((current) => (current - 1 + events.length) % events.length);
+  if (visibleEvents.length === 0) return null;
+
+  const advance = () => setActiveIndex((current) => (current + 1) % visibleEvents.length);
+  const previous = () => setActiveIndex((current) => (current - 1 + visibleEvents.length) % visibleEvents.length);
 
   return (
     <section className="mt-8" aria-label="Événements tendance" tabIndex={0} onKeyDown={(event) => {
@@ -35,26 +40,26 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
       </div>
       <div className="relative mx-5 h-[26rem] touch-pan-y" aria-live="polite">
         <AnimatePresence initial={false} mode="popLayout">
-          {events.slice(0, 3).map((event, stackIndex) => {
-            const eventIndex = (activeIndex + stackIndex) % events.length;
+          {visibleEvents.slice(0, 3).map((event, stackIndex) => {
+            const eventIndex = (activeIndex + stackIndex) % visibleEvents.length;
             const isActive = stackIndex === 0;
             return (
               <TrendingDeckCard
                 key={event.id}
-                event={events[eventIndex]}
+                event={visibleEvents[eventIndex]}
                 index={stackIndex}
                 total={events.length}
                 active={isActive}
-                onOpen={() => onEventClick(events[eventIndex])}
-                onBook={() => onBookEvent(events[eventIndex])}
+                onOpen={() => onEventClick(visibleEvents[eventIndex])}
+                onBook={() => onBookEvent(visibleEvents[eventIndex])}
                 onAdvance={advance}
               />
             );
           })}
         </AnimatePresence>
       </div>
-      <div className="mt-4 flex items-center justify-center gap-1.5" aria-label={`Événement ${activeIndex + 1} sur ${events.length}`}>
-        {events.map((event, index) => (
+      <div className="mt-4 flex items-center justify-center gap-1.5" aria-label={`Événement ${activeIndex + 1} sur ${visibleEvents.length}`}>
+        {visibleEvents.map((event, index) => (
           <button key={event.id} type="button" onClick={() => setActiveIndex(index)} aria-label={`Afficher ${event.title}`} className={`h-1.5 rounded-full transition-all duration-300 ${index === activeIndex ? 'w-8 bg-[#17131d]' : 'w-1.5 bg-black/20'}`} />
         ))}
       </div>
