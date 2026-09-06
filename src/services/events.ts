@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase';
-import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier } from '@/types';
+import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, Profile, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier } from '@/types';
 import type { EventCategory } from '@/types';
 
 // ==================== IMAGE UPLOAD ====================
@@ -277,7 +277,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
 
 // ==================== INTERACTIONS ====================
 
-export async function fetchEventComments(eventId: string): Promise<(EventComment & { profile?: Profile })[]> {
+export async function fetchEventComments(eventId: string): Promise<EventComment[]> {
   const { data, error } = await supabase.from('event_comments').select('*').eq('event_id', eventId).order('created_at', { ascending: true });
   if (error) throw error;
   const comments = (data as EventComment[]) || [];
@@ -313,7 +313,7 @@ export async function toggleEventReaction(eventId: string, userId: string, emoji
   }
 }
 
-export async function fetchEventQuestions(eventId: string): Promise<(EventQuestion & { profile?: Profile; answerer?: Profile })[]> {
+export async function fetchEventQuestions(eventId: string): Promise<EventQuestion[]> {
   const { data, error } = await supabase.from('event_questions').select('*').eq('event_id', eventId).order('answered_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
   if (error) throw error;
   const questions = (data as EventQuestion[]) || [];

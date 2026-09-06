@@ -6,7 +6,7 @@ import {
   fetchEventReactions, toggleEventReaction,
   fetchEventQuestions, addEventQuestion, answerEventQuestion,
 } from '@/services/events';
-import type { Event, EventComment, EventReaction, EventQuestion, Profile } from '@/types';
+import type { Event, EventComment, EventReaction, EventQuestion, PublicProfile } from '@/types';
 
 const REACTION_EMOJIS = ['🔥', '❤️', '👏', '🎉', '😮', '🎵'];
 
@@ -21,9 +21,9 @@ interface EventInteractionPanelProps {
 export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInteractionPanelProps) {
   const { user } = useApp();
   const [tab, setTab] = useState<Tab>('comments');
-  const [comments, setComments] = useState<(EventComment & { profile?: Profile })[]>([]);
+  const [comments, setComments] = useState<EventComment[]>([]);
   const [reactions, setReactions] = useState<EventReaction[]>([]);
-  const [questions, setQuestions] = useState<(EventQuestion & { profile?: Profile; answerer?: Profile })[]>([]);
+  const [questions, setQuestions] = useState<(EventQuestion & { profile?: PublicProfile; answerer?: PublicProfile })[]>([]);
   const [commentText, setCommentText] = useState('');
   const [questionText, setQuestionText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -54,7 +54,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
     if (!user || !commentText.trim() || submittingComment) return;
     const text = commentText.trim();
     setSubmittingComment(true);
-    const optimistic: EventComment & { profile?: Profile } = {
+    const optimistic: EventComment = {
       id: `temp-${Date.now()}`,
       event_id: event.id,
       user_id: user.id,
@@ -62,8 +62,8 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       body: text,
       is_organizer_reply: isOrganizer,
       created_at: new Date().toISOString(),
-      profile: { id: user.id, name: user.name, avatar_url: user.avatar_url, role: user.role } as Profile,
-    } as EventComment & { profile?: Profile };
+      profile: { id: user.id, name: user.name, avatar_url: user.avatar_url, role: user.role },
+    };
     setComments((prev) => [...prev, optimistic]);
     setCommentText('');
     try {
@@ -105,7 +105,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
     if (!user || !questionText.trim() || submittingQuestion) return;
     const text = questionText.trim();
     setSubmittingQuestion(true);
-    const optimistic: EventQuestion & { profile?: Profile } = {
+    const optimistic: EventQuestion & { profile?: PublicProfile } = {
       id: `temp-${Date.now()}`,
       event_id: event.id,
       user_id: user.id,
@@ -114,8 +114,8 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       answered_by: null,
       answered_at: null,
       created_at: new Date().toISOString(),
-      profile: { id: user.id, name: user.name, avatar_url: user.avatar_url, role: user.role } as Profile,
-    } as EventQuestion & { profile?: Profile };
+      profile: { id: user.id, name: user.name, avatar_url: user.avatar_url, role: user.role },
+    };
     setQuestions((prev) => [...prev, optimistic]);
     setQuestionText('');
     try {
