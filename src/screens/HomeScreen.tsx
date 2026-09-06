@@ -185,37 +185,103 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
 
 {!loading && platformStats && (
   <section className="mt-8 px-5">
-    <div className="card-dark p-6 animate-slide-up">
-      <div className="flex items-center gap-2 mb-5">
-        <TrendingUp className="w-4 h-4 text-white/40" />
-        <h3 className="text-white font-bold text-[15px] tracking-tight">Gbaigbance en chiffres</h3>
+    <div className="flex items-center gap-2 mb-4">
+      <TrendingUp className="w-4 h-4 text-[#6600FF]" />
+      <h3 className="text-[#171726] font-bold text-[17px] tracking-tight">Gbaigbance en chiffres</h3>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3">
+      {/* Événements */}
+      <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#EDE4FF] to-[#F7F3FF]">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Calendar className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
+          <span className="text-[13px] font-bold text-[#171726]/70">Événements</span>
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalEvents}</p>
+            <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">au total</p>
+          </div>
+          <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
+            <circle cx="17" cy="17" r="14" fill="none" stroke="#6600FF" strokeOpacity="0.12" strokeWidth="4" />
+            <circle cx="17" cy="17" r="14" fill="none" stroke="#6600FF" strokeWidth="4" strokeLinecap="round" strokeDasharray="88" strokeDashoffset="26" transform="rotate(-90 17 17)" />
+          </svg>
+        </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
-        {[
-          { icon: Calendar, value: platformStats.totalEvents, label: 'Événements' },
-          { icon: Star, value: platformStats.totalArtists, label: 'Artistes' },
-          { icon: Users, value: platformStats.totalParticipants, label: 'Participants' },
-          { icon: Building2, value: platformStats.totalOrganizers, label: 'Organisateurs' },
-          { icon: TicketIcon, value: platformStats.totalTickets, label: 'Billets vendus' },
-        ].map(({ icon: Icon, value, label }) => (
-          <div
-            key={label}
-            className="flex flex-col justify-between shrink-0 w-[7.25rem] h-[6.75rem] p-4 rounded-[1.4rem] bg-white/[0.06] border border-white/10 backdrop-blur-xl snap-start active:scale-95 transition-transform duration-200"
-          >
-            <Icon className="w-4 h-4 text-white/35" strokeWidth={2} />
-            <div>
-              <p className="text-[22px] font-extrabold bg-gradient-to-br from-[#C4B5FD] to-[#8B5CF6] bg-clip-text text-transparent leading-none">
-                {formatNumber(value)}
-              </p>
-              <p className="text-[11px] text-white/45 font-medium mt-1.5 leading-tight">{label}</p>
-            </div>
+      {/* Artistes */}
+      <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#FFF3D6] to-[#FFFBF0]">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Star className="w-4 h-4 text-[#E8A93B]" strokeWidth={2} />
+          <span className="text-[13px] font-bold text-[#171726]/70">Artistes</span>
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalArtists}</p>
+            <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">vérifiés</p>
           </div>
-        ))}
+          <div className="flex items-end gap-[3px] h-[26px]">
+            {[10, 18, 14, 24, 16].map((h, i) => (
+              <div key={i} className="w-[3px] rounded-full bg-[#E8A93B]" style={{ height: `${h}px`, opacity: i === 3 ? 1 : 0.35 }} />
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Participants */}
+      <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#DCEEFF] to-[#F2F9FF]">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Users className="w-4 h-4 text-[#2E90E8]" strokeWidth={2} />
+          <span className="text-[13px] font-bold text-[#171726]/70">Participants</span>
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[26px] font-extrabold text-[#171726] leading-none">{formatNumber(platformStats.totalParticipants)}</p>
+            <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">inscrits</p>
+          </div>
+          <svg width="40" height="26" viewBox="0 0 40 26" className="shrink-0">
+            <path d="M0 18 Q6 6 12 14 T24 10 T40 4" fill="none" stroke="#2E90E8" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Organisateurs */}
+      <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#DFF3E6] to-[#F2FBF5]">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Building2 className="w-4 h-4 text-[#38A166]" strokeWidth={2} />
+          <span className="text-[13px] font-bold text-[#171726]/70">Organisateurs</span>
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalOrganizers}</p>
+            <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">actifs</p>
+          </div>
+          <div className="flex items-end gap-[3px] h-[26px]">
+            {[14, 10, 20, 16, 24].map((h, i) => (
+              <div key={i} className="w-[3px] rounded-full bg-[#38A166]" style={{ height: `${h}px`, opacity: i === 4 ? 1 : 0.35 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Billets vendus — pleine largeur */}
+    <div className="rounded-[1.6rem] p-4 mt-3 bg-gradient-to-br from-[#FFE4D6] to-[#FFF4EE] flex items-center justify-between">
+      <div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <TicketIcon className="w-4 h-4 text-[#E8683B]" strokeWidth={2} />
+          <span className="text-[13px] font-bold text-[#171726]/70">Billets vendus</span>
+        </div>
+        <p className="text-[26px] font-extrabold text-[#171726] leading-none">{formatNumber(platformStats.totalTickets)}</p>
+      </div>
+      <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
+        <circle cx="17" cy="17" r="14" fill="none" stroke="#E8683B" strokeOpacity="0.12" strokeWidth="4" />
+        <circle cx="17" cy="17" r="14" fill="none" stroke="#E8683B" strokeWidth="4" strokeLinecap="round" strokeDasharray="88" strokeDashoffset="18" transform="rotate(-90 17 17)" />
+      </svg>
     </div>
   </section>
 )}
+
       <LocationModal open={locationOpen} onClose={() => setLocationOpen(false)} />
     </div>
   );
