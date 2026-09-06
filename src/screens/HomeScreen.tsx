@@ -61,8 +61,9 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
   const heroEvent = featured[0] || trending[0];
 
   return (
++   <div className="min-h-screen pb-32 bg-lavender">
     {/* En-tête */}
-<div className="px-5 pt-6 pb-2">
+    <div className="px-5 pt-6 pb-2">
   {/* Logo */}
   <div className="flex items-center gap-2 mb-5">
     <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 flex items-center justify-center text-base">
