@@ -161,29 +161,29 @@ export function HomeScreen({
         </section>
       )}
 
-      <section className="mt-6">
-        <h2 className="px-5 text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pb-1 snap-x snap-mandatory">
-          {EVENT_CATEGORIES.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.icon] || Music;
-            const isActive = selectedCategory === cat.value;
-            return (
-              <button
-                key={cat.value}
-                onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                className={`flex flex-col items-center justify-center gap-1.5 shrink-0 w-[4.75rem] h-[4.75rem] rounded-[1.35rem] snap-start transition-all active:scale-95 ${
-                  isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/70 border border-white/70'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#171726]'}`} strokeWidth={1.8} />
-                <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>
-                  {t('events', `categories.${cat.value}`)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+<section className="mt-6 px-5">
+  <h2 className="text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
+  <div className="grid grid-cols-4 gap-x-2.5 gap-y-3 py-1">
+    {EVENT_CATEGORIES.map((cat) => {
+      const Icon = CATEGORY_ICONS[cat.icon] || Music;
+      const isActive = selectedCategory === cat.value;
+      return (
+        <button
+          key={cat.value}
+          onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+          className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 ${
+            isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/90 border border-black/5'
+          }`}
+        >
+          <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#171726]'}`} strokeWidth={1.8} />
+          <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>
+            {t('events', `categories.${cat.value}`)}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+</section>
 
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
