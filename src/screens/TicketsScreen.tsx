@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Download } from 'lucide-react';
+import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
-import { supabase } from '@/services/supabase';
 import { fetchUserTickets, cancelTicket } from '@/services/events';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';

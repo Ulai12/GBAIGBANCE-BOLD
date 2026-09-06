@@ -34,6 +34,8 @@ export interface Profile {
   updated_at: string;
 }
 
+export type PublicProfile = Pick<Profile, 'id' | 'name' | 'avatar_url' | 'role'>;
+
 export interface Organization {
   id: string;
   owner_id: string | null;
@@ -128,7 +130,7 @@ export interface EventCollaborator {
   status: CollaboratorStatus;
   invited_by: string;
   created_at: string;
-  profile?: Profile;
+  profile?: PublicProfile;
   artist?: Artist | null;
 }
 
@@ -159,6 +161,7 @@ export interface EventComment {
   body: string;
   is_organizer_reply: boolean;
   created_at: string;
+  profile?: PublicProfile;
   reactions?: CommentReaction[];
 }
 
@@ -187,6 +190,8 @@ export interface EventQuestion {
   answered_by: string | null;
   answered_at: string | null;
   created_at: string;
+  profile?: PublicProfile;
+  answerer?: PublicProfile;
 }
 
 export interface EventScheduleSlot {

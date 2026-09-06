@@ -4,7 +4,7 @@ import { Modal } from '@/components/Modal';
 import {
   fetchEventSchedule, addScheduleSlot, deleteScheduleSlot,
   fetchEventLiveLinks, addEventLiveLink, toggleLiveLink, deleteEventLiveLink,
-  fetchEventSponsors, addEventSponsor, deleteEventSponsor, updateEventSponsor,
+  fetchEventSponsors, addEventSponsor, deleteEventSponsor,
   getFaviconUrl, searchArtists,
 } from '@/services/events';
 import type { Event, EventScheduleSlot, EventLiveLink, EventSponsor, Artist, SponsorTier } from '@/types';

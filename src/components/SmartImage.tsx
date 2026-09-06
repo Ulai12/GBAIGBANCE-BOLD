@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 interface SmartImageProps {
-  src: string | undefined;
+  src: string | null | undefined;
   alt?: string;
   className?: string;
   fallbackSrc?: string;
@@ -55,6 +55,8 @@ export function SmartImage({
       style={style}
       onError={handleError}
       draggable={draggable}
+      loading="lazy"
+      decoding="async"
     />
   );
 }

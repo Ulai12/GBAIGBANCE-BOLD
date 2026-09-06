@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Eye, Calendar, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings } from 'lucide-react';
+import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings } from 'lucide-react';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';

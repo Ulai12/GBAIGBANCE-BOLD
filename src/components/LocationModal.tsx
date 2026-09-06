@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Globe, Loader2, Navigation, Wifi } from 'lucide-react';
 import { Modal } from '@/components/Modal';
-import { COUNTRY_FLAGS, COUNTRY_NAMES } from '@/constants';
+import { COUNTRY_FLAGS } from '@/constants';
 
 interface LocationInfo {
   ip: string;

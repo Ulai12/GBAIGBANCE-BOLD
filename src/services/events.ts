@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase';
-import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, Profile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier } from '@/types';
+import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier } from '@/types';
 import type { EventCategory } from '@/types';
 
 // ==================== IMAGE UPLOAD ====================
@@ -71,15 +71,15 @@ export async function fetchUserTickets(userId: string) {
 
 // ==================== COLLABORATION ====================
 
-async function fetchProfilesByIds(ids: string[]): Promise<Map<string, { id: string; name: string; avatar_url: string | null; role: string }>> {
-  const map = new Map<string, { id: string; name: string; avatar_url: string | null; role: string }>();
+async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProfile>> {
+  const map = new Map<string, PublicProfile>();
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return map;
   const { data } = await supabase
     .from('profiles')
     .select('id, name, avatar_url, role')
     .in('id', unique);
-  (data || []).forEach((p: { id: string; name: string; avatar_url: string | null; role: string }) => map.set(p.id, p));
+  (data || []).forEach((p) => map.set(p.id, p as PublicProfile));
   return map;
 }
 
@@ -91,7 +91,7 @@ export async function fetchCollaborators(eventId: string): Promise<EventCollabor
   if (error) throw error;
   const collabs = (data as EventCollaborator[]) || [];
   const profileMap = await fetchProfilesByIds(collabs.map((c) => c.user_id));
-  collabs.forEach((c) => { c.profile = profileMap.get(c.user_id) || undefined; });
+  collabs.forEach((c) => { c.profile = profileMap.get(c.user_id); });
   return collabs;
 }
 
@@ -282,7 +282,7 @@ export async function fetchEventComments(eventId: string): Promise<(EventComment
   if (error) throw error;
   const comments = (data as EventComment[]) || [];
   const profileMap = await fetchProfilesByIds(comments.map((c) => c.user_id));
-  comments.forEach((c) => { c.profile = profileMap.get(c.user_id) as Profile | undefined; });
+  comments.forEach((c) => { c.profile = profileMap.get(c.user_id); });
   return comments;
 }
 
@@ -320,8 +320,8 @@ export async function fetchEventQuestions(eventId: string): Promise<(EventQuesti
   const ids = questions.flatMap((q) => [q.user_id, q.answered_by].filter(Boolean) as string[]);
   const profileMap = await fetchProfilesByIds(ids);
   questions.forEach((q) => {
-    q.profile = profileMap.get(q.user_id) as Profile | undefined;
-    if (q.answered_by) q.answerer = profileMap.get(q.answered_by) as Profile | undefined;
+    q.profile = profileMap.get(q.user_id);
+    if (q.answered_by) q.answerer = profileMap.get(q.answered_by);
   });
   return questions;
 }

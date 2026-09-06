@@ -19,12 +19,15 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
   const [followingCount, setFollowingCount] = useState(0);
   const [toggling, setToggling] = useState(false);
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
     fetchProfileById(userId).then(setProfile).catch(() => onToast({ message: t('settings', 'userProfile.notFound'), type: 'error' })).finally(() => setLoading(false));
     if (currentUser) { isFollowingUser(currentUser.id, userId).then(setFollowing); fetchUserFollowersCount(userId).then(setFollowersCount); fetchUserFollowingCount(userId).then(setFollowingCount); }
-    supabase.from('tickets').select('event:events(*)').eq('user_id', userId).order('created_at', { ascending: false }).limit(3).then(({ data }) => { const events = (data || []).map((r: { event: Event }) => r.event).filter(Boolean) as Event[]; setRecentEvents(events); }).finally(() => setEventsLoading(false));
-  }, [userId, currentUser]);
+    void (async () => {
+      const { data } = await supabase.from('tickets').select('event:events(*)').eq('user_id', userId).order('created_at', { ascending: false }).limit(3);
+      const events = ((data || []) as Array<{ event: Event | Event[] }>).flatMap((row) => Array.isArray(row.event) ? row.event : [row.event]).filter(Boolean);
+      setRecentEvents(events);
+    })();
+  }, [userId, currentUser, onToast, t]);
   const handleFollow = async () => { if (!currentUser) { onToast({ message: t('settings', 'userProfile.loginToFollow'), type: 'info' }); return; } setToggling(true); try { const isNow = await toggleUserFollow(currentUser.id, userId); setFollowing(isNow); setFollowersCount((c) => c + (isNow ? 1 : -1)); onToast({ message: isNow ? t('settings', 'userProfile.following') : t('settings', 'userProfile.unfollowed'), type: isNow ? 'success' : 'info' }); } catch { onToast({ message: t('settings', 'userProfile.notFound'), type: 'error' }); } finally { setToggling(false); } };
   if (loading) { return (<div className="min-h-screen bg-[#EDE8FF] flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#6600FF] animate-spin" /></div>); }
   if (!profile) { return (<div className="min-h-screen bg-[#EDE8FF] flex flex-col items-center justify-center"><p className="text-sm text-gray-500">{t('settings', 'userProfile.notFound')}</p><button onClick={onBack} className="mt-4 text-sm font-semibold text-[#6600FF]">{t('settings', 'userProfile.notFound')}</button></div>); }

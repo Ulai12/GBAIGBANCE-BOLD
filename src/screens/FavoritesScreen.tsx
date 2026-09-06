@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, Calendar, Search, X, ChevronLeft } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { EventCard } from '@/components/EventCard';

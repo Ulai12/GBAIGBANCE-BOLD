@@ -157,7 +157,9 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
                 <span className="text-sm font-semibold text-[#1A1A2E]">Quantité</span>
                 <div className="flex items-center gap-4">
                   <button
+                    type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Diminuer la quantité"
                     className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
                     disabled={quantity <= 1}
                   >
@@ -165,7 +167,9 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
                   </button>
                   <span className="text-lg font-extrabold text-[#1A1A2E] w-6 text-center">{quantity}</span>
                   <button
+                    type="button"
                     onClick={() => setQuantity(Math.min(available, quantity + 1))}
+                    aria-label="Augmenter la quantité"
                     className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
                     disabled={quantity >= available}
                   >

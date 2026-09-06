@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  ChevronLeft, Share2, Heart, MapPin, Calendar, Clock, Users,
+  ChevronLeft, Share2, Heart, MapPin, Calendar, Clock,
   Star, BadgeCheck, Ticket, Settings, Eye,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
@@ -45,7 +45,6 @@ function useCountdown(targetDate: string) {
 export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToast }: EventDetailScreenProps) {
   const { t, language, user } = useApp();
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
-  const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [showManage, setShowManage] = useState(false);
@@ -55,7 +54,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const countdown = useCountdown(event.starts_at);
 
   useEffect(() => {
-    fetchEventById(event.id).then((data) => { setFullEvent(data); if (data) { setLiveViews(data.views_count || 0); setLiveAttendees(data.attendees_count || 0); } }).catch(() => setFullEvent(null)).finally(() => setLoading(false));
+    fetchEventById(event.id).then((data) => { setFullEvent(data); if (data) { setLiveViews(data.views_count || 0); setLiveAttendees(data.attendees_count || 0); } }).catch(() => setFullEvent(null));
     fetchCollaborators(event.id).then(setCollaborators).catch(() => {});
     incrementEventViews(event.id).catch(() => {});
     const unsubViews = subscribeToEventViews(event.id, setLiveViews);

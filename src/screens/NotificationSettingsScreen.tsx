@@ -19,7 +19,7 @@ const toggles: ToggleItem[] = [
 ];
 
 export function NotificationSettingsScreen({ onBack, onToast }: NotificationSettingsScreenProps) {
-  const { user, t, language } = useApp();
+  const { user, t } = useApp();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

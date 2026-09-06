@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Search, Star, TrendingUp, Clock, Users, Heart, MapPin,
+  Search, Star, TrendingUp, Clock, Users, MapPin,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
-  Landmark, Lock, Flame, Sparkles, Calendar, ChevronRight, Zap, Building2, Ticket as TicketIcon,
+  Landmark, Lock, Sparkles, Calendar, ChevronRight, Zap, Building2, Ticket as TicketIcon,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
+import { TrendingDeck } from '@/components/TrendingDeck';
 import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -31,7 +32,7 @@ interface HomeScreenProps {
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
 
-export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, onProfileClick }: HomeScreenProps) {
+export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, onProfileClick, onBookEvent }: HomeScreenProps & { onBookEvent?: (event: Event) => void }) {
   const { user, t } = useApp();
   const [locationOpen, setLocationOpen] = useState(false);
   const [trending, setTrending] = useState<Event[]>([]);
@@ -43,8 +44,6 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
   const [categoryEvents, setCategoryEvents] = useState<Event[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number } | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
       .then(([feat, up, trend, art]) => { setFeatured(feat.slice(0, 5)); setTrending(trend.slice(0, 5)); setNearby(up); setArtists(art.slice(0, 6)); })
@@ -104,23 +103,13 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
         </section>
       )}
 
-      <section className="mt-8">
-        <div className="px-5 flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#1A1A2E]"><Flame className="w-5 h-5 text-orange-500" />Tendances cette semaine</h2><button className="text-sm font-semibold text-[#6600FF]">Tout voir</button></div>
-        <div ref={scrollRef} className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory">
-          {loading ? Array.from({ length: 3 }).map((_, i) => (<div key={i} className="w-72 shrink-0 snap-start"><div className="skeleton h-44 rounded-3xl mb-2" /><div className="skeleton h-4 w-3/4 mb-1.5" /><div className="skeleton h-3 w-1/2" /></div>)) : trending.map((event, idx) => (
-            <div key={event.id} onClick={() => onEventClick(event)} className="w-72 shrink-0 snap-start cursor-pointer group animate-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
-              <div className="card-dark relative h-44">
-                <img src={event.cover_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=600'} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-gradient-to-br from-[#6600FF] to-[#8B5CF6] flex items-center justify-center shadow-lg"><span className="text-xs font-extrabold text-white">{idx + 1}</span></div>
-                <button className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform"><Heart className="w-4 h-4 text-[#6600FF]" /></button>
-                <div className="absolute bottom-3 left-3 right-3"><h3 className="text-white font-bold text-base leading-tight line-clamp-1">{event.title}</h3><div className="flex items-center gap-2 mt-1"><span className="text-xs text-white/80 bg-white/15 backdrop-blur px-2 py-0.5 rounded-full">{t('events', `categories.${event.category}`)}</span><span className="text-xs text-white/80 flex items-center gap-0.5"><MapPin className="w-3 h-3" />{event.city}</span></div></div>
-              </div>
-              <div className="flex items-center justify-between mt-2 px-1"><span className="text-sm font-bold text-[#6600FF]">{event.price_min === 0 ? 'Gratuit' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}</span><span className="flex items-center gap-1 text-xs text-gray-500"><Users className="w-3 h-3" />{event.attendees_count > 1000 ? `${(event.attendees_count / 1000).toFixed(1)}K` : event.attendees_count}</span></div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {loading ? (
+        <section className="mt-8 px-5" aria-label="Chargement des tendances">
+          <div className="skeleton h-[26rem] rounded-[2rem]" />
+        </section>
+      ) : (
+        <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
+      )}
 
       {!loading && artists.length > 0 && (
         <section className="mt-8">

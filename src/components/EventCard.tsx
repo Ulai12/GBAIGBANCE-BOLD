@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { MapPin, Star, Users, Heart, Calendar } from 'lucide-react';
 import type { Event } from '@/types';
-import { useApp } from '@/hooks/useApp';
 import { SmartImage } from '@/components/SmartImage';
 
 function formatCardDate(dateString: string): string {
@@ -17,8 +16,8 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onClick }: EventCardProps) {
-  const { t } = useApp();
   const [liked, setLiked] = useState(false);
+  const rating = 4 + ((event.id.charCodeAt(0) || 0) % 9) / 10;
 
   return (
     <div
@@ -34,10 +33,11 @@ export function EventCard({ event, onClick }: EventCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute top-2 left-2 rating-badge text-[#1A1A2E]">
           <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
-          4.{Math.floor(Math.random() * 9)}
+          {rating.toFixed(1)}
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
+          aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
           className="absolute top-2 right-2 w-7 h-7 rounded-full glass-surface flex items-center justify-center hover:scale-110 active:scale-90 transition-transform"
         >
           <Heart className={`w-3.5 h-3.5 transition-all ${liked ? 'fill-red-500 text-red-500 scale-110 animate-heartbeat' : 'text-gray-600'}`} />

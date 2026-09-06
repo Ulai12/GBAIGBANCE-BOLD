@@ -20,9 +20,7 @@ const DARK_PALETTES = [
   { c1: '#8B5CF6', c2: '#6600FF', c3: '#A855F7', base: '#0A0010' },
   { c1: '#9333EA', c2: '#6600FF', c3: '#7C3AED', base: '#100018' },
   { c1: '#A855F7', c2: '#7C3AED', c3: '#6600FF', base: '#0C0014' },
-  { c1: '#6600FF', c2: '#9333EA', c3: '#8B5CF6', base: '#08000F' },
 ];
-
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 function hexToRgb(hex: string): [number, number, number] { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function rgbToHex(r: number, g: number, b: number) { return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join(''); }
@@ -36,6 +34,7 @@ export function DynamicBackground({ enabled, theme }: DynamicBackgroundProps) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (!enabled) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const palettes = theme === 'dark' ? DARK_PALETTES : LIGHT_PALETTES;
@@ -44,6 +43,10 @@ export function DynamicBackground({ enabled, theme }: DynamicBackgroundProps) {
     window.addEventListener('resize', resize);
     const speed = 0.006;
     const draw = () => {
+      if (document.visibilityState === 'hidden') {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
       const { width, height } = canvas;
       const s = stateRef.current;
       s.t += speed;
@@ -107,7 +110,6 @@ export function DynamicBackground({ enabled, theme }: DynamicBackgroundProps) {
         ctx.fillStyle = g1; ctx.fillRect(0, 0, width, height);
         const g2 = ctx.createRadialGradient(width * (0.75 + Math.cos(time * 0.6) * 0.12), height * (0.65 + Math.sin(time * 0.45) * 0.1), 0, width * (0.75 + Math.cos(time * 0.6) * 0.12), height * (0.65 + Math.sin(time * 0.45) * 0.1), width * 0.5);
         g2.addColorStop(0, c2 + 'D0'); g2.addColorStop(0.3, c2 + '60'); g2.addColorStop(1, 'transparent');
-        ctx.fillStyle = g2; ctx.fillRect(0, 0, width, height);
         const g3 = ctx.createRadialGradient(width * (0.5 + Math.sin(time * 0.8) * 0.07), height * (0.5 + Math.cos(time * 0.65) * 0.07), 0, width * 0.5, height * 0.5, width * 0.3);
         g3.addColorStop(0, c3 + 'C0'); g3.addColorStop(0.4, c3 + '50'); g3.addColorStop(1, 'transparent');
         ctx.fillStyle = g3; ctx.fillRect(0, 0, width, height);
@@ -134,15 +136,27 @@ export function DynamicBackground({ enabled, theme }: DynamicBackgroundProps) {
       }
       animRef.current = requestAnimationFrame(draw);
     };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        cancelAnimationFrame(animRef.current);
+        animRef.current = requestAnimationFrame(draw);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     animRef.current = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [enabled, theme]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none"
+      className={enabled ? 'fixed inset-0 pointer-events-none' : 'hidden'}
       style={{ zIndex: 0 }}
+      aria-hidden="true"
     />
   );
 }

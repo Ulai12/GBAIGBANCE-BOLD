@@ -22,7 +22,7 @@ import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { NotificationSettingsScreen } from '@/screens/NotificationSettingsScreen';
 import { SubscriptionsScreen } from '@/screens/SubscriptionsScreen';
 import { UserProfileScreen } from '@/screens/UserProfileScreen';
-import type { Event, Artist, Organization, Profile } from '@/types';
+import type { Event, Artist, Organization } from '@/types';
 
 type Screen =
   | 'onboarding'
@@ -48,7 +48,7 @@ type Screen =
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
 
 function AppContent() {
-  const { loading, session, user, dynamicBg, theme } = useApp();
+  const { loading, session, user } = useApp();
   const [screen, setScreen] = useState<Screen>('onboarding');
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -144,12 +144,7 @@ function AppContent() {
           event={selectedEvent}
           onBack={() => setScreen(activeTab)}
           onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-          onBook={(_event) => {
-            if (!session) {
-              addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
-              setScreen('login');
-            }
-          }}
+          onBook={handleBookEvent}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -268,21 +263,11 @@ function AppContent() {
     setScreen(tab);
   };
 
-  const handleArtistClick = (artist: Artist) => {
-    setSelectedArtist(artist);
-    setScreen('artistDetail');
-  };
-
-  const handleOrganizerClick = (org: Organization) => {
-    setSelectedOrganization(org);
-    setScreen('organizerDetail');
-  };
-
   const canCreate = !!(user && (user.role === 'organizer' || user.role === 'artist'));
 
   return (
     <>
-      <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
+      <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent pb-28">
         {activeTab === 'home' && (
           <HomeScreen
             onEventClick={handleEventClick}

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, BadgeCheck, Music2, Calendar, Share2, Heart, Eye, Flame, TrendingUp } from 'lucide-react';
+import { ChevronLeft, BadgeCheck, Music2, Calendar, Share2, Heart, Eye } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { useApp } from '@/hooks/useApp';
-import { fetchArtistById, fetchEventsByArtist, toggleArtistFollow, fetchArtistStats, isFollowingArtist } from '@/services/events';
+import { fetchArtistById, fetchEventsByArtist, toggleArtistFollow, isFollowingArtist } from '@/services/events';
 import { formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
 import type { Artist, Event } from '@/types';
@@ -18,7 +18,7 @@ interface ArtistDetailScreenProps {
 }
 
 export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: ArtistDetailScreenProps) {
-  const { language, user, t } = useApp();
+  const { language, user } = useApp();
   const [fullArtist, setFullArtist] = useState<Artist>(artist);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);

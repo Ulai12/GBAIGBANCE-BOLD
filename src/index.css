@@ -58,6 +58,10 @@
       --glass-border: rgba(255, 255, 255, 0.8);
     }
   }
+  :focus-visible {
+    outline: 3px solid rgba(102, 0, 255, 0.55);
+    outline-offset: 3px;
+  }
 }
 
 @layer components {
@@ -70,6 +74,15 @@
     background: var(--card-dark);
     border-radius: 1.75rem;
     overflow: hidden;
+  }
+
+  .glass-surface,
+  .glass {
+    background: var(--glass-tint);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 12px 32px var(--glass-shadow-ambient), inset 0 1px 0 var(--glass-highlight-soft);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   }
 
   /* Refonte du .glass-ticket : le reflet spéculaire est désormais géré par un élément dédié */

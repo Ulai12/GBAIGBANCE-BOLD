@@ -31,10 +31,10 @@ export function Toast({ toast, onClose }: ToastProps) {
   const Icon = icons[toast.type];
 
   return (
-    <div className={`glass-surface rounded-2xl px-4 py-3 flex items-center gap-3 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-4 opacity-0 scale-90'}`}>
+    <div role={toast.type === 'error' ? 'alert' : 'status'} aria-live={toast.type === 'error' ? 'assertive' : 'polite'} className={`glass-surface rounded-2xl px-4 py-3 flex items-center gap-3 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-4 opacity-0 scale-90'}`}>
       <Icon className={`w-5 h-5 ${colors[toast.type]} shrink-0 animate-pop`} />
       <p className="text-sm font-medium text-[#1A1A2E] flex-1">{toast.message}</p>
-      <button onClick={() => onClose(toast.id)} className="text-gray-400"><X className="w-4 h-4" /></button>
+      <button type="button" onClick={() => onClose(toast.id)} aria-label="Fermer la notification" className="text-gray-400"><X className="w-4 h-4" /></button>
     </div>
   );
 }

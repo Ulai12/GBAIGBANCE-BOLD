@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Globe, LogOut, Calendar, Settings, BadgeCheck, Music2, Ticket as TicketIcon, ChevronRight, Building2, Mail, Check, X, Loader2, Bell, Pencil, Sparkles, BellRing, Heart } from 'lucide-react';
+import { Moon, Sun, Globe, LogOut, Calendar, Settings, BadgeCheck, Music2, ChevronRight, Building2, Mail, Check, X, Loader2, Bell, Pencil, Sparkles, BellRing, Heart } from 'lucide-react';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { EventCard } from '@/components/EventCard';
 import { EditProfileModal } from '@/components/EditProfileModal';
