@@ -183,23 +183,39 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
         {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
       </section>
 
-      {!loading && platformStats && (
-        <section className="mt-8 px-5">
-          <div className="card-dark p-5 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#6600FF]/20 rounded-full blur-2xl" /><div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#8B5CF6]/20 rounded-full blur-2xl" />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-[#8B5CF6]" /><h3 className="text-white font-bold text-base">Gbaigbance en chiffres</h3></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5"><div className="w-10 h-10 rounded-xl bg-[#6600FF]/20 flex items-center justify-center"><Calendar className="w-5 h-5 text-[#8B5CF6]" /></div><div><p className="text-2xl font-extrabold text-white animate-pop">{platformStats.totalEvents}</p><p className="text-xs text-white/60">Événements</p></div></div>
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5"><div className="w-10 h-10 rounded-xl bg-yellow-400/20 flex items-center justify-center"><Star className="w-5 h-5 text-yellow-400" /></div><div><p className="text-2xl font-extrabold text-white animate-pop">{platformStats.totalArtists}</p><p className="text-xs text-white/60">Artistes</p></div></div>
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5"><div className="w-10 h-10 rounded-xl bg-green-400/20 flex items-center justify-center"><Users className="w-5 h-5 text-green-400" /></div><div><p className="text-2xl font-extrabold text-white animate-pop">{formatNumber(platformStats.totalParticipants)}</p><p className="text-xs text-white/60">Participants</p></div></div>
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5"><div className="w-10 h-10 rounded-xl bg-blue-400/20 flex items-center justify-center"><Building2 className="w-5 h-5 text-blue-400" /></div><div><p className="text-2xl font-extrabold text-white animate-pop">{platformStats.totalOrganizers}</p><p className="text-xs text-white/60">Organisateurs</p></div></div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 mt-3"><div className="w-10 h-10 rounded-xl bg-orange-400/20 flex items-center justify-center"><TicketIcon className="w-5 h-5 text-orange-400" /></div><div><p className="text-2xl font-extrabold text-white animate-pop">{platformStats.totalTickets}</p><p className="text-xs text-white/60">Billets vendus</p></div></div>
+{!loading && platformStats && (
+  <section className="mt-8 px-5">
+    <div className="card-dark p-6 animate-slide-up">
+      <div className="flex items-center gap-2 mb-5">
+        <TrendingUp className="w-4 h-4 text-white/40" />
+        <h3 className="text-white font-bold text-[15px] tracking-tight">Gbaigbance en chiffres</h3>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        {[
+          { icon: Calendar, value: platformStats.totalEvents, label: 'Événements' },
+          { icon: Star, value: platformStats.totalArtists, label: 'Artistes' },
+          { icon: Users, value: platformStats.totalParticipants, label: 'Participants' },
+          { icon: Building2, value: platformStats.totalOrganizers, label: 'Organisateurs' },
+          { icon: TicketIcon, value: platformStats.totalTickets, label: 'Billets vendus' },
+        ].map(({ icon: Icon, value, label }) => (
+          <div
+            key={label}
+            className="flex flex-col justify-between shrink-0 w-[7.25rem] h-[6.75rem] p-4 rounded-[1.4rem] bg-white/[0.06] border border-white/10 backdrop-blur-xl snap-start active:scale-95 transition-transform duration-200"
+          >
+            <Icon className="w-4 h-4 text-white/35" strokeWidth={2} />
+            <div>
+              <p className="text-[22px] font-extrabold bg-gradient-to-br from-[#C4B5FD] to-[#8B5CF6] bg-clip-text text-transparent leading-none">
+                {formatNumber(value)}
+              </p>
+              <p className="text-[11px] text-white/45 font-medium mt-1.5 leading-tight">{label}</p>
             </div>
           </div>
-        </section>
-      )}
+        ))}
+      </div>
+    </div>
+  </section>
+)}
       <LocationModal open={locationOpen} onClose={() => setLocationOpen(false)} />
     </div>
   );
