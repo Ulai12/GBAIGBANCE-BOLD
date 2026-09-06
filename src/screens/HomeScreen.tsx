@@ -123,16 +123,57 @@ export function HomeScreen({ onEventClick, onSearchClick, onOpenNotifications, o
       )}
 
       {!loading && artists.length > 0 && (
-        <section className="mt-8">
-          <div className="px-5 flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#1A1A2E]"><Star className="w-5 h-5 text-yellow-400" />Artistes en vedette</h2><button className="text-sm font-semibold text-[#6600FF]">Tout voir</button></div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2">
-            {artists.map((artist) => (
-              <button type="button" key={artist.id} onClick={() => onArtistClick?.(artist)} className="flex flex-col items-center gap-2 w-24 shrink-0 cursor-pointer group">
-                <div className="relative"><img src={artist.photo_url || `https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=200`} alt={artist.name} className="w-20 h-20 rounded-full object-cover ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all" />{artist.is_verified && <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5"><svg className="w-3.5 h-3.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z"/></svg></div>}</div>
-                <span className="text-xs font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full">{artist.name}</span>
-                <span className="text-[10px] text-gray-500">{artist.followers_count > 1000 ? `${(artist.followers_count / 1000).toFixed(1)}K` : artist.followers_count} fans</span>
-              </button>
-            ))}
+  <section className="mt-8">
+    <div className="px-5 flex items-end justify-between mb-4">
+      <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">
+        Artistes en vedette
+      </h2>
+      <button
+        type="button"
+        className="flex items-center gap-0.5 text-[14px] font-semibold text-[#6600FF] active:opacity-50 transition-opacity"
+      >
+        Tout voir
+        <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+      </button>
+    </div>
+
+    <div className="relative">
+      <div className="flex gap-5 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
+        {artists.map((artist) => (
+          <button
+            type="button"
+            key={artist.id}
+            onClick={() => onArtistClick?.(artist)}
+            className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out"
+          >
+            <div className="relative">
+              <img
+                src={artist.photo_url || `https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=200`}
+                alt={artist.name}
+                loading="lazy"
+                decoding="async"
+                className="w-[5.5rem] h-[5.5rem] rounded-full object-cover ring-1 ring-black/5 shadow-[0_1px_3px_rgba(23,23,38,0.08)]"
+              />
+              {artist.is_verified && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#6600FF] ring-[3px] ring-white flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z" />
+                  </svg>
+                </div>
+              )}
+                    </div>
+                  <span className="text-[13px] font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full leading-tight">
+                    {artist.name}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    {artist.followers_count > 1000
+                      ? `${(artist.followers_count / 1000).toFixed(1)}K fans`
+                      : `${artist.followers_count} fans`}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" />
           </div>
         </section>
       )}
