@@ -326,7 +326,7 @@ export function HomeScreen({
       {!loading && platformStats && (
         <section className="mt-8 px-5">
           <div className="text-center mb-5">
-            <h3 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">Gbaigbance en chiffres</h3>
+            <h3 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
             <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
               La billetterie qui grandit chaque jour
             </p>
