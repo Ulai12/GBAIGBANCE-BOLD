@@ -50,9 +50,9 @@ export function EventCard({ event, onClick }: EventCardProps) {
       className="
         group relative isolate w-full
         aspect-[0.78] sm:aspect-[0.82]
-        overflow-hidden rounded-[1.75rem]
+        overflow-hidden rounded-[1.5rem]
         bg-[#17131d] text-white cursor-pointer
-        shadow-[0_18px_50px_rgba(23,19,29,0.16)]
+        shadow-[0_12px_40px_rgba(23,19,29,0.2)]
       "
       aria-label={`Découvrir ${event.title}`}
     >
@@ -69,33 +69,29 @@ export function EventCard({ event, onClick }: EventCardProps) {
         />
       </motion.div>
 
-      {/* GRADIENT ASSOMBRISSANT RESTAURÉ POUR LA LISIBILITÉ DU TEXTE */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,6,14,.12)_0%,rgba(8,6,14,.04)_28%,rgba(8,6,14,.22)_48%,rgba(8,6,14,.96)_100%)]" />
+      {/* GRADIENT ASSOMBRISSANT - Vital pour lire le lieu, le titre et le prix */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10" />
 
-      {/* SOFT GLOW */}
-      <div className="pointer-events-none absolute -right-16 top-16 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -left-16 bottom-16 h-40 w-40 rounded-full bg-fuchsia-400/10 blur-3xl" />
-
-      {/* CONTENT LAYER */}
-      <div className="absolute inset-0 flex flex-col p-3 sm:p-4">
+      {/* CONTENT LAYER - Paddings réduits */}
+      <div className="absolute inset-0 flex flex-col p-3">
         
-        {/* ───────────────── TOP (Date & Bouton) ───────────────── */}
+        {/* ───────────────── TOP (Date & Bouton adaptatifs) ───────────────── */}
         <div className="flex w-full items-start justify-between gap-2">
           
-          {/* DATE PILL - Hauteur fixe h-9, padding optimisé pour le texte */}
+          {/* DATE PILL - Moins gourmand (h-8), fond transparent pour capter l'image */}
           <div className="
-            inline-flex h-9 min-w-0 max-w-[calc(100%-2.75rem)] 
+            inline-flex h-8 min-w-0 max-w-[calc(100%-2.5rem)] 
             items-center gap-1.5 rounded-full 
-            border border-white/15 bg-black/25 
-            px-2.5 backdrop-blur-xl
+            border border-white/20 bg-white/10 
+            px-2.5 backdrop-blur-md
           ">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-violet-300" />
-            <span className="truncate text-[11px] font-bold text-white sm:text-xs">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white/90" />
+            <span className="truncate text-[11px] font-semibold text-white">
               {formatDate(event.starts_at)}
             </span>
           </div>
 
-          {/* FAVORITE - Taille exacte équivalente (h-9 w-9) */}
+          {/* FAVORITE - Taille minimale (h-8 w-8) */}
           <motion.button
             type="button"
             whileTap={{ scale: 0.88 }}
@@ -105,9 +101,9 @@ export function EventCard({ event, onClick }: EventCardProps) {
               setLiked((v) => !v);
             }}
             className="
-              flex h-9 w-9 shrink-0 items-center justify-center 
-              rounded-full border border-white/20 bg-black/20 
-              backdrop-blur-xl transition-colors hover:bg-white/15
+              flex h-8 w-8 shrink-0 items-center justify-center 
+              rounded-full border border-white/20 bg-white/10 
+              backdrop-blur-md transition-colors hover:bg-white/20
             "
           >
             <Heart
@@ -118,51 +114,51 @@ export function EventCard({ event, onClick }: EventCardProps) {
           </motion.button>
         </div>
 
-        {/* RATING - Hauteur réduite h-7 pour l'équilibre */}
-        <div className="mt-2.5 inline-flex h-7 items-center gap-1 rounded-full border border-white/15 bg-black/20 px-2 backdrop-blur-xl self-start">
+        {/* RATING - Extrêmement compact (h-6) */}
+        <div className="mt-2 inline-flex h-6 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 backdrop-blur-md self-start">
           <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
-          <span className="text-[10px] font-black text-white">
+          <span className="text-[10px] font-bold text-white">
             {rating.toFixed(1)}
           </span>
         </div>
 
         {/* SPACER */}
-        <div className="flex-1 min-h-4" />
+        <div className="flex-1 min-h-2" />
 
         {/* ───────────────── BOTTOM ───────────────── */}
-        <div className="flex w-full flex-col min-w-0">
+        <div className="flex w-full flex-col min-w-0 gap-1.5">
           
-          {/* LOCATION - Sécurisé contre les dépassements */}
-          <div className="mb-1.5 flex min-w-0 items-center gap-1.5 text-white/70">
-            <MapPin className="h-3 w-3 shrink-0 text-violet-300" />
-            <span className="truncate text-[11px] font-medium sm:text-xs">
+          {/* LOCATION - Couleur distincte (Cyan) pour se détacher */}
+          <div className="flex min-w-0 items-start gap-1.5">
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-400" />
+            <span className="line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
               {event.location_name || event.city || 'Lieu à confirmer'}
             </span>
           </div>
 
-          {/* TITLE - Limité à 2 lignes avec line-height serré */}
-          <h3 className="line-clamp-2 text-xl sm:text-2xl font-black leading-[1.1] tracking-tight text-white">
+          {/* TITLE - Sécurisé à 2 lignes maximum */}
+          <h3 className="line-clamp-2 text-lg sm:text-xl font-black leading-tight tracking-tight text-white">
             {event.title}
           </h3>
 
-          {/* FOOTER (Prix & Participants) - Flex-wrap pour éviter la coupure du prix */}
-          <div className="mt-2.5 flex flex-wrap items-end justify-between gap-2">
+          {/* FOOTER - Flex-wrap pour sécuriser les grands prix/chiffres */}
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
             
-            {/* PRICE - Truncate retiré, shrink-0 pour forcer l'affichage */}
-            <div className="shrink-0 max-w-[70%]">
-              <p className="text-[1rem] sm:text-[1.15rem] font-black leading-none tracking-tight text-violet-300">
+            {/* PRICE - Couleur d'accentuation forte (Emerald) */}
+            <div className="shrink-0">
+              <p className="text-[1.1rem] font-black leading-none tracking-tight text-emerald-400">
                 {formattedPrice}
               </p>
             </div>
 
-            {/* ATTENDEES - Badge condensé */}
+            {/* ATTENDEES */}
             <div className="
-              flex h-7 shrink-0 items-center gap-1.5 
-              rounded-full border border-white/15 bg-white/10 
-              px-2 backdrop-blur-xl
+              flex h-6 shrink-0 items-center gap-1.5 
+              rounded-full border border-white/10 bg-white/5 
+              px-2 backdrop-blur-sm
             ">
-              <Users className="h-3 w-3 text-white/65" />
-              <span className="text-[10px] font-bold text-white/85">
+              <Users className="h-3 w-3 text-white/70" />
+              <span className="text-[10px] font-semibold text-white/90">
                 {formatAttendees(event.attendees_count)}
               </span>
             </div>
