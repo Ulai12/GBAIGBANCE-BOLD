@@ -120,14 +120,14 @@ export function EventCard({ event, onClick }: EventCardProps) {
       <div className="absolute inset-0 flex flex-col p-2.5 max-[360px]:p-2 sm:p-5">
 
         {/* ───────────────── TOP ───────────────── */}
-        <div className="flex items-start justify-between gap-2 max-[360px]:gap-1.5">
+        <div className="flex items-center justify-between gap-2 max-[360px]:gap-1.5">
 
           {/* DATE */}
           <div
             className="
               inline-flex
               min-w-0
-              max-w-[calc(100%-3rem)]
+              max-w-[calc(100%-3.5rem)]
               items-center
               gap-1.5
               rounded-full
@@ -137,8 +137,9 @@ export function EventCard({ event, onClick }: EventCardProps) {
               px-2.5
               py-1.5
               backdrop-blur-xl
+              max-[360px]:max-w-[calc(100%-3rem)]
               max-[360px]:px-2
-              max-[360px]:py-1.5
+              max-[360px]:py-1
             "
           >
             <CalendarDays className="h-3 w-3 shrink-0 text-violet-300 max-[360px]:h-2.5 max-[360px]:w-2.5" />
@@ -182,6 +183,8 @@ export function EventCard({ event, onClick }: EventCardProps) {
               hover:bg-white/15
               max-[360px]:h-8
               max-[360px]:w-8
+              sm:h-10
+              sm:w-10
             "
           >
             <Heart
@@ -192,6 +195,8 @@ export function EventCard({ event, onClick }: EventCardProps) {
                 duration-300
                 max-[360px]:h-3.5
                 max-[360px]:w-3.5
+                sm:h-[17px]
+                sm:w-[17px]
                 ${
                   liked
                     ? 'scale-110 fill-red-500 text-red-500'
@@ -203,7 +208,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
         </div>
 
         {/* RATING */}
-        <div className="mt-2.5 self-start max-[360px]:mt-2">
+        <div className="mt-2 self-start max-[360px]:mt-1.5">
           <div
             className="
               inline-flex
