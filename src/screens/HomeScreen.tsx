@@ -213,7 +213,7 @@ export function HomeScreen({
       )}
 
       <section className="mt-6 px-5">
-        <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em] mb-3">Explorer par catégorie</h2>
+        <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d] mb-3">Explorer par catégorie</h2>
         <div className="grid grid-cols-4 gap-x-2.5 gap-y-3 py-1">
           {EVENT_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.icon] || Music;
@@ -239,7 +239,7 @@ export function HomeScreen({
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
               {t('events', `categories.${selectedCategory}`)}
             </h2>
             <button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button>
@@ -259,7 +259,7 @@ export function HomeScreen({
       {!loading && artists.length > 0 && (
         <section className="mt-8">
           <div className="px-5 flex items-end justify-between mb-4">
-            <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
               Artistes en vedette
             </h2>
             <button
@@ -317,7 +317,7 @@ export function HomeScreen({
 
       <section className="mt-8 px-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">À ne pas manquer</h2>
+          <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">À ne pas manquer</h2>
           <button className="text-sm font-semibold text-[#6600FF]">Tout voir</button>
         </div>
         {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
@@ -326,7 +326,7 @@ export function HomeScreen({
       {!loading && platformStats && (
         <section className="mt-8 px-5">
           <div className="text-center mb-5">
-            <h3 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
+            <h3 className="text-2xl font-bold text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
             <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
               La billetterie qui grandit chaque jour
             </p>
