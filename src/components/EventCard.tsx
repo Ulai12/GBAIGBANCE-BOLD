@@ -117,7 +117,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
       <div className="pointer-events-none absolute -left-16 bottom-16 h-40 w-40 rounded-full bg-fuchsia-400/10 blur-3xl" />
 
       {/* CONTENT LAYER */}
-      <div className="absolute inset-0 flex flex-col p-4 sm:p-5">
+      <div className="absolute inset-0 flex flex-col p-3 sm:p-5">
 
         {/* ───────────────── TOP ───────────────── */}
         <div className="flex items-start justify-between gap-3">
@@ -240,7 +240,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
             className="
               max-w-full
               line-clamp-2
-              text-[1.65rem]
+              text-[1.4rem]
               font-black
               leading-[0.95]
               tracking-[-0.045em]
@@ -252,13 +252,13 @@ export function EventCard({ event, onClick }: EventCardProps) {
           </h3>
 
           {/* FOOTER */}
-          <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="mt-3 flex items-end justify-between gap-2 sm:mt-4 sm:gap-3">
 
             {/* PRICE */}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p
                 className="
-                  whitespace-nowrap
+                  truncate
                   text-[1rem]
                   font-black
                   leading-none
@@ -282,9 +282,11 @@ export function EventCard({ event, onClick }: EventCardProps) {
                 border
                 border-white/15
                 bg-white/10
-                px-3
-                py-2
+                px-2.5
+                py-1.5
                 backdrop-blur-xl
+                sm:px-3
+                sm:py-2
               "
             >
               <Users className="h-3.5 w-3.5 text-white/65" />
