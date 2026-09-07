@@ -173,7 +173,7 @@ export function HomeScreen({
               <span className="text-[11px] text-gray-500">Rechercher un événement, un artiste...</span>
             </div>
           </button>
-          <button onClick={() => setLocationOpen(true)} className="w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
+          <button onClick={() => setLocationOpen(true)} className="search-bar w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
             {COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}
           </button>
         </div>
