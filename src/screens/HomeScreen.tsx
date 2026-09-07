@@ -118,7 +118,7 @@ export function HomeScreen({
           <button onClick={onSearchClick} className="flex-1">
             <div className="search-bar flex items-center gap-3 px-5 py-4 text-left">
               <Search className="w-5 h-5 text-[#6600FF]/70" />
-              <span className="text-sm text-gray-500">Rechercher un événement, un artiste...</span>
+              <span className="text-[10px] text-gray-500">Rechercher un événement, un artiste...</span>
             </div>
           </button>
           <button onClick={() => setLocationOpen(true)} className="w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
