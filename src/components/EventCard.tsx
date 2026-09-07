@@ -9,102 +9,147 @@ import {
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
+
 interface EventCardProps {
   event: Event;
   onClick?: () => void;
 }
-function formatCardDate(dateString: string): string {
-  const date = new Date(dateString);
+
+function formatDate(dateString: string) {
   return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
+  }).format(new Date(dateString));
 }
-function formatAttendees(count: number): string {
-  if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
+
+function formatAttendees(count: number) {
+  if (count >= 1_000_000) {
+    return `${(count / 1_000_000).toFixed(1)}M`;
   }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
+
+  if (count >= 1_000) {
+    return `${(count / 1_000).toFixed(1)}K`;
   }
+
   return count.toString();
 }
+
 export function EventCard({ event, onClick }: EventCardProps) {
   const [liked, setLiked] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+
   const rating =
     4 + ((event.id.charCodeAt(0) || 0) % 9) / 10;
+
+  const formattedPrice =
+    event.price_min === 0
+      ? 'Gratuit'
+      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={
+        prefersReducedMotion
+          ? false
+          : { opacity: 0, y: 20, scale: 0.98 }
+      }
+      animate={
+        prefersReducedMotion
+          ? undefined
+          : { opacity: 1, y: 0, scale: 1 }
+      }
       whileHover={
         prefersReducedMotion
           ? undefined
           : {
-              y: -7,
-              scale: 1.015,
+              y: -6,
+              scale: 1.012,
             }
       }
       transition={{
-        duration: prefersReducedMotion ? 0 : 0.45,
+        duration: prefersReducedMotion ? 0 : 0.4,
         ease: [0.22, 1, 0.36, 1],
       }}
       onClick={onClick}
       className="
         group
         relative
+        isolate
+        w-full
+        aspect-[0.78]
+        sm:aspect-[0.82]
         overflow-hidden
         rounded-[1.75rem]
         bg-[#17131d]
         text-white
-        shadow-[0_18px_50px_rgba(23,19,29,0.16)]
         cursor-pointer
-        isolate
+        shadow-[0_18px_50px_rgba(23,19,29,0.16)]
       "
       aria-label={`Découvrir ${event.title}`}
     >
-      <div className="relative aspect-[0.82] overflow-hidden">
-        {/* IMAGE */}
-        <motion.div
-          className="absolute inset-0"
-          whileHover={
-            prefersReducedMotion
-              ? undefined
-              : { scale: 1.07 }
-          }
-          transition={{
-            duration: 0.8,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-        >
-          <SmartImage
-            src={event.cover_url || event.images?.[0]}
-            alt={event.title}
-            className="h-full w-full object-cover"
-          />
-        </motion.div>
-        {/* CINEMATIC GRADIENT */}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,12,.06)_0%,rgba(7,5,12,.12)_30%,rgba(7,5,12,.32)_52%,rgba(7,5,12,.96)_100%)]" />
-        {/* ATMOSPHERIC GLOW */}
-        <div className="absolute -right-16 top-20 h-40 w-40 rounded-full bg-[#7c3aed]/20 blur-3xl" />
-        <div className="absolute -left-20 bottom-20 h-40 w-40 rounded-full bg-[#a855f7]/10 blur-3xl" />
-        {/* TOP CONTROLS */}
-        <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-          {/* RATING */}
-          <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-3 py-1.5 backdrop-blur-xl">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-[11px] font-black tracking-wide text-white">
-              {rating.toFixed(1)}
+      {/* IMAGE */}
+      <motion.div
+        className="absolute inset-0"
+        whileHover={
+          prefersReducedMotion
+            ? undefined
+            : { scale: 1.06 }
+        }
+        transition={{
+          duration: 0.8,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        <SmartImage
+          src={event.cover_url || event.images?.[0]}
+          alt={event.title}
+          className="h-full w-full object-cover"
+        />
+      </motion.div>
+
+      {/* ATMOSPHERIC OVERLAY */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,6,14,.12)_0%,rgba(8,6,14,.04)_28%,rgba(8,6,14,.22)_48%,rgba(8,6,14,.96)_100%)]" />
+
+      {/* SOFT GLOW */}
+      <div className="pointer-events-none absolute -right-16 top-16 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -left-16 bottom-16 h-40 w-40 rounded-full bg-fuchsia-400/10 blur-3xl" />
+
+      {/* CONTENT LAYER */}
+      <div className="absolute inset-0 flex flex-col p-4 sm:p-5">
+
+        {/* ───────────────── TOP ───────────────── */}
+        <div className="flex items-start justify-between gap-3">
+
+          {/* DATE */}
+          <div
+            className="
+              inline-flex
+              min-w-0
+              max-w-[calc(100%-3.5rem)]
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-white/15
+              bg-black/25
+              px-3
+              py-2
+              backdrop-blur-xl
+            "
+          >
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-violet-300" />
+
+            <span className="truncate text-[11px] font-bold text-white">
+              {formatDate(event.starts_at)}
             </span>
           </div>
+
           {/* FAVORITE */}
           <motion.button
             type="button"
-            whileTap={{ scale: 0.85 }}
+            whileTap={{ scale: 0.88 }}
             whileHover={
               prefersReducedMotion
                 ? undefined
@@ -120,10 +165,15 @@ export function EventCard({ event, onClick }: EventCardProps) {
                 : 'Ajouter aux favoris'
             }
             className="
-              flex h-10 w-10
-              items-center justify-center
+              flex
+              h-10
+              w-10
+              shrink-0
+              items-center
+              justify-center
               rounded-full
-              border border-white/20
+              border
+              border-white/20
               bg-black/20
               backdrop-blur-xl
               transition-colors
@@ -132,8 +182,10 @@ export function EventCard({ event, onClick }: EventCardProps) {
           >
             <Heart
               className={`
-                h-4 w-4
-                transition-all duration-300
+                h-[17px]
+                w-[17px]
+                transition-all
+                duration-300
                 ${
                   liked
                     ? 'scale-110 fill-red-500 text-red-500'
@@ -143,87 +195,109 @@ export function EventCard({ event, onClick }: EventCardProps) {
             />
           </motion.button>
         </div>
-        {/* CONTENT */}
-        <div className="absolute inset-x-4 bottom-4">
-          {/* DATE + CITY */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span
-              className="
-                rounded-full
-                border border-white/10
-                bg-white/10
-                px-2.5 py-1
-                text-[10px]
-                font-bold
-                text-white/90
-                backdrop-blur-xl
-              "
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="h-3 w-3 text-violet-300" />
-                {formatCardDate(event.starts_at)}
-              </span>
-            </span>
-            <span
-              className="
-                flex items-center gap-1
-                text-[10px]
-                font-semibold
-                text-white/65
-              "
-            >
-              <MapPin className="h-3 w-3 text-violet-300" />
-              {event.city}
+
+        {/* RATING */}
+        <div className="mt-3 self-start">
+          <div
+            className="
+              inline-flex
+              items-center
+              gap-1.5
+              rounded-full
+              border
+              border-white/15
+              bg-black/20
+              px-2.5
+              py-1.5
+              backdrop-blur-xl
+            "
+          >
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+
+            <span className="text-[10px] font-black">
+              {rating.toFixed(1)}
             </span>
           </div>
+        </div>
+
+        {/* SPACER */}
+        <div className="flex-1 min-h-6" />
+
+        {/* ───────────────── BOTTOM ───────────────── */}
+        <div className="min-w-0">
+
+          {/* LOCATION */}
+          <div className="mb-2 flex min-w-0 items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-violet-300" />
+
+            <span className="truncate text-xs font-medium text-white/70">
+              {event.location_name || event.city || 'Lieu à confirmer'}
+            </span>
+          </div>
+
           {/* TITLE */}
           <h3
             className="
-              max-w-[90%]
-              text-[1.55rem]
+              max-w-full
+              line-clamp-2
+              text-[1.65rem]
               font-black
-              leading-[0.98]
+              leading-[0.95]
               tracking-[-0.045em]
               text-white
-              line-clamp-2
+              sm:text-[1.8rem]
             "
           >
             {event.title}
           </h3>
-          {/* BOTTOM INFORMATION */}
+
+          {/* FOOTER */}
           <div className="mt-4 flex items-end justify-between gap-3">
+
+            {/* PRICE */}
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 truncate text-[11px] font-medium text-white/55">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                {event.location_name || 'Lieu à confirmer'}
-              </p>
-              <p className="mt-1 text-sm font-black text-violet-300">
-                {event.price_min === 0
-                  ? 'Entrée libre'
-                  : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}
+              <p
+                className="
+                  whitespace-nowrap
+                  text-[1rem]
+                  font-black
+                  leading-none
+                  tracking-[-0.02em]
+                  text-violet-300
+                  sm:text-[1.05rem]
+                "
+              >
+                {formattedPrice}
               </p>
             </div>
+
             {/* ATTENDEES */}
             <div
               className="
-                flex shrink-0
-                items-center gap-1.5
+                flex
+                shrink-0
+                items-center
+                gap-1.5
                 rounded-full
-                border border-white/10
+                border
+                border-white/15
                 bg-white/10
-                px-2.5 py-1.5
+                px-3
+                py-2
                 backdrop-blur-xl
               "
             >
-              <Users className="h-3 w-3 text-white/60" />
-              <span className="text-[10px] font-bold text-white/80">
+              <Users className="h-3.5 w-3.5 text-white/65" />
+
+              <span className="text-[11px] font-bold text-white/85">
                 {formatAttendees(event.attendees_count)}
               </span>
             </div>
           </div>
         </div>
       </div>
-      {/* SUBTLE BOTTOM GLOW */}
+
+      {/* BOTTOM EDGE */}
       <div
         className="
           pointer-events-none
