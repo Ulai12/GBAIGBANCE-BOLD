@@ -337,7 +337,7 @@ export function HomeScreen({
             <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Calendar className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.9em] uppercase mt-1">Événements</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.1em] uppercase mt-1">Événements</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
