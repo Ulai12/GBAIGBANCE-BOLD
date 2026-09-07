@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Star, TrendingUp, Clock, Users, MapPin,
+  Search, Star, Users, MapPin,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
-  Landmark, Lock, Sparkles, Calendar, ChevronRight, Zap, Building2, Ticket as TicketIcon,
+  Landmark, Lock, Sparkles, Calendar, ChevronRight, Building2, Ticket as TicketIcon,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { TrendingDeck } from '@/components/TrendingDeck';
@@ -22,8 +22,52 @@ import type { Event, Artist, EventCategory } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
-    Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
-  };
+  Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
+};
+
+/**
+ * Mini graphique en barres — comparaison réelle entre les 5 statistiques de la plateforme.
+ * Échelle logarithmique volontaire : les métriques (nb d'événements vs billets vendus, etc.)
+ * peuvent différer de plusieurs ordres de grandeur. En linéaire, 4 des 5 barres seraient
+ * quasi invisibles à côté de la plus grande. Le log garde chaque barre lisible tout en
+ * respectant l'ordre réel des valeurs.
+ */
+function MiniStatBars({ values, activeIndex }: { values: number[]; activeIndex: number }) {
+  const logValues = values.map((v) => Math.log10(Math.max(v, 0) + 1));
+  const max = Math.max(...logValues, 0.1);
+  return (
+    <div className="flex items-end gap-[3px] h-[26px]" aria-hidden="true">
+      {logValues.map((v, i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-full bg-[#6600FF]"
+          style={{ height: `${Math.max((v / max) * 26, 3)}px`, opacity: i === activeIndex ? 1 : 0.18 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Même logique que MiniStatBars mais tracée comme une petite courbe, pour varier le
+ * langage graphique sur la carte "Billets vendus". Toujours basé sur les vraies valeurs.
+ */
+function MiniSparkline({ values, activeIndex }: { values: number[]; activeIndex: number }) {
+  const width = 40;
+  const height = 24;
+  const logValues = values.map((v) => Math.log10(Math.max(v, 0) + 1));
+  const max = Math.max(...logValues, 0.1);
+  const step = width / (values.length - 1);
+  const points = logValues.map((v, i) => [i * step, height - (v / max) * height] as const);
+  const path = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const [activeX, activeY] = points[activeIndex];
+  return (
+    <svg width={width} height={height + 6} viewBox={`0 0 ${width} ${height + 6}`} className="shrink-0" aria-hidden="true">
+      <path d={path} fill="none" stroke="#6600FF" strokeOpacity="0.25" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={activeX} cy={activeY} r="3" fill="#6600FF" />
+    </svg>
+  );
+}
 
 interface HomeScreenProps {
   onEventClick: (event: Event) => void;
@@ -32,16 +76,16 @@ interface HomeScreenProps {
   onProfileClick: () => void;
   onArtistClick?: (artist: Artist) => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
-  onBookEvent?: (event: Event) => void; // Ajouté pour corriger l'interface
+  onBookEvent?: (event: Event) => void;
 }
 
-export function HomeScreen({ 
-  onEventClick, 
-  onSearchClick, 
-  onOpenNotifications, 
-  onProfileClick, 
-  onArtistClick, 
-  onBookEvent // Retiré de l'intersection et ajouté à l'interface
+export function HomeScreen({
+  onEventClick,
+  onSearchClick,
+  onOpenNotifications,
+  onProfileClick,
+  onArtistClick,
+  onBookEvent,
 }: HomeScreenProps) {
   const { user, t } = useApp();
   const [locationOpen, setLocationOpen] = useState(false);
@@ -56,15 +100,14 @@ export function HomeScreen({
   const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number } | null>(null);
 
   useEffect(() => {
-    // Fonction utilitaire pour vérifier les dates
     const isValidDate = (dateStr?: string) => dateStr && !isNaN(new Date(dateStr).getTime());
 
     Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
-      .then(([feat, up, trend, art]) => { 
-        setFeatured(feat.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5)); 
-        setTrending(trend.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5)); 
-        setNearby(up.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date())); 
-        setArtists(art.slice(0, 6)); 
+      .then(([feat, up, trend, art]) => {
+        setFeatured(feat.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5));
+        setTrending(trend.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5));
+        setNearby(up.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()));
+        setArtists(art.slice(0, 6));
       })
       .catch(() => {}).finally(() => setLoading(false));
     fetchPlatformStats().then(setPlatformStats).catch(() => {});
@@ -77,10 +120,19 @@ export function HomeScreen({
   }, [selectedCategory]);
 
   const heroEvent = featured[0] || trending[0];
-
-  // CORRECTIONS ANTI-NaN : Valeurs par défaut sécurisées
   const safePrice = heroEvent?.price_min ?? 0;
   const safeAttendees = heroEvent?.attendees_count ?? 0;
+
+  // Calculé une seule fois par rendu, réutilisé par les 5 cartes stats.
+  const compareValues = platformStats
+    ? [
+        platformStats.totalEvents ?? 0,
+        platformStats.totalArtists ?? 0,
+        platformStats.totalParticipants ?? 0,
+        platformStats.totalOrganizers ?? 0,
+        platformStats.totalTickets ?? 0,
+      ]
+    : [0, 0, 0, 0, 0];
 
   return (
     <div className="min-h-screen pb-32 bg-lavender">
@@ -138,11 +190,9 @@ export function HomeScreen({
               <div className="flex items-center gap-2 mb-2"><span className="text-xs text-white/90 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full font-medium">{t('events', `categories.${heroEvent.category}`)}</span><span className="flex items-center gap-1 text-xs text-white/80"><MapPin className="w-3 h-3" />{heroEvent.city}</span></div>
               <h2 className="text-white font-extrabold text-xl leading-tight line-clamp-2">{heroEvent.title}</h2>
               <div className="flex items-center justify-between mt-3">
-                {/* CORRECTION ANTI-NaN : Utilisation de safePrice */}
                 <span className="text-lg font-extrabold text-white">{safePrice === 0 ? 'Gratuit' : `Dès ${safePrice.toLocaleString('fr-FR')} FCFA`}</span>
                 <div className="flex items-center gap-1.5 text-white/80 text-sm">
                   <Users className="w-4 h-4" />
-                  {/* CORRECTION ANTI-NaN : Utilisation de safeAttendees */}
                   <span>{safeAttendees > 1000 ? `${(safeAttendees / 1000).toFixed(1)}K` : safeAttendees}</span>
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -162,33 +212,38 @@ export function HomeScreen({
         </section>
       )}
 
-<section className="mt-6 px-5">
-  <h2 className="text-lg font-bold text-[#171726] mb-3">Explorer par catégorie</h2>
-  <div className="grid grid-cols-4 gap-x-2.5 gap-y-3 py-1">
-    {EVENT_CATEGORIES.map((cat) => {
-      const Icon = CATEGORY_ICONS[cat.icon] || Music;
-      const isActive = selectedCategory === cat.value;
-      return (
-        <button
-          key={cat.value}
-          onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-          className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 ${
-            isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/90 border border-black/5'
-          }`}
-        >
-          <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#171726]'}`} strokeWidth={1.8} />
-          <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726]'}`}>
-            {t('events', `categories.${cat.value}`)}
-          </span>
-        </button>
-      );
-    })}
-  </div>
-</section>
+      <section className="mt-6 px-5">
+        <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em] mb-3">Explorer par catégorie</h2>
+        <div className="grid grid-cols-4 gap-x-2.5 gap-y-3 py-1">
+          {EVENT_CATEGORIES.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.icon] || Music;
+            const isActive = selectedCategory === cat.value;
+            return (
+              <button
+                key={cat.value}
+                onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+                className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 ${
+                  isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/90 border border-black/5'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6600FF]'}`} strokeWidth={1.8} />
+                <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#6600FF]'}`}>
+                  {t('events', `categories.${cat.value}`)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
-          <div className="flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#6600FF]/70"><Zap className="w-5 h-5 text-[#6600FF]" />{t('events', `categories.${selectedCategory}`)}</h2><button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button></div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">
+              {t('events', `categories.${selectedCategory}`)}
+            </h2>
+            <button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button>
+          </div>
           {categoryLoading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : categoryEvents.length === 0 ? (<EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />) : (<div className="grid grid-cols-2 gap-4">{categoryEvents.map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
         </section>
       )}
@@ -219,7 +274,6 @@ export function HomeScreen({
           <div className="relative">
             <div className="flex gap-5 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
-                // CORRECTION ANTI-NaN : Valeur par défaut pour les followers
                 const followersCount = artist.followers_count ?? 0;
                 return (
                   <button
@@ -262,107 +316,94 @@ export function HomeScreen({
       )}
 
       <section className="mt-8 px-5">
-        <div className="flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#1A1A2E]"><Clock className="w-5 h-5 text-[#6600FF]" />À ne pas manquer</h2><button className="text-sm font-semibold text-[#6600FF]">Tout voir</button></div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">À ne pas manquer</h2>
+          <button className="text-sm font-semibold text-[#6600FF]">Tout voir</button>
+        </div>
         {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
       </section>
 
       {!loading && platformStats && (
         <section className="mt-8 px-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-[#6600FF]" />
-            <h3 className="text-[#171726] font-bold text-[17px] tracking-tight">Gbaigbance en chiffres</h3>
+          <div className="text-center mb-5">
+            <h3 className="text-[19px] font-bold text-[#1A1A2E] tracking-[-0.01em]">Gbaigbance en chiffres</h3>
+            <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
+              La billetterie qui grandit chaque jour
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Événements */}
-            <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#EDE4FF] to-[#F7F3FF]">
+            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Calendar className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#171726]/70">Événements</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Événements</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  {/* CORRECTION ANTI-NaN : `?? 0` */}
-                  <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalEvents ?? 0}</p>
-                  <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">au total</p>
+                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalEvents ?? 0}</p>
+                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">au total</p>
                 </div>
-                <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
-                  <circle cx="17" cy="17" r="14" fill="none" stroke="#6600FF" strokeOpacity="0.12" strokeWidth="4" />
-                  <circle cx="17" cy="17" r="14" fill="none" stroke="#6600FF" strokeWidth="4" strokeLinecap="round" strokeDasharray="88" strokeDashoffset="26" transform="rotate(-90 17 17)" />
-                </svg>
+                <MiniStatBars values={compareValues} activeIndex={0} />
               </div>
             </div>
 
             {/* Artistes */}
-            <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#FFF3D6] to-[#FFFBF0]">
+            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
-                <Star className="w-4 h-4 text-[#E8A93B]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#171726]/70">Artistes</span>
+                <Star className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Artistes</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalArtists ?? 0}</p>
-                  <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">vérifiés</p>
+                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalArtists ?? 0}</p>
+                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">vérifiés</p>
                 </div>
-                <div className="flex items-end gap-[3px] h-[26px]">
-                  {[10, 18, 14, 24, 16].map((h, i) => (
-                    <div key={i} className="w-[3px] rounded-full bg-[#E8A93B]" style={{ height: `${h}px`, opacity: i === 3 ? 1 : 0.35 }} />
-                  ))}
-                </div>
+                <MiniStatBars values={compareValues} activeIndex={1} />
               </div>
             </div>
 
             {/* Participants */}
-            <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#DCEEFF] to-[#F2F9FF]">
+            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
-                <Users className="w-4 h-4 text-[#2E90E8]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#171726]/70">Participants</span>
+                <Users className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Participants</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  {/* CORRECTION ANTI-NaN : Valeur par défaut avant formatNumber */}
-                  <p className="text-[26px] font-extrabold text-[#171726] leading-none">{formatNumber(platformStats.totalParticipants ?? 0)}</p>
-                  <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">inscrits</p>
+                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{formatNumber(platformStats.totalParticipants ?? 0)}</p>
+                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">inscrits</p>
                 </div>
-                <svg width="40" height="26" viewBox="0 0 40 26" className="shrink-0">
-                  <path d="M0 18 Q6 6 12 14 T24 10 T40 4" fill="none" stroke="#2E90E8" strokeWidth="2.5" strokeLinecap="round" />
-                </svg>
+                <MiniStatBars values={compareValues} activeIndex={2} />
               </div>
             </div>
 
             {/* Organisateurs */}
-            <div className="rounded-[1.6rem] p-4 bg-gradient-to-br from-[#DFF3E6] to-[#F2FBF5]">
+            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
-                <Building2 className="w-4 h-4 text-[#38A166]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#171726]/70">Organisateurs</span>
+                <Building2 className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Organisateurs</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-[26px] font-extrabold text-[#171726] leading-none">{platformStats.totalOrganizers ?? 0}</p>
-                  <p className="text-[10px] text-[#171726]/40 font-semibold mt-1">actifs</p>
+                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalOrganizers ?? 0}</p>
+                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">actifs</p>
                 </div>
-                <div className="flex items-end gap-[3px] h-[26px]">
-                  {[14, 10, 20, 16, 24].map((h, i) => (
-                    <div key={i} className="w-[3px] rounded-full bg-[#38A166]" style={{ height: `${h}px`, opacity: i === 4 ? 1 : 0.35 }} />
-                  ))}
-                </div>
+                <MiniStatBars values={compareValues} activeIndex={3} />
               </div>
             </div>
           </div>
 
           {/* Billets vendus — pleine largeur */}
-          <div className="rounded-[1.6rem] p-4 mt-3 bg-gradient-to-br from-[#FFE4D6] to-[#FFF4EE] flex items-center justify-between">
+          <div className="rounded-[1.6rem] p-4 mt-3 bg-white border border-black/[0.05] flex items-center justify-between">
             <div>
               <div className="flex items-center gap-1.5 mb-2">
-                <TicketIcon className="w-4 h-4 text-[#E8683B]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#171726]/70">Billets vendus</span>
+                <TicketIcon className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Billets vendus</span>
               </div>
-              <p className="text-[26px] font-extrabold text-[#171726] leading-none">{formatNumber(platformStats.totalTickets ?? 0)}</p>
+              <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{formatNumber(platformStats.totalTickets ?? 0)}</p>
             </div>
-            <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
-              <circle cx="17" cy="17" r="14" fill="none" stroke="#E8683B" strokeOpacity="0.12" strokeWidth="4" />
-              <circle cx="17" cy="17" r="14" fill="none" stroke="#E8683B" strokeWidth="4" strokeLinecap="round" strokeDasharray="88" strokeDashoffset="18" transform="rotate(-90 17 17)" />
-            </svg>
+            <MiniSparkline values={compareValues} activeIndex={4} />
           </div>
         </section>
       )}
