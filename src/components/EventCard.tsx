@@ -130,7 +130,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
           
           {/* LOCATION - Couleur distincte (Cyan) pour se détacher */}
           <div className="flex min-w-0 items-start gap-1.5">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-400" />
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6600FF]-400" />
             <span className="line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
               {event.location_name || event.city || 'Lieu à confirmer'}
             </span>
@@ -146,7 +146,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
             
             {/* PRICE - Couleur d'accentuation forte (Emerald) */}
             <div className="shrink-0">
-              <p className="text-[1.1rem] font-black leading-none tracking-tight text-emerald-400">
+              <p className="text-[1.1rem] font-black leading-none tracking-tight text-[#6600FF]-400">
                 {formattedPrice}
               </p>
             </div>
