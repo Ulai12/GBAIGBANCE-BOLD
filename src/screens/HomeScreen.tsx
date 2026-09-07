@@ -19,10 +19,11 @@ import {
   fetchEventsByCategory, fetchFeaturedArtists, fetchPlatformStats,
 } from '@/services/events';
 import type { Event, Artist, EventCategory } from '@/types';
+import type { LucideIcon } from 'lucide-react';
 
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
-};
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+    Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
+  };
 
 interface HomeScreenProps {
   onEventClick: (event: Event) => void;
