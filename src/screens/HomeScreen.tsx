@@ -337,7 +337,7 @@ export function HomeScreen({
             <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Calendar className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.1em] uppercase mt-1">Événements</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Événements</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
@@ -352,7 +352,7 @@ export function HomeScreen({
             <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Star className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Artistes</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Artistes</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
@@ -367,7 +367,7 @@ export function HomeScreen({
             <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Users className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Participants</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Participants</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
@@ -382,7 +382,7 @@ export function HomeScreen({
             <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
               <div className="flex items-center gap-1.5 mb-3">
                 <Building2 className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Organisateurs</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Organisateurs</span>
               </div>
               <div className="flex items-end justify-between">
                 <div>
@@ -399,7 +399,7 @@ export function HomeScreen({
             <div>
               <div className="flex items-center gap-1.5 mb-2">
                 <TicketIcon className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70">Billets vendus</span>
+                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Billets vendus</span>
               </div>
               <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{formatNumber(platformStats.totalTickets ?? 0)}</p>
             </div>
