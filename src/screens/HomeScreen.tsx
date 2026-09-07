@@ -188,7 +188,7 @@ export function HomeScreen({
 
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
-          <div className="flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#1A1A2E]"><Zap className="w-5 h-5 text-[#6600FF]" />{t('events', `categories.${selectedCategory}`)}</h2><button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button></div>
+          <div className="flex items-center justify-between mb-3"><h2 className="flex items-center gap-1.5 text-lg font-bold text-[#6600FF]/70"><Zap className="w-5 h-5 text-[#6600FF]" />{t('events', `categories.${selectedCategory}`)}</h2><button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button></div>
           {categoryLoading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : categoryEvents.length === 0 ? (<EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />) : (<div className="grid grid-cols-2 gap-4">{categoryEvents.map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
         </section>
       )}
