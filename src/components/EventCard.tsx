@@ -80,7 +80,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
           
           {/* DATE PILL - Moins gourmand (h-7), fond transparent pour capter l'image */}
           <div className="
-            inline-flex h-7 min-w-0 max-w-[calc(100%-2.5rem)] 
+            inline-flex h-8 min-w-0 max-w-[calc(100%-2.5rem)] 
             items-center gap-1.5 rounded-full 
             border border-white/20 bg-white/10 
             px-2 backdrop-blur-md
@@ -101,7 +101,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
               setLiked((v) => !v);
             }}
             className="
-              flex h-7 w-7 shrink-0 items-center justify-center 
+              flex h-8 w-8 shrink-0 items-center justify-center 
               rounded-full border border-white/20 bg-white/10 
               backdrop-blur-md transition-colors hover:bg-white/20
             "
@@ -130,7 +130,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
           
           {/* LOCATION - Couleur distincte (Cyan) pour se détacher */}
           <div className="flex min-w-0 items-start gap-1.5">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6600FF]/70" />
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6600FF]/50" />
             <span className="line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
               {event.location_name || event.city || 'Lieu à confirmer'}
             </span>
@@ -146,7 +146,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
             
             {/* PRICE - Couleur d'accentuation forte (Emerald) */}
             <div className="shrink-0">
-              <p className="text-[1.1rem] font-black leading-none tracking-tight text-[#6600FF]/70">
+              <p className="text-[1.1rem] font-black leading-none tracking-tight text-[#6600FF]/50">
                 {formattedPrice}
               </p>
             </div>
