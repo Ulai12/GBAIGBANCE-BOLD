@@ -116,7 +116,7 @@ export function HomeScreen({
         {/* Recherche */}
       <div className="flex items-center gap-2.5">
         <button onClick={onSearchClick} className="flex-1 h-[3.25rem]">
-          <div className="search-bar h-full flex items-center gap-3 px-5 text-left">
+          <div className="search-bar flex items-center gap-3 px-5 text-left">
             <Search className="w-5 h-5 text-[#6600FF]/70 shrink-0" />
             <span className="text-sm text-gray-500 truncate">Rechercher un événement, un artiste...</span>
           </div>
