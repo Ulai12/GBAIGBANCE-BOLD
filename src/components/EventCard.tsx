@@ -117,31 +117,33 @@ export function EventCard({ event, onClick }: EventCardProps) {
       <div className="pointer-events-none absolute -left-16 bottom-16 h-40 w-40 rounded-full bg-fuchsia-400/10 blur-3xl" />
 
       {/* CONTENT LAYER */}
-      <div className="absolute inset-0 flex flex-col p-3 sm:p-5">
+      <div className="absolute inset-0 flex flex-col p-2.5 max-[360px]:p-2 sm:p-5">
 
         {/* ───────────────── TOP ───────────────── */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2 max-[360px]:gap-1.5">
 
           {/* DATE */}
           <div
             className="
               inline-flex
               min-w-0
-              max-w-[calc(100%-3.5rem)]
+              max-w-[calc(100%-3rem)]
               items-center
-              gap-2
+              gap-1.5
               rounded-full
               border
               border-white/15
               bg-black/25
-              px-3
-              py-2
+              px-2.5
+              py-1.5
               backdrop-blur-xl
+              max-[360px]:px-2
+              max-[360px]:py-1.5
             "
           >
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-violet-300" />
+            <CalendarDays className="h-3 w-3 shrink-0 text-violet-300 max-[360px]:h-2.5 max-[360px]:w-2.5" />
 
-            <span className="truncate text-[11px] font-bold text-white">
+            <span className="truncate text-[10px] font-bold text-white max-[360px]:text-[9px]">
               {formatDate(event.starts_at)}
             </span>
           </div>
@@ -166,8 +168,8 @@ export function EventCard({ event, onClick }: EventCardProps) {
             }
             className="
               flex
-              h-10
-              w-10
+              h-9
+              w-9
               shrink-0
               items-center
               justify-center
@@ -178,14 +180,18 @@ export function EventCard({ event, onClick }: EventCardProps) {
               backdrop-blur-xl
               transition-colors
               hover:bg-white/15
+              max-[360px]:h-8
+              max-[360px]:w-8
             "
           >
             <Heart
               className={`
-                h-[17px]
-                w-[17px]
+                h-4
+                w-4
                 transition-all
                 duration-300
+                max-[360px]:h-3.5
+                max-[360px]:w-3.5
                 ${
                   liked
                     ? 'scale-110 fill-red-500 text-red-500'
@@ -197,40 +203,42 @@ export function EventCard({ event, onClick }: EventCardProps) {
         </div>
 
         {/* RATING */}
-        <div className="mt-3 self-start">
+        <div className="mt-2.5 self-start max-[360px]:mt-2">
           <div
             className="
               inline-flex
               items-center
-              gap-1.5
+              gap-1
               rounded-full
               border
               border-white/15
               bg-black/20
-              px-2.5
-              py-1.5
+              px-2
+              py-1
               backdrop-blur-xl
+              max-[360px]:px-1.5
+              max-[360px]:py-0.5
             "
           >
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400 max-[360px]:h-2 max-[360px]:w-2" />
 
-            <span className="text-[10px] font-black">
+            <span className="text-[9px] font-black max-[360px]:text-[8px]">
               {rating.toFixed(1)}
             </span>
           </div>
         </div>
 
         {/* SPACER */}
-        <div className="flex-1 min-h-6" />
+        <div className="flex-1 min-h-4 max-[360px]:min-h-2" />
 
         {/* ───────────────── BOTTOM ───────────────── */}
         <div className="min-w-0">
 
           {/* LOCATION */}
-          <div className="mb-2 flex min-w-0 items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-violet-300" />
+          <div className="mb-1.5 flex min-w-0 items-center gap-1 max-[360px]:mb-1 max-[360px]:gap-0.5">
+            <MapPin className="h-3 w-3 shrink-0 text-violet-300 max-[360px]:h-2.5 max-[360px]:w-2.5" />
 
-            <span className="truncate text-xs font-medium text-white/70">
+            <span className="truncate text-[11px] font-medium text-white/70 max-[360px]:text-[10px]">
               {event.location_name || event.city || 'Lieu à confirmer'}
             </span>
           </div>
@@ -240,11 +248,12 @@ export function EventCard({ event, onClick }: EventCardProps) {
             className="
               max-w-full
               line-clamp-2
-              text-[1.4rem]
+              text-[1.3rem]
               font-black
-              leading-[0.95]
-              tracking-[-0.045em]
+              leading-[0.9]
+              tracking-[-0.04em]
               text-white
+              max-[360px]:text-[1.15rem]
               sm:text-[1.8rem]
             "
           >
@@ -252,18 +261,19 @@ export function EventCard({ event, onClick }: EventCardProps) {
           </h3>
 
           {/* FOOTER */}
-          <div className="mt-3 flex items-end justify-between gap-2 sm:mt-4 sm:gap-3">
+          <div className="mt-2.5 flex items-end justify-between gap-2 max-[360px]:mt-2 max-[360px]:gap-1.5">
 
             {/* PRICE */}
             <div className="min-w-0 flex-1">
               <p
                 className="
                   truncate
-                  text-[1rem]
+                  text-[0.95rem]
                   font-black
                   leading-none
                   tracking-[-0.02em]
                   text-violet-300
+                  max-[360px]:text-[0.85rem]
                   sm:text-[1.05rem]
                 "
               >
@@ -277,21 +287,23 @@ export function EventCard({ event, onClick }: EventCardProps) {
                 flex
                 shrink-0
                 items-center
-                gap-1.5
+                gap-1
                 rounded-full
                 border
                 border-white/15
                 bg-white/10
-                px-2.5
-                py-1.5
+                px-2
+                py-1
                 backdrop-blur-xl
+                max-[360px]:px-1.5
+                max-[360px]:py-0.5
                 sm:px-3
                 sm:py-2
               "
             >
-              <Users className="h-3.5 w-3.5 text-white/65" />
+              <Users className="h-3 w-3 text-white/65 max-[360px]:h-2.5 max-[360px]:w-2.5" />
 
-              <span className="text-[11px] font-bold text-white/85">
+              <span className="text-[10px] font-bold text-white/85 max-[360px]:text-[9px]">
                 {formatAttendees(event.attendees_count)}
               </span>
             </div>
