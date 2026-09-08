@@ -1,169 +1,148 @@
-import { useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import {
-  CalendarDays,
-  Heart,
-  MapPin,
-  Star,
-  Users,
-} from 'lucide-react';
+import { motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket, Map } from 'lucide-react';
+import { useRef } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 
-interface EventCardProps {
+interface TrendingDeckCardProps {
   event: Event;
-  onClick?: () => void;
+  index: number;
+  total: number;
+  active: boolean;
+  onOpen: () => void;
+  onBook: () => void;
+  onAdvance: () => void;
 }
 
-function formatDate(dateString: string) {
+function formatDate(date: string) {
   return new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(dateString));
+  }).format(new Date(date));
 }
 
-function formatAttendees(count: number) {
-  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
-  return count.toString();
-}
-
-export function EventCard({ event, onClick }: EventCardProps) {
-  const [liked, setLiked] = useState(false);
+export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps) {
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
+  const imageScale = useTransform(x, [-260, 0, 260], [1.08, 1, 1.08]);
+  const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
-
-  const rating = 4 + ((event.id.charCodeAt(0) || 0) % 9) / 10;
-  const formattedPrice =
-    event.price_min === 0
-      ? 'Gratuit'
-      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
+  const dragging = useRef(false);
+  const offset = index;
+  const isBehind = !active;
 
   return (
     <motion.article
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
-      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-      onClick={onClick}
-      className="
-        group relative isolate w-full
-        aspect-[0.78] sm:aspect-[0.82]
-        overflow-hidden rounded-[1.5rem]
-        bg-[#17131d] text-white cursor-pointer
-        shadow-[0_12px_40px_rgba(23,19,29,0.2)]
-      "
+      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-[#17131d] text-white shadow-2xl"
+      style={{
+        x: active ? x : 0,
+        rotate: active ? rotate : offset * -2.5,
+        scale: active ? 1 : 1 - Math.min(Math.abs(offset), 2) * 0.045,
+        y: active ? 0 : Math.abs(offset) * 12,
+        zIndex: total - index,
+        transformOrigin: '50% 90%',
+        pointerEvents: active ? 'auto' : 'none',
+        touchAction: active ? 'pan-y' : 'auto',
+      }}
+      initial={isBehind ? { opacity: 0.65 } : { opacity: 0, scale: 0.94, y: 24 }}
+      animate={{ opacity: active ? 1 : 0.72, scale: active ? 1 : 1 - Math.min(Math.abs(offset), 2) * 0.045, y: active ? 0 : Math.abs(offset) * 12 }}
+      exit={{ opacity: 0, x: x.get() > 0 ? 420 : -420, rotate: x.get() > 0 ? 14 : -14, transition: { duration: 0.3, ease: 'easeIn' } }}
+      transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 }}
+      drag={active ? 'x' : false}
+      dragConstraints={{ left: -24, right: 24 }}
+      dragElastic={0.9}
+      dragSnapToOrigin
+      onDragStart={() => { dragging.current = true; }}
+      onDragEnd={(_, info) => {
+        const shouldAdvance = Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 520;
+        if (shouldAdvance) onAdvance();
+        window.setTimeout(() => { dragging.current = false; }, 0);
+      }}
+      onClick={() => {
+        if (!dragging.current) onOpen();
+      }}
       aria-label={`Découvrir ${event.title}`}
     >
-      {/* IMAGE */}
-      <motion.div
-        className="absolute inset-0"
-        whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      >
+      {/* Fond Image */}
+      <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
         <SmartImage
           src={event.cover_url || event.images?.[0]}
-          alt={event.title}
+          alt=""
           className="h-full w-full object-cover"
         />
       </motion.div>
 
-      {/* GRADIENT ASSOMBRISSANT - Vital pour lire le lieu, le titre et le prix */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/15 to-black/0" />
+      {/* Masque Dégradé */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.25)_40%,rgba(10,7,15,.96)_85%)]" />
 
-      {/* CONTENT LAYER - Paddings réduits */}
-      <div className="absolute inset-0 flex flex-col p-3">
-        
-        {/* ───────────────── TOP (Date & Bouton adaptatifs) ───────────────── */}
-        <div className="flex w-full items-start justify-between gap-2">
-          
-          {/* DATE PILL - Moins gourmand (h-7), fond transparent pour capter l'image */}
-          <div className="
-            inline-flex h-8 min-w-0 max-w-[calc(100%-2.5rem)] 
-            items-center gap-1.5 rounded-full 
-            border border-white/20 bg-black/10 
-            px-2 backdrop-blur-md
-          ">
-            <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
-            <span className="truncate text-[11px] font-semibold text-white">
-              {formatDate(event.starts_at)}
-            </span>
-          </div>
+      {/* En-tête (Top Bar) */}
+      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 sm:p-5">
+        <span className="shrink-0 rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md sm:text-[12px]">
+          Tendance {String(index + 1).padStart(2, '0')}
+        </span>
+        <button 
+          type="button" 
+          aria-label="Ajouter aux favoris" 
+          onClick={(eventClick) => eventClick.stopPropagation()} 
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/20 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90 sm:h-10 sm:w-10"
+        >
+          <Heart className="h-5 w-5 sm:h-6 sm:w-6" />
+        </button>
+      </div>
 
-          {/* FAVORITE - Taille minimale (h-8 w-8) */}
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.88 }}
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setLiked((v) => !v);
-            }}
-            className="
-              flex h-8 w-8 shrink-0 items-center justify-center 
-              rounded-full border border-white/20 bg-black/10 
-              backdrop-blur-md transition-colors hover:bg-white/20
-            "
-          >
-            <Heart
-              className={`h-5 w-5 transition-all duration-300 ${
-                liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-              }`}
-            />
-          </motion.button>
-        </div>
+      {/* Badge swipe optionnel */}
+      <motion.div 
+        style={{ opacity: likeOpacity }} 
+        className="absolute left-4 top-20 z-10 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl sm:left-5 sm:top-24"
+      >
+        À découvrir
+      </motion.div>
 
-        {/* RATING - Extrêmement compact (h-6) */}
-        <div className="mt-2 inline-flex h-6 items-center gap-1 rounded-full border border-white/20 bg-black/10 px-2 backdrop-blur-md self-start">
-          <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
-          <span className="text-[10px] font-bold text-white">
-            {rating.toFixed(1)}
+      {/* Bloc d'informations inférieur */}
+      <div className="absolute inset-x-4 bottom-4 z-10 max-h-[70%] overflow-hidden sm:inset-x-5 sm:bottom-5">
+        {/* Meta (Date & Ville) */}
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/80 sm:mb-3 sm:gap-2">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-black/20 px-2.5 py-1 backdrop-blur-xl">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white" /> 
+            <span className="truncate">{formatDate(event.starts_at)}</span>
+          </span>
+          <span className="inline-flex min-w-0 max-w-[150px] items-center gap-1 rounded-full border border-white/10 bg-black/10 px-2 py-1 backdrop-blur-md">
+            <Map className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]" />
+            <span className="truncate">{event.city}</span>
           </span>
         </div>
 
-        {/* SPACER */}
-        <div className="flex-1 min-h-2" />
+        {/* Titre avec clamp */}
+        <h3 className="line-clamp-2 max-w-full break-words text-2xl font-black leading-[1.05] tracking-[-0.03em] sm:text-[2rem] sm:leading-[0.96]">
+          {event.title}
+        </h3>
 
-        {/* ───────────────── BOTTOM ───────────────── */}
-        <div className="flex w-full flex-col min-w-0 gap-1.5">
-          
-          {/* LOCATION - Couleur distincte (Cyan) pour se détacher */}
-          <div className="flex min-w-0 items-center gap-1">
-            <MapPin className="mb-0.5 h-4 w-4 shrink-0 text-[#a78dfa]"/>
-            <span className="mb-0.3 line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
-              {event.location_name || event.city || 'Lieu à confirmer'}
-            </span>
+        {/* Pied de carte (Lieu, Prix & Bouton) */}
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-2.5 sm:mt-4">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-xs text-white/60">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{event.location_name || 'Lieu à confirmer'}</span>
+            </p>
+            <p className="mt-0.5 truncate text-base font-black text-[#a78dfa] sm:mt-1 sm:text-[1.35em]">
+              {event.price_min === 0 ? 'Entrée libre' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}
+            </p>
           </div>
 
-          {/* TITLE - Sécurisé à 2 lignes maximum */}
-          <h3 className="line-clamp-2 text-lg sm:text-xl font-black leading-tight tracking-tight text-white">
-            {event.title}
-          </h3>
-
-          {/* FOOTER - Flex-wrap pour sécuriser les grands prix/chiffres */}
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-            
-            {/* PRICE - Couleur d'accentuation forte (Emerald) */}
-            <div className="shrink-0">
-              <p className="text-[1.1rem] font-black leading-none tracking-tight text-[#a78dfa]">
-                {formattedPrice}
-              </p>
-            </div>
-
-            {/* ATTENDEES */}
-            <div className="
-              flex h-6 shrink-0 items-center gap-1.5 
-              rounded-full border border-white/10 bg-white/5 
-              px-2 backdrop-blur-sm
-            ">
-              <Users className="h-3 w-3 text-white/70" />
-              <span className="text-[10px] font-semibold text-white/90">
-                {formatAttendees(event.attendees_count)}
-              </span>
-            </div>
-          </div>
+          <button 
+            type="button" 
+            onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} 
+            className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-xs font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95 sm:h-12 sm:px-4 sm:text-sm"
+          >
+            <Ticket className="h-4 w-4 shrink-0" /> Réserver
+          </button>
         </div>
+      </div>
+
+      {/* Bouton décoratif coin inférieur droit */}
+      <div className="pointer-events-none absolute bottom-5 right-5 z-0 hidden h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl md:flex">
+        <ArrowUpRight className="h-4 w-4" />
       </div>
     </motion.article>
   );
