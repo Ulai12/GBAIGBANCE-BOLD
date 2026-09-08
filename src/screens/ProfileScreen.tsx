@@ -53,7 +53,7 @@ export function ProfileScreen({ onEventClick, onLogin, onOrganizerDashboard, onO
   const isCreator = user.role === 'organizer' || user.role === 'artist';
 
   return (
-    <div className="min-h-screen bg-[#EDE8FF] pb-32">
+    <div className="min-h-screen pb-32">
       <div className="max-w-md mx-auto">
         <ProfileHeader profile={user!} eventsCount={myEvents.length} />
         <div className="px-5 mt-3"><button onClick={() => setEditOpen(true)} className="w-full card p-4 flex items-center justify-between hover:shadow-card-hover transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#6600FF]/10 flex items-center justify-center"><Pencil className="w-5 h-5 text-[#6600FF]" /></div><div className="text-left"><p className="font-bold text-[#171726]">Modifier le profil</p><p className="text-xs text-gray-500">Nom, photo, bio, localisation</p></div></div><ChevronRight className="w-5 h-5 text-gray-400" /></button></div>

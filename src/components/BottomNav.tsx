@@ -460,10 +460,10 @@ export function BottomNav({
               '1px solid rgba(255,255,255,0.80)',
 
             backdropFilter:
-              'blur(30px) saturate(1.35)',
+              'blur(5px) saturate(1.35)',
 
             WebkitBackdropFilter:
-              'blur(30px) saturate(1.35)',
+              'blur(5px) saturate(1.35)',
 
             boxShadow: [
               '0 22px 60px rgba(38,20,70,0.16)',

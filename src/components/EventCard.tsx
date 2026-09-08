@@ -70,7 +70,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
       </motion.div>
 
       {/* GRADIENT ASSOMBRISSANT - Vital pour lire le lieu, le titre et le prix */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/15 to-black/0" />
 
       {/* CONTENT LAYER - Paddings réduits */}
       <div className="absolute inset-0 flex flex-col p-3">
@@ -82,11 +82,11 @@ export function EventCard({ event, onClick }: EventCardProps) {
           <div className="
             inline-flex h-8 min-w-0 max-w-[calc(100%-2.5rem)] 
             items-center gap-1.5 rounded-full 
-            border border-white/20 bg-white/10 
+            border border-white/20 bg-black/10 
             px-2 backdrop-blur-md
           ">
             <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
-            <span className="truncate text-[9px] font-semibold text-white">
+            <span className="truncate text-[11px] font-semibold text-white">
               {formatDate(event.starts_at)}
             </span>
           </div>
@@ -102,12 +102,12 @@ export function EventCard({ event, onClick }: EventCardProps) {
             }}
             className="
               flex h-8 w-8 shrink-0 items-center justify-center 
-              rounded-full border border-white/20 bg-white/10 
+              rounded-full border border-white/20 bg-black/10 
               backdrop-blur-md transition-colors hover:bg-white/20
             "
           >
             <Heart
-              className={`h-4 w-4 transition-all duration-300 ${
+              className={`h-5 w-5 transition-all duration-300 ${
                 liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
               }`}
             />
@@ -115,7 +115,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
         </div>
 
         {/* RATING - Extrêmement compact (h-6) */}
-        <div className="mt-2 inline-flex h-6 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 backdrop-blur-md self-start">
+        <div className="mt-2 inline-flex h-6 items-center gap-1 rounded-full border border-white/20 bg-black/10 px-2 backdrop-blur-md self-start">
           <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
           <span className="text-[10px] font-bold text-white">
             {rating.toFixed(1)}
@@ -129,9 +129,9 @@ export function EventCard({ event, onClick }: EventCardProps) {
         <div className="flex w-full flex-col min-w-0 gap-1.5">
           
           {/* LOCATION - Couleur distincte (Cyan) pour se détacher */}
-          <div className="flex min-w-0 items-start gap-1.5">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a78dfa]"/>
-            <span className="line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
+          <div className="flex min-w-0 items-center gap-1">
+            <MapPin className="mb-0.5 h-4 w-4 shrink-0 text-[#a78dfa]"/>
+            <span className="mb-0.3 line-clamp-2 text-[11px] font-medium leading-tight text-white/90">
               {event.location_name || event.city || 'Lieu à confirmer'}
             </span>
           </div>
