@@ -1,182 +1,168 @@
-import { motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
-import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket, Map } from 'lucide-react';
-import React, { useRef } from 'react';
+import { useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import {
+  CalendarDays,
+  Heart,
+  MapPin,
+  Star,
+  Users,
+} from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 
-interface TrendingDeckCardProps {
+interface EventCardProps {
   event: Event;
-  index: number;
-  total: number;
-  active: boolean;
-  onOpen: () => void;
-  onBook: () => void;
-  onAdvance: () => void;
+  onClick?: () => void;
 }
 
-function formatDate(date: string) {
+function formatDate(dateString: string) {
   return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
     day: 'numeric',
     month: 'short',
-  }).format(new Date(date));
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateString));
 }
 
-export function TrendingDeckCard({ 
-  event, 
-  index, 
-  total, 
-  active, 
-  onOpen, 
-  onBook, 
-  onAdvance 
-}: TrendingDeckCardProps) {
-  
-  // -- ANIMATION VALUES --
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
-  const imageScale = useTransform(x, [-260, 0, 260], [1.08, 1, 1.08]);
-  const likeOpacity = useTransform(x, [20, 130], [0, 1]);
-  
-  const prefersReducedMotion = useReducedMotion();
-  const dragging = useRef(false);
-  
-  const offset = index;
-  const isBehind = !active;
+function formatAttendees(count: number) {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toString();
+}
 
-  // Optimisation : Mutualisation des calculs d'échelle et de position Y
-  const cardScale = active ? 1 : 1 - Math.min(Math.abs(offset), 2) * 0.045;
-  const cardY = active ? 0 : Math.abs(offset) * 12;
+export function EventCard({ event, onClick }: EventCardProps) {
+  const [liked, setLiked] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+
+  const rating = 4 + ((event.id.charCodeAt(0) || 0) % 9) / 10;
+  const formattedPrice =
+    event.price_min === 0
+      ? 'Gratuit'
+      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
 
   return (
     <motion.article
-      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-[#17131d] text-white shadow-2xl"
-      style={{
-        x: active ? x : 0,
-        rotate: active ? rotate : offset * -2.5,
-        scale: cardScale,
-        y: cardY,
-        zIndex: total - index,
-        transformOrigin: '50% 90%',
-        pointerEvents: active ? 'auto' : 'none',
-        touchAction: active ? 'pan-y' : 'auto',
-      }}
-      initial={isBehind ? { opacity: 0.65 } : { opacity: 0, scale: 0.94, y: 24 }}
-      animate={{ 
-        opacity: active ? 1 : 0.72, 
-        scale: cardScale, 
-        y: cardY 
-      }}
-      exit={{ 
-        opacity: 0, 
-        x: x.get() > 0 ? 420 : -420, 
-        rotate: x.get() > 0 ? 14 : -14, 
-        transition: { duration: 0.3, ease: 'easeIn' } 
-      }}
-      transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 }}
-      drag={active ? 'x' : false}
-      dragConstraints={{ left: -24, right: 24 }}
-      dragElastic={0.9}
-      dragSnapToOrigin
-      onDragStart={() => { dragging.current = true; }}
-      onDragEnd={(_, info) => {
-        const shouldAdvance = Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 520;
-        if (shouldAdvance) onAdvance();
-        window.setTimeout(() => { dragging.current = false; }, 0);
-      }}
-      onClick={() => {
-        if (!dragging.current) onOpen();
-      }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
+      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onClick={onClick}
+      className="
+        group relative isolate w-full
+        aspect-[0.78] sm:aspect-[0.82] min-h-[290px]
+        overflow-hidden rounded-[1.5rem]
+        bg-[#17131d] text-white cursor-pointer
+        shadow-[0_12px_40px_rgba(23,19,29,0.2)]
+      "
       aria-label={`Découvrir ${event.title}`}
     >
-      
-      {/* 1. IMAGE DE FOND */}
-      <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
+      {/* IMAGE */}
+      <motion.div
+        className="absolute inset-0"
+        whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      >
         <SmartImage
           src={event.cover_url || event.images?.[0]}
-          alt={event.title} // Correction accessibilité
+          alt={event.title}
           className="h-full w-full object-cover"
         />
       </motion.div>
 
-      {/* 2. MASQUE DE CONTRASTE */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.18)_42%,rgba(10,7,15,.94)_100%)]" />
+      {/* GRADIENT ASSOMBRISSANT */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-black/0" />
 
-      {/* 3. EN-TÊTE (Badge & Bouton Favoris) */}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-        <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md">
-          Tendance {String(index + 1).padStart(2, '0')}
-        </span>
-        <button 
-          type="button" 
-          aria-label="Ajouter aux favoris" 
-          onClick={(e: React.MouseEvent) => e.stopPropagation()} 
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/10 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90"
-        >
-          <Heart className="h-6 w-6" />
-        </button>
-      </div>
+      {/* CONTENT LAYER */}
+      <div className="absolute inset-0 flex flex-col justify-between p-3">
+        
+        {/* TOP LAYER */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex w-full items-start justify-between gap-2">
+            {/* DATE PILL */}
+            <div className="
+              inline-flex h-7 min-w-0 max-w-[calc(100%-2.25rem)] 
+              items-center gap-1.5 rounded-full 
+              border border-white/20 bg-black/20 
+              px-2 backdrop-blur-md
+            ">
+              <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
+              <span className="truncate text-[10px] sm:text-[11px] font-semibold text-white">
+                {formatDate(event.starts_at)}
+              </span>
+            </div>
 
-      {/* 4. INDICATEUR DE SWIPE */}
-      <motion.div 
-        style={{ opacity: likeOpacity }} 
-        className="absolute left-5 top-24 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl"
-      >
-        À découvrir
-      </motion.div>
-
-      {/* 5. CONTENU PRINCIPAL (Bas de carte) */}
-      <div className="absolute inset-x-5 bottom-5">
-        
-        {/* Métadonnées */}
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-white/75">
-          <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/10 px-2 py-1 backdrop-blur-xl">
-            <CalendarDays className="h-3.5 w-3.5" /> 
-            {formatDate(event.starts_at)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Map className="h-3.5 w-3.5 text-[#a78dfa]" />
-            {event.city}
-          </span>
-        </div>
-        
-        {/* Titre */}
-        <h3 className="max-w-[18rem] text-[2rem] font-black leading-[0.96] tracking-[-0.04em]">
-          {event.title}
-        </h3>
-        
-        {/* Prix et Action */}
-        <div className="mt-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="flex items-center gap-1.5 text-xs text-white/60">
-              <MapPin className="h-3.5 w-3.5" />
-              {event.location_name || 'Lieu à confirmer'}
-            </p>
-            <p className="mt-1 text-[1.35em] font-black text-[#a78dfa]">
-              {event.price_min === 0 
-                ? 'Entrée libre' 
-                : `Dès ${event.price_min?.toLocaleString('fr-FR') || 0} FCFA`
-              }
-            </p>
+            {/* FAVORITE */}
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.88 }}
+              whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLiked((v) => !v);
+              }}
+              className="
+                flex h-7 w-7 shrink-0 items-center justify-center 
+                rounded-full border border-white/20 bg-black/20 
+                backdrop-blur-md transition-colors hover:bg-white/20
+              "
+            >
+              <Heart
+                className={`h-4 w-4 transition-all duration-300 ${
+                  liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
+                }`}
+              />
+            </motion.button>
           </div>
-          <button 
-            type="button" 
-            onClick={(e: React.MouseEvent) => { 
-              e.stopPropagation(); 
-              onBook(); 
-            }} 
-            className="flex h-12 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95"
-          >
-            <Ticket className="h-4 w-4" /> Réserver
-          </button>
+
+          {/* RATING */}
+          <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/20 px-2 backdrop-blur-md self-start">
+            <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+            <span className="text-[10px] font-bold text-white">
+              {rating.toFixed(1)}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* 6. ICÔNE FLÈCHE DÉTAIL (Desktop/Tablette) */}
-      <div className="pointer-events-none absolute bottom-5 right-5 hidden h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl sm:flex">
-        <ArrowUpRight className="h-4 w-4" />
-      </div>
+        {/* BOTTOM LAYER */}
+        <div className="flex w-full flex-col min-w-0 gap-1 mt-auto">
+          
+          {/* LOCATION - Limité à 1 ligne tronquée */}
+          <div className="flex min-w-0 items-center gap-1">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]"/>
+            <span className="truncate text-[11px] font-medium leading-tight text-white/90">
+              {event.location_name || event.city || 'Lieu à confirmer'}
+            </span>
+          </div>
 
+          {/* TITLE - Sécurisé à 2 lignes avec hauteur d'interligne adaptative */}
+          <h3 className="line-clamp-2 text-base sm:text-lg font-black leading-snug tracking-tight text-white">
+            {event.title}
+          </h3>
+
+          {/* FOOTER - Ligne fixe sans saut de ligne */}
+          <div className="mt-1 flex items-center justify-between gap-2 min-w-0">
+            {/* PRICE */}
+            <div className="min-w-0 shrink">
+              <p className="truncate text-[1rem] font-black leading-none tracking-tight text-[#a78dfa]">
+                {formattedPrice}
+              </p>
+            </div>
+
+            {/* ATTENDEES */}
+            <div className="
+              flex h-6 shrink-0 items-center gap-1 
+              rounded-full border border-white/10 bg-white/10 
+              px-2 backdrop-blur-sm
+            ">
+              <Users className="h-3 w-3 text-white/70" />
+              <span className="text-[10px] font-semibold text-white/90">
+                {formatAttendees(event.attendees_count)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </motion.article>
   );
 }
