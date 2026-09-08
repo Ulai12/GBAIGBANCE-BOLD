@@ -147,3 +147,4 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
     </motion.article>
   );
 }
+
