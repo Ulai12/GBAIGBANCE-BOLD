@@ -226,6 +226,7 @@ export function BottomNav({
         */}
         <Icon
           className={[
+            'font-weight:900',
             'relative',
             'z-10',
             'w-[22px]',
@@ -235,9 +236,9 @@ export function BottomNav({
             'ease-[cubic-bezier(.22,1,.36,1)]',
             isActive
               ? 'text-white scale-[1.04]'
-              : 'text-zinc-500 scale-100 group-hover:text-zinc-800',
+              : 'text-black/70 scale-100 group-hover:text-zinc-800',
           ].join(' ')}
-          strokeWidth={isActive ? 2.45 : 2}
+          strokeWidth={isActive ? 4 : 2.70}
           fill={
             isActive && item.id === 'home'
               ? 'currentColor'
@@ -431,10 +432,10 @@ export function BottomNav({
             'pointer-events-auto',
             'w-[calc(100%-24px)]',
             'max-w-[500px]',
-            'h-[78px]',
+            'h-[80px]',
             'mb-[10px]',
-            'px-[8px]',
-            'py-[8px]',
+            'px-[5px]',
+            'py-[5px]',
             'rounded-[39px]',
             'flex',
             'items-center',

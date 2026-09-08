@@ -58,7 +58,7 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
           })}
         </AnimatePresence>
       </div>
-      <div className="mt-4 flex items-center justify-center gap-1.5" aria-label={`Événement ${activeIndex + 1} sur ${visibleEvents.length}`}>
+      <div className="mt-8 flex items-center justify-center gap-1.5" aria-label={`Événement ${activeIndex + 1} sur ${visibleEvents.length}`}>
         {visibleEvents.map((event, index) => (
           <button key={event.id} type="button" onClick={() => setActiveIndex(index)} aria-label={`Afficher ${event.title}`} className={`h-1.5 rounded-full transition-all duration-300 ${index === activeIndex ? 'w-8 bg-[#17131d]' : 'w-1.5 bg-black/20'}`} />
         ))}

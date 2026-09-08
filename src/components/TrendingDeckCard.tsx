@@ -97,7 +97,7 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
             <p className="flex items-center gap-1.5 text-xs text-white/60"><MapPin className="h-3.5 w-3.5" />{event.location_name || 'Lieu à confirmer'}</p>
             <p className="mt-1 text-[1.35em] font-black text-[#a78dfa]">{event.price_min === 0 ? 'Entrée libre' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}</p>
           </div>
-          <button type="button" onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} className="flex h-12 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95">
+          <button type="button" onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} className="flex h-12 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95 Uppercase">
             <Ticket className="h-4 w-4" /> Réserver
           </button>
         </div>
