@@ -135,7 +135,7 @@ export function HomeScreen({
     : [0, 0, 0, 0, 0];
 
   return (
-    <div className="min-h-screen pb-32 bg-lavender">
+    <div className="min-h-screen pb-32">
       {/* En-tête */}
       <div className="px-5 pt-6 pb-2">
         {/* Logo */}
@@ -310,7 +310,7 @@ export function HomeScreen({
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" >
+            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" />
           </div>
         </section>
       )}
