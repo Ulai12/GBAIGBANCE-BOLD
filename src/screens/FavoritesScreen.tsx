@@ -33,7 +33,7 @@ export function FavoritesScreen({ onEventClick, onLogin }: FavoritesScreenProps)
   }
   const filtered = query ? favorites.filter((e) => e.title.toLowerCase().includes(query.toLowerCase())) : favorites;
   return (
-    <div className="min-h-screen bg-[#EDE8FF] pb-32">
+    <div className="min-h-screen pb-32">
       <div className="px-5 pt-8 pb-5"><p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] font-bold">Votre sélection</p><h1 className="mt-1 text-3xl font-extrabold text-[#171726] tracking-tight">Favoris</h1><p className="text-sm text-gray-500 mt-1">{favorites.length} événement{favorites.length > 1 ? 's' : ''} aimé{favorites.length > 1 ? 's' : ''}</p></div>
       {favorites.length > 0 && (<div className="px-5 mb-5"><SearchBar value={query} onChange={setQuery} placeholder="Rechercher dans vos favoris..." /></div>)}
       <div className="px-5 mt-2">

@@ -41,7 +41,7 @@ export function ProfileScreen({ onEventClick, onLogin, onOrganizerDashboard, onO
 
   if (!session || !user) {
     return (
-      <div className="min-h-screen bg-[#EDE8FF] flex flex-col items-center justify-center px-6 pb-32">
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 pb-32">
         <div className="w-24 h-24 rounded-full bg-[#6600FF]/10 flex items-center justify-center mb-6"><Calendar className="w-12 h-12 text-[#6600FF]" /></div>
         <h1 className="text-2xl font-extrabold text-[#1A1A2E] mb-2">Bienvenue sur Gbaigbance</h1>
         <p className="text-gray-500 text-center mb-8 max-w-xs">Connectez-vous pour réserver vos billets, suivre vos artistes et créer vos événements</p>

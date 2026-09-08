@@ -73,7 +73,7 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
       </motion.div>
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.18)_42%,rgba(10,7,15,.94)_100%)]" />
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-        <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-xl">
+        <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md">
           Tendance {String(index + 1).padStart(2, '0')}
         </span>
         <button type="button" aria-label="Ajouter aux favoris" onClick={(eventClick) => eventClick.stopPropagation()} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/15 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90">
@@ -86,13 +86,13 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
       <div className="absolute inset-x-5 bottom-5">
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-white/75">
           <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-xl">{formatDate(event.starts_at)}</span>
-          <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-lime-300" />{event.city}</span>
+          <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#a78dfa]" />{event.city}</span>
         </div>
         <h3 className="max-w-[18rem] text-[2rem] font-black leading-[0.96] tracking-[-0.04em]">{event.title}</h3>
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
             <p className="flex items-center gap-1.5 text-xs text-white/60"><CalendarDays className="h-3.5 w-3.5" />{event.location_name || 'Lieu à confirmer'}</p>
-            <p className="mt-1 text-base font-bold text-lime-300">{event.price_min === 0 ? 'Entrée libre' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}</p>
+            <p className="mt-1 text-[1.35em] font-black text-[#a78dfa]">{event.price_min === 0 ? 'Entrée libre' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}</p>
           </div>
           <button type="button" onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} className="flex h-12 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95">
             <Ticket className="h-4 w-4" /> Réserver

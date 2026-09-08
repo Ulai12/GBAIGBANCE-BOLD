@@ -139,23 +139,23 @@ export function HomeScreen({
       {/* En-tête */}
       <div className="px-5 pt-6 pb-2">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 flex items-center justify-center text-base">
             🎟️
           </div>
           <div className="leading-none">
             <p className="text-[15px] font-extrabold text-[#171726] tracking-tight">GBAIGBANCE</p>
-            <p className="text-[9px] font-bold text-gray-400 tracking-[0.16em] uppercase mt-0.5">Billetterie & événements</p>
+            <p className="text-[9px] font-bold text-gray-400 tracking-[0.16em] uppercase mt-1">Billetterie & événements</p>
           </div>
         </div>
 
         {/* Greeting */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-[#171726] tracking-tight">
+            <h1 className="text-xl font-extrabold text-[#171726] tracking-tight">
               {new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'} {user?.name?.split(' ')[0] || 'Invité'} 👋
             </h1>
-            <p className="text-sm text-gray-400 mt-0.5">Trouve ta prochaine sortie</p>
+            <p className="text-sm text-gray-400 ">Trouve ta prochaine sortie</p>
           </div>
           <div className="flex items-center gap-2.5">
             <NotificationBell onOpen={onOpenNotifications} />
@@ -173,7 +173,7 @@ export function HomeScreen({
               <span className="text-[11px] text-gray-500">Rechercher un événement, un artiste...</span>
             </div>
           </button>
-          <button onClick={() => setLocationOpen(true)} className="search-bar w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
+          <button onClick={() => setLocationOpen(true)} className="w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
             {COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}
           </button>
         </div>
@@ -310,7 +310,7 @@ export function HomeScreen({
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" >
           </div>
         </section>
       )}
@@ -318,7 +318,13 @@ export function HomeScreen({
       <section className="mt-8 px-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">À ne pas manquer</h2>
-          <button className="text-sm font-semibold text-[#6600FF]">Tout voir</button>
+          <button
+           type='button'
+           className="flex items-center gap-0.5 text-[14px] font-semibold text-[#6600FF] active:opacity-50 transition-opacity"
+          >
+            Tout voir
+            <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+          </button>
         </div>
         {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
       </section>
@@ -326,7 +332,7 @@ export function HomeScreen({
       {!loading && platformStats && (
         <section className="mt-8 px-5">
           <div className="text-center mb-5">
-            <h3 className="text-2xl font-bold text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
+            <h3 className="text-2xl font-black text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
             <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
               La billetterie qui grandit chaque jour
             </p>

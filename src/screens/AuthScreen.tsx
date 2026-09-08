@@ -47,7 +47,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
   };
   const roles: { value: UserRole; labelKey: string }[] = [{ value: 'participant', labelKey: 'roleParticipant' }, { value: 'organizer', labelKey: 'roleOrganizer' }, { value: 'artist', labelKey: 'roleArtist' }];
   return (
-    <div className="min-h-screen flex flex-col bg-[#EDE8FF]">
+    <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col justify-center px-6 py-12 max-w-md mx-auto w-full">
         <div className="mb-8"><h1 className="text-3xl font-extrabold text-[#1A1A2E]">{mode === 'login' ? 'Bon retour !' : 'Créer un compte'}</h1><p className="text-gray-500 mt-2">{mode === 'login' ? 'Connectez-vous pour continuer' : 'Rejoignez la communauté Gbaigbance'}</p></div>
         <form onSubmit={handleSubmit} className="space-y-4">

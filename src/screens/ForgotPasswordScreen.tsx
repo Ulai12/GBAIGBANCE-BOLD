@@ -33,7 +33,7 @@ export function ForgotPasswordScreen({ onBack, onToast }: ForgotPasswordScreenPr
     }
   };
   return (
-    <div className="min-h-screen bg-lavender">
+    <div className="min-h-screen">
       <FloatingNav onBack={onBack} />
       <div className="max-w-md mx-auto px-6 py-16">
         {!sent ? (<>

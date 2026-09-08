@@ -92,7 +92,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
   const coverImage = galleryImages[0] || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800';
 
   return (
-    <div className="min-h-screen pb-32 bg-lavender">
+    <div className="min-h-screen pb-32">
       <div className="relative h-[24rem]">
         <button type="button" onClick={() => setLightboxSrc(coverImage)} className="absolute inset-0 z-0 cursor-zoom-in" aria-label="Ouvrir la galerie"><img src={coverImage} alt={displayEvent.title} className="w-full h-full object-cover" /></button>
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] via-transparent to-black/20" />

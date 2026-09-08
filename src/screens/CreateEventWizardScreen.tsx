@@ -93,7 +93,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const previous = () => setStep(STEPS[Math.max(stepIndex - 1, 0)]);
 
   return (
-    <div className="min-h-screen bg-[#EDE8FF] pb-32">
+    <div className="min-h-screen pb-32">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 5 * 1024 * 1024) { onToast({ message: 'Image trop lourde (max 5MB)', type: 'error' }); return; } setImageFile(file); setImagePreview(URL.createObjectURL(file)); }} />
       <header className="sticky top-0 z-30 px-5 py-4 bg-[#EDE8FF]/85 backdrop-blur-xl border-b border-white/40"><div className="max-w-md mx-auto flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Retour" className="w-10 h-10 rounded-full glass-surface flex items-center justify-center"><ChevronLeft className="w-5 h-5" /></button><div className="flex-1"><p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] font-bold">Nouvel événement</p><h1 className="text-lg font-extrabold text-[#171726]">Créer un événement</h1><p className="text-xs text-gray-500">Étape {stepIndex + 1}/{STEPS.length} · {step}</p></div></div><div className="max-w-md mx-auto mt-3 flex gap-1.5">{STEPS.map((item, index) => <div key={item} className={`h-1.5 flex-1 rounded-full ${index <= stepIndex ? 'bg-[#6600FF]' : 'bg-white/70'}`} />)}</div></header>
       <main className="max-w-md mx-auto px-5 mt-6">

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { BookingModal } from '@/components/BookingModal';
-import { AppProvider, useApp } from '@/hooks/useApp';
+import { AppProvider } from '@/contexts/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
 import type { Event, Artist, Organization } from '@/types';

@@ -18,7 +18,7 @@ export function OtpScreen({ phone, email, onBack, onVerify }: OtpScreenProps) {
   const handleChange = (idx: number, value: string) => { if (!/^\d?$/.test(value)) return; const newCode = [...code]; newCode[idx] = value; setCode(newCode); if (value && idx < 5) inputs.current[idx + 1]?.focus(); if (newCode.every((d) => d !== '')) onVerify(); };
   const handleKeyDown = (idx: number, e: React.KeyboardEvent) => { if (e.key === 'Backspace' && !code[idx] && idx > 0) inputs.current[idx - 1]?.focus(); };
   return (
-    <div className="min-h-screen bg-lavender">
+    <div className="min-h-screen">
       <FloatingNav onBack={onBack} />
       <div className="max-w-md mx-auto px-6 py-12">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] font-bold mb-2">Vérification</p>
