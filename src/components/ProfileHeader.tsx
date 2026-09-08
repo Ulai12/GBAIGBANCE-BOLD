@@ -18,7 +18,7 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
     <div className="relative px-4 pt-10 pb-4">
       <div className="relative glass-surface rounded-[2rem] p-6 pt-14 shadow-[0_18px_42px_rgba(76,29,149,0.12)]">
         <div className="absolute -top-12 left-1/2 -translate-x-1/2">
-          <div className="w-24 h-24 rounded-full ring-4 ring-white/90 shadow-lg overflow-hidden glass-surface">
+          <div className="w-24 h-24 rounded-full ring-4 ring-white/90 dark:ring-[#1A1A2E] shadow-lg overflow-hidden glass-surface">
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -31,46 +31,50 @@ export function ProfileHeader({ profile, eventsCount, followersCount, followingC
               </div>
             )}
           </div>
-          {profile.role !== 'participant' && <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-1 ring-2 ring-white shadow"><BadgeCheck className="w-4 h-4 text-white" /></div>}
+          {profile.role !== 'participant' && (
+            <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-1 ring-2 ring-white dark:ring-[#1A1A2E] shadow">
+              <BadgeCheck className="w-4 h-4 text-white" />
+            </div>
+          )}
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-extrabold text-[#171726] tracking-tight">
+          <h1 className="text-2xl font-extrabold text-[#171726] dark:text-white tracking-tight">
             {profile.name}
           </h1>
-          <p className="flex items-center justify-center gap-1 mt-1 text-sm text-gray-500">
+          <p className="flex items-center justify-center gap-1 mt-1 text-sm text-gray-500 dark:text-gray-400">
             <MapPin className="w-4 h-4" />
             {flag} {profile.city}
           </p>
-          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold glass-surface text-[#6600FF]">
+          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold glass-surface text-[#6600FF] dark:text-[#8a42ff]">
             {t('common', profile.role)}
           </span>
         </div>
 
         {profile.bio && (
-          <p className="mt-4 text-sm text-gray-600 text-center leading-relaxed px-2">
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 text-center leading-relaxed px-2">
             {profile.bio}
           </p>
         )}
 
         {(eventsCount !== undefined || followersCount !== undefined || followingCount !== undefined) && (
-          <div className="flex justify-center gap-8 mt-5 pt-4 border-t border-gray-200/60">
+          <div className="flex justify-center gap-8 mt-5 pt-4 border-t border-gray-200/60 dark:border-gray-700/60">
             {eventsCount !== undefined && (
               <div className="text-center">
-                <span className="text-lg font-semibold text-gray-900">{eventsCount}</span>
-                <p className="text-xs text-gray-500">événements</p>
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">{eventsCount}</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">événements</p>
               </div>
             )}
             {followersCount !== undefined && (
               <div className="text-center">
-                <span className="text-lg font-semibold text-gray-900">{followersCount}</span>
-                <p className="text-xs text-gray-500">followers</p>
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">{followersCount}</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">followers</p>
               </div>
             )}
             {followingCount !== undefined && (
               <div className="text-center">
-                <span className="text-lg font-semibold text-gray-900">{followingCount}</span>
-                <p className="text-xs text-gray-500">abonnements</p>
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">{followingCount}</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">abonnements</p>
               </div>
             )}
           </div>
