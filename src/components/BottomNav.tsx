@@ -1,22 +1,6 @@
 import { Home, Search, Ticket, Heart, Plus } from 'lucide-react';
 import { useState } from 'react';
 
-/**
- * Navigation principale de GBAIGBANCE.
- *
- * Direction visuelle :
- * - inspiration iOS / Liquid Glass ;
- * - barre flottante au-dessus du contenu ;
- * - icônes SF-like, simples et immédiatement reconnaissables ;
- * - sélection par "glass pill" plutôt qu'un gros bouton violet permanent ;
- * - animation douce et interruptible ;
- * - bouton central de création conservé, mais intégré à la hiérarchie visuelle.
- *
- * La structure respecte aussi la logique Apple :
- * une barre de navigation doit privilégier les zones principales
- * et rester lisible sans surcharger l'écran. [oai_citation:0‡Apple Developer](https://developer.apple.com/design/human-interface-guidelines/tab-views?utm_source=chatgpt.com)
- */
-
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
 
 interface BottomNavProps {
@@ -71,19 +55,21 @@ export function BottomNav({
   /**
    * Rend un item de navigation.
    *
-   * L'état actif ne remplit plus simplement tout le bouton :
-   * on crée une petite capsule "Liquid Glass" qui laisse davantage
-   * respirer les autres icônes.
+   * Important :
+   * Les items ne dépendent PAS de l'existence du bouton "+".
+   * Cela permet aux profils sans permission de création
+   * de conserver exactement la même largeur de barre,
+   * sans trou artificiel au centre.
    */
   const renderItem = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = active === item.id;
+    const isPressed = pressed === item.id;
+
     const showBadge =
       item.id === 'tickets' &&
       ticketCount > 0 &&
       !isActive;
-
-    const isPressed = pressed === item.id;
 
     return (
       <button
@@ -97,110 +83,130 @@ export function BottomNav({
         aria-current={isActive ? 'page' : undefined}
         aria-label={item.label}
         className={[
-          'relative',
           'group',
-          'w-[46px]',
-          'h-[46px]',
-          'rounded-full',
+          'relative',
           'flex',
           'items-center',
           'justify-center',
+          'w-full',
+          'h-[54px]',
+          'rounded-full',
           'transition-all',
           'duration-300',
           'ease-[cubic-bezier(.22,1,.36,1)]',
-          isActive
-            ? 'text-white'
-            : 'text-zinc-500 hover:text-zinc-800',
-          isPressed ? 'scale-[0.88]' : 'scale-100',
+          isPressed ? 'scale-[0.90]' : 'scale-100',
         ].join(' ')}
         style={{
+          color: isActive
+            ? '#FFFFFF'
+            : 'rgba(82,82,91,0.90)',
+
           /**
-           * On utilise une vraie sensation de matériau plutôt qu'une
-           * couleur opaque : le contenu situé derrière peut légèrement
-           * influencer la perception du verre.
+           * L'état actif est une capsule indépendante.
+           * On évite volontairement de faire ressembler toute
+           * la navigation à un gros bouton violet.
            */
           background: isActive
-            ? 'linear-gradient(145deg, rgba(102,0,255,0.94), rgba(124,58,237,0.82))'
-            : 'rgba(255,255,255,0.16)',
+            ? 'linear-gradient(145deg, rgba(139,92,246,0.98), rgba(102,0,255,0.94))'
+            : 'transparent',
 
           border: isActive
-            ? '1px solid rgba(255,255,255,0.32)'
+            ? '1px solid rgba(255,255,255,0.30)'
             : '1px solid transparent',
 
           boxShadow: isActive
             ? [
-                '0 10px 26px rgba(102,0,255,0.22)',
-                'inset 0 1px 0 rgba(255,255,255,0.38)',
-                'inset 0 -1px 0 rgba(0,0,0,0.06)',
+                '0 10px 24px rgba(102,0,255,0.22)',
+                'inset 0 1px 0 rgba(255,255,255,0.42)',
+                'inset 0 -2px 5px rgba(56,0,120,0.10)',
               ].join(', ')
             : 'none',
 
           backdropFilter: isActive
-            ? 'blur(18px) saturate(1.35)'
-            : 'blur(10px) saturate(1.15)',
+            ? 'blur(18px) saturate(1.30)'
+            : undefined,
 
           WebkitBackdropFilter: isActive
-            ? 'blur(18px) saturate(1.35)'
-            : 'blur(10px) saturate(1.15)',
+            ? 'blur(18px) saturate(1.30)'
+            : undefined,
         }}
       >
-        {/* Halo très subtil lorsque l'élément devient actif */}
+        {/* 
+          Petit halo derrière l'onglet actif.
+          Il reste discret afin de conserver une esthétique
+          proche d'iOS plutôt qu'un effet néon.
+        */}
         <span
           aria-hidden="true"
           className={[
             'absolute',
-            'inset-[-4px]',
+            'inset-[-5px]',
             'rounded-full',
             'pointer-events-none',
             'transition-all',
             'duration-500',
-            'ease-out',
             isActive
               ? 'opacity-100 scale-100'
               : 'opacity-0 scale-75',
           ].join(' ')}
           style={{
             background:
-              'radial-gradient(circle, rgba(102,0,255,0.15), transparent 68%)',
-            filter: 'blur(8px)',
+              'radial-gradient(circle, rgba(102,0,255,0.16), transparent 68%)',
+            filter: 'blur(10px)',
           }}
         />
 
+        {/* Icône principale */}
         <Icon
           className={[
             'relative',
             'z-10',
-            'w-[21px]',
-            'h-[21px]',
+            'w-[22px]',
+            'h-[22px]',
             'transition-all',
             'duration-300',
             'ease-[cubic-bezier(.22,1,.36,1)]',
             isActive
-              ? 'scale-[1.06]'
+              ? 'scale-[1.05]'
               : 'scale-100 group-hover:scale-[1.04]',
           ].join(' ')}
-          strokeWidth={isActive ? 2.45 : 2}
-          fill={isActive && item.id === 'home' ? 'currentColor' : 'none'}
+          strokeWidth={isActive ? 2.5 : 2}
+          fill={
+            isActive && item.id === 'home'
+              ? 'currentColor'
+              : 'none'
+          }
         />
 
-        {/* Petit indicateur pour les billets non consultés */}
+        {/* 
+          Badge de notification.
+          Il reste positionné sur l'item lui-même :
+          aucun déplacement provoqué par le "+".
+        */}
         {showBadge && (
           <span
-            aria-label={`${ticketCount} nouveau${ticketCount > 1 ? 'x' : ''} billet${ticketCount > 1 ? 's' : ''}`}
-            className="absolute top-[3px] right-[2px] z-20"
+            aria-label={`${ticketCount} billet${
+              ticketCount > 1 ? 's' : ''
+            }`}
+            className="absolute top-[6px] right-[22%] z-20"
           >
             <span
               className="block w-[9px] h-[9px] rounded-full"
               style={{
                 background: '#FF3B30',
-                border: '2px solid rgba(255,255,255,0.92)',
-                boxShadow: '0 2px 7px rgba(255,59,48,0.30)',
+                border: '2px solid rgba(255,255,255,0.95)',
+                boxShadow:
+                  '0 2px 7px rgba(255,59,48,0.28)',
               }}
             />
           </span>
         )}
 
-        {/* Tooltip desktop : volontairement discret et non intrusif */}
+        {/* 
+          Tooltip uniquement sur desktop.
+          On ne l'affiche pas sur mobile afin de ne pas
+          perturber les interactions tactiles.
+        */}
         <span
           className={[
             'pointer-events-none',
@@ -224,9 +230,10 @@ export function BottomNav({
             'md:block',
           ].join(' ')}
           style={{
-            background: 'rgba(24,24,30,0.86)',
-            color: '#fff',
-            boxShadow: '0 8px 22px rgba(0,0,0,0.14)',
+            background: 'rgba(25,25,30,0.88)',
+            color: '#FFFFFF',
+            boxShadow:
+              '0 8px 22px rgba(0,0,0,0.14)',
             backdropFilter: 'blur(14px)',
             WebkitBackdropFilter: 'blur(14px)',
           }}
@@ -241,13 +248,12 @@ export function BottomNav({
     <>
       <style>
         {`
-          /**
-           * Animation du bouton central.
-           *
-           * Elle reste lente et organique : l'objectif est une impression
-           * de matériau vivant, pas un bouton qui "clignote".
+          /*
+           * Respiration très légère du bouton "+".
+           * L'animation est volontairement lente pour donner
+           * une sensation de matériau vivant.
            */
-          @keyframes gbaigbanceFabBreath {
+          @keyframes gbaigbanceFabBreathing {
             0%,
             100% {
               transform: scale(1);
@@ -258,30 +264,17 @@ export function BottomNav({
             }
           }
 
-          /**
-           * Rotation très légère de l'icône "+" pendant le hover.
+          /*
+           * Reflet spéculaire du bouton "+".
            */
-          @keyframes gbaigbancePlusReveal {
-            from {
-              transform: rotate(0deg) scale(1);
-            }
-
-            to {
-              transform: rotate(90deg) scale(1.04);
-            }
-          }
-
-          /**
-           * Éclat spéculaire du bouton central.
-           */
-          @keyframes gbaigbanceGlassSweep {
+          @keyframes gbaigbanceFabSweep {
             0% {
-              transform: translateX(-140%) rotate(20deg);
+              transform: translateX(-150%) rotate(20deg);
               opacity: 0;
             }
 
             25% {
-              opacity: 0.32;
+              opacity: 0.35;
             }
 
             55% {
@@ -289,20 +282,17 @@ export function BottomNav({
             }
 
             100% {
-              transform: translateX(160%) rotate(20deg);
+              transform: translateX(170%) rotate(20deg);
               opacity: 0;
             }
           }
 
-          /**
-           * Respect de "Reduce Motion".
-           * Apple recommande d'adapter les animations lorsque
-           * l'utilisateur demande une expérience moins animée.
+          /*
+           * Respect du réglage système Reduce Motion.
            */
           @media (prefers-reduced-motion: reduce) {
-            .gbaigbance-nav-motion,
-            .gbaigbance-nav-motion *,
-            .gbaigbance-nav-sweep {
+            .gbaigbance-fab-motion,
+            .gbaigbance-fab-sweep {
               animation: none !important;
               transition-duration: 0.01ms !important;
             }
@@ -311,231 +301,249 @@ export function BottomNav({
       </style>
 
       {/* 
-        Conteneur fixe :
-        - la barre flotte réellement au-dessus du contenu ;
-        - elle ne colle pas directement au bord inférieur ;
-        - prise en compte de la safe-area iOS.
+        Conteneur flottant global.
+        La safe-area est séparée du contenu de la barre
+        afin que la navigation reste naturellement flottante.
       */}
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
         <nav
           aria-label="Navigation principale"
           className={[
-            'gbaigbance-nav-motion',
             'pointer-events-auto',
             'relative',
             'flex',
             'items-center',
-            'justify-center',
-            'gap-[2px]',
-            'px-[7px]',
-            'py-[7px]',
+            'w-[calc(100%-28px)]',
+            'max-w-[460px]',
+            'h-[76px]',
             'mb-[10px]',
-            'mx-4',
-            'rounded-[30px]',
+            'px-[10px]',
+            'rounded-[38px]',
             'transition-all',
             'duration-500',
           ].join(' ')}
           style={{
             /**
-             * Le matériau reprend la philosophie Liquid Glass :
-             * translucide, dynamique, avec blur et highlights.
-             * On évite volontairement un simple rectangle violet.
+             * Barre plus large que l'ancienne :
+             *
+             * Ancienne logique :
+             * 5 éléments serrés dans une petite largeur.
+             *
+             * Nouvelle logique :
+             * les 4 destinations disposent d'un vrai espace.
              */
-            background: [
-              'linear-gradient(',
-              '180deg,',
-              'rgba(255,255,255,0.68) 0%,',
-              'rgba(255,255,255,0.43) 100%',
-              ')',
-            ].join(' '),
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.48))',
 
-            border: '1px solid rgba(255,255,255,0.72)',
+            border:
+              '1px solid rgba(255,255,255,0.76)',
 
             boxShadow: [
-              '0 18px 50px rgba(40,20,80,0.18)',
-              '0 4px 14px rgba(40,20,80,0.08)',
-              'inset 0 1px 0 rgba(255,255,255,0.94)',
-              'inset 0 -1px 0 rgba(255,255,255,0.28)',
+              '0 22px 55px rgba(40,20,80,0.17)',
+              '0 7px 20px rgba(40,20,80,0.08)',
+              'inset 0 1px 0 rgba(255,255,255,0.95)',
+              'inset 0 -1px 0 rgba(255,255,255,0.25)',
             ].join(', '),
 
             backdropFilter:
-              'blur(28px) saturate(1.35)',
+              'blur(30px) saturate(1.35)',
 
             WebkitBackdropFilter:
-              'blur(28px) saturate(1.35)',
+              'blur(30px) saturate(1.35)',
 
             /**
-             * Important sur mobile :
-             * on ne laisse jamais le contenu se retrouver sous
-             * l'indicateur système de l'iPhone.
+             * La safe-area est intégrée au déplacement de la barre,
+             * pas dans la hauteur visuelle du composant.
              */
-            paddingBottom:
-              'calc(7px + env(safe-area-inset-bottom))',
+            marginBottom:
+              'calc(10px + env(safe-area-inset-bottom))',
           }}
         >
-          {/* 
-            Reflet supérieur du verre.
-            Il est volontairement très léger pour ne pas transformer
-            la navigation en composant "bling".
-          */}
+          {/* Reflet supérieur du matériau */}
           <span
             aria-hidden="true"
-            className="absolute inset-x-[13%] top-0 h-px rounded-full pointer-events-none"
+            className="absolute left-[14%] right-[14%] top-0 h-px rounded-full pointer-events-none"
             style={{
               background:
-                'linear-gradient(90deg, transparent, rgba(255,255,255,0.90), transparent)',
+                'linear-gradient(90deg, transparent, rgba(255,255,255,0.92), transparent)',
             }}
           />
 
-          {LEFT_ITEMS.map(renderItem)}
+          {/*
+            ==========================================================
+            CAS 1 — PROFIL AVEC PERMISSION DE CRÉATION
+            ==========================================================
 
-          {/* 
-            Séparation centrale.
-            Cela donne au bouton de création un espace visuel clair
-            sans casser la continuité de la barre.
+            Les quatre destinations restent réparties normalement.
+            Le "+" est placé ABSOLUMENT au centre.
+
+            Résultat :
+            - aucun élément écrasé ;
+            - aucun espace vide réservé ;
+            - le "+" flotte au-dessus de la barre ;
+            - esthétique beaucoup plus proche des interfaces Apple.
           */}
-          <div
-            aria-hidden="true"
-            className="w-[5px] shrink-0"
-          />
-
           {canCreate ? (
-            <button
-              type="button"
-              onClick={onCreate}
-              onPointerDown={() => setPressed('create')}
-              onPointerUp={() => setPressed(null)}
-              onPointerCancel={() => setPressed(null)}
-              onPointerLeave={() => setPressed(null)}
-              aria-label="Créer un événement"
-              className={[
-                'gbaigbance-nav-motion',
-                'group',
-                'relative',
-                'shrink-0',
-                'w-[52px]',
-                'h-[52px]',
-                'mx-[2px]',
-                'rounded-full',
-                'flex',
-                'items-center',
-                'justify-center',
-                'overflow-hidden',
-                'transition-all',
-                'duration-300',
-                'ease-[cubic-bezier(.22,1,.36,1)]',
-                pressed === 'create'
-                  ? 'scale-[0.88]'
-                  : 'scale-100',
-              ].join(' ')}
-              style={{
-                /**
-                 * Pas un simple fond #6600FF :
-                 * plusieurs couches créent une profondeur proche
-                 * d'un matériau physique.
-                 */
-                background: [
-                  'linear-gradient(',
-                  '145deg,',
-                  '#8B5CF6 0%,',
-                  '#6600FF 48%,',
-                  '#5500D4 100%',
-                  ')',
-                ].join(' '),
+            <>
+              {/* Groupe gauche */}
+              <div className="grid grid-cols-2 flex-1 h-full gap-[2px]">
+                {LEFT_ITEMS.map(renderItem)}
+              </div>
 
-                border:
-                  '1px solid rgba(255,255,255,0.42)',
-
-                boxShadow: [
-                  '0 10px 28px rgba(102,0,255,0.34)',
-                  '0 3px 10px rgba(102,0,255,0.16)',
-                  'inset 0 1px 0 rgba(255,255,255,0.48)',
-                  'inset 0 -4px 9px rgba(42,0,100,0.12)',
-                ].join(', '),
-
-                animation:
-                  'gbaigbanceFabBreath 4.5s ease-in-out infinite',
-              }}
-            >
               {/* 
-                Halo arrière du FAB.
+                Espace visuel central volontairement très petit.
+                Le bouton est en position absolute, donc ceci
+                ne réserve PAS une colonne fantôme.
               */}
-              <span
+              <div
                 aria-hidden="true"
-                className="absolute inset-[-14px] rounded-full pointer-events-none opacity-40"
-                style={{
-                  background:
-                    'radial-gradient(circle, rgba(124,58,237,0.28), transparent 68%)',
-                  filter: 'blur(13px)',
-                }}
+                className="w-[10px] shrink-0"
               />
 
-              {/* 
-                Reflet animé :
-                une ligne lumineuse traverse lentement le verre.
-              */}
-              <span
-                aria-hidden="true"
-                className="gbaigbance-nav-sweep absolute top-[-70%] left-0 w-[55%] h-[240%] pointer-events-none"
-                style={{
-                  background:
-                    'linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)',
-                  transform: 'rotate(20deg)',
-                  animation:
-                    'gbaigbanceGlassSweep 4.8s ease-in-out infinite',
-                }}
-              />
+              {/* Groupe droit */}
+              <div className="grid grid-cols-2 flex-1 h-full gap-[2px]">
+                {RIGHT_ITEMS.map(renderItem)}
+              </div>
 
               {/* 
-                Cercle intérieur :
-                donne l'impression que le "+" est inscrit
-                dans une lentille plutôt que posé sur le bouton.
+                FAB CENTRAL
+                --------------------
+                Il ne participe PAS au layout.
+                Il flotte donc au-dessus de celui-ci.
               */}
-              <span
-                className="relative z-10 w-[34px] h-[34px] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]"
+              <button
+                type="button"
+                onClick={onCreate}
+                onPointerDown={() => setPressed('create')}
+                onPointerUp={() => setPressed(null)}
+                onPointerCancel={() => setPressed(null)}
+                onPointerLeave={() => setPressed(null)}
+                aria-label="Créer un événement"
+                className={[
+                  'gbaigbance-fab-motion',
+                  'group',
+                  'absolute',
+                  'left-1/2',
+                  'top-1/2',
+                  '-translate-x-1/2',
+                  '-translate-y-1/2',
+                  'w-[54px]',
+                  'h-[54px]',
+                  'rounded-full',
+                  'flex',
+                  'items-center',
+                  'justify-center',
+                  'overflow-hidden',
+                  'z-30',
+                  'transition-all',
+                  'duration-300',
+                  'ease-[cubic-bezier(.22,1,.36,1)]',
+                  pressed === 'create'
+                    ? 'scale-[0.88]'
+                    : 'scale-100',
+                ].join(' ')}
                 style={{
                   background:
-                    'rgba(255,255,255,0.12)',
+                    'linear-gradient(145deg, #8B5CF6 0%, #6600FF 48%, #5500D4 100%)',
+
                   border:
-                    '1px solid rgba(255,255,255,0.18)',
-                  boxShadow:
-                    'inset 0 1px 0 rgba(255,255,255,0.20)',
+                    '1px solid rgba(255,255,255,0.44)',
+
+                  boxShadow: [
+                    '0 12px 30px rgba(102,0,255,0.34)',
+                    '0 4px 12px rgba(102,0,255,0.14)',
+                    'inset 0 1px 0 rgba(255,255,255,0.50)',
+                    'inset 0 -5px 10px rgba(42,0,100,0.12)',
+                  ].join(', '),
+
+                  animation:
+                    'gbaigbanceFabBreathing 4.5s ease-in-out infinite',
                 }}
               >
-                <Plus
+                {/* Halo externe */}
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-[-15px] rounded-full pointer-events-none opacity-45"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(124,58,237,0.25), transparent 68%)',
+                    filter: 'blur(13px)',
+                  }}
+                />
+
+                {/* Reflet animé */}
+                <span
+                  aria-hidden="true"
+                  className="gbaigbance-fab-sweep absolute top-[-80%] left-0 w-[55%] h-[250%] pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent)',
+                    transform: 'rotate(20deg)',
+                    animation:
+                      'gbaigbanceFabSweep 4.8s ease-in-out infinite',
+                  }}
+                />
+
+                {/* Lentille interne */}
+                <span
                   className={[
-                    'w-[22px]',
-                    'h-[22px]',
-                    'text-white',
+                    'relative',
+                    'z-10',
+                    'w-[36px]',
+                    'h-[36px]',
+                    'rounded-full',
+                    'flex',
+                    'items-center',
+                    'justify-center',
                     'transition-transform',
                     'duration-300',
-                    'ease-[cubic-bezier(.22,1,.36,1)]',
                     pressed === 'create'
-                      ? 'rotate-[135deg]'
-                      : 'rotate-0',
+                      ? 'rotate-[135deg] scale-90'
+                      : 'rotate-0 scale-100',
+                    'group-hover:scale-[1.06]',
                     'group-hover:rotate-90',
                   ].join(' ')}
-                  strokeWidth={2.45}
-                />
-              </span>
-            </button>
+                  style={{
+                    background:
+                      'rgba(255,255,255,0.13)',
+
+                    border:
+                      '1px solid rgba(255,255,255,0.20)',
+
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255,255,255,0.22)',
+                  }}
+                >
+                  <Plus
+                    className="w-[23px] h-[23px] text-white"
+                    strokeWidth={2.45}
+                  />
+                </span>
+              </button>
+            </>
           ) : (
-            /**
-             * Même largeur occupée quand la création est désactivée :
-             * cela empêche les quatre items de se déplacer brusquement.
-             */
-            <div
-              aria-hidden="true"
-              className="w-[52px] h-[52px] mx-[2px] shrink-0"
-            />
+            /*
+              ========================================================
+              CAS 2 — PROFIL SANS PERMISSION DE CRÉATION
+              ========================================================
+
+              C'est ici que l'ancien composant avait le gros trou.
+
+              AVANT :
+                  Home | Explore | [  VIDE  ] | Tickets | Favorites
+
+              MAINTENANT :
+                  Home | Explore | Tickets | Favorites
+
+              Les quatre éléments prennent réellement toute la largeur.
+            */
+            <div className="grid grid-cols-4 w-full h-full gap-[2px]">
+              {[
+                ...LEFT_ITEMS,
+                ...RIGHT_ITEMS,
+              ].map(renderItem)}
+            </div>
           )}
-
-          <div
-            aria-hidden="true"
-            className="w-[5px] shrink-0"
-          />
-
-          {RIGHT_ITEMS.map(renderItem)}
         </nav>
       </div>
     </>
