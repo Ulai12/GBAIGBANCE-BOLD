@@ -14,15 +14,24 @@ interface TrendingDeckCardProps {
   onAdvance: () => void;
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(date));
+// Sécurisation de la fonction de formatage de date
+function formatDate(date?: string | null) {
+  if (!date) return 'Date à confirmer';
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }).format(new Date(date));
+  } catch (error) {
+    return 'Date invalide';
+  }
 }
 
 export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps) {
+  // Garde-fou de sécurité absolu : si aucun event n'est passé, on ne rend rien pour éviter le crash
+  if (!event) return null;
+
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
   const imageScale = useTransform(x, [-260, 0, 260], [1.08, 1, 1.08]);
@@ -62,9 +71,8 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
       onClick={() => {
         if (!dragging.current) onOpen();
       }}
-      aria-label={`Découvrir ${event.title}`}
+      aria-label={`Découvrir ${event?.title || 'cet événement'}`}
     >
-      {/* Fond Image */}
       <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
         <SmartImage
           src={event.cover_url || event.images?.[0]}
@@ -73,10 +81,8 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
         />
       </motion.div>
 
-      {/* Masque Dégradé */}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.25)_40%,rgba(10,7,15,.96)_85%)]" />
 
-      {/* En-tête (Top Bar) */}
       <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 sm:p-5">
         <span className="shrink-0 rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md sm:text-[12px]">
           Tendance {String(index + 1).padStart(2, '0')}
@@ -91,7 +97,6 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
         </button>
       </div>
 
-      {/* Badge swipe optionnel */}
       <motion.div 
         style={{ opacity: likeOpacity }} 
         className="absolute left-4 top-20 z-10 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl sm:left-5 sm:top-24"
@@ -99,9 +104,7 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
         À découvrir
       </motion.div>
 
-      {/* Bloc d'informations inférieur */}
       <div className="absolute inset-x-4 bottom-4 z-10 max-h-[70%] overflow-hidden sm:inset-x-5 sm:bottom-5">
-        {/* Meta (Date & Ville) */}
         <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/80 sm:mb-3 sm:gap-2">
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-black/20 px-2.5 py-1 backdrop-blur-xl">
             <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white" /> 
@@ -109,16 +112,14 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
           </span>
           <span className="inline-flex min-w-0 max-w-[150px] items-center gap-1 rounded-full border border-white/10 bg-black/10 px-2 py-1 backdrop-blur-md">
             <Map className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]" />
-            <span className="truncate">{event.city}</span>
+            <span className="truncate">{event.city || 'Lieu inconnu'}</span>
           </span>
         </div>
 
-        {/* Titre avec clamp */}
         <h3 className="line-clamp-2 max-w-full break-words text-2xl font-black leading-[1.05] tracking-[-0.03em] sm:text-[2rem] sm:leading-[0.96]">
-          {event.title}
+          {event.title || 'Événement sans nom'}
         </h3>
 
-        {/* Pied de carte (Lieu, Prix & Bouton) */}
         <div className="mt-3 flex flex-wrap items-end justify-between gap-2.5 sm:mt-4">
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 text-xs text-white/60">
@@ -126,7 +127,12 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
               <span className="truncate">{event.location_name || 'Lieu à confirmer'}</span>
             </p>
             <p className="mt-0.5 truncate text-base font-black text-[#a78dfa] sm:mt-1 sm:text-[1.35em]">
-              {event.price_min === 0 ? 'Entrée libre' : `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA`}
+              {/* Sécurisation stricte du formatage du prix */}
+              {event.price_min === 0 
+                ? 'Entrée libre' 
+                : typeof event.price_min === 'number' 
+                  ? `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA` 
+                  : 'Prix à confirmer'}
             </p>
           </div>
 
@@ -140,7 +146,6 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
         </div>
       </div>
 
-      {/* Bouton décoratif coin inférieur droit */}
       <div className="pointer-events-none absolute bottom-5 right-5 z-0 hidden h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl md:flex">
         <ArrowUpRight className="h-4 w-4" />
       </div>
