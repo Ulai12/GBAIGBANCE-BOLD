@@ -14,22 +14,20 @@ interface TrendingDeckCardProps {
   onAdvance: () => void;
 }
 
-// Sécurisation de la fonction de formatage de date
-function formatDate(date?: string | null) {
-  if (!date) return 'Date à confirmer';
+function formatDate(date?: string) {
+  if (!date) return 'À venir';
   try {
     return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     }).format(new Date(date));
-  } catch (error) {
-    return 'Date invalide';
+  } catch {
+    return 'À venir';
   }
 }
 
 export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps) {
-  // Garde-fou de sécurité absolu : si aucun event n'est passé, on ne rend rien pour éviter le crash
   if (!event) return null;
 
   const x = useMotionValue(0);
@@ -71,7 +69,7 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
       onClick={() => {
         if (!dragging.current) onOpen();
       }}
-      aria-label={`Découvrir ${event?.title || 'cet événement'}`}
+      aria-label={`Découvrir ${event.title || ''}`}
     >
       <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
         <SmartImage
@@ -81,72 +79,69 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
         />
       </motion.div>
 
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.25)_40%,rgba(10,7,15,.96)_85%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.04)_20%,rgba(10,7,15,.18)_42%,rgba(10,7,15,.94)_100%)]" />
 
-      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 sm:p-5">
-        <span className="shrink-0 rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md sm:text-[12px]">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
+        <span className="shrink-0 rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md">
           Tendance {String(index + 1).padStart(2, '0')}
         </span>
-        <button 
-          type="button" 
-          aria-label="Ajouter aux favoris" 
-          onClick={(eventClick) => eventClick.stopPropagation()} 
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/20 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90 sm:h-10 sm:w-10"
-        >
-          <Heart className="h-5 w-5 sm:h-6 sm:w-6" />
+        <button type="button" aria-label="Ajouter aux favoris" onClick={(eventClick) => eventClick.stopPropagation()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/10 backdrop-blur-xl transition-transform hover:scale-105 active:scale-90">
+          <Heart className="h-6 w-6" />
         </button>
       </div>
 
-      <motion.div 
-        style={{ opacity: likeOpacity }} 
-        className="absolute left-4 top-20 z-10 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl sm:left-5 sm:top-24"
-      >
+      <motion.div style={{ opacity: likeOpacity }} className="absolute left-5 top-24 rounded-full border border-lime-300/50 bg-lime-300/20 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl">
         À découvrir
       </motion.div>
 
-      <div className="absolute inset-x-4 bottom-4 z-10 max-h-[70%] overflow-hidden sm:inset-x-5 sm:bottom-5">
-        <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/80 sm:mb-3 sm:gap-2">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-black/20 px-2.5 py-1 backdrop-blur-xl">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white" /> 
+      {/* Zone du bas avec max-height et overflow contrôlé */}
+      <div className="absolute inset-x-5 bottom-5 max-h-[65%] overflow-hidden">
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-white/75">
+          <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/10 px-2 py-1 backdrop-blur-xl">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" /> 
             <span className="truncate">{formatDate(event.starts_at)}</span>
           </span>
-          <span className="inline-flex min-w-0 max-w-[150px] items-center gap-1 rounded-full border border-white/10 bg-black/10 px-2 py-1 backdrop-blur-md">
+          <span className="flex items-center gap-1 max-w-[140px]">
             <Map className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]" />
-            <span className="truncate">{event.city || 'Lieu inconnu'}</span>
+            <span className="truncate">{event.city}</span>
           </span>
         </div>
 
-        <h3 className="line-clamp-2 max-w-full break-words text-2xl font-black leading-[1.05] tracking-[-0.03em] sm:text-[2rem] sm:leading-[0.96]">
-          {event.title || 'Événement sans nom'}
+        {/* CSS natif multi-lignes sans dépendance externe */}
+        <h3 
+          className="text-[1.75rem] sm:text-[2rem] font-black leading-[0.96] tracking-[-0.04em] overflow-hidden"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            wordBreak: 'break-word'
+          }}
+        >
+          {event.title}
         </h3>
 
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-2.5 sm:mt-4">
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 text-xs text-white/60">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{event.location_name || 'Lieu à confirmer'}</span>
             </p>
-            <p className="mt-0.5 truncate text-base font-black text-[#a78dfa] sm:mt-1 sm:text-[1.35em]">
-              {/* Sécurisation stricte du formatage du prix */}
+            <p className="mt-1 text-[1.25em] sm:text-[1.35em] font-black text-[#a78dfa] truncate">
               {event.price_min === 0 
                 ? 'Entrée libre' 
                 : typeof event.price_min === 'number' 
                   ? `Dès ${event.price_min.toLocaleString('fr-FR')} FCFA` 
-                  : 'Prix à confirmer'}
+                  : 'Prix non défini'}
             </p>
           </div>
 
-          <button 
-            type="button" 
-            onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} 
-            className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-xs font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95 sm:h-12 sm:px-4 sm:text-sm"
-          >
-            <Ticket className="h-4 w-4 shrink-0" /> Réserver
+          <button type="button" onClick={(eventClick) => { eventClick.stopPropagation(); onBook(); }} className="flex h-12 shrink-0 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#17131d] transition-transform hover:scale-105 active:scale-95">
+            <Ticket className="h-4 w-4" /> Réserver
           </button>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-5 right-5 z-0 hidden h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl md:flex">
+      <div className="pointer-events-none absolute bottom-5 right-5 hidden h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl sm:flex">
         <ArrowUpRight className="h-4 w-4" />
       </div>
     </motion.article>
