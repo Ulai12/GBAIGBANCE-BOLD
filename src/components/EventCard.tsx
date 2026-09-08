@@ -34,19 +34,6 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
 
   return (
     <motion.article
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
-      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-      onClick={onClick}
-      className="
-        event-deck-card 
-        group relative isolate w-full
-        aspect-[0.78] sm:aspect-[0.82]
-        overflow-hidden rounded-[1.5rem]
-        bg-[#17131d] text-white cursor-pointer
-        shadow-[0_12px_40px_rgba(23,19,29,0.2)]
-      "
       className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-[#17131d] text-white shadow-2xl"
       style={{
         x: active ? x : 0,
@@ -160,4 +147,3 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
     </motion.article>
   );
 }
-
