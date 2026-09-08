@@ -190,7 +190,7 @@ export function ProfileScreen({ onEventClick, onLogin, onOrganizerDashboard, onO
           </div>
           {loading ? (
             <div className="grid grid-cols-2 gap-4">
-              {[1, 2].map((i) => <div key={i} className="bg-gray-200 dark:bg-gray-800 animate-pulse h-56 rounded-3xl" />)}
+              {[1, 2].map((i) => <div key={i} className="skeleton h-56 rounded-3xl" />)}
             </div>
           ) : myEvents.length === 0 ? (
             <div className="bg-white/80 dark:bg-[#1A1A2E]/80 backdrop-blur-xl p-8 rounded-3xl border border-gray-100 dark:border-gray-800 text-center">
