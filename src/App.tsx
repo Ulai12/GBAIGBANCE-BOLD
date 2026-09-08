@@ -24,6 +24,9 @@ const NotificationsScreen = lazy(() => import('@/screens/NotificationsScreen').t
 const NotificationSettingsScreen = lazy(() => import('@/screens/NotificationSettingsScreen').then((module) => ({ default: module.NotificationSettingsScreen })));
 const SubscriptionsScreen = lazy(() => import('@/screens/SubscriptionsScreen').then((module) => ({ default: module.SubscriptionsScreen })));
 const UserProfileScreen = lazy(() => import('@/screens/UserProfileScreen').then((module) => ({ default: module.UserProfileScreen })));
+const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((module) => ({ default: module.AISettingsScreen })));
+import { AIAssistantModal } from '@/components/AIAssistantModal';
+import { SettingsModal } from '@/components/SettingsModal';
 
 type Screen =
   | 'onboarding'
@@ -44,13 +47,24 @@ type Screen =
   | 'notifications'
   | 'notificationSettings'
   | 'subscriptions'
-  | 'userProfile';
+  | 'userProfile'
+  | 'aiSettings';
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
 
 function AppContent() {
   const { loading, session, user } = useApp();
-  const [screen, setScreen] = useState<Screen>('onboarding');
+  const [screen, setScreen] = useState<Screen>(() => {
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem('gbaigbance_onboarding_completed') === 'true') {
+        return 'home';
+      }
+    } catch {
+      // Ignorer si localStorage n'est pas accessible
+      return 'onboarding';
+    }
+    return 'onboarding';
+  });
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -58,6 +72,8 @@ function AppContent() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [bookingEvent, setBookingEvent] = useState<Event | null>(null);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,7 +115,18 @@ function AppContent() {
   if (screen === 'onboarding') {
     return (
       <>
-        <OnboardingScreen onComplete={() => setScreen(session ? 'home' : 'login')} />
+        <OnboardingScreen
+          onComplete={() => {
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('gbaigbance_onboarding_completed', 'true');
+              }
+            } catch {
+              // Ignore local storage error
+            }
+            setScreen('home');
+          }}
+        />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
     );
@@ -146,6 +173,19 @@ function AppContent() {
           onBack={() => setScreen(activeTab)}
           onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
           onBook={handleBookEvent}
+          onOpenAISettings={() => setScreen('aiSettings')}
+          onToast={addToast}
+        />
+        <ToastContainer toasts={toasts} onClose={closeToast} />
+      </>
+    );
+  }
+
+  if (screen === 'aiSettings') {
+    return (
+      <>
+        <AISettingsScreen
+          onBack={() => setScreen(activeTab)}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -277,6 +317,9 @@ function AppContent() {
             onOpenNotifications={() => setScreen('notifications')}
             onProfileClick={() => { setActiveTab('profile'); setScreen('profile'); }}
             onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+            onOpenAIAssistant={() => setAiAssistantOpen(true)}
+            onOpenAISettings={() => setScreen('aiSettings')}
+            onOpenSettings={() => setSettingsModalOpen(true)}
             onToast={addToast}
           />
         )}
@@ -297,6 +340,7 @@ function AppContent() {
             onOpenNotifications={() => setScreen('notifications')}
             onOpenNotificationSettings={() => setScreen('notificationSettings')}
             onOpenSubscriptions={() => setScreen('subscriptions')}
+            onOpenAISettings={() => setScreen('aiSettings')}
             onToast={addToast}
           />
         )}
@@ -321,6 +365,35 @@ function AppContent() {
         onSuccess={(qrCode) => {
           addToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' });
           setBookingEvent(null);
+        }}
+      />
+      <AIAssistantModal
+        isOpen={aiAssistantOpen}
+        onClose={() => setAiAssistantOpen(false)}
+        onOpenSettings={() => {
+          setAiAssistantOpen(false);
+          setScreen('aiSettings');
+        }}
+      />
+      <SettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        onOpenAISettings={() => {
+          setSettingsModalOpen(false);
+          setScreen('aiSettings');
+        }}
+        onOpenNotifications={() => {
+          setSettingsModalOpen(false);
+          setScreen('notifications');
+        }}
+        onOpenNotificationSettings={() => {
+          setSettingsModalOpen(false);
+          setScreen('notificationSettings');
+        }}
+        onEditProfile={() => {
+          setSettingsModalOpen(false);
+          setActiveTab('profile');
+          setScreen('profile');
         }}
       />
       <ToastContainer toasts={toasts} onClose={closeToast} />

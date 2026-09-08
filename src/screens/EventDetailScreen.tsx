@@ -8,6 +8,8 @@ import { fetchEventById, toggleEventLike, fetchCollaborators, incrementEventView
 import { formatFullDate, formatTime, formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
 import { BookingModal } from '@/components/BookingModal';
+import { EventMapPreview } from '@/components/EventMapPreview';
+import { EventAIInsights } from '@/components/EventAIInsights';
 import { EventInteractionPanel } from '@/components/EventInteractionPanel';
 import { EventSchedule } from '@/components/EventSchedule';
 import { EventLiveLinks } from '@/components/EventLiveLinks';
@@ -22,6 +24,7 @@ interface EventDetailScreenProps {
   onBack: () => void;
   onArtistClick: (artist: Artist) => void;
   onBook: (event: Event) => void;
+  onOpenAISettings?: () => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
 
@@ -43,7 +46,7 @@ function useCountdown(targetDate: string) {
   return timeLeft;
 }
 
-export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToast }: EventDetailScreenProps) {
+export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpenAISettings, onToast }: EventDetailScreenProps) {
   const { t, language, user } = useApp();
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
   const [liked, setLiked] = useState(false);
@@ -132,7 +135,21 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onToas
           <div className="flex items-center gap-2 text-[#6600FF] mb-1.5"><MapPin className="w-5 h-5" /><span className="text-xs font-semibold uppercase text-gray-500">Lieu</span></div>
           <p className="text-base font-bold text-[#1A1A2E]">{displayEvent.location_name}</p>
           <p className="text-sm text-gray-500">{flag} {displayEvent.city}{displayEvent.location_address ? ` · ${displayEvent.location_address}` : ''}</p>
-          <div className="mt-3 h-28 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center"><MapPin className="w-8 h-8 text-[#6600FF] opacity-50" /></div>
+          <EventMapPreview
+            locationName={displayEvent.location_name}
+            locationAddress={displayEvent.location_address}
+            city={displayEvent.city}
+            country={displayEvent.country}
+            latitude={displayEvent.latitude}
+            longitude={displayEvent.longitude}
+          />
+        </div>
+
+        <div className="mt-3">
+          <EventAIInsights
+            event={displayEvent as Event}
+            onOpenSettings={onOpenAISettings || (() => {})}
+          />
         </div>
 
         {galleryImages.length > 1 && <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar">{galleryImages.map((image, index) => <button type="button" key={image} onClick={() => setLightboxSrc(image)} className="h-16 w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/10" aria-label={`Voir la photo ${index + 1}`}><img src={image} alt="" className="h-full w-full object-cover" /></button>)}</div>}

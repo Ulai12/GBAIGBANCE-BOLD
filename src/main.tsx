@@ -1,8 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+
+// Register PWA Service Worker
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    console.log('[PWA] New content available, will update on reload.');
+  },
+  onOfflineReady() {
+    console.log('[PWA] App ready to work offline.');
+  },
+});
 
 Sentry.init({
   dsn: 'https://c2234e7544eb3870989a6695d76cb0fb@o4511833867091968.ingest.de.sentry.io/4511838676451408',

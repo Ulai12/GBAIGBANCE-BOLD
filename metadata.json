@@ -1,0 +1,8 @@
+{
+  "name": "Gbaigbance — L'événementiel africain",
+  "description": "Gbaigbance — La plateforme événementielle africaine premium. Découvrez, réservez et participez aux meilleurs événements au Togo, Bénin et en Afrique francophone.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

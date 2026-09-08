@@ -38,6 +38,15 @@ export const COUNTRY_NAMES: Record<string, string> = {
   SN: 'Sénégal',
 };
 
+export const COUNTRIES = [
+  { code: 'TG', name: 'Togo', flag: '🇹🇬' },
+  { code: 'BJ', name: 'Bénin', flag: '🇧🇯' },
+  { code: 'CI', name: 'Côte d\'Ivoire', flag: '🇨🇮' },
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭' },
+  { code: 'ML', name: 'Mali', flag: '🇲🇱' },
+  { code: 'SN', name: 'Sénégal', flag: '🇸🇳' },
+];
+
 export const APP_CONFIG = {
   name: 'Gbaigbance',
   tagline: 'L\'événementiel africain',

@@ -59,6 +59,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
           <button type="submit" disabled={loading} className="btn-purple w-full py-4 mt-6 flex items-center justify-center">{loading ? t('common', 'loading') : (mode === 'login' ? t('auth', 'login') : t('auth', 'signup'))}</button>
         </form>
         <div className="flex items-center justify-center gap-2 mt-6 text-sm"><span className="text-gray-500">{mode === 'login' ? t('auth', 'noAccount') : t('auth', 'haveAccount')}</span><button onClick={onToggleMode} className="font-semibold text-[#6600FF] hover:underline">{mode === 'login' ? t('auth', 'signUpCta') : t('auth', 'loginCta')}</button></div>
+        <div className="text-center mt-4"><button type="button" onClick={onSuccess} className="text-sm font-medium text-gray-500 hover:text-[#6600FF] transition-colors">Explorer en tant qu'invité →</button></div>
       </div>
     </div>
   );

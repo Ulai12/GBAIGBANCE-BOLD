@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Star, Users, MapPin,
+  Search, Users, MapPin,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
-  Landmark, Lock, Sparkles, Calendar, ChevronRight, Building2, Ticket as TicketIcon,
+  Landmark, Lock, Sparkles, ChevronRight,
+  Settings,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { TrendingDeck } from '@/components/TrendingDeck';
@@ -10,9 +11,11 @@ import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
 import { LocationModal } from '@/components/LocationModal';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
+import { PWAInstallButton } from '@/components/PWAInstallButton';
+import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
 import { useApp } from '@/hooks/useApp';
 import { COUNTRY_FLAGS, EVENT_CATEGORIES } from '@/constants';
-import { formatNumber } from '@/utils/format';
 import type { ToastData } from '@/components/Toast';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
@@ -25,50 +28,6 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
 };
 
-/**
- * Mini graphique en barres — comparaison réelle entre les 5 statistiques de la plateforme.
- * Échelle logarithmique volontaire : les métriques (nb d'événements vs billets vendus, etc.)
- * peuvent différer de plusieurs ordres de grandeur. En linéaire, 4 des 5 barres seraient
- * quasi invisibles à côté de la plus grande. Le log garde chaque barre lisible tout en
- * respectant l'ordre réel des valeurs.
- */
-function MiniStatBars({ values, activeIndex }: { values: number[]; activeIndex: number }) {
-  const logValues = values.map((v) => Math.log10(Math.max(v, 0) + 1));
-  const max = Math.max(...logValues, 0.1);
-  return (
-    <div className="flex items-end gap-[3px] h-[26px]" aria-hidden="true">
-      {logValues.map((v, i) => (
-        <div
-          key={i}
-          className="w-[3px] rounded-full bg-[#6600FF]"
-          style={{ height: `${Math.max((v / max) * 26, 3)}px`, opacity: i === activeIndex ? 1 : 0.18 }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/**
- * Même logique que MiniStatBars mais tracée comme une petite courbe, pour varier le
- * langage graphique sur la carte "Billets vendus". Toujours basé sur les vraies valeurs.
- */
-function MiniSparkline({ values, activeIndex }: { values: number[]; activeIndex: number }) {
-  const width = 40;
-  const height = 24;
-  const logValues = values.map((v) => Math.log10(Math.max(v, 0) + 1));
-  const max = Math.max(...logValues, 0.1);
-  const step = width / (values.length - 1);
-  const points = logValues.map((v, i) => [i * step, height - (v / max) * height] as const);
-  const path = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
-  const [activeX, activeY] = points[activeIndex];
-  return (
-    <svg width={width} height={height + 6} viewBox={`0 0 ${width} ${height + 6}`} className="shrink-0" aria-hidden="true">
-      <path d={path} fill="none" stroke="#6600FF" strokeOpacity="0.25" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={activeX} cy={activeY} r="3" fill="#6600FF" />
-    </svg>
-  );
-}
-
 interface HomeScreenProps {
   onEventClick: (event: Event) => void;
   onSearchClick: () => void;
@@ -77,6 +36,9 @@ interface HomeScreenProps {
   onArtistClick?: (artist: Artist) => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
   onBookEvent?: (event: Event) => void;
+  onOpenAIAssistant?: () => void;
+  onOpenAISettings?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export function HomeScreen({
@@ -86,6 +48,8 @@ export function HomeScreen({
   onProfileClick,
   onArtistClick,
   onBookEvent,
+  onOpenAIAssistant,
+  onOpenSettings,
 }: HomeScreenProps) {
   const { user, t } = useApp();
   const [locationOpen, setLocationOpen] = useState(false);
@@ -123,17 +87,6 @@ export function HomeScreen({
   const safePrice = heroEvent?.price_min ?? 0;
   const safeAttendees = heroEvent?.attendees_count ?? 0;
 
-  // Calculé une seule fois par rendu, réutilisé par les 5 cartes stats.
-  const compareValues = platformStats
-    ? [
-        platformStats.totalEvents ?? 0,
-        platformStats.totalArtists ?? 0,
-        platformStats.totalParticipants ?? 0,
-        platformStats.totalOrganizers ?? 0,
-        platformStats.totalTickets ?? 0,
-      ]
-    : [0, 0, 0, 0, 0];
-
   return (
     <div className="min-h-screen pb-32">
       {/* En-tête */}
@@ -157,8 +110,31 @@ export function HomeScreen({
             </h1>
             <p className="text-sm text-gray-400 ">Trouve ta prochaine sortie</p>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              id="home-ai-assistant-header-btn"
+              type="button"
+              onClick={onOpenAIAssistant}
+              title="Assistant IA Gbaigbance (Gemini)"
+              aria-label="Assistant IA"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#6600FF]/15 to-[#9333EA]/15 text-[#6600FF] hover:bg-[#6600FF]/25 flex items-center justify-center active:scale-90 transition-transform shadow-xs"
+            >
+              <Sparkles className="w-5 h-5" />
+            </button>
+            <PWAInstallButton variant="icon" />
             <NotificationBell onOpen={onOpenNotifications} />
+            {onOpenSettings && (
+              <button
+                id="home-strategic-settings-btn"
+                type="button"
+                onClick={onOpenSettings}
+                aria-label="Paramètres de l'application"
+                title="Paramètres & Préférences"
+                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-[#6600FF]/15 hover:text-[#6600FF] flex items-center justify-center active:scale-90 transition-all shadow-xs"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
             <button onClick={onProfileClick} className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/20 overflow-hidden bg-[#6600FF]/10 shadow-md active:scale-90 transition-transform" aria-label="Profil">
               {user?.avatar_url ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-sm font-extrabold text-[#6600FF]">{user?.name?.charAt(0).toUpperCase() || '?'}</span>}
             </button>
@@ -177,7 +153,40 @@ export function HomeScreen({
             {COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}
           </button>
         </div>
+
+        {/* AI Assistant Banner */}
+        <div className="mt-3">
+          <button
+            id="home-ai-assistant-banner"
+            type="button"
+            onClick={onOpenAIAssistant}
+            className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#6600FF]/10 via-[#9333EA]/10 to-transparent border border-[#6600FF]/25 hover:border-[#6600FF]/50 transition-all flex items-center justify-between group active:scale-[0.99] text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6600FF] to-[#A855F7] flex items-center justify-center text-white shadow-xs shadow-[#6600FF]/30 shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-extrabold text-[#171726]">
+                    Assistant Gbaigbance IA
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#6600FF] text-white text-[8px] font-bold">
+                    Gemini
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 truncate">
+                  Recommandations, concerts & lieux avec Maps Grounding
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#6600FF] group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </button>
+        </div>
       </div>
+
+      {/* PWA Install Banner */}
+      <PWAInstallBanner />
 
       {!loading && heroEvent && (
         <section className="mt-4 px-5">
@@ -329,88 +338,12 @@ export function HomeScreen({
         {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
       </section>
 
-      {!loading && platformStats && (
+      {!loading && (
         <section className="mt-8 px-5">
-          <div className="text-center mb-5">
-            <h3 className="text-2xl font-black text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
-            <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
-              La billetterie qui grandit chaque jour
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Événements */}
-            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Calendar className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Événements</span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalEvents ?? 0}</p>
-                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">au total</p>
-                </div>
-                <MiniStatBars values={compareValues} activeIndex={0} />
-              </div>
-            </div>
-
-            {/* Artistes */}
-            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Star className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Artistes</span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalArtists ?? 0}</p>
-                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">vérifiés</p>
-                </div>
-                <MiniStatBars values={compareValues} activeIndex={1} />
-              </div>
-            </div>
-
-            {/* Participants */}
-            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Users className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Participants</span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{formatNumber(platformStats.totalParticipants ?? 0)}</p>
-                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">inscrits</p>
-                </div>
-                <MiniStatBars values={compareValues} activeIndex={2} />
-              </div>
-            </div>
-
-            {/* Organisateurs */}
-            <div className="rounded-[1.6rem] p-4 bg-white border border-black/[0.05]">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Building2 className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Organisateurs</span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{platformStats.totalOrganizers ?? 0}</p>
-                  <p className="text-[10px] text-[#1A1A2E]/40 font-semibold mt-1">actifs</p>
-                </div>
-                <MiniStatBars values={compareValues} activeIndex={3} />
-              </div>
-            </div>
-          </div>
-
-          {/* Billets vendus — pleine largeur */}
-          <div className="rounded-[1.6rem] p-4 mt-3 bg-white border border-black/[0.05] flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <TicketIcon className="w-4 h-4 text-[#6600FF]" strokeWidth={2} />
-                <span className="text-[13px] font-bold text-[#1A1A2E]/70 tracking-[0.05em] uppercase">Billets vendus</span>
-              </div>
-              <p className="text-[26px] font-extrabold text-[#1A1A2E] leading-none">{formatNumber(platformStats.totalTickets ?? 0)}</p>
-            </div>
-            <MiniSparkline values={compareValues} activeIndex={4} />
-          </div>
+          <GbaigbanceStatsDashboard
+            events={[...featured, ...trending, ...nearby]}
+            platformStats={platformStats || undefined}
+          />
         </section>
       )}
 

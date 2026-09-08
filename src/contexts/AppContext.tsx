@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import { fetchProfile } from '@/services/auth';
+import { fetchProfile, getStoredMockProfile, signOut as authSignOut } from '@/services/auth';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
 
@@ -42,6 +42,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
+      const mockProfile = getStoredMockProfile();
+      if (mockProfile) {
+        setUser(mockProfile);
+        setSession({ access_token: 'mock-token', user: { id: mockProfile.id } } as unknown as import('@supabase/supabase-js').Session);
+      }
       setLoading(false);
       return;
     }
@@ -84,6 +89,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      const p = getStoredMockProfile();
+      setUser(p);
+      if (p) {
+        setSession({ access_token: 'mock-token', user: { id: p.id } } as unknown as import('@supabase/supabase-js').Session);
+      }
+      return;
+    }
     if (session?.user) {
       try {
         const profile = await fetchProfile(session.user.id);
@@ -93,7 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
-    try { await supabase.auth.signOut(); } catch { setSession(null); }
+    try { await authSignOut(); } catch { setSession(null); }
     setUser(null);
     setSession(null);
   }, []);
