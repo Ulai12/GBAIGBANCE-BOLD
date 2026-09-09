@@ -71,7 +71,17 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpen
   };
 
   useEffect(() => {
-    fetchEventById(event.id).then((data) => { setFullEvent(data); if (data) { setLiveViews(data.views_count || 0); setLiveAttendees(data.attendees_count || 0); } }).catch(() => setFullEvent(null));
+    setFullEvent(null);
+    fetchEventById(event.id)
+      .then((data) => {
+        if (data && data.id === event.id) {
+          setFullEvent(data);
+          setLiveViews(data.views_count || 0);
+          setLiveAttendees(data.attendees_count || 0);
+        }
+      })
+      .catch(() => setFullEvent(null));
+
     fetchCollaborators(event.id).then(setCollaborators).catch(() => {});
     incrementEventViews(event.id).catch(() => {});
     const unsubViews = subscribeToEventViews(event.id, setLiveViews);
@@ -84,9 +94,9 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpen
     try { await toggleEventLike(event.id, user.id); setLiked(!liked); } catch { onToast({ message: 'Erreur', type: 'error' }); }
   };
 
-  const artists = fullEvent?.event_artists?.map((ea) => ea.artist) || [];
-  const flag = COUNTRY_FLAGS[event.country] || '';
-  const displayEvent = fullEvent || event;
+  const displayEvent = (fullEvent && fullEvent.id === event.id) ? fullEvent : event;
+  const artists = (displayEvent as EventWithRelations)?.event_artists?.map((ea) => ea.artist) || [];
+  const flag = COUNTRY_FLAGS[displayEvent.country || event.country] || '';
   const isOrganizer = !!(user && displayEvent.organizer_user_id === user.id);
   const eventHasEnded = Boolean(displayEvent.ends_at ? new Date(displayEvent.ends_at) <= new Date() : new Date(displayEvent.starts_at) <= new Date());
   const canBook = displayEvent.status === 'published' && !eventHasEnded;

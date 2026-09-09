@@ -1,14 +1,14 @@
 import type { EventCategory } from '@/types';
 
-export const EVENT_CATEGORIES: { value: EventCategory; icon: string; color: string }[] = [
-  { value: 'concert', icon: 'Music', color: 'from-[#6600FF] to-[#9333EA]' },
-  { value: 'festival', icon: 'PartyPopper', color: 'from-[#8B5CF6] to-[#A855F7]' },
-  { value: 'conference', icon: 'Mic', color: 'from-[#7C3AED] to-[#6600FF]' },
-  { value: 'formation', icon: 'GraduationCap', color: 'from-[#9333EA] to-[#8B5CF6]' },
-  { value: 'exposition', icon: 'Palette', color: 'from-[#A855F7] to-[#7C3AED]' },
-  { value: 'spectacle', icon: 'Theater', color: 'from-[#6600FF] to-[#8B5CF6]' },
-  { value: 'cultural', icon: 'Landmark', color: 'from-[#8B5CF6] to-[#7C3AED]' },
-  { value: 'private', icon: 'Lock', color: 'from-[#7C3AED] to-[#9333EA]' },
+export const EVENT_CATEGORIES: { value: EventCategory; label: string; icon: string; color: string }[] = [
+  { value: 'concert', label: 'Concert', icon: 'Music', color: 'from-[#6600FF] to-[#9333EA]' },
+  { value: 'festival', label: 'Festival', icon: 'PartyPopper', color: 'from-[#8B5CF6] to-[#A855F7]' },
+  { value: 'conference', label: 'Conférence', icon: 'Mic', color: 'from-[#7C3AED] to-[#6600FF]' },
+  { value: 'formation', label: 'Formation', icon: 'GraduationCap', color: 'from-[#9333EA] to-[#8B5CF6]' },
+  { value: 'exposition', label: 'Exposition', icon: 'Palette', color: 'from-[#A855F7] to-[#7C3AED]' },
+  { value: 'spectacle', label: 'Spectacle', icon: 'Theater', color: 'from-[#6600FF] to-[#8B5CF6]' },
+  { value: 'cultural', label: 'Culturel', icon: 'Landmark', color: 'from-[#8B5CF6] to-[#7C3AED]' },
+  { value: 'private', label: 'Privé', icon: 'Lock', color: 'from-[#7C3AED] to-[#9333EA]' },
 ];
 
 export const CITIES = [

@@ -40,18 +40,20 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
       </div>
       <div className="relative mx-5 h-[26rem] touch-pan-y" aria-live="polite">
         <AnimatePresence initial={false} mode="popLayout">
-          {visibleEvents.slice(0, 3).map((event, stackIndex) => {
+          {visibleEvents.slice(0, 3).map((_, stackIndex) => {
             const eventIndex = (activeIndex + stackIndex) % visibleEvents.length;
+            const currentEvent = visibleEvents[eventIndex];
+            if (!currentEvent) return null;
             const isActive = stackIndex === 0;
             return (
               <TrendingDeckCard
-                key={event.id}
-                event={visibleEvents[eventIndex]}
+                key={`${currentEvent.id}-${stackIndex}`}
+                event={currentEvent}
                 index={stackIndex}
                 total={events.length}
                 active={isActive}
-                onOpen={() => onEventClick(visibleEvents[eventIndex])}
-                onBook={() => onBookEvent(visibleEvents[eventIndex])}
+                onOpen={() => onEventClick(currentEvent)}
+                onBook={() => onBookEvent(currentEvent)}
                 onAdvance={advance}
               />
             );

@@ -466,17 +466,40 @@ export async function fetchPlatformStats(): Promise<{ totalEvents: number; total
     };
   }
   try {
-    const [events, artists, orgs, tickets, participants] = await Promise.all([
-      supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
+    const [eventsRes, artistsCount, orgsCount, ticketsRes] = await Promise.all([
+      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at').eq('status', 'published'),
       supabase.from('artists').select('id', { count: 'exact', head: true }),
       supabase.from('organizations').select('id', { count: 'exact', head: true }),
-      supabase.from('tickets').select('id', { count: 'exact', head: true }).neq('status', 'cancelled'),
-      supabase.from('events').select('attendees_count'),
+      supabase.from('tickets').select('id, price_paid, status').neq('status', 'cancelled'),
     ]);
+
+    const events = eventsRes.data || [];
+    const tickets = ticketsRes.data || [];
+
+    const totalEvents = events.length;
+    const totalArtists = artistsCount.count ?? 0;
+    const totalOrganizers = orgsCount.count ?? 0;
+    const totalTickets = tickets.length;
+    const totalParticipants = events.reduce((sum: number, e: { attendees_count?: number }) => sum + (e.attendees_count || 0), 0);
+    const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0);
+    const totalRevenue = tickets.reduce((sum: number, t: { price_paid?: number }) => sum + (t.price_paid || 0), 0);
+
+    const categories: Record<string, number> = {};
+    for (const e of events) {
+      if (e.category) {
+        categories[e.category] = (categories[e.category] || 0) + 1;
+      }
+    }
+
     return {
-      totalEvents: events.count || MOCK_EVENTS.length, totalArtists: artists.count || MOCK_ARTISTS.length, totalOrganizers: orgs.count || MOCK_ORGANIZATIONS.length,
-      totalTickets: tickets.count || 1240,
-      totalParticipants: (participants.data || []).reduce((sum: number, e: { attendees_count: number }) => sum + (e.attendees_count || 0), 4850),
+      totalEvents: totalEvents || (isSupabaseConfigured ? 0 : MOCK_EVENTS.length),
+      totalArtists: totalArtists || (isSupabaseConfigured ? 0 : MOCK_ARTISTS.length),
+      totalOrganizers: totalOrganizers || (isSupabaseConfigured ? 0 : MOCK_ORGANIZATIONS.length),
+      totalTickets,
+      totalParticipants,
+      totalViews,
+      totalRevenue,
+      categories,
     };
   } catch {
     return {
@@ -485,6 +508,9 @@ export async function fetchPlatformStats(): Promise<{ totalEvents: number; total
       totalOrganizers: MOCK_ORGANIZATIONS.length,
       totalTickets: 1240,
       totalParticipants: 4850,
+      totalViews: 32400,
+      totalRevenue: 0,
+      categories: {},
     };
   }
 }
@@ -572,9 +598,15 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
     return MOCK_EVENTS.filter((e) => e.is_featured);
   }
   try {
-    const { data, error } = await supabase.from('events').select('*').eq('status', 'published').gte('starts_at', new Date().toISOString()).order('is_featured', { ascending: false }).order('starts_at', { ascending: true }).limit(10);
-    if (error || !data || data.length === 0) return MOCK_EVENTS.filter((e) => e.is_featured);
-    return data as Event[];
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .order('is_featured', { ascending: false })
+      .order('views_count', { ascending: false })
+      .limit(10);
+    if (!error && data && data.length > 0) return data as Event[];
+    return MOCK_EVENTS.filter((e) => e.is_featured);
   } catch {
     return MOCK_EVENTS.filter((e) => e.is_featured);
   }
@@ -585,9 +617,15 @@ export async function fetchEventsByCategory(category: EventCategory): Promise<Ev
     return MOCK_EVENTS.filter((e) => e.category === category);
   }
   try {
-    const { data, error } = await supabase.from('events').select('*').eq('status', 'published').eq('category', category).order('starts_at', { ascending: true }).limit(20);
-    if (error || !data || data.length === 0) return MOCK_EVENTS.filter((e) => e.category === category);
-    return data as Event[];
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .eq('category', category)
+      .order('starts_at', { ascending: true })
+      .limit(20);
+    if (!error && data && data.length > 0) return data as Event[];
+    return MOCK_EVENTS.filter((e) => e.category === category);
   } catch {
     return MOCK_EVENTS.filter((e) => e.category === category);
   }
@@ -598,9 +636,15 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
     return [...MOCK_EVENTS].sort((a, b) => b.views_count - a.views_count).slice(0, 5);
   }
   try {
-    const { data, error } = await supabase.from('events').select('*').eq('status', 'published').gte('starts_at', new Date().toISOString()).order('views_count', { ascending: false }).order('starts_at', { ascending: true }).limit(10);
-    if (error || !data || data.length === 0) return [...MOCK_EVENTS].sort((a, b) => b.views_count - a.views_count).slice(0, 5);
-    return data as Event[];
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .order('views_count', { ascending: false })
+      .order('starts_at', { ascending: true })
+      .limit(10);
+    if (!error && data && data.length > 0) return data as Event[];
+    return [...MOCK_EVENTS].sort((a, b) => b.views_count - a.views_count).slice(0, 5);
   } catch {
     return [...MOCK_EVENTS].sort((a, b) => b.views_count - a.views_count).slice(0, 5);
   }
@@ -608,28 +652,57 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
 
 export async function fetchUpcomingEvents(): Promise<Event[]> {
   if (!isSupabaseConfigured) {
-    return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 6);
+    return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 10);
   }
   try {
-    const now = new Date().toISOString();
-    const { data, error } = await supabase.from('events').select('*').eq('status', 'published').gte('starts_at', now).order('starts_at', { ascending: true }).limit(10);
-    if (error || !data || data.length === 0) return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 6);
-    return data as Event[];
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .order('starts_at', { ascending: true })
+      .limit(20);
+    if (!error && data && data.length > 0) return data as Event[];
+    return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 10);
   } catch {
-    return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 6);
+    return [...MOCK_EVENTS].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 10);
   }
 }
 
 export async function fetchEventById(id: string): Promise<EventWithRelations | null> {
   if (!isSupabaseConfigured) {
-    return getMockEventWithRelations(id) || getMockEventWithRelations(MOCK_EVENTS[0].id);
+    return getMockEventWithRelations(id) || null;
   }
   try {
-    const { data, error } = await supabase.from('events').select(`*, event_artists ( artist:artists (*), ), organizer:organizations (*)`).eq('id', id).maybeSingle();
-    if (error || !data) return getMockEventWithRelations(id) || getMockEventWithRelations(MOCK_EVENTS[0].id);
-    return data as EventWithRelations | null;
+    // 1. Try fetching event with full relations
+    const { data, error } = await supabase
+      .from('events')
+      .select(`*, event_artists ( artist:artists (*) ), organizer:organizations (*)`)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data as EventWithRelations;
+    }
+
+    // 2. If relation join fails (e.g. no organizer), fetch event directly
+    const { data: simpleData, error: simpleError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!simpleError && simpleData) {
+      return {
+        ...simpleData,
+        event_artists: [],
+        organizer: null,
+      } as EventWithRelations;
+    }
+
+    // 3. Only look for matching mock event with this exact id
+    return getMockEventWithRelations(id) || null;
   } catch {
-    return getMockEventWithRelations(id) || getMockEventWithRelations(MOCK_EVENTS[0].id);
+    return getMockEventWithRelations(id) || null;
   }
 }
 

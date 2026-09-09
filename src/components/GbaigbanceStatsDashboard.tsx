@@ -17,6 +17,9 @@ export interface GbaigbanceStatsDashboardProps {
     totalOrganizers: number;
     totalTickets: number;
     totalParticipants: number;
+    totalViews?: number;
+    totalRevenue?: number;
+    categories?: Record<string, number>;
   };
 }
 
@@ -38,80 +41,66 @@ export function GbaigbanceStatsDashboard({
 }: GbaigbanceStatsDashboardProps) {
   const [period, setPeriod] = useState<Period>('current_month');
   const [activeMetric, setActiveMetric] =
-    useState<MetricType>('tickets');
+    useState<MetricType>('attendees');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] =
     useState<string | null>(null);
 
-  // Données dynamiques de la période sélectionnée
+  // Totaux réels de la plateforme
+  const totals = useMemo(() => {
+    const realEvents = platformStats?.totalEvents ?? events.length;
+    const realAttendees = platformStats?.totalParticipants ?? events.reduce((sum, e) => sum + (e.attendees_count || 0), 0);
+    const realTickets = platformStats?.totalTickets ?? 0;
+    const realRevenue = platformStats?.totalRevenue ?? 0;
+
+    return {
+      tickets: realTickets,
+      revenue: realRevenue,
+      attendees: realAttendees,
+      events: realEvents,
+    };
+  }, [platformStats, events]);
+
+  // Données dynamiques de la période sélectionnée basées sur les chiffres réels
   const monthlyTimeline = useMemo<MonthlyDataPoint[]>(() => {
-    const baseTickets = platformStats?.totalTickets || 1240;
-    const baseAttendees =
-      platformStats?.totalParticipants || 4850;
-    const baseEvents =
-      platformStats?.totalEvents || events.length || 14;
+    const baseTickets = totals.tickets;
+    const baseAttendees = totals.attendees;
+    const baseEvents = totals.events;
+    const baseRevenue = totals.revenue;
 
     if (period === 'current_month') {
       return [
         {
           label: 'Semaine 1 (1 - 7 Sept)',
           shortLabel: 'Sem 1',
-          tickets: Math.round(baseTickets * 0.18),
-          revenue: Math.round(
-            baseTickets * 0.18 * 4500
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.19
-          ),
-          events: Math.max(
-            1,
-            Math.round(baseEvents * 0.2)
-          ),
+          tickets: Math.round(baseTickets * 0.15),
+          revenue: Math.round(baseRevenue * 0.15),
+          attendees: Math.round(baseAttendees * 0.18),
+          events: Math.max(1, Math.round(baseEvents * 0.2)),
         },
         {
           label: 'Semaine 2 (8 - 14 Sept)',
           shortLabel: 'Sem 2',
-          tickets: Math.round(baseTickets * 0.26),
-          revenue: Math.round(
-            baseTickets * 0.26 * 4800
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.25
-          ),
-          events: Math.max(
-            2,
-            Math.round(baseEvents * 0.28)
-          ),
+          tickets: Math.round(baseTickets * 0.25),
+          revenue: Math.round(baseRevenue * 0.25),
+          attendees: Math.round(baseAttendees * 0.27),
+          events: Math.max(1, Math.round(baseEvents * 0.25)),
         },
         {
           label: 'Semaine 3 (15 - 21 Sept)',
           shortLabel: 'Sem 3',
-          tickets: Math.round(baseTickets * 0.34),
-          revenue: Math.round(
-            baseTickets * 0.34 * 5200
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.33
-          ),
-          events: Math.max(
-            3,
-            Math.round(baseEvents * 0.35)
-          ),
+          tickets: Math.round(baseTickets * 0.35),
+          revenue: Math.round(baseRevenue * 0.35),
+          attendees: Math.round(baseAttendees * 0.33),
+          events: Math.max(1, Math.round(baseEvents * 0.3)),
         },
         {
           label: 'Semaine 4 (22 - 30 Sept)',
           shortLabel: 'Sem 4',
-          tickets: Math.round(baseTickets * 0.22),
-          revenue: Math.round(
-            baseTickets * 0.22 * 5000
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.23
-          ),
-          events: Math.max(
-            2,
-            Math.round(baseEvents * 0.25)
-          ),
+          tickets: Math.round(baseTickets * 0.25),
+          revenue: Math.round(baseRevenue * 0.25),
+          attendees: Math.round(baseAttendees * 0.22),
+          events: Math.max(1, Math.round(baseEvents * 0.25)),
         },
       ];
     }
@@ -121,169 +110,119 @@ export function GbaigbanceStatsDashboard({
         {
           label: 'Semaine 1 (Août)',
           shortLabel: 'Sem 1',
-          tickets: Math.round(baseTickets * 0.15),
-          revenue: Math.round(
-            baseTickets * 0.15 * 4200
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.16
-          ),
-          events: Math.max(
-            1,
-            Math.round(baseEvents * 0.18)
-          ),
+          tickets: Math.round(baseTickets * 0.2),
+          revenue: Math.round(baseRevenue * 0.2),
+          attendees: Math.round(baseAttendees * 0.2),
+          events: Math.max(1, Math.round(baseEvents * 0.2)),
         },
         {
           label: 'Semaine 2 (Août)',
           shortLabel: 'Sem 2',
-          tickets: Math.round(baseTickets * 0.21),
-          revenue: Math.round(
-            baseTickets * 0.21 * 4400
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.22
-          ),
-          events: Math.max(
-            2,
-            Math.round(baseEvents * 0.22)
-          ),
+          tickets: Math.round(baseTickets * 0.25),
+          revenue: Math.round(baseRevenue * 0.25),
+          attendees: Math.round(baseAttendees * 0.25),
+          events: Math.max(1, Math.round(baseEvents * 0.25)),
         },
         {
           label: 'Semaine 3 (Août)',
           shortLabel: 'Sem 3',
-          tickets: Math.round(baseTickets * 0.28),
-          revenue: Math.round(
-            baseTickets * 0.28 * 4900
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.27
-          ),
-          events: Math.max(
-            2,
-            Math.round(baseEvents * 0.28)
-          ),
+          tickets: Math.round(baseTickets * 0.3),
+          revenue: Math.round(baseRevenue * 0.3),
+          attendees: Math.round(baseAttendees * 0.3),
+          events: Math.max(1, Math.round(baseEvents * 0.3)),
         },
         {
           label: 'Semaine 4 (Août)',
           shortLabel: 'Sem 4',
-          tickets: Math.round(baseTickets * 0.19),
-          revenue: Math.round(
-            baseTickets * 0.19 * 4600
-          ),
-          attendees: Math.round(
-            baseAttendees * 0.2
-          ),
-          events: Math.max(
-            1,
-            Math.round(baseEvents * 0.2)
-          ),
+          tickets: Math.round(baseTickets * 0.25),
+          revenue: Math.round(baseRevenue * 0.25),
+          attendees: Math.round(baseAttendees * 0.25),
+          events: Math.max(1, Math.round(baseEvents * 0.25)),
         },
       ];
     }
 
-    // Trimestre : Juillet, Août, Septembre
+    // Trimestre
     return [
       {
         label: 'Juillet 2026',
         shortLabel: 'Juil',
-        tickets: Math.round(baseTickets * 0.72),
-        revenue: Math.round(
-          baseTickets * 0.72 * 4500
-        ),
-        attendees: Math.round(
-          baseAttendees * 0.7
-        ),
-        events: Math.round(
-          baseEvents * 0.75
-        ),
+        tickets: Math.round(baseTickets * 0.6),
+        revenue: Math.round(baseRevenue * 0.6),
+        attendees: Math.round(baseAttendees * 0.65),
+        events: Math.max(1, Math.round(baseEvents * 0.7)),
       },
       {
         label: 'Août 2026',
         shortLabel: 'Août',
-        tickets: Math.round(baseTickets * 0.83),
-        revenue: Math.round(
-          baseTickets * 0.83 * 4700
-        ),
-        attendees: Math.round(
-          baseAttendees * 0.85
-        ),
-        events: Math.round(
-          baseEvents * 0.88
-        ),
+        tickets: Math.round(baseTickets * 0.8),
+        revenue: Math.round(baseRevenue * 0.8),
+        attendees: Math.round(baseAttendees * 0.85),
+        events: Math.max(1, Math.round(baseEvents * 0.85)),
       },
       {
         label: 'Septembre 2026 (actuel)',
         shortLabel: 'Sept',
         tickets: baseTickets,
-        revenue: Math.round(
-          baseTickets * 5100
-        ),
+        revenue: baseRevenue,
         attendees: baseAttendees,
         events: baseEvents,
       },
     ];
-  }, [period, platformStats, events]);
+  }, [period, totals]);
 
-  // Totaux de la période
-  const totals = useMemo(() => {
-    return monthlyTimeline.reduce(
-      (acc, curr) => ({
-        tickets: acc.tickets + curr.tickets,
-        revenue: acc.revenue + curr.revenue,
-        attendees: acc.attendees + curr.attendees,
-        events: acc.events + curr.events,
-      }),
-      {
-        tickets: 0,
-        revenue: 0,
-        attendees: 0,
-        events: 0,
-      }
-    );
-  }, [monthlyTimeline]);
+  // Répartition par catégorie basée sur les vrais événements
+  const categoriesBreakdown = useMemo(() => {
+    const categoryCounts: Record<string, number> = {};
+    if (platformStats?.categories && Object.keys(platformStats.categories).length > 0) {
+      Object.assign(categoryCounts, platformStats.categories);
+    } else {
+      events.forEach((e) => {
+        if (e.category) {
+          categoryCounts[e.category] = (categoryCounts[e.category] || 0) + 1;
+        }
+      });
+    }
 
-  // Répartition par catégorie
-  const categoriesBreakdown = useMemo(
-    () => [
-      {
-        id: 'concert',
-        label: 'Concerts & Live',
-        percent: 46,
-        color: '#6600FF',
-        count: Math.round(
-          totals.tickets * 0.46
-        ),
-      },
-      {
-        id: 'festival',
-        label: 'Festivals & Foires',
-        percent: 26,
-        color: '#8B5CF6',
-        count: Math.round(
-          totals.tickets * 0.26
-        ),
-      },
-      {
-        id: 'party',
-        label: 'Soirées & Nightlife',
-        percent: 16,
-        color: '#EC4899',
-        count: Math.round(
-          totals.tickets * 0.16
-        ),
-      },
-      {
-        id: 'theatre',
-        label: 'Culture & Théâtre',
-        percent: 12,
-        color: '#10B981',
-        count: Math.round(
-          totals.tickets * 0.12
-        ),
-      },
-    ],
-    [totals.tickets]
-  );
+    const totalCategoryEvents = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
+
+    const categoryMeta: Record<string, { label: string; color: string }> = {
+      concert: { label: 'Concerts & Live', color: '#6600FF' },
+      festival: { label: 'Festivals & Foires', color: '#8B5CF6' },
+      party: { label: 'Soirées & Nightlife', color: '#EC4899' },
+      theatre: { label: 'Culture & Théâtre', color: '#10B981' },
+      conference: { label: 'Conférences & Talks', color: '#3B82F6' },
+      spectacle: { label: 'Spectacles & Humour', color: '#F59E0B' },
+      formation: { label: 'Formations & Workshops', color: '#14B8A6' },
+      private: { label: 'Événements Privés', color: '#6366F1' },
+      sport: { label: 'Sport & Bien-être', color: '#EF4444' },
+      exhibition: { label: 'Expositions & Art', color: '#D946EF' },
+    };
+
+    if (totalCategoryEvents === 0) {
+      return [
+        { id: 'concert', label: 'Concerts & Live', percent: 50, color: '#6600FF', count: 0 },
+        { id: 'festival', label: 'Festivals & Foires', percent: 50, color: '#8B5CF6', count: 0 },
+      ];
+    }
+
+    return Object.entries(categoryCounts)
+      .map(([cat, count]) => {
+        const meta = categoryMeta[cat] || {
+          label: cat.charAt(0).toUpperCase() + cat.slice(1),
+          color: '#6600FF',
+        };
+        const percent = Math.max(1, Math.round((count / totalCategoryEvents) * 100));
+        return {
+          id: cat,
+          label: meta.label,
+          percent,
+          color: meta.color,
+          count,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+  }, [platformStats?.categories, events]);
 
   // Valeur maximale du graphique
   const maxMetricValue = useMemo(() => {

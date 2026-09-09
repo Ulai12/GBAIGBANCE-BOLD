@@ -186,7 +186,7 @@ function AppContent() {
       <>
         <AISettingsScreen
           onBack={() => setScreen(activeTab)}
-          onToast={addToast}
+          onToast={(t) => addToast({ message: t.message, type: t.type || 'info' })}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>

@@ -64,13 +64,18 @@ export function HomeScreen({
   const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number } | null>(null);
 
   useEffect(() => {
-    const isValidDate = (dateStr?: string) => dateStr && !isNaN(new Date(dateStr).getTime());
+    const isValidDate = (dateStr?: string) => Boolean(dateStr && !isNaN(new Date(dateStr).getTime()));
 
     Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
       .then(([feat, up, trend, art]) => {
-        setFeatured(feat.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5));
-        setTrending(trend.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()).slice(0, 5));
-        setNearby(up.filter((event) => event.status === 'published' && isValidDate(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at) > new Date()));
+        const filterValid = (list: Event[]) => list.filter((event) => event.status === 'published' && isValidDate(event.starts_at));
+        const validFeat = filterValid(feat);
+        const validTrend = filterValid(trend);
+        const validUp = filterValid(up);
+
+        setFeatured(validFeat.length > 0 ? validFeat.slice(0, 5) : feat.slice(0, 5));
+        setTrending(validTrend.length > 0 ? validTrend.slice(0, 5) : trend.slice(0, 5));
+        setNearby(validUp.length > 0 ? validUp : up);
         setArtists(art.slice(0, 6));
       })
       .catch(() => {}).finally(() => setLoading(false));
@@ -340,10 +345,12 @@ export function HomeScreen({
 
       {!loading && (
         <section className="mt-8 px-5">
-         <div className="text-center mb-5">
-            <h3 className="text-2xl font-black text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
-            <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
-              La billetterie qui grandit chaque jour
+          <div className="mb-4">
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
+              Gbaigbance en chiffres
+            </h2>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              La billetterie qui grandit chaque jour · Données en direct
             </p>
           </div>
           <GbaigbanceStatsDashboard

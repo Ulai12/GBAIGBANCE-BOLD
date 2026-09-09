@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { updateProfile } from '@/services/auth';
 import { COUNTRIES, EVENT_CATEGORIES } from '@/constants';
 
 interface OnboardingScreenProps {
@@ -66,7 +67,7 @@ const ONBOARDING_SLIDES: Slide[] = [
 ];
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
-  const { user, updateUser } = useApp();
+  const { user } = useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(user?.country || 'TG');
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['concert', 'festival']);
@@ -79,8 +80,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       setCurrentStep((prev) => prev + 1);
     } else {
       // Sauvegarde des préférences choisies avant de terminer
-      if (user && updateUser) {
-        updateUser({
+      if (user) {
+        updateProfile(user.id, {
           country: selectedCountry,
         }).catch(() => {});
       }
@@ -193,56 +194,56 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {/* SLIDE 1 : Billetterie instantanée & Mobile Money */}
         {currentStep === 1 && (
           <div className="w-full animate-fade-in">
-            <div className="relative rounded-[2.2rem] bg-gradient-to-br from-[#121020] to-[#201A38] text-white p-6 shadow-[0_20px_50px_rgba(16,185,129,0.18)] border border-white/15 overflow-hidden">
+            <div className="relative rounded-[2.2rem] bg-white dark:bg-gradient-to-br dark:from-[#121020] dark:to-[#201A38] text-[#17131D] dark:text-white p-6 shadow-[0_20px_50px_rgba(16,185,129,0.12)] dark:shadow-[0_20px_50px_rgba(16,185,129,0.18)] border border-black/[0.06] dark:border-white/15 overflow-hidden">
               {/* Reflet holographique */}
-              <div className="absolute -right-10 -top-10 w-36 h-36 bg-[#10B981]/25 rounded-full blur-2xl" />
+              <div className="absolute -right-10 -top-10 w-36 h-36 bg-[#10B981]/15 dark:bg-[#10B981]/25 rounded-full blur-2xl" />
 
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#10B981]/20 text-[#10B981] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-[#10B981]/15 text-[#10B981] flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-black text-[#10B981] tracking-wider block">
                       Pass Vérifié
                     </span>
-                    <span className="text-sm font-extrabold text-white">Billet Standard #TG-942</span>
+                    <span className="text-sm font-extrabold text-[#17131D] dark:text-white">Billet Standard #TG-942</span>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-white/10 text-xs font-bold text-green-300">
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-white/10 text-xs font-bold text-emerald-600 dark:text-green-300">
                   Valide
                 </span>
               </div>
 
               {/* Découpe du ticket façon billet de cinéma */}
-              <div className="my-4 py-4 px-4 bg-white/5 rounded-2xl border border-dashed border-white/20 flex items-center justify-between">
+              <div className="my-4 py-4 px-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/20 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white rounded-xl p-1 flex items-center justify-center text-black">
+                  <div className="w-12 h-12 bg-[#17131D] text-white dark:bg-white dark:text-black rounded-xl p-1 flex items-center justify-center">
                     <QrCode className="w-10 h-10" />
                   </div>
                   <div>
-                    <p className="text-xs text-white/60 font-medium">Scannez à l'entrée</p>
-                    <p className="text-sm font-bold text-white">Accès rapide NFC & QR</p>
+                    <p className="text-xs text-gray-500 dark:text-white/60 font-medium">Scannez à l'entrée</p>
+                    <p className="text-sm font-bold text-[#17131D] dark:text-white">Accès rapide NFC & QR</p>
                   </div>
                 </div>
               </div>
 
               {/* Puces Mobile Money compatibles */}
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-2">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-white/50 font-bold mb-2">
                   Paiements directs acceptés :
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="px-2.5 py-1 rounded-lg bg-yellow-400/20 text-yellow-300 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-700 dark:text-yellow-300 text-[11px] font-bold">
                     T-Money
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-blue-400/20 text-blue-300 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
                     Moov Money
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-cyan-400/20 text-cyan-300 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 text-[11px] font-bold">
                     Wave
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-orange-400/20 text-orange-300 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-orange-500/15 text-orange-700 dark:text-orange-300 text-[11px] font-bold">
                     Orange Money
                   </span>
                 </div>

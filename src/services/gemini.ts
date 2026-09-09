@@ -12,6 +12,55 @@ export interface GeminiConfig {
 }
 
 const STORAGE_KEY = 'gbaigbance_gemini_config';
+const API_KEY_KEY = 'gbaigbance_gemini_api_key';
+
+export interface GeminiModelOption {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  recommended?: boolean;
+}
+
+export const GEMINI_AVAILABLE_MODELS: GeminiModelOption[] = [
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    badge: 'Recommandé',
+    description: 'Ultra-rapide, équilibre idéal & Maps Grounding',
+    recommended: true,
+  },
+  {
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    badge: 'Raisonnement avancé',
+    description: 'Analyse complexe, haute précision & conseils personnalisés',
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    badge: 'Nouvelle génération',
+    description: 'Génération ultra réactive et multimodale',
+  },
+  {
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
+    badge: 'Léger & rapide',
+    description: 'Latence minimale pour les recommandations instantanées',
+  },
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    badge: 'Standard rapide',
+    description: 'Modèle éprouvé pour les requêtes courantes',
+  },
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    badge: 'Contexte étendu',
+    description: 'Grande fenêtre de contexte pour analyser tous les détails',
+  },
+];
 
 const DEFAULT_CONFIG: GeminiConfig = {
   apiKey: '',
@@ -23,12 +72,32 @@ const DEFAULT_CONFIG: GeminiConfig = {
 
 export function getGeminiConfig(): GeminiConfig {
   try {
+    let savedKey = '';
+    try {
+      savedKey = localStorage.getItem(API_KEY_KEY) || sessionStorage.getItem(API_KEY_KEY) || '';
+    } catch (err) {
+      console.debug('Failed to read stored Gemini key:', err);
+      savedKey = '';
+    }
+
+    const envKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_CONFIG;
+    if (!raw) {
+      const initialKey = savedKey || envKey;
+      return {
+        ...DEFAULT_CONFIG,
+        apiKey: initialKey,
+        enabled: Boolean(initialKey && initialKey.trim().length > 10),
+      };
+    }
     const parsed = JSON.parse(raw);
+    const resolvedKey = (parsed.apiKey && parsed.apiKey.trim()) || savedKey || envKey;
     return {
       ...DEFAULT_CONFIG,
       ...parsed,
+      apiKey: resolvedKey,
+      enabled: parsed.enabled ?? Boolean(resolvedKey && resolvedKey.trim().length > 10),
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -41,7 +110,22 @@ export function saveGeminiConfig(config: Partial<GeminiConfig>): GeminiConfig {
     ...current,
     ...config,
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (updated.apiKey && updated.apiKey.trim().length > 5) {
+    updated.enabled = config.enabled ?? true;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (updated.apiKey && updated.apiKey.trim().length > 0) {
+      localStorage.setItem(API_KEY_KEY, updated.apiKey.trim());
+      sessionStorage.setItem(API_KEY_KEY, updated.apiKey.trim());
+    } else if (config.apiKey === '') {
+      localStorage.removeItem(API_KEY_KEY);
+      sessionStorage.removeItem(API_KEY_KEY);
+    }
+  } catch (err) {
+    console.warn('Could not persist Gemini API key:', err);
+  }
+
   // Dispatch a custom event so reactive components can update instantly
   window.dispatchEvent(new CustomEvent('gbaigbance_gemini_config_updated', { detail: updated }));
   return updated;
@@ -49,7 +133,9 @@ export function saveGeminiConfig(config: Partial<GeminiConfig>): GeminiConfig {
 
 export function isGeminiActive(): boolean {
   const config = getGeminiConfig();
-  return config.enabled && config.apiKey.trim().length > 10;
+  const envKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+  const key = config.apiKey.trim() || envKey.trim();
+  return (config.enabled && key.length > 10) || key.length > 10;
 }
 
 export async function testGeminiApiKey(
@@ -94,12 +180,14 @@ export async function askGeminiAssistant({
   userLocation?: string;
 }): Promise<{ text: string; source: 'gemini' | 'offline' }> {
   const config = getGeminiConfig();
+  const envKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+  const effectiveKey = config.apiKey.trim() || envKey.trim();
 
-  if (!isGeminiActive()) {
+  if (!effectiveKey) {
     throw new Error('La clé API Gemini n’est pas configurée ou est désactivée.');
   }
 
-  const ai = new GoogleGenAI({ apiKey: config.apiKey.trim() });
+  const ai = new GoogleGenAI({ apiKey: effectiveKey });
   const modelName = config.model || 'gemini-2.5-flash';
 
   const systemInstruction = `Tu es l'assistant concierge intelligent de Gbaigbance, l'application d'événements leader en Afrique francophone (Togo, Bénin, Côte d'Ivoire, Sénégal, etc.).
@@ -116,13 +204,13 @@ ${userLocation ? `Localisation de l'utilisateur : ${userLocation}.` : ''}`;
     eventContext = `\nÉvénement actuellement consulté :
 Titre : ${currentEvent.title}
 Catégorie : ${currentEvent.category}
-Date : ${currentEvent.start_date}
+Date : ${currentEvent.starts_at}
 Lieu : ${currentEvent.location_name}, ${currentEvent.city}, ${currentEvent.country}
-Prix : ${currentEvent.price ? currentEvent.price + ' ' + (currentEvent.currency || 'FCFA') : 'Gratuit'}
+Prix : ${currentEvent.price_min ? currentEvent.price_min + ' ' + (currentEvent.currency || 'FCFA') : 'Gratuit'}
 Description : ${currentEvent.description || 'N/A'}`;
   } else if (contextEvents.length > 0) {
     const list = contextEvents.slice(0, 8).map(
-      (e) => `- ${e.title} (${e.category}) le ${e.start_date} à ${e.location_name}, ${e.city} [${e.price ? e.price + ' ' + (e.currency || 'FCFA') : 'Gratuit'}]`
+      (e) => `- ${e.title} (${e.category}) le ${e.starts_at} à ${e.location_name}, ${e.city} [${e.price_min ? e.price_min + ' ' + (e.currency || 'FCFA') : 'Gratuit'}]`
     ).join('\n');
     eventContext = `\nVoici une sélection d'événements disponibles sur l'application :\n${list}`;
   }
