@@ -145,7 +145,7 @@ export function HomeScreen({
   };
 
   return (
-    <div className="min-h-screen pb-32 bg-[#F8F9FC] dark:bg-[#0E0C15] text-[#171726] dark:text-white transition-colors duration-200">
+    <div className="min-h-screen pb-32">
       {/* En-tête modernisée style iOS */}
       <header className="px-5 pt-7 pb-3">
         {/* Ligne Logo & Identité */}
