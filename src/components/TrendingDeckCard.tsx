@@ -1,6 +1,6 @@
 import { motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket, Map } from 'lucide-react';
-import { useRef } from 'react';
+import { forwardRef, useRef } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 
@@ -22,7 +22,10 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps) {
+export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(function TrendingDeckCard(
+  { event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps,
+  ref
+) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
   const imageScale = useTransform(x, [-260, 0, 260], [1.08, 1, 1.08]);
@@ -34,7 +37,8 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
 
   return (
     <motion.article
-      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-[#17131d] text-white shadow-2xl"
+      ref={ref}
+      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E1E] text-white shadow-2xl"
       style={{
         x: active ? x : 0,
         rotate: active ? rotate : offset * -2.5,
@@ -107,4 +111,4 @@ export function TrendingDeckCard({ event, index, total, active, onOpen, onBook, 
       </div>
     </motion.article>
   );
-}
+});

@@ -4,7 +4,7 @@ import {
   Star, BadgeCheck, Ticket, Settings, Eye,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
-import { fetchEventById, toggleEventLike, fetchCollaborators, incrementEventViews, subscribeToEventViews, subscribeToEventAttendees } from '@/services/events';
+import { fetchEventById, toggleEventLike, fetchCollaborators, incrementEventViews, subscribeToEventViews, subscribeToEventAttendees, isEventTerminated } from '@/services/events';
 import { formatFullDate, formatTime, formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
 import { BookingModal } from '@/components/BookingModal';
@@ -46,7 +46,7 @@ function useCountdown(targetDate: string) {
   return timeLeft;
 }
 
-export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpenAISettings, onToast }: EventDetailScreenProps) {
+export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettings, onToast }: EventDetailScreenProps) {
   const { t, language, user } = useApp();
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
   const [liked, setLiked] = useState(false);
@@ -98,7 +98,7 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpen
   const artists = (displayEvent as EventWithRelations)?.event_artists?.map((ea) => ea.artist) || [];
   const flag = COUNTRY_FLAGS[displayEvent.country || event.country] || '';
   const isOrganizer = !!(user && displayEvent.organizer_user_id === user.id);
-  const eventHasEnded = Boolean(displayEvent.ends_at ? new Date(displayEvent.ends_at) <= new Date() : new Date(displayEvent.starts_at) <= new Date());
+  const eventHasEnded = isEventTerminated(displayEvent as Event);
   const canBook = displayEvent.status === 'published' && !eventHasEnded;
   const statusLabel = displayEvent.status === 'paused' ? 'Ventes en pause' : displayEvent.status === 'suspended' ? 'Événement suspendu' : displayEvent.status === 'cancelled' ? 'Événement annulé' : displayEvent.status === 'completed' || eventHasEnded ? 'Événement terminé' : null;
   const galleryImages = Array.from(new Set([displayEvent.cover_url, ...(displayEvent.images || [])].filter((image): image is string => Boolean(image))));
@@ -192,7 +192,15 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onBook, onOpen
       <div className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-5 pt-3 bg-gradient-to-t from-[#EDE8FF] via-[#EDE8FF] to-transparent">
         <div className="max-w-md mx-auto flex items-center gap-4">
           <div><p className="text-xs text-gray-500">À partir de</p><p className="text-xl font-extrabold text-[#1A1A2E]">{displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}</p></div>
-          <button disabled={!canBook} onClick={() => { if (!user) { onToast({ message: 'Connectez-vous pour réserver', type: 'info' }); onBook(displayEvent as Event); } else { setShowBooking(true); } }} className="btn-purple flex-1 py-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"><Ticket className="w-5 h-5" />{canBook ? 'Acheter un billet' : statusLabel || 'Réservation indisponible'}</button>
+          <button
+            type="button"
+            disabled={!canBook}
+            onClick={() => setShowBooking(true)}
+            className="btn-purple flex-1 py-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            <Ticket className="w-5 h-5" />
+            {canBook ? 'Acheter un billet' : statusLabel || 'Réservation indisponible'}
+          </button>
         </div>
       </div>
 

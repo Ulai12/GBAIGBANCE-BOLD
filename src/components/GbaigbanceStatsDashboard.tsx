@@ -4,7 +4,6 @@ import {
   Users,
   Calendar,
   DollarSign,
-  ArrowUpRight,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import type { Event } from '@/types';
@@ -429,7 +428,7 @@ export function GbaigbanceStatsDashboard({
       {/* Cartes KPI */}
       <div className="mb-4 grid grid-cols-2 gap-2.5 px-5">
 
-        {/* Billets */}
+        {/* Billets - Total global acheté par tout le monde */}
         <button
           type="button"
           onClick={() =>
@@ -444,7 +443,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Ticket className="h-3.5 w-3.5 text-[#6600FF]" />
-              Billets
+              Billets vendus
             </span>
 
             {activeMetric === 'tickets' && (
@@ -456,13 +455,12 @@ export function GbaigbanceStatsDashboard({
             {formatNumber(totals.tickets)}
           </p>
 
-          <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold text-[#10B981]">
-            <ArrowUpRight className="h-3 w-3" />
-            +19.4% ce mois
+          <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
+            Total acheté sur l'app
           </p>
         </button>
 
-        {/* Revenus */}
+        {/* Revenus / Dépenses totales globales */}
         <button
           type="button"
           onClick={() =>
@@ -477,7 +475,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <DollarSign className="h-3.5 w-3.5 text-[#6600FF]" />
-              Revenus
+              Dépenses totales
             </span>
 
             {activeMetric === 'revenue' && (
@@ -492,9 +490,8 @@ export function GbaigbanceStatsDashboard({
             </span>
           </p>
 
-          <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold text-[#10B981]">
-            <ArrowUpRight className="h-3 w-3" />
-            +28.2% ce mois
+          <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
+            Volume global dépensé
           </p>
         </button>
 
@@ -526,7 +523,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            94% taux de présence
+            Communauté globale
           </p>
         </button>
 

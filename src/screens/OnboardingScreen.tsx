@@ -27,6 +27,36 @@ interface Slide {
   accent: string;
 }
 
+const ONBOARDING_ARTISTS = [
+  {
+    id: 'king-mensah',
+    name: 'King Mensah',
+    genre: 'Afropop & Rythmes traditionnels',
+    followers: 142000,
+    city: 'Lomé',
+    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    upcoming: 'Palais des Congrès · Lomé',
+  },
+  {
+    id: 'santrinos',
+    name: 'Santrinos Raphaël',
+    genre: 'Afro-RnB & Soul Urbaine',
+    followers: 285000,
+    city: 'Lomé',
+    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    upcoming: 'Concert Émotion · Lomé',
+  },
+  {
+    id: 'toofan',
+    name: 'Toofan',
+    genre: 'Ogbragada & Afrobeats',
+    followers: 530000,
+    city: 'Lomé',
+    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+    upcoming: 'Tournée Nationale · Togo',
+  },
+];
+
 const ONBOARDING_SLIDES: Slide[] = [
   {
     id: 0,
@@ -70,10 +100,22 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { user } = useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(user?.country || 'TG');
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(['concert', 'festival']);
-  const [likedArtistPreview, setLikedArtistPreview] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(['concert', 'festival', 'spectacle']);
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(0);
+  const [followedArtists, setFollowedArtists] = useState<string[]>(['king-mensah']);
+  const [soonCountryNotice, setSoonCountryNotice] = useState<string | null>(null);
 
   const slide = ONBOARDING_SLIDES[currentStep];
+  const activeArtist = ONBOARDING_ARTISTS[selectedArtistIndex];
+  const isArtistFollowed = followedArtists.includes(activeArtist.id);
+
+  const toggleFollowArtist = (id: string) => {
+    if (followedArtists.includes(id)) {
+      setFollowedArtists(followedArtists.filter((a) => a !== id));
+    } else {
+      setFollowedArtists([...followedArtists, id]);
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < ONBOARDING_SLIDES.length - 1) {
@@ -255,56 +297,105 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {/* SLIDE 2 : Suivi d'artistes & Alertes VIP */}
         {currentStep === 2 && (
           <div className="w-full animate-fade-in">
-            <div className="relative rounded-[2.2rem] bg-white dark:bg-[#1A1829] p-6 shadow-[0_20px_50px_rgba(236,72,153,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-black/[0.06] dark:border-white/[0.08]">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden ring-4 ring-[#EC4899]/30">
+            <div className="relative rounded-[2.2rem] bg-white dark:bg-[#1A1829] p-5 shadow-[0_20px_50px_rgba(236,72,153,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-black/[0.06] dark:border-white/[0.08]">
+              {/* Sélecteur rapide d'artistes */}
+              <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-black/[0.05] dark:border-white/[0.06]">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  Artistes à découvrir :
+                </span>
+                <div className="flex items-center gap-2">
+                  {ONBOARDING_ARTISTS.map((artist, idx) => {
+                    const isCurrent = idx === selectedArtistIndex;
+                    const followed = followedArtists.includes(artist.id);
+                    return (
+                      <button
+                        key={artist.id}
+                        type="button"
+                        onClick={() => setSelectedArtistIndex(idx)}
+                        className={`relative w-9 h-9 rounded-full overflow-hidden transition-all ${
+                          isCurrent
+                            ? 'ring-3 ring-[#EC4899] scale-110 shadow-sm'
+                            : 'opacity-60 hover:opacity-100'
+                        }`}
+                        title={artist.name}
+                      >
+                        <img
+                          src={artist.image}
+                          alt={artist.name}
+                          className="w-full h-full object-cover"
+                        />
+                        {followed && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#EC4899] rounded-full ring-2 ring-white flex items-center justify-center">
+                            <Check className="w-2 h-2 text-white" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Fiche de l'artiste actif */}
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="relative w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-[#EC4899]/30 shrink-0 shadow-sm">
                   <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
-                    alt="Artiste en vedette"
+                    src={activeArtist.image}
+                    alt={activeArtist.name}
                     className="w-full h-full object-cover"
                   />
-                  <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full ring-2 ring-white" />
+                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full ring-2 ring-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-base text-[#17131D] dark:text-white truncate">
-                    King Mensah
+                  <p className="font-black text-base text-[#17131D] dark:text-white truncate">
+                    {activeArtist.name}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Artiste Afropop · 142k abonnés
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {activeArtist.genre}
                   </p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-[#EC4899]/15 text-[#EC4899] text-[10px] font-extrabold">
-                    Prochain concert : Lomé
-                  </span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="px-2 py-0.5 rounded-full bg-[#EC4899]/15 text-[#EC4899] text-[10px] font-extrabold">
+                      {activeArtist.city}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-semibold">
+                      {(activeArtist.followers + (isArtistFollowed ? 1 : 0)).toLocaleString()}{' '}
+                      abonnés
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Bouton d'action interactif */}
               <button
                 type="button"
-                onClick={() => setLikedArtistPreview(!likedArtistPreview)}
-                className={`w-full py-3 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
-                  likedArtistPreview
-                    ? 'bg-[#EC4899] text-white shadow-md'
+                onClick={() => toggleFollowArtist(activeArtist.id)}
+                className={`w-full py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+                  isArtistFollowed
+                    ? 'bg-gradient-to-r from-[#EC4899] to-[#F43F5E] text-white shadow-md shadow-[#EC4899]/30'
                     : 'bg-[#EC4899]/10 text-[#EC4899] hover:bg-[#EC4899]/20'
                 }`}
               >
                 <Heart
-                  className={`w-4 h-4 ${likedArtistPreview ? 'fill-white' : ''}`}
+                  className={`w-4 h-4 ${isArtistFollowed ? 'fill-white' : ''}`}
                 />
-                {likedArtistPreview ? 'Abonné aux alertes !' : 'Suivre l’artiste'}
+                {isArtistFollowed
+                  ? 'Abonné aux alertes VIP !'
+                  : `Suivre ${activeArtist.name}`}
               </button>
 
-              {/* Notification preview */}
-              <div className="mt-4 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-black/[0.04] dark:border-white/[0.05] flex items-center gap-3">
+              {/* Notification preview dynamique */}
+              <div className="mt-3.5 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-black/[0.04] dark:border-white/[0.05] flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0">
                   <Zap className="w-4 h-4" />
                 </div>
-                <div className="text-left min-w-0">
-                  <p className="text-xs font-bold text-[#17131D] dark:text-white truncate">
-                    Billet prévente ouvert !
-                  </p>
-                  <p className="text-[11px] text-gray-400 truncate">
-                    Accès prioritaire pour les membres Gbaigbance
+                <div className="text-left min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black text-[#17131D] dark:text-white truncate">
+                      Billet prévente · {activeArtist.name}
+                    </p>
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                    {activeArtist.upcoming}
                   </p>
                 </div>
               </div>
@@ -316,40 +407,72 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {currentStep === 3 && (
           <div className="w-full animate-fade-in space-y-4">
             <div className="rounded-[2.2rem] bg-white dark:bg-[#1A1829] p-5 shadow-[0_20px_50px_rgba(102,0,255,0.12)] border border-black/[0.06] dark:border-white/[0.08]">
-              {/* Choix du pays principal */}
+              {/* Choix du pays principal avec Soon sur les autres pays sauf le Togo */}
               <div className="mb-4">
-                <label className="text-xs font-black uppercase tracking-wider text-gray-400 block mb-2">
-                  Votre pays principal :
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-gray-400 block">
+                    Votre pays principal :
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    🇹🇬 Ouvert au Togo
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   {COUNTRIES.slice(0, 4).map((c) => {
+                    const isTogo = c.code === 'TG';
                     const isSelected = selectedCountry === c.code;
                     return (
                       <button
                         key={c.code}
                         type="button"
-                        onClick={() => setSelectedCountry(c.code)}
-                        className={`p-2.5 rounded-xl border flex items-center gap-2 text-left transition-all ${
+                        onClick={() => {
+                          if (isTogo) {
+                            setSelectedCountry('TG');
+                            setSoonCountryNotice(null);
+                          } else {
+                            setSoonCountryNotice(
+                              `Gbaigbance arrive très prochainement en ${c.name} ! La billetterie est actuellement disponible au Togo 🇹🇬.`
+                            );
+                          }
+                        }}
+                        className={`relative p-2.5 rounded-2xl border flex items-center gap-2 text-left transition-all ${
                           isSelected
-                            ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF] font-black'
-                            : 'border-black/[0.06] dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold text-xs text-gray-700 dark:text-gray-300'
+                            ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF] font-black ring-1 ring-[#6600FF]'
+                            : isTogo
+                            ? 'border-black/[0.08] dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold text-xs text-gray-700 dark:text-gray-300'
+                            : 'border-black/[0.05] dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] text-gray-500 font-medium text-xs hover:border-amber-300/40'
                         }`}
                       >
-                        <span className="text-base">{c.flag}</span>
+                        <span className="text-lg">{c.flag}</span>
                         <span className="truncate">{c.name}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 ml-auto" />}
+                        {isTogo ? (
+                          isSelected && <Check className="w-3.5 h-3.5 ml-auto text-[#6600FF]" />
+                        ) : (
+                          <span className="ml-auto px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[8px] font-black tracking-wider uppercase">
+                            Soon
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Message d'information pays Soon */}
+                {soonCountryNotice && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] leading-tight flex items-center gap-2 animate-fade-in">
+                    <span className="text-base shrink-0">⏳</span>
+                    <p className="flex-1">{soonCountryNotice}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Choix des catégories favorites */}
+              {/* Choix des ambiances/catégories couvrant toute la largeur de la carte */}
               <div>
                 <label className="text-xs font-black uppercase tracking-wider text-gray-400 block mb-2">
                   Vos ambiances préférées :
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
                   {EVENT_CATEGORIES.map((cat) => {
                     const isSelected = selectedGenres.includes(cat.value);
                     return (
@@ -357,13 +480,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                         key={cat.value}
                         type="button"
                         onClick={() => toggleGenre(cat.value)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                        className={`w-full py-2.5 px-2 rounded-2xl text-xs font-extrabold text-center transition-all flex items-center justify-center border ${
                           isSelected
-                            ? 'bg-[#6600FF] text-white shadow-xs'
-                            : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                            ? 'bg-[#6600FF] border-[#6600FF] text-white shadow-sm ring-1 ring-[#6600FF]/30'
+                            : 'bg-gray-50 dark:bg-white/5 border-black/[0.06] dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10'
                         }`}
                       >
-                        {cat.label}
+                        <span className="truncate">{cat.label}</span>
                       </button>
                     );
                   })}

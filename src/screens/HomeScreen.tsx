@@ -1,25 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  Search, Users, MapPin,
+  Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
   Landmark, Lock, Sparkles, ChevronRight,
-  Settings,
+  Settings, Gift, Navigation,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { TrendingDeck } from '@/components/TrendingDeck';
+import { FeaturedCarousel } from '@/components/FeaturedCarousel';
 import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
-import { LocationModal } from '@/components/LocationModal';
-import { PWAInstallBanner } from '@/components/PWAInstallBanner';
-import { PWAInstallButton } from '@/components/PWAInstallButton';
 import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
 import { useApp } from '@/hooks/useApp';
-import { COUNTRY_FLAGS, EVENT_CATEGORIES } from '@/constants';
+import { EVENT_CATEGORIES } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
   fetchEventsByCategory, fetchFeaturedArtists, fetchPlatformStats,
+  isEventTerminated, isEventActive,
 } from '@/services/events';
 import type { Event, Artist, EventCategory } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -52,7 +51,6 @@ export function HomeScreen({
   onOpenSettings,
 }: HomeScreenProps) {
   const { user, t } = useApp();
-  const [locationOpen, setLocationOpen] = useState(false);
   const [trending, setTrending] = useState<Event[]>([]);
   const [nearby, setNearby] = useState<Event[]>([]);
   const [featured, setFeatured] = useState<Event[]>([]);
@@ -68,180 +66,238 @@ export function HomeScreen({
 
     Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
       .then(([feat, up, trend, art]) => {
-        const filterValid = (list: Event[]) => list.filter((event) => event.status === 'published' && isValidDate(event.starts_at));
+        // Strictly filter to active published events
+        const filterValid = (list: Event[]) =>
+          list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
+
         const validFeat = filterValid(feat);
         const validTrend = filterValid(trend);
         const validUp = filterValid(up);
 
-        setFeatured(validFeat.length > 0 ? validFeat.slice(0, 5) : feat.slice(0, 5));
-        setTrending(validTrend.length > 0 ? validTrend.slice(0, 5) : trend.slice(0, 5));
-        setNearby(validUp.length > 0 ? validUp : up);
+        setFeatured(validFeat.length > 0 ? validFeat : feat.filter(e => e.status === 'published' && !isEventTerminated(e)));
+        setTrending(validTrend.length > 0 ? validTrend : trend.filter(e => e.status === 'published' && !isEventTerminated(e)));
+        setNearby(validUp.length > 0 ? validUp : up.filter(e => e.status === 'published' && !isEventTerminated(e)));
         setArtists(art.slice(0, 6));
       })
       .catch(() => {}).finally(() => setLoading(false));
+
     fetchPlatformStats().then(setPlatformStats).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!selectedCategory) { setCategoryEvents([]); return; }
     setCategoryLoading(true);
-    fetchEventsByCategory(selectedCategory).then(setCategoryEvents).catch(() => setCategoryEvents([])).finally(() => setCategoryLoading(false));
+    fetchEventsByCategory(selectedCategory)
+      .then((res) => setCategoryEvents(res.filter(e => e.status === 'published' && !isEventTerminated(e))))
+      .catch(() => setCategoryEvents([]))
+      .finally(() => setCategoryLoading(false));
   }, [selectedCategory]);
 
-  const heroEvent = featured[0] || trending[0];
-  const safePrice = heroEvent?.price_min ?? 0;
-  const safeAttendees = heroEvent?.attendees_count ?? 0;
+  const allActiveEvents = useMemo(() => {
+    const map = new Map<string, Event>();
+    [...featured, ...trending, ...nearby].forEach((e) => {
+      if (e && e.id && isEventActive(e) && !isEventTerminated(e)) {
+        map.set(e.id, e);
+      }
+    });
+    return Array.from(map.values());
+  }, [featured, trending, nearby]);
+
+  // Conditional Section: Événements en cours / En direct
+  const ongoingEvents = useMemo(() => {
+    const now = Date.now();
+    return allActiveEvents.filter((event) => {
+      const start = new Date(event.starts_at).getTime();
+      const end = event.ends_at ? new Date(event.ends_at).getTime() : start + 6 * 3600 * 1000;
+      return now >= start && now <= end;
+    });
+  }, [allActiveEvents]);
+
+  // Conditional Section: Événements gratuits (Entrée libre)
+  const freeEvents = useMemo(() => {
+    return allActiveEvents.filter((event) => event.price_min === 0);
+  }, [allActiveEvents]);
+
+  // Conditional Section: À moins de 5 km (Lomé & proximité immédiate)
+  const nearbyUnder5km = useMemo(() => {
+    return allActiveEvents.filter((event) => {
+      const loc = (event.location_name || '').toLowerCase();
+      const city = (event.city || '').toLowerCase();
+      return (
+        city.includes('lomé') ||
+        city.includes('lome') ||
+        loc.includes('lomé') ||
+        loc.includes('marina') ||
+        loc.includes('stade') ||
+        loc.includes('plage') ||
+        loc.includes('centre') ||
+        loc.includes('palais')
+      );
+    });
+  }, [allActiveEvents]);
+
+  const getDynamicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bonjour';
+    if (hour >= 12 && hour < 18) return 'Bon après-midi';
+    if (hour >= 18 && hour < 23) return 'Bonsoir';
+    return 'Douce nuit';
+  };
 
   return (
-    <div className="min-h-screen pb-32">
-      {/* En-tête */}
-      <div className="px-5 pt-9 pb-2">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 flex items-center justify-center text-base">
-            🎟️
-          </div>
-          <div className="leading-none">
-            <p className="text-[15px] font-extrabold text-[#171726] tracking-tight">GBAIGBANCE</p>
-            <p className="text-[9px] font-bold text-gray-400 tracking-[0.16em] uppercase mt-1">Billetterie & événements</p>
+    <div className="min-h-screen pb-32 bg-[#F8F9FC] dark:bg-[#0E0C15] text-[#171726] dark:text-white transition-colors duration-200">
+      {/* En-tête modernisée style iOS */}
+      <header className="px-5 pt-7 pb-3">
+        {/* Ligne Logo & Identité */}
+        <div className="flex items-center gap-2.5 mb-3.5">
+          <img
+            src="/icon.svg"
+            alt="Gbaigbance"
+            className="w-9 h-9 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
+          />
+          <div className="leading-tight">
+            <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
+            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
           </div>
         </div>
 
-        {/* Greeting */}
+        {/* Dynamic greeting et boutons harmonisés */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-extrabold text-[#171726] tracking-tight">
-              {new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'} {user?.name?.split(' ')[0] || 'Invité'} 👋
+            <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
+              <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}</span>
+              <span className="text-xl">👋</span>
             </h1>
-            <p className="text-sm text-gray-400 ">Trouve ta prochaine sortie</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
           </div>
+
+          {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
           <div className="flex items-center gap-2">
-            <button
-              id="home-ai-assistant-header-btn"
-              type="button"
-              onClick={onOpenAIAssistant}
-              title="Assistant IA Gbaigbance (Gemini)"
-              aria-label="Assistant IA"
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#6600FF]/15 to-[#9333EA]/15 text-[#6600FF] hover:bg-[#6600FF]/25 flex items-center justify-center active:scale-90 transition-transform shadow-xs"
-            >
-              <Sparkles className="w-5 h-5" />
-            </button>
-            <PWAInstallButton variant="icon" />
             <NotificationBell onOpen={onOpenNotifications} />
+
             {onOpenSettings && (
               <button
                 id="home-strategic-settings-btn"
                 type="button"
                 onClick={onOpenSettings}
                 aria-label="Paramètres de l'application"
-                title="Paramètres & Préférences"
-                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-[#6600FF]/15 hover:text-[#6600FF] flex items-center justify-center active:scale-90 transition-all shadow-xs"
+                title="Paramètres"
+                className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
               >
-                <Settings className="w-5 h-5" />
+                <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
               </button>
             )}
-            <button onClick={onProfileClick} className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/20 overflow-hidden bg-[#6600FF]/10 shadow-md active:scale-90 transition-transform" aria-label="Profil">
-              {user?.avatar_url ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-sm font-extrabold text-[#6600FF]">{user?.name?.charAt(0).toUpperCase() || '?'}</span>}
+
+            <button
+              onClick={onProfileClick}
+              className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden bg-white/90 dark:bg-white/10 shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+              aria-label="Profil"
+            >
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-black text-[#6600FF]">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Recherche */}
+        {/* Recherche et bouton IA assistant */}
         <div className="flex items-center gap-2.5">
-          <button onClick={onSearchClick} className="flex-1">
-            <div className="search-bar flex items-center gap-3 px-5 py-4 text-left">
-              <Search className="w-5 h-5 text-[#6600FF]/70" />
-              <span className="text-[11px] text-gray-500">Rechercher un événement, un artiste...</span>
+          <button
+            type="button"
+            onClick={onSearchClick}
+            className="flex-1 text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
+              <Search className="w-4 h-4 text-gray-400" />
+              <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
             </div>
           </button>
-          <button onClick={() => setLocationOpen(true)} className="w-[3.25rem] h-[3.25rem] shrink-0 rounded-2xl bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition-transform text-lg" aria-label="Localisation">
-            {COUNTRY_FLAGS[user?.country || 'TG'] || '🌍'}
-          </button>
-        </div>
 
-        {/* AI Assistant Banner */}
-        <div className="mt-3">
           <button
-            id="home-ai-assistant-banner"
             type="button"
             onClick={onOpenAIAssistant}
-            className="w-full py-2.5 px-4 rounded-3xl bg-gradient-to-r from-[#6600FF]/10 via-[#9333EA]/10 to-transparent border border-[#6600FF]/25 hover:border-[#6600FF]/50 transition-all flex items-center justify-between group active:scale-[0.99] text-left"
+            className="w-12 h-12 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
+            aria-label="Assistant IA Gbaigbance"
+            title="Assistant IA Gbaigbance"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6600FF] to-[#A855F7] flex items-center justify-center text-white shadow-xs shadow-[#6600FF]/30 shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-extrabold text-[#171726]">
-                    Assistant Gbaigbance IA
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#6600FF] text-white text-[8px] font-bold">
-                    Gemini
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-500 truncate">
-                  Recommandations, concerts & lieux avec Maps Grounding
+            <div className="relative flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-[#6600FF] transition-transform group-hover:scale-110" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-[#1A1829] animate-pulse" />
+            </div>
+          </button>
+        </div>
+      </header>
+
+      {/* SECTION 1: Événements à la une avec carrousel auto-défilant fluide */}
+      <section className="mt-3 px-5" aria-label="Événements à la une">
+        {loading ? (
+          <div className="skeleton aspect-[16/10] sm:aspect-[21/10] w-full rounded-[2rem]" />
+        ) : featured.length > 0 ? (
+          <FeaturedCarousel
+            events={featured}
+            onEventClick={onEventClick}
+            onBookEvent={onBookEvent || onEventClick}
+          />
+        ) : null}
+      </section>
+
+      {/* SECTION CONDITIONNELLE 1: Événements en cours / En direct */}
+      {!loading && ongoingEvents.length > 0 && (
+        <section className="mt-7 px-5 animate-slide-up" aria-label="Événements en cours">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+              </span>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  En ce moment
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Événements actuellement en direct
                 </p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-[#6600FF] group-hover:translate-x-0.5 transition-transform shrink-0" />
-          </button>
-        </div>
-      </div>
-
-      {/* PWA Install Banner */}
-      <PWAInstallBanner />
-
-      {!loading && heroEvent && (
-        <section className="mt-4 px-5">
-          <div onClick={() => onEventClick(heroEvent)} className="relative h-60 rounded-[2rem] overflow-hidden cursor-pointer group animate-slide-up shadow-[0_20px_45px_rgba(37,20,72,0.2)]">
-            <img src={heroEvent.cover_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'} alt={heroEvent.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/18 backdrop-blur-xl border border-white/25 shadow-lg"><Sparkles className="w-3.5 h-3.5 text-white" /><span className="text-xs font-bold text-white">À la une</span></div>
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/25 backdrop-blur-xl border border-white/15"><span className="w-2 h-2 bg-[#ff5b66] rounded-full animate-pulse" /><span className="text-xs font-bold text-white">Tendance</span></div>
-            <div className="absolute bottom-0 left-0 right-0 p-5">
-              <div className="flex items-center gap-2 mb-2 oui,"><span className="text-xs text-white/90 bg-white/15 backdrop-blur px-2.5 rounded-full font-medium">{t('events', `categories.${heroEvent.category}`)}</span><span className="flex items-center gap-1 text-xs text-white/80"><MapPin className="w-3 h-3" />{heroEvent.city}</span></div>
-              <h2 className="text-white font-extrabold text-xl leading-tight line-clamp-2">{heroEvent.title}</h2>
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-lg font-extrabold text-white">{safePrice === 0 ? 'Gratuit' : `Dès ${safePrice.toLocaleString('fr-FR')} FCFA`}</span>
-                <div className="flex items-center gap-1.5 text-white/80 text-sm">
-                  <Users className="w-4 h-4" />
-                  <span>{safeAttendees > 1000 ? `${(safeAttendees / 1000).toFixed(1)}K` : safeAttendees}</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </div>
+            <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-black">
+              LIVE
+            </span>
           </div>
-          {featured.length > 1 && (
-            <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar pb-1" aria-label="Autres événements à la une">
-              {featured.slice(1).map((event) => (
-                <button key={event.id} type="button" onClick={() => onEventClick(event)} className="flex min-w-[15rem] items-center gap-3 rounded-3xl border border-white/70 bg-white/60 p-2 text-left shadow-sm backdrop-blur transition-transform active:scale-[0.98]">
-                  <img src={event.cover_url || event.images?.[0] || ''} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
-                  <span className="min-w-0"><span className="block truncate text-sm font-extrabold text-[#171726]">{event.title}</span><span className="mt-1 block text-xs text-gray-500">{new Date(event.starts_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {event.city}</span></span>
-                </button>
-              ))}
-            </div>
-          )}
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {ongoingEvents.slice(0, 4).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
         </section>
       )}
 
-      <section className="mt-6 px-5">
-        <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d] mb-3">Explorer par catégorie</h2>
-        <div className="grid grid-cols-4 gap-x-2.5 gap-y-3 py-1">
+      {/* SECTION CATÉGORIES */}
+      <section className="mt-7 px-5">
+        <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
+          Explorer par catégorie
+        </h2>
+        <div className="grid grid-cols-4 gap-2.5 py-1">
           {EVENT_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.icon] || Music;
             const isActive = selectedCategory === cat.value;
             return (
               <button
                 key={cat.value}
+                type="button"
                 onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 ${
-                  isActive ? 'bg-[#6600FF] shadow-purple' : 'bg-white/90 border border-black/5'
+                className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#6600FF] shadow-purple text-white'
+                    : 'bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 text-[#6600FF] dark:text-purple-300'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6600FF]'}`} strokeWidth={1.8} />
-                <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#6600FF]'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
+                <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
                   {t('events', `categories.${cat.value}`)}
                 </span>
               </button>
@@ -250,35 +306,116 @@ export function HomeScreen({
         </div>
       </section>
 
+      {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
+            <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {t('events', `categories.${selectedCategory}`)}
             </h2>
-            <button onClick={() => setSelectedCategory(null)} className="text-sm text-gray-400">Fermer</button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-3 py-1.5 rounded-full cursor-pointer"
+            >
+              Fermer
+            </button>
           </div>
-          {categoryLoading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : categoryEvents.length === 0 ? (<EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />) : (<div className="grid grid-cols-2 gap-4">{categoryEvents.map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
+          {categoryLoading ? (
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
+            </div>
+          ) : categoryEvents.length === 0 ? (
+            <EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {categoryEvents.map((event) => (
+                <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
+      {/* SECTION TENDANCES (Deck interactif) */}
       {loading ? (
         <section className="mt-8 px-5" aria-label="Chargement des tendances">
           <div className="skeleton h-[26rem] rounded-[2rem]" />
         </section>
-      ) : (
+      ) : trending.length > 0 ? (
         <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
+      ) : null}
+
+      {/* SECTION CONDITIONNELLE 2: Événements 100% Gratuits */}
+      {!loading && freeEvents.length > 0 && (
+        <section className="mt-8 px-5" aria-label="Événements gratuits">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Gift className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  Événements Gratuits
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Entrée 100% libre sans frais
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+              0 FCFA
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {freeEvents.slice(0, 4).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
+        </section>
       )}
 
+      {/* SECTION CONDITIONNELLE 3: À moins de 5 km */}
+      {!loading && nearbyUnder5km.length > 0 && (
+        <section className="mt-8 px-5" aria-label="À moins de 5 km">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Navigation className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  À moins de 5 km
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Lomé et proximité immédiate
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-xs font-bold">
+              Proche
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {nearbyUnder5km.slice(0, 4).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SECTION ARTISTES */}
       {!loading && artists.length > 0 && (
         <section className="mt-8">
           <div className="px-5 flex items-end justify-between mb-4">
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
+            <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               Artistes en vedette
             </h2>
             <button
               type="button"
-              className="flex items-center gap-0.5 text-[14px] font-semibold text-[#6600FF] active:opacity-50 transition-opacity"
+              className="flex items-center gap-0.5 text-[13px] font-bold text-[#6600FF] active:opacity-60 transition-opacity"
             >
               Tout voir
               <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
@@ -286,7 +423,7 @@ export function HomeScreen({
           </div>
 
           <div className="relative">
-            <div className="flex gap-5 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
+            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
                 const followersCount = artist.followers_count ?? 0;
                 return (
@@ -294,7 +431,7 @@ export function HomeScreen({
                     type="button"
                     key={artist.id}
                     onClick={() => onArtistClick?.(artist)}
-                    className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out"
+                    className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer"
                   >
                     <div className="relative">
                       <img
@@ -302,20 +439,21 @@ export function HomeScreen({
                         alt={artist.name}
                         loading="lazy"
                         decoding="async"
-                        className="w-[5.5rem] h-[5.5rem] rounded-full object-cover ring-1 ring-black/5 shadow-[0_1px_3px_rgba(23,23,38,0.08)]"
+                        referrerPolicy="no-referrer"
+                        className="w-[5.25rem] h-[5.25rem] rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-sm"
                       />
                       {artist.is_verified && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#6600FF] ring-[3px] ring-white flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                        <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#6600FF] ring-2 ring-white flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z" />
                           </svg>
                         </div>
                       )}
                     </div>
-                    <span className="text-[13px] font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full leading-tight">
+                    <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {artist.name}
                     </span>
-                    <span className="text-[11px] text-gray-400 font-medium">
+                    <span className="text-[10px] text-gray-400 font-medium">
                       {followersCount > 1000
                         ? `${(followersCount / 1000).toFixed(1)}K fans`
                         : `${followersCount} fans`}
@@ -324,43 +462,56 @@ export function HomeScreen({
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-lavender to-transparent" />
           </div>
         </section>
       )}
 
+      {/* SECTION À NE PAS MANQUER */}
       <section className="mt-8 px-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">À ne pas manquer</h2>
+          <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+            À ne pas manquer
+          </h2>
           <button
-           type='button'
-           className="flex items-center gap-0.5 text-[14px] font-semibold text-[#6600FF] active:opacity-50 transition-opacity"
+            type="button"
+            className="flex items-center gap-0.5 text-[13px] font-bold text-[#6600FF] active:opacity-60 transition-opacity"
           >
             Tout voir
             <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
           </button>
         </div>
-        {loading ? (<div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>) : nearby.length === 0 ? (<EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />) : (<div className="grid grid-cols-2 gap-4 animate-stagger">{nearby.slice(0, 6).map((event) => <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />)}</div>)}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
+          </div>
+        ) : nearby.length === 0 ? (
+          <EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {nearby.slice(0, 6).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* STATS GLOBALES GBAIGBANCE */}
       {!loading && (
-        <section className="mt-8 px-5">
+        <section className="mt-9 px-5">
           <div className="mb-4">
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#17131d]">
+            <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               Gbaigbance en chiffres
             </h2>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">
-              La billetterie qui grandit chaque jour · Données en direct
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+              Statistiques globales de la plateforme · Données en direct
             </p>
           </div>
           <GbaigbanceStatsDashboard
-            events={[...featured, ...trending, ...nearby]}
+            events={allActiveEvents}
             platformStats={platformStats || undefined}
           />
         </section>
       )}
-
-      <LocationModal open={locationOpen} onClose={() => setLocationOpen(false)} />
     </div>
   );
 }
