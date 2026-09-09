@@ -341,7 +341,7 @@ export function GbaigbanceStatsDashboard({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-[#10B981]" /> Revenus
+              <DollarSign className="w-3.5 h-3.5 text-[#6600Ff]" /> Revenus
             </span>
             {activeMetric === 'revenue' && (
               <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
@@ -368,7 +368,7 @@ export function GbaigbanceStatsDashboard({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#8B5CF6]" /> Participants
+              <Users className="w-3.5 h-3.5 text-[#6600FF]" /> Participants
             </span>
             {activeMetric === 'attendees' && (
               <span className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
@@ -394,7 +394,7 @@ export function GbaigbanceStatsDashboard({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#EC4899]" /> Événements
+              <Calendar className="w-3.5 h-3.5 text-[#6600FF]" /> Événements
             </span>
             {activeMetric === 'events' && (
               <span className="w-2 h-2 rounded-full bg-[#EC4899] animate-pulse" />

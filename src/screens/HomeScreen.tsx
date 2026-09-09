@@ -90,7 +90,7 @@ export function HomeScreen({
   return (
     <div className="min-h-screen pb-32">
       {/* En-tête */}
-      <div className="px-5 pt-6 pb-2">
+      <div className="px-5 pt-9 pb-2">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 flex items-center justify-center text-base">
