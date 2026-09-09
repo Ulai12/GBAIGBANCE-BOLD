@@ -160,7 +160,7 @@ export function HomeScreen({
             id="home-ai-assistant-banner"
             type="button"
             onClick={onOpenAIAssistant}
-            className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#6600FF]/10 via-[#9333EA]/10 to-transparent border border-[#6600FF]/25 hover:border-[#6600FF]/50 transition-all flex items-center justify-between group active:scale-[0.99] text-left"
+            className="w-full py-2.5 px-4 rounded-3xl bg-gradient-to-r from-[#6600FF]/10 via-[#9333EA]/10 to-transparent border border-[#6600FF]/25 hover:border-[#6600FF]/50 transition-all flex items-center justify-between group active:scale-[0.99] text-left"
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6600FF] to-[#A855F7] flex items-center justify-center text-white shadow-xs shadow-[#6600FF]/30 shrink-0">
@@ -196,7 +196,7 @@ export function HomeScreen({
             <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/18 backdrop-blur-xl border border-white/25 shadow-lg"><Sparkles className="w-3.5 h-3.5 text-white" /><span className="text-xs font-bold text-white">À la une</span></div>
             <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/25 backdrop-blur-xl border border-white/15"><span className="w-2 h-2 bg-[#ff5b66] rounded-full animate-pulse" /><span className="text-xs font-bold text-white">Tendance</span></div>
             <div className="absolute bottom-0 left-0 right-0 p-5">
-              <div className="flex items-center gap-2 mb-2"><span className="text-xs text-white/90 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full font-medium">{t('events', `categories.${heroEvent.category}`)}</span><span className="flex items-center gap-1 text-xs text-white/80"><MapPin className="w-3 h-3" />{heroEvent.city}</span></div>
+              <div className="flex items-center gap-2 mb-2 oui,"><span className="text-xs text-white/90 bg-white/15 backdrop-blur px-2.5 rounded-full font-medium">{t('events', `categories.${heroEvent.category}`)}</span><span className="flex items-center gap-1 text-xs text-white/80"><MapPin className="w-3 h-3" />{heroEvent.city}</span></div>
               <h2 className="text-white font-extrabold text-xl leading-tight line-clamp-2">{heroEvent.title}</h2>
               <div className="flex items-center justify-between mt-3">
                 <span className="text-lg font-extrabold text-white">{safePrice === 0 ? 'Gratuit' : `Dès ${safePrice.toLocaleString('fr-FR')} FCFA`}</span>
@@ -211,7 +211,7 @@ export function HomeScreen({
           {featured.length > 1 && (
             <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar pb-1" aria-label="Autres événements à la une">
               {featured.slice(1).map((event) => (
-                <button key={event.id} type="button" onClick={() => onEventClick(event)} className="flex min-w-[15rem] items-center gap-3 rounded-2xl border border-white/70 bg-white/60 p-2 text-left shadow-sm backdrop-blur transition-transform active:scale-[0.98]">
+                <button key={event.id} type="button" onClick={() => onEventClick(event)} className="flex min-w-[15rem] items-center gap-3 rounded-3xl border border-white/70 bg-white/60 p-2 text-left shadow-sm backdrop-blur transition-transform active:scale-[0.98]">
                   <img src={event.cover_url || event.images?.[0] || ''} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
                   <span className="min-w-0"><span className="block truncate text-sm font-extrabold text-[#171726]">{event.title}</span><span className="mt-1 block text-xs text-gray-500">{new Date(event.starts_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {event.city}</span></span>
                 </button>

@@ -49,7 +49,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
       onClick={onClick}
       className="
         group relative isolate w-full
-        aspect-[0.78] sm:aspect-[0.82] min-h-[290px]
+        aspect-[0.78] sm:aspect-[0.82] min-h-[full]
         overflow-hidden rounded-[1.5rem]
         bg-[#17131d] text-white cursor-pointer
         shadow-[0_12px_40px_rgba(23,19,29,0.2)]

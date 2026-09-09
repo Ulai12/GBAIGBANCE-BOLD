@@ -891,7 +891,7 @@ export function GbaigbanceStatsDashboard({
                         : category.id
                     )
                   }
-                  className={`flex items-center justify-between rounded-xl p-2 text-left transition-all ${
+                  className={`flex items-center justify-between rounded-xl text-left transition-all ${
                     isSelected
                       ? 'bg-gray-100 ring-1 ring-[#6600FF] dark:bg-white/15'
                       : 'hover:bg-gray-50 dark:hover:bg-white/5'
