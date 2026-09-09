@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, createContext, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import { fetchProfile, getStoredMockProfile, signOut as authSignOut } from '@/services/auth';
+import { fetchProfile, signOut as authSignOut } from '@/services/auth';
+import { syncGeminiConfigFromAccount } from '@/services/gemini';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
 
@@ -42,11 +43,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      const mockProfile = getStoredMockProfile();
-      if (mockProfile) {
-        setUser(mockProfile);
-        setSession({ access_token: 'mock-token', user: { id: mockProfile.id } } as unknown as import('@supabase/supabase-js').Session);
-      }
+      setUser(null);
+      setSession(null);
       setLoading(false);
       return;
     }
@@ -54,7 +52,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        fetchProfile(session.user.id).then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
+        fetchProfile(session.user.id)
+          .then((profile) => {
+            setUser(profile);
+            syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
+          })
+          .catch(() => setUser(null))
+          .finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -69,7 +73,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           try {
             const profile = await fetchProfile(session.user.id);
             setUser(profile);
-          } catch { setUser(null); }
+            syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
+          } catch {
+            setUser(null);
+          }
         })();
       } else {
         setUser(null);
@@ -90,17 +97,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      const p = getStoredMockProfile();
-      setUser(p);
-      if (p) {
-        setSession({ access_token: 'mock-token', user: { id: p.id } } as unknown as import('@supabase/supabase-js').Session);
-      }
       return;
     }
     if (session?.user) {
       try {
         const profile = await fetchProfile(session.user.id);
         setUser(profile);
+        syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
       } catch { setUser(null); }
     }
   }, [session]);

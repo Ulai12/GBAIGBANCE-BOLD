@@ -1,6 +1,7 @@
 // Note: Bring-Your-Own-Key (BYOK) architecture where the user optionally enters their own Gemini API key
-// stored locally on their device.
+// stored locally on their device and persisted to their account when authenticated.
 import { GoogleGenAI } from '@google/genai';
+import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { Event } from '@/types';
 
 export interface GeminiConfig {
@@ -127,6 +128,97 @@ export function saveGeminiConfig(config: Partial<GeminiConfig>): GeminiConfig {
   // Dispatch a custom event so reactive components can update instantly
   window.dispatchEvent(new CustomEvent('gbaigbance_gemini_config_updated', { detail: updated }));
   return updated;
+}
+
+/**
+ * Persists the user's Gemini config both to device storage AND to their authenticated Supabase user account.
+ * This guarantees the user's API key is preserved across sign-ins, page refreshes, and device switches.
+ */
+export async function saveGeminiConfigToAccount(config: Partial<GeminiConfig>): Promise<GeminiConfig> {
+  const localSaved = saveGeminiConfig(config);
+
+  if (!isSupabaseConfigured) {
+    return localSaved;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return localSaved;
+
+    // 1. Update Auth User Metadata
+    await supabase.auth.updateUser({
+      data: {
+        gemini_config: localSaved,
+      },
+    }).catch((err) => console.debug('Failed to update auth metadata for Gemini config:', err));
+
+    // 2. Also update profiles table
+    await supabase
+      .from('profiles')
+      .update({
+        gemini_config: localSaved,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+      .catch((err) => console.debug('Failed to update profiles table for Gemini config:', err));
+  } catch (err) {
+    console.warn('Error saving Gemini config to user account:', err);
+  }
+
+  return localSaved;
+}
+
+/**
+ * Synchronizes Gemini configuration from the user's Supabase account down to device storage.
+ * Called on user sign-in or session restoration.
+ */
+export function syncGeminiConfigFromAccount(
+  userMetadata?: Record<string, unknown> | null,
+  profileConfig?: Record<string, unknown> | null
+): GeminiConfig {
+  const accountConfig = (profileConfig || userMetadata?.gemini_config) as Partial<GeminiConfig> | null;
+  const current = getGeminiConfig();
+
+  if (accountConfig && typeof accountConfig === 'object') {
+    const hasAccountKey = Boolean(accountConfig.apiKey && accountConfig.apiKey.trim().length > 5);
+    const hasCurrentKey = Boolean(current.apiKey && current.apiKey.trim().length > 5);
+
+    // If account has key or if current device has no key, restore account config
+    if (hasAccountKey || (!hasCurrentKey && accountConfig.model)) {
+      return saveGeminiConfig({
+        ...current,
+        ...accountConfig,
+        apiKey: accountConfig.apiKey?.trim() || current.apiKey,
+        enabled: accountConfig.enabled ?? hasAccountKey,
+      });
+    }
+  }
+
+  return current;
+}
+
+/**
+ * Loads Gemini config directly from current authenticated session if available
+ */
+export async function loadGeminiConfigFromAccount(): Promise<GeminiConfig> {
+  if (!isSupabaseConfigured) return getGeminiConfig();
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return getGeminiConfig();
+
+    // Check profiles first
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('gemini_config')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    return syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config as Record<string, unknown>);
+  } catch {
+    return getGeminiConfig();
+  }
 }
 
 export function isGeminiActive(): boolean {

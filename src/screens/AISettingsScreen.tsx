@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import {
   getGeminiConfig,
-  saveGeminiConfig,
+  saveGeminiConfigToAccount,
+  loadGeminiConfigFromAccount,
   testGeminiApiKey,
   GEMINI_AVAILABLE_MODELS,
   type GeminiConfig,
 } from '@/services/gemini';
+import { useApp } from '@/hooks/useApp';
 
 interface AISettingsScreenProps {
   onBack: () => void;
@@ -34,6 +36,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
   onBack,
   onToast,
 }) => {
+  const { user } = useApp();
   const [config, setConfig] = useState<GeminiConfig>(getGeminiConfig);
   const [apiKeyInput, setApiKeyInput] = useState(config.apiKey);
   const [showKey, setShowKey] = useState(false);
@@ -47,13 +50,18 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   useEffect(() => {
-    const current = getGeminiConfig();
-    setConfig(current);
-    setApiKeyInput(current.apiKey);
+    loadGeminiConfigFromAccount().then((loaded) => {
+      setConfig(loaded);
+      setApiKeyInput(loaded.apiKey);
+    }).catch(() => {
+      const current = getGeminiConfig();
+      setConfig(current);
+      setApiKeyInput(current.apiKey);
+    });
   }, []);
 
-  const handleToggleEnable = (newVal: boolean) => {
-    const updated = saveGeminiConfig({ enabled: newVal });
+  const handleToggleEnable = async (newVal: boolean) => {
+    const updated = await saveGeminiConfigToAccount({ enabled: newVal });
     setConfig(updated);
     if (newVal && !updated.apiKey.trim()) {
       onToast?.({
@@ -73,9 +81,9 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
     }
   };
 
-  const persistKey = (val: string) => {
+  const persistKey = async (val: string) => {
     const trimmed = val.trim();
-    const updated = saveGeminiConfig({
+    const updated = await saveGeminiConfigToAccount({
       apiKey: trimmed,
       enabled: trimmed.length > 5 ? true : config.enabled,
     });
@@ -83,9 +91,16 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
     return updated;
   };
 
-  const handleSaveKey = () => {
-    persistKey(apiKeyInput);
-    onToast?.({ message: 'Clé API enregistrée avec succès.', type: 'success' });
+  const handleSaveKey = async () => {
+    await persistKey(apiKeyInput);
+    if (user) {
+      onToast?.({
+        message: 'Clé API enregistrée et sauvegardée sur votre compte Gbaigbance !',
+        type: 'success',
+      });
+    } else {
+      onToast?.({ message: 'Clé API enregistrée avec succès.', type: 'success' });
+    }
     setTestResult(null);
   };
 
@@ -107,41 +122,46 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
     setTestResult(res);
 
     if (res.success) {
-      // Auto-save and enable if test succeeds
-      const updated = saveGeminiConfig({
+      // Auto-save to user account and enable if test succeeds
+      const updated = await saveGeminiConfigToAccount({
         apiKey: keyToTest,
         enabled: true,
       });
       setConfig(updated);
-      onToast?.({ message: 'Connexion à Gemini validée avec succès !', type: 'success' });
+      onToast?.({
+        message: user
+          ? 'Connexion validée et enregistrée sur votre compte !'
+          : 'Connexion à Gemini validée avec succès !',
+        type: 'success',
+      });
     } else {
       onToast?.({ message: res.message, type: 'error' });
     }
   };
 
-  const handleSelectModel = (model: string) => {
-    const updated = saveGeminiConfig({ model });
+  const handleSelectModel = async (model: string) => {
+    const updated = await saveGeminiConfigToAccount({ model });
     setConfig(updated);
     setShowModelPicker(false);
     onToast?.({ message: `Modèle sélectionné : ${model}`, type: 'info' });
   };
 
-  const handleToggleMaps = () => {
-    const updated = saveGeminiConfig({
+  const handleToggleMaps = async () => {
+    const updated = await saveGeminiConfigToAccount({
       enableMapsGrounding: !config.enableMapsGrounding,
     });
     setConfig(updated);
   };
 
-  const handleReset = () => {
-    const updated = saveGeminiConfig({
+  const handleReset = async () => {
+    const updated = await saveGeminiConfigToAccount({
       apiKey: '',
       enabled: false,
     });
     setConfig(updated);
     setApiKeyInput('');
     setTestResult(null);
-    onToast?.({ message: 'Configuration réinitialisée.', type: 'info' });
+    onToast?.({ message: 'Clé API et configuration réinitialisées.', type: 'info' });
   };
 
   const isConfigured = config.enabled && config.apiKey.trim().length > 10;
@@ -266,11 +286,25 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-[#4ADE80] shrink-0 mt-0.5" />
                   <div className="text-xs space-y-1">
-                    <p className="font-extrabold text-sm tracking-tight text-emerald-700 dark:text-[#4ADE80]">
-                      Connecté & Opérationnel
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-extrabold text-sm tracking-tight text-emerald-700 dark:text-[#4ADE80]">
+                        Connecté & Opérationnel
+                      </p>
+                      {user ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/60 dark:bg-emerald-800/40 text-emerald-900 dark:text-emerald-200">
+                          <Check className="w-3 h-3" />
+                          Synchronisé avec votre compte
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                          Enregistré sur cet appareil
+                        </span>
+                      )}
+                    </div>
                     <p className="text-gray-700 dark:text-zinc-200 leading-relaxed font-normal">
-                      Votre clé est active et sauvegardée. Vous pouvez utiliser l'Assistant IA sur l'écran d'accueil ou consulter les conseils intelligents sur vos événements.
+                      {user
+                        ? `Votre clé est associée à votre compte (${user.email || user.name}). Elle sera automatiquement reconnue à chaque connexion sans avoir à la ressaisir.`
+                        : "Votre clé est active et sauvegardée sur cet appareil. Connectez-vous à votre compte pour la synchroniser automatiquement partout."}
                     </p>
                   </div>
                 </div>
@@ -280,7 +314,9 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
                   <div className="text-xs space-y-0.5">
                     <p className="font-bold text-amber-900 dark:text-amber-200">Clé API requise</p>
                     <p className="text-gray-700 dark:text-zinc-300 leading-relaxed">
-                      Saisissez votre clé API Gemini personnelle ci-dessous. Elle sera enregistrée automatiquement pour toutes vos sessions.
+                      {user
+                        ? 'Saisissez votre clé API Gemini ci-dessous. Elle sera automatiquement sauvegardée sur votre compte Gbaigbance et restaurée à chaque connexion.'
+                        : 'Saisissez votre clé API Gemini ci-dessous. Elle sera enregistrée pour vos sessions.'}
                     </p>
                   </div>
                 </div>

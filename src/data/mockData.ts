@@ -9,6 +9,6 @@ export const MOCK_ARTISTS: Artist[] = [];
 export const MOCK_EVENTS: Event[] = [];
 export const MOCK_TICKETS: TicketOption[] = [];
 
-export function getMockEventWithRelations(_eventId: string): EventWithRelations | null {
+export function getMockEventWithRelations(): EventWithRelations | null {
   return null;
 }

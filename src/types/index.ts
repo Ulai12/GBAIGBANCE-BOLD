@@ -31,6 +31,7 @@ export interface Profile {
   city: string;
   country: string;
   bio: string | null;
+  gemini_config?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

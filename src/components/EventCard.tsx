@@ -58,14 +58,14 @@ export function EventCard({ event, onClick }: EventCardProps) {
         group relative isolate w-full
         aspect-[0.78] sm:aspect-[0.82] min-h-[full]
         overflow-hidden rounded-[1.5rem]
-        bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E1E] text-white cursor-pointer
-        shadow-[0_12px_40px_rgba(23,19,29,0.2)]
+        bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
+        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
       "
       aria-label={`Découvrir ${event.title}`}
     >
       {/* IMAGE */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-[#2D1B4E] to-[#120E1E]"
+        className="absolute inset-0 bg-neutral-200 dark:bg-[#1E172E]"
         whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
@@ -76,8 +76,8 @@ export function EventCard({ event, onClick }: EventCardProps) {
         />
       </motion.div>
 
-      {/* GRADIENT ASSOMBRISSANT */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/5" />
+      {/* GRADIENT OVERLAY */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
       {/* CONTENT LAYER */}
       <div className="absolute inset-0 flex flex-col justify-between p-3">

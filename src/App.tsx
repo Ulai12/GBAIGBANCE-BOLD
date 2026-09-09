@@ -317,6 +317,7 @@ function AppContent() {
             onOpenNotifications={() => setScreen('notifications')}
             onProfileClick={() => { setActiveTab('profile'); setScreen('profile'); }}
             onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
             onOpenAIAssistant={() => setAiAssistantOpen(true)}
             onOpenAISettings={() => setScreen('aiSettings')}
             onOpenSettings={() => setSettingsModalOpen(true)}

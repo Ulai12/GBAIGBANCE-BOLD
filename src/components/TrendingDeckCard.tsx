@@ -38,7 +38,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   return (
     <motion.article
       ref={ref}
-      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E1E] text-white shadow-2xl"
+      className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-neutral-100 dark:bg-[#1E172E] text-white shadow-2xl"
       style={{
         x: active ? x : 0,
         rotate: active ? rotate : offset * -2.5,

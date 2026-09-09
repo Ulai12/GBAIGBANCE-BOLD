@@ -45,13 +45,13 @@ export function SmartImage({
   if (errored) {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-br from-[#2E1A47] via-[#1E1430] to-[#120B1E] text-white/70 p-4 text-center ${
+        className={`relative overflow-hidden flex flex-col items-center justify-center bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 p-4 text-center ${
           fallbackClassName || className
         }`}
         style={style}
       >
-        <Sparkles className="w-8 h-8 text-[#8B5CF6] mb-2 opacity-60 animate-pulse" />
-        <span className="text-xs font-semibold tracking-wide text-white/80 line-clamp-2">
+        <Sparkles className="w-8 h-8 text-[#6600FF]/60 dark:text-[#8B5CF6] mb-2 opacity-60" />
+        <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-zinc-300 line-clamp-2">
           {fallbackText || alt || 'Gbaigbance Event'}
         </span>
       </div>
@@ -62,7 +62,7 @@ export function SmartImage({
     <img
       src={imgSrc}
       alt={alt}
-      className={`${className} ${!loaded ? 'bg-gradient-to-br from-[#2E1A47] to-[#1E1430]' : ''}`}
+      className={`${className} ${!loaded ? 'bg-black/[0.04] dark:bg-white/[0.06] animate-pulse' : 'transition-opacity duration-300 opacity-100'}`}
       style={style}
       onError={handleError}
       onLoad={() => setLoaded(true)}

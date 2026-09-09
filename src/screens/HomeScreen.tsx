@@ -3,7 +3,7 @@ import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
   Landmark, Lock, Sparkles, ChevronRight,
-  Settings, Gift, Navigation,
+  Settings, Gift, Navigation, Flame, Building2,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { TrendingDeck } from '@/components/TrendingDeck';
@@ -12,15 +12,21 @@ import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
 import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
+import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
 import { useApp } from '@/hooks/useApp';
 import { EVENT_CATEGORIES } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
-  fetchEventsByCategory, fetchFeaturedArtists, fetchPlatformStats,
-  isEventTerminated, isEventActive,
+  fetchEventsByCategory, fetchFeaturedArtists, fetchVerifiedOrganizations,
+  fetchPlatformStats, isEventTerminated, isEventActive,
+  type PlatformStats,
 } from '@/services/events';
-import type { Event, Artist, EventCategory } from '@/types';
+import { getCachedHomeData, saveCachedHomeData } from '@/services/cache';
+import {
+  calculateDistanceKm, formatDistance, getCurrentUserLocation, getEventCoordinates, LOME_CENTER
+} from '@/utils/geo';
+import type { Event, Artist, Organization, EventCategory } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -33,6 +39,7 @@ interface HomeScreenProps {
   onOpenNotifications: () => void;
   onProfileClick: () => void;
   onArtistClick?: (artist: Artist) => void;
+  onOrganizationClick?: (organization: Organization) => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
   onBookEvent?: (event: Event) => void;
   onOpenAIAssistant?: () => void;
@@ -46,27 +53,57 @@ export function HomeScreen({
   onOpenNotifications,
   onProfileClick,
   onArtistClick,
+  onOrganizationClick,
   onBookEvent,
   onOpenAIAssistant,
   onOpenSettings,
 }: HomeScreenProps) {
   const { user, t } = useApp();
-  const [trending, setTrending] = useState<Event[]>([]);
-  const [nearby, setNearby] = useState<Event[]>([]);
-  const [featured, setFeatured] = useState<Event[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Instant 0ms cache loading: read synchronously from memory or storage
+  const initialCache = getCachedHomeData();
+  const [featured, setFeatured] = useState<Event[]>(initialCache.data?.featured || []);
+  const [trending, setTrending] = useState<Event[]>(initialCache.data?.trending || []);
+  const [nearby, setNearby] = useState<Event[]>(initialCache.data?.nearby || []);
+  const [artists, setArtists] = useState<Artist[]>(initialCache.data?.artists || []);
+  const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
+  const [loading, setLoading] = useState(!initialCache.hasCache);
+
+  // User location for spatial distance calculation
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number }>({
+    latitude: LOME_CENTER.latitude,
+    longitude: LOME_CENTER.longitude,
+  });
+
+  // Category filter state
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [categoryEvents, setCategoryEvents] = useState<Event[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(false);
-  const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalArtists: number; totalOrganizers: number; totalTickets: number; totalParticipants: number } | null>(null);
 
+  // Dedicated "Voir plus" modal state
+  const [seeMoreType, setSeeMoreType] = useState<SeeMoreSectionType | null>(null);
+
+  // Geolocation request with automatic Lomé fallback
+  useEffect(() => {
+    getCurrentUserLocation().then((loc) => {
+      setUserCoords({ latitude: loc.latitude, longitude: loc.longitude });
+    });
+  }, []);
+
+  // Background silent fetch to hydrate & refresh data without UI flashing
   useEffect(() => {
     const isValidDate = (dateStr?: string) => Boolean(dateStr && !isNaN(new Date(dateStr).getTime()));
 
-    Promise.all([fetchFeaturedEvents(), fetchUpcomingEvents(), fetchTrendingEvents(), fetchFeaturedArtists()])
-      .then(([feat, up, trend, art]) => {
-        // Strictly filter to active published events
+    Promise.all([
+      fetchFeaturedEvents(),
+      fetchUpcomingEvents(),
+      fetchTrendingEvents(),
+      fetchFeaturedArtists(),
+      fetchVerifiedOrganizations(),
+      fetchPlatformStats(),
+    ])
+      .then(([feat, up, trend, art, orgs, stats]) => {
         const filterValid = (list: Event[]) =>
           list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
 
@@ -74,25 +111,45 @@ export function HomeScreen({
         const validTrend = filterValid(trend);
         const validUp = filterValid(up);
 
-        setFeatured(validFeat.length > 0 ? validFeat : feat.filter(e => e.status === 'published' && !isEventTerminated(e)));
-        setTrending(validTrend.length > 0 ? validTrend : trend.filter(e => e.status === 'published' && !isEventTerminated(e)));
-        setNearby(validUp.length > 0 ? validUp : up.filter(e => e.status === 'published' && !isEventTerminated(e)));
-        setArtists(art.slice(0, 6));
-      })
-      .catch(() => {}).finally(() => setLoading(false));
+        const newFeat = validFeat.length > 0 ? validFeat : feat.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        const newTrend = validTrend.length > 0 ? validTrend : trend.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        const newNearby = validUp.length > 0 ? validUp : up.filter((e) => e.status === 'published' && !isEventTerminated(e));
 
-    fetchPlatformStats().then(setPlatformStats).catch(() => {});
+        setFeatured(newFeat);
+        setTrending(newTrend);
+        setNearby(newNearby);
+        setArtists(art);
+        setOrganizations(orgs);
+        setPlatformStats(stats);
+
+        // Save fresh data into the 0ms synchronous cache
+        saveCachedHomeData({
+          featured: newFeat,
+          trending: newTrend,
+          nearby: newNearby,
+          artists: art,
+          organizations: orgs,
+          stats,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
+  // Category events fetch
   useEffect(() => {
-    if (!selectedCategory) { setCategoryEvents([]); return; }
+    if (!selectedCategory) {
+      setCategoryEvents([]);
+      return;
+    }
     setCategoryLoading(true);
     fetchEventsByCategory(selectedCategory)
-      .then((res) => setCategoryEvents(res.filter(e => e.status === 'published' && !isEventTerminated(e))))
+      .then((res) => setCategoryEvents(res.filter((e) => e.status === 'published' && !isEventTerminated(e))))
       .catch(() => setCategoryEvents([]))
       .finally(() => setCategoryLoading(false));
   }, [selectedCategory]);
 
+  // Unified list of all unique active published events
   const allActiveEvents = useMemo(() => {
     const map = new Map<string, Event>();
     [...featured, ...trending, ...nearby].forEach((e) => {
@@ -103,38 +160,52 @@ export function HomeScreen({
     return Array.from(map.values());
   }, [featured, trending, nearby]);
 
-  // Conditional Section: Événements en cours / En direct
-  const ongoingEvents = useMemo(() => {
-    const now = Date.now();
-    return allActiveEvents.filter((event) => {
-      const start = new Date(event.starts_at).getTime();
-      const end = event.ends_at ? new Date(event.ends_at).getTime() : start + 6 * 3600 * 1000;
-      return now >= start && now <= end;
-    });
-  }, [allActiveEvents]);
-
-  // Conditional Section: Événements gratuits (Entrée libre)
-  const freeEvents = useMemo(() => {
-    return allActiveEvents.filter((event) => event.price_min === 0);
-  }, [allActiveEvents]);
-
-  // Conditional Section: À moins de 5 km (Lomé & proximité immédiate)
-  const nearbyUnder5km = useMemo(() => {
-    return allActiveEvents.filter((event) => {
-      const loc = (event.location_name || '').toLowerCase();
-      const city = (event.city || '').toLowerCase();
-      return (
-        city.includes('lomé') ||
-        city.includes('lome') ||
-        loc.includes('lomé') ||
-        loc.includes('marina') ||
-        loc.includes('stade') ||
-        loc.includes('plage') ||
-        loc.includes('centre') ||
-        loc.includes('palais')
+  // Spatial enrichment: compute exact distance from user to each event venue
+  const allEventsWithDistance = useMemo(() => {
+    return allActiveEvents.map((event) => {
+      const coords = getEventCoordinates(event);
+      const distanceKm = calculateDistanceKm(
+        userCoords.latitude,
+        userCoords.longitude,
+        coords.latitude,
+        coords.longitude
       );
+      return { ...event, distanceKm };
     });
-  }, [allActiveEvents]);
+  }, [allActiveEvents, userCoords]);
+
+  // Section: À moins de 5 km (real distance <= 5 km or nearest in Lomé)
+  const nearbyUnder5km = useMemo(() => {
+    const sorted = [...allEventsWithDistance].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+    const strictlyUnder5 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 5.0);
+    // If strict match has at least 1, use it; otherwise show nearest Lomé events
+    return strictlyUnder5.length > 0 ? strictlyUnder5 : sorted.slice(0, 4);
+  }, [allEventsWithDistance]);
+
+  // Section: Selon vos préférences (matches user profile preferred categories or vibrant defaults)
+  const userPreferencesEvents = useMemo(() => {
+    const userPrefs = (user?.preferred_genres || []).map((g) => g.toLowerCase());
+    const targetCategories = userPrefs.length > 0 ? userPrefs : ['concert', 'party', 'festival', 'culture', 'spectacle'];
+
+    const matches = allEventsWithDistance.filter((event) => {
+      const cat = (event.category || '').toLowerCase();
+      const title = (event.title || '').toLowerCase();
+      return targetCategories.some((pref) => cat.includes(pref) || title.includes(pref));
+    });
+
+    return matches.length > 0 ? matches : allEventsWithDistance;
+  }, [allEventsWithDistance, user]);
+
+  // Section: Événements 100% Gratuits
+  const freeEvents = useMemo(() => {
+    return allEventsWithDistance.filter((event) => event.price_min === 0);
+  }, [allEventsWithDistance]);
+
+  // Section: À ne pas manquer (High engagement upcoming active events)
+  const unmissableEvents = useMemo(() => {
+    return [...allEventsWithDistance]
+      .sort((a, b) => (b.attendees_count || 0) + (b.views_count || 0) - ((a.attendees_count || 0) + (a.views_count || 0)));
+  }, [allEventsWithDistance]);
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
@@ -232,9 +303,9 @@ export function HomeScreen({
         </div>
       </header>
 
-      {/* SECTION 1: Événements à la une avec carrousel auto-défilant fluide */}
+      {/* SECTION 1: Événements à la une */}
       <section className="mt-3 px-5" aria-label="Événements à la une">
-        {loading ? (
+        {loading && featured.length === 0 ? (
           <div className="skeleton aspect-[16/10] sm:aspect-[21/10] w-full rounded-[2rem]" />
         ) : featured.length > 0 ? (
           <FeaturedCarousel
@@ -245,39 +316,15 @@ export function HomeScreen({
         ) : null}
       </section>
 
-      {/* SECTION CONDITIONNELLE 1: Événements en cours / En direct */}
-      {!loading && ongoingEvents.length > 0 && (
-        <section className="mt-7 px-5 animate-slide-up" aria-label="Événements en cours">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-              </span>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  En ce moment
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Événements actuellement en direct
-                </p>
-              </div>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-black">
-              LIVE
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {ongoingEvents.slice(0, 4).map((event) => (
-              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
-            ))}
-          </div>
+      {/* SECTION 2: Tendances de la semaine */}
+      {trending.length > 0 && (
+        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+          <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
         </section>
       )}
 
-      {/* SECTION CATÉGORIES */}
-      <section className="mt-7 px-5">
+      {/* SECTION 3: Explorer par catégorie */}
+      <section className="mt-8 px-5">
         <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
           Explorer par catégorie
         </h2>
@@ -337,21 +384,94 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* SECTION TENDANCES (Deck interactif) */}
-      {loading ? (
-        <section className="mt-8 px-5" aria-label="Chargement des tendances">
-          <div className="skeleton h-[26rem] rounded-[2rem]" />
-        </section>
-      ) : trending.length > 0 ? (
-        <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
-      ) : null}
+      {/* SECTION 4: À moins de 5 km */}
+      {nearbyUnder5km.length > 0 && (
+        <section className="mt-9 px-5" aria-label="À moins de 5 km">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Navigation className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  À moins de 5 km
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Autour de votre position actuelle
+                </p>
+              </div>
+            </div>
 
-      {/* SECTION CONDITIONNELLE 2: Événements 100% Gratuits */}
-      {!loading && freeEvents.length > 0 && (
-        <section className="mt-8 px-5" aria-label="Événements gratuits">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setSeeMoreType('nearby')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+            >
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {nearbyUnder5km.slice(0, 4).map((event) => (
+              <div key={event.id} className="relative group">
+                <EventCard event={event} onClick={() => onEventClick(event)} />
+                {typeof event.distanceKm === 'number' && (
+                  <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-600/90 text-white backdrop-blur-md shadow-xs">
+                      <Navigation className="w-2.5 h-2.5" />
+                      {formatDistance(event.distanceKm)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 5: Selon vos préférences */}
+      {userPreferencesEvents.length > 0 && (
+        <section className="mt-9 px-5" aria-label="Selon vos préférences">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  Selon vos préférences
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Sélection personnalisée selon vos goûts
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSeeMoreType('preferences')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+            >
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {userPreferencesEvents.slice(0, 4).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 6: Événements 100% Gratuits */}
+      {freeEvents.length > 0 && (
+        <section className="mt-9 px-5" aria-label="Événements gratuits">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
                 <Gift className="w-4 h-4" />
               </div>
               <div>
@@ -363,9 +483,15 @@ export function HomeScreen({
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-              0 FCFA
-            </span>
+
+            <button
+              type="button"
+              onClick={() => setSeeMoreType('free')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+            >
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -376,49 +502,67 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* SECTION CONDITIONNELLE 3: À moins de 5 km */}
-      {!loading && nearbyUnder5km.length > 0 && (
-        <section className="mt-8 px-5" aria-label="À moins de 5 km">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                <Navigation className="w-4 h-4" />
+      {/* SECTION 7: À ne pas manquer */}
+      {unmissableEvents.length > 0 && (
+        <section className="mt-9 px-5" aria-label="À ne pas manquer">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Flame className="w-4 h-4" />
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  À moins de 5 km
+                  À ne pas manquer
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Lomé et proximité immédiate
+                  Les événements les plus attendus
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-xs font-bold">
-              Proche
-            </span>
+
+            <button
+              type="button"
+              onClick={() => setSeeMoreType('unmissable')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+            >
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {nearbyUnder5km.slice(0, 4).map((event) => (
+            {unmissableEvents.slice(0, 4).map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
             ))}
           </div>
         </section>
       )}
 
-      {/* SECTION ARTISTES */}
-      {!loading && artists.length > 0 && (
-        <section className="mt-8">
-          <div className="px-5 flex items-end justify-between mb-4">
-            <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-              Artistes en vedette
-            </h2>
+      {/* SECTION 8: Artistes du moment (vrais comptes artistes) */}
+      {artists.length > 0 && (
+        <section className="mt-9" aria-label="Artistes du moment">
+          <div className="px-5 flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Music className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  Artistes du moment
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Talents et créateurs de la communauté
+                </p>
+              </div>
+            </div>
+
             <button
               type="button"
-              className="flex items-center gap-0.5 text-[13px] font-bold text-[#6600FF] active:opacity-60 transition-opacity"
+              onClick={() => setSeeMoreType('artists')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              Tout voir
-              <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -431,16 +575,16 @@ export function HomeScreen({
                     type="button"
                     key={artist.id}
                     onClick={() => onArtistClick?.(artist)}
-                    className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer"
+                    className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
                   >
                     <div className="relative">
                       <img
-                        src={artist.photo_url || `https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=200`}
+                        src={artist.photo_url || `https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200`}
                         alt={artist.name}
                         loading="lazy"
                         decoding="async"
                         referrerPolicy="no-referrer"
-                        className="w-[5.25rem] h-[5.25rem] rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-sm"
+                        className="w-[5.25rem] h-[5.25rem] rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-xs"
                       />
                       {artist.is_verified && (
                         <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#6600FF] ring-2 ring-white flex items-center justify-center">
@@ -466,52 +610,102 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* SECTION À NE PAS MANQUER */}
-      <section className="mt-8 px-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-            À ne pas manquer
-          </h2>
-          <button
-            type="button"
-            className="flex items-center gap-0.5 text-[13px] font-bold text-[#6600FF] active:opacity-60 transition-opacity"
-          >
-            Tout voir
-            <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
-          </button>
-        </div>
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
-          </div>
-        ) : nearby.length === 0 ? (
-          <EmptyState title="Aucun événement" description="Revenez bientôt pour de nouveaux événements" />
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {nearby.slice(0, 6).map((event) => (
-              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
-            ))}
-          </div>
-        )}
-      </section>
+      {/* SECTION 9: Organisateurs officiels (vrais comptes organisateurs) */}
+      {organizations.length > 0 && (
+        <section className="mt-9" aria-label="Organisateurs officiels">
+          <div className="px-5 flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                  Organisateurs officiels
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Collectifs et créateurs d’expériences
+                </p>
+              </div>
+            </div>
 
-      {/* STATS GLOBALES GBAIGBANCE */}
-      {!loading && (
-        <section className="mt-9 px-5">
-          <div className="mb-4">
-            <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-              Gbaigbance en chiffres
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-              Statistiques globales de la plateforme · Données en direct
-            </p>
+            <button
+              type="button"
+              onClick={() => setSeeMoreType('organizations')}
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+            >
+              <span>Voir plus</span>
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
           </div>
-          <GbaigbanceStatsDashboard
-            events={allActiveEvents}
-            platformStats={platformStats || undefined}
-          />
+
+          <div className="relative">
+            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
+              {organizations.map((org) => {
+                return (
+                  <button
+                    type="button"
+                    key={org.id}
+                    onClick={() => onOrganizationClick?.(org)}
+                    className="flex flex-col items-center gap-2.5 w-[6.5rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
+                  >
+                    <div className="relative">
+                      <img
+                        src={org.logo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=200'}
+                        alt={org.name}
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        className="w-[5.25rem] h-[5.25rem] rounded-2xl object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-xs"
+                      />
+                      {org.verification_status === 'verified' && (
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#6600FF] ring-2 ring-white flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
+                      {org.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {org.events_count ?? 0} événement{(org.events_count ?? 0) > 1 ? 's' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </section>
       )}
+
+      {/* STATS GLOBALES GBAIGBANCE (Titre et sous-titre intacts comme demandé) */}
+      <section className="mt-9 px-5">
+        <div className="mb-4">
+          <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+            Gbaigbance en chiffres
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+            Statistiques globales de la plateforme · Données en direct
+          </p>
+        </div>
+        <GbaigbanceStatsDashboard
+          events={allActiveEvents}
+          platformStats={platformStats || undefined}
+        />
+      </section>
+
+      {/* DEDICATED SEE MORE FULL SCREEN VIEW / MODAL */}
+      <SeeMoreModal
+        type={seeMoreType}
+        onClose={() => setSeeMoreType(null)}
+        events={allEventsWithDistance}
+        artists={artists}
+        organizations={organizations}
+        onEventClick={onEventClick}
+        onArtistClick={onArtistClick}
+        onOrganizationClick={onOrganizationClick}
+      />
     </div>
   );
 }

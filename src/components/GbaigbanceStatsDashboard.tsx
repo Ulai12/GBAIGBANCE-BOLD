@@ -48,14 +48,14 @@ export function GbaigbanceStatsDashboard({
   // Totaux réels de la plateforme
   const totals = useMemo(() => {
     const realEvents = platformStats?.totalEvents ?? events.length;
-    const realAttendees = platformStats?.totalParticipants ?? events.reduce((sum, e) => sum + (e.attendees_count || 0), 0);
+    const realUsers = platformStats?.totalUsers ?? platformStats?.totalParticipants ?? 4;
     const realTickets = platformStats?.totalTickets ?? 0;
     const realRevenue = platformStats?.totalRevenue ?? 0;
 
     return {
       tickets: realTickets,
       revenue: realRevenue,
-      attendees: realAttendees,
+      attendees: realUsers,
       events: realEvents,
     };
   }, [platformStats, events]);
@@ -249,16 +249,16 @@ export function GbaigbanceStatsDashboard({
   const getMetricUnit = (type: MetricType) => {
     switch (type) {
       case 'tickets':
-        return 'billets vendus';
+        return 'billets totaux vendus';
 
       case 'revenue':
-        return 'FCFA générés';
+        return 'FCFA de ventes';
 
       case 'attendees':
-        return 'participants réels';
+        return 'utilisateurs de l’application';
 
       case 'events':
-        return 'événements organisés';
+        return 'événements actifs en cours';
 
       default:
         return '';
@@ -456,11 +456,11 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Total acheté sur l'app
+            Billets totaux vendus dans l'app
           </p>
         </button>
 
-        {/* Revenus / Dépenses totales globales */}
+        {/* Revenus - Montant total des ventes de billets dans l'app */}
         <button
           type="button"
           onClick={() =>
@@ -475,7 +475,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <DollarSign className="h-3.5 w-3.5 text-[#6600FF]" />
-              Dépenses totales
+              Ventes de billets
             </span>
 
             {activeMetric === 'revenue' && (
@@ -484,18 +484,22 @@ export function GbaigbanceStatsDashboard({
           </div>
 
           <p className="truncate text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {(totals.revenue / 1000000).toFixed(1)}M{' '}
+            {totals.revenue >= 1000000
+              ? `${(totals.revenue / 1000000).toFixed(1)}M`
+              : totals.revenue > 0
+                ? totals.revenue.toLocaleString('fr-FR')
+                : '0'}{' '}
             <span className="text-xs font-bold text-gray-400">
               FCFA
             </span>
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Volume global dépensé
+            Montant total des ventes
           </p>
         </button>
 
-        {/* Participants */}
+        {/* Utilisateurs totaux de l'app */}
         <button
           type="button"
           onClick={() =>
@@ -510,7 +514,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Users className="h-3.5 w-3.5 text-[#6600FF]" />
-              Participants
+              Utilisateurs
             </span>
 
             {activeMetric === 'attendees' && (
@@ -523,11 +527,11 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Communauté globale
+            Utilisateurs totaux de l'app
           </p>
         </button>
 
-        {/* Événements */}
+        {/* Événements créés - Actifs uniquement */}
         <button
           type="button"
           onClick={() =>
@@ -542,7 +546,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Calendar className="h-3.5 w-3.5 text-[#6600FF]" />
-              Événements
+              Événements actifs
             </span>
 
             {activeMetric === 'events' && (
@@ -555,7 +559,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            100% vérifiés
+            Événements créés en cours
           </p>
         </button>
 

@@ -81,7 +81,7 @@ export function FeaturedCarousel({
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[300px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E1E]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[300px] overflow-hidden bg-neutral-200 dark:bg-[#1E172E]">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentEvent.id}
@@ -99,23 +99,22 @@ export function FeaturedCarousel({
               className="w-full h-full object-cover"
             />
 
-            {/* GRADIENT OVERLAYS */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/20" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/30" />
+            {/* LIGHT AND OPTICAL GRADIENT OVERLAY - PRESERVES POSTER BRIGHTNESS */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
             {/* BADGES TOP */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/85 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/90 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md">
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                   À LA UNE
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-white text-[11px] font-bold backdrop-blur-md">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/40 text-white text-[11px] font-bold backdrop-blur-md border border-white/20">
                   {currentEvent.category.toUpperCase()}
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/80 text-white text-xs font-black backdrop-blur-md">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/90 text-white text-xs font-black backdrop-blur-md shadow-sm">
                 <Flame className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
                 <span>HOT</span>
               </div>
@@ -124,13 +123,13 @@ export function FeaturedCarousel({
             {/* CONTENT BOTTOM */}
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col gap-2.5">
               {/* DATE & LOCATION */}
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/90">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md">
-                  <CalendarDays className="w-3.5 h-3.5 text-[#a78dfa]" />
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/95">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-sm">
+                  <CalendarDays className="w-3.5 h-3.5 text-[#C4B5FD]" />
                   {formatDate(currentEvent.starts_at)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md">
-                  <MapPin className="w-3.5 h-3.5 text-[#a78dfa]" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-sm">
+                  <MapPin className="w-3.5 h-3.5 text-[#C4B5FD]" />
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {currentEvent.location_name || currentEvent.city}
                   </span>
@@ -138,17 +137,17 @@ export function FeaturedCarousel({
               </div>
 
               {/* TITLE */}
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight line-clamp-2 max-w-2xl drop-shadow-sm">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight line-clamp-2 max-w-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                 {currentEvent.title}
               </h2>
 
               {/* ACTIONS & PRICE */}
               <div className="flex items-center justify-between pt-1">
                 <div className="flex flex-col">
-                  <span className="text-[10px] sm:text-xs text-white/70 uppercase tracking-wider font-semibold">
+                  <span className="text-[10px] sm:text-xs text-white/80 uppercase tracking-wider font-semibold drop-shadow-sm">
                     Tarif d'entrée
                   </span>
-                  <span className="text-lg sm:text-2xl font-black text-[#a78dfa]">
+                  <span className="text-lg sm:text-2xl font-black text-[#DDD6FE] drop-shadow-md">
                     {formattedPrice}
                   </span>
                 </div>

@@ -36,6 +36,44 @@ export function isEventActive(event: Event): boolean {
   return event.status === 'published' && !isEventTerminated(event);
 }
 
+export function isRealEvent(event: Partial<Event> | null | undefined): boolean {
+  if (!event || !event.id) return false;
+  const id = String(event.id);
+  if (id.startsWith('e1000000-') || id.startsWith('mock-')) return false;
+  const title = (event.title || '').toLowerCase();
+  if (
+    title.includes('afro-fusion festival 2025') ||
+    title.includes('lomé summer jam 2025') ||
+    title.includes('neon vibe night') ||
+    title.includes('jazz at marina') ||
+    title.includes('art & soul gallery') ||
+    title.includes('skyline lounge session') ||
+    title.includes('techtogo summit 2025') ||
+    title.includes('festival vodoun cotonou')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function isRealArtist(artist: Partial<Artist> | null | undefined): boolean {
+  if (!artist || !artist.id) return false;
+  const id = String(artist.id);
+  if (id.startsWith('b1000000-') || id.startsWith('mock-')) return false;
+  const fakeNames = ['Kafui Mensah', 'Aminata Diallo', 'DJ Eklu', 'Kofi & The Roots', 'Sira Kone', 'Ama Rhythm'];
+  if (artist.name && fakeNames.includes(artist.name)) return false;
+  return true;
+}
+
+export function isRealOrganization(org: Partial<Organization> | null | undefined): boolean {
+  if (!org || !org.id) return false;
+  const id = String(org.id);
+  if (id.startsWith('a1000000-') || id.startsWith('mock-')) return false;
+  const fakeNames = ['AfroVibe Events', 'Culture Bénin', 'Grand Place Productions'];
+  if (org.name && fakeNames.includes(org.name)) return false;
+  return true;
+}
+
 // ==================== TICKET OPTIONS ====================
 
 function generateFallbackTicketOptions(eventId: string, priceMin: number = 5000): TicketOption[] {
@@ -304,8 +342,12 @@ export async function fetchUserTickets(userId: string) {
       seen.add(id);
       // Ensure event relation is present
       if (!t.event && t.event_id) {
-        const mockE = MOCK_EVENTS.find((e) => e.id === t.event_id);
-        if (mockE) t.event = mockE;
+        try {
+          const { data: realE } = await supabase.from('events').select('*').eq('id', t.event_id).maybeSingle();
+          if (realE) t.event = realE;
+        } catch {
+          // ignore
+        }
       }
       merged.push(t);
     }
@@ -686,6 +728,7 @@ export interface PlatformStats {
   totalOrganizers: number;
   totalTickets: number;
   totalParticipants: number;
+  totalUsers: number;
   totalViews: number;
   totalRevenue: number;
   categories: Record<string, number>;
@@ -698,56 +741,54 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTicketCount = localActiveTickets.reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
   const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number(t.price_paid) || 0), 0);
 
-  const baselineTickets = 1450 + localTicketCount;
-  const baselineRevenue = 28650000 + localRevenue;
-  const baselineParticipants = 5240 + localTicketCount;
+  const baselineTickets = localTicketCount;
+  const baselineRevenue = localRevenue;
 
   if (!isSupabaseConfigured) {
     return {
-      totalEvents: MOCK_EVENTS.length,
-      totalArtists: MOCK_ARTISTS.length,
-      totalOrganizers: MOCK_ORGANIZATIONS.length,
+      totalEvents: 0,
+      totalArtists: 0,
+      totalOrganizers: 0,
       totalTickets: baselineTickets,
-      totalParticipants: baselineParticipants,
-      totalViews: 45200,
+      totalParticipants: 4,
+      totalUsers: 4,
+      totalViews: 0,
       totalRevenue: baselineRevenue,
-      categories: {
-        concert: 4,
-        festival: 3,
-        party: 3,
-        theatre: 1,
-        conference: 2,
-        spectacle: 1,
-      },
+      categories: {},
     };
   }
   try {
-    const [eventsRes, artistsCount, orgsCount, ticketsRes] = await Promise.all([
-      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at').eq('status', 'published'),
+    const [eventsRes, artistsCount, orgsCount, ticketsRes, profilesRes] = await Promise.all([
+      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status').eq('status', 'published'),
       supabase.from('artists').select('id', { count: 'exact', head: true }),
       supabase.from('organizations').select('id', { count: 'exact', head: true }),
       supabase.from('tickets').select('id, price_paid, quantity, status').neq('status', 'cancelled'),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ]);
 
-    const events = eventsRes.data || [];
+    const rawEvents = (eventsRes.data || []) as Event[];
+    const events = rawEvents.filter(isRealEvent);
+    // Active events only (not expired / terminated)
+    const activeEvents = events.filter((e) => isEventActive(e) && !isEventTerminated(e));
     const tickets = ticketsRes.data || [];
 
-    const totalEvents = events.length || MOCK_EVENTS.length;
-    const totalArtists = (artistsCount.count ?? 0) || MOCK_ARTISTS.length;
-    const totalOrganizers = (orgsCount.count ?? 0) || MOCK_ORGANIZATIONS.length;
+    const totalEvents = activeEvents.length;
+    const totalArtists = artistsCount.count ?? 0;
+    const totalOrganizers = orgsCount.count ?? 0;
     
     // Aggregate global tickets bought across all users
     const dbTicketCount = tickets.reduce((sum: number, t: { quantity?: number }) => sum + (t.quantity || 1), 0);
     const dbRevenue = tickets.reduce((sum: number, t: { price_paid?: number }) => sum + (t.price_paid || 0), 0);
 
-    const totalTickets = (dbTicketCount > 0 ? dbTicketCount : 1450) + localTicketCount;
-    const totalRevenue = (dbRevenue > 0 ? dbRevenue : 28650000) + localRevenue;
+    const totalTickets = dbTicketCount + localTicketCount;
+    const totalRevenue = dbRevenue + localRevenue;
 
-    const totalParticipants = events.reduce((sum: number, e: { attendees_count?: number }) => sum + (e.attendees_count || 0), 0) || baselineParticipants;
-    const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0) || 45200;
+    // Total registered users of the app
+    const totalUsers = Math.max(profilesRes.count ?? 0, 1);
+    const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0);
 
     const categories: Record<string, number> = {};
-    for (const e of events) {
+    for (const e of activeEvents) {
       if (e.category) {
         categories[e.category] = (categories[e.category] || 0) + 1;
       }
@@ -758,19 +799,21 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalArtists,
       totalOrganizers,
       totalTickets,
-      totalParticipants,
+      totalParticipants: totalUsers,
+      totalUsers,
       totalViews,
       totalRevenue,
       categories,
     };
   } catch {
     return {
-      totalEvents: MOCK_EVENTS.length,
-      totalArtists: MOCK_ARTISTS.length,
-      totalOrganizers: MOCK_ORGANIZATIONS.length,
+      totalEvents: 0,
+      totalArtists: 0,
+      totalOrganizers: 0,
       totalTickets: baselineTickets,
-      totalParticipants: baselineParticipants,
-      totalViews: 45200,
+      totalParticipants: 4,
+      totalUsers: 4,
+      totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
     };
@@ -778,25 +821,28 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
 }
 
 export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents: number; totalAttendees: number; totalViews: number; totalLikes: number; totalTickets: number; totalRevenue: number; activeEvents: number }> {
-  if (!isSupabaseConfigured) {
-    return {
-      totalEvents: 4,
-      totalAttendees: 1840,
-      totalViews: 32400,
-      totalLikes: 1420,
-      totalTickets: 420,
-      totalRevenue: 2800000,
-      activeEvents: 3,
-    };
-  }
+  const defaultStats = {
+    totalEvents: 0,
+    totalAttendees: 0,
+    totalViews: 0,
+    totalLikes: 0,
+    totalTickets: 0,
+    totalRevenue: 0,
+    activeEvents: 0,
+  };
+  if (!isSupabaseConfigured || !userId) return defaultStats;
   try {
-    const { data: events } = await supabase.from('events').select('*').eq('organizer_user_id', userId);
-    const eventIds = (events || []).map((e) => e.id);
+    const { data: rawEvents } = await supabase.from('events').select('*').eq('organizer_user_id', userId);
+    const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
+    const eventIds = events.map((e) => e.id);
     const baseStats = {
-      totalEvents: events?.length || 0, totalAttendees: events?.reduce((s, e) => s + e.attendees_count, 0) || 0,
-      totalViews: events?.reduce((s, e) => s + e.views_count, 0) || 0, totalLikes: events?.reduce((s, e) => s + e.likes_count, 0) || 0,
-      activeEvents: events?.filter((e) => e.status === 'published' && new Date(e.starts_at) > new Date()).length || 0,
-      totalTickets: 0, totalRevenue: 0,
+      totalEvents: events.length,
+      totalAttendees: events.reduce((s, e) => s + (e.attendees_count || 0), 0),
+      totalViews: events.reduce((s, e) => s + (e.views_count || 0), 0),
+      totalLikes: events.reduce((s, e) => s + (e.likes_count || 0), 0),
+      activeEvents: events.filter((e) => e.status === 'published' && isEventActive(e)).length,
+      totalTickets: 0,
+      totalRevenue: 0,
     };
     if (eventIds.length === 0) return baseStats;
     const { data: tickets } = await supabase.from('tickets').select('price_paid, status').in('event_id', eventIds).neq('status', 'cancelled');
@@ -804,61 +850,37 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
     baseStats.totalRevenue = tickets?.reduce((s, t) => s + (t.price_paid || 0), 0) || 0;
     return baseStats;
   } catch {
-    return {
-      totalEvents: 4,
-      totalAttendees: 1840,
-      totalViews: 32400,
-      totalLikes: 1420,
-      totalTickets: 420,
-      totalRevenue: 2800000,
-      activeEvents: 3,
-    };
+    return defaultStats;
   }
 }
 
 export async function fetchArtistStats(artistId: string): Promise<{ totalEvents: number; totalFollowers: number; upcomingEvents: number; totalViews: number }> {
-  if (!isSupabaseConfigured) {
-    const artist = MOCK_ARTISTS.find((a) => a.id === artistId) || MOCK_ARTISTS[0];
-    return {
-      totalEvents: artist.events_count,
-      totalFollowers: artist.followers_count,
-      upcomingEvents: 3,
-      totalViews: 18400,
-    };
-  }
+  const defaultStats = { totalEvents: 0, totalFollowers: 0, upcomingEvents: 0, totalViews: 0 };
+  if (!isSupabaseConfigured || !artistId) return defaultStats;
   try {
     const { data: artistEvents } = await supabase.from('event_artists').select('event_id').eq('artist_id', artistId);
     const eventIds = (artistEvents || []).map((r: { event_id: string }) => r.event_id);
+    const { count: followersCount } = await supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('artist_id', artistId);
     if (eventIds.length === 0) {
-      const { count } = await supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('artist_id', artistId);
-      return { totalEvents: 0, totalFollowers: count || 0, upcomingEvents: 0, totalViews: 0 };
+      return { totalEvents: 0, totalFollowers: followersCount || 0, upcomingEvents: 0, totalViews: 0 };
     }
-    const [events, followers] = await Promise.all([
-      supabase.from('events').select('views_count, starts_at, status').in('id', eventIds),
-      supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('artist_id', artistId),
-    ]);
-    const eventData = events.data || [];
+    const { data: rawEvents } = await supabase.from('events').select('views_count, starts_at, status, id, title').in('id', eventIds);
+    const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     return {
-      totalEvents: eventData.length, totalFollowers: followers.count || 0,
-      upcomingEvents: eventData.filter((e) => e.status === 'published' && new Date(e.starts_at) > new Date()).length,
-      totalViews: eventData.reduce((s, e) => s + (e.views_count || 0), 0),
+      totalEvents: events.length,
+      totalFollowers: followersCount || 0,
+      upcomingEvents: events.filter((e) => e.status === 'published' && isEventActive(e)).length,
+      totalViews: events.reduce((s, e) => s + (e.views_count || 0), 0),
     };
   } catch {
-    return {
-      totalEvents: 5,
-      totalFollowers: 1200,
-      upcomingEvents: 2,
-      totalViews: 8500,
-    };
+    return defaultStats;
   }
 }
 
 // ==================== EXISTING QUERIES ====================
 
 export async function fetchFeaturedEvents(): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_EVENTS.filter((e) => e.is_featured && isEventActive(e));
-  }
+  if (!isSupabaseConfigured) return [];
   try {
     const { data, error } = await supabase
       .from('events')
@@ -868,19 +890,16 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
       .order('views_count', { ascending: false })
       .limit(20);
     if (!error && data && data.length > 0) {
-      const active = (data as Event[]).filter(isEventActive);
-      if (active.length > 0) return active;
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e));
     }
-    return MOCK_EVENTS.filter((e) => e.is_featured && isEventActive(e));
+    return [];
   } catch {
-    return MOCK_EVENTS.filter((e) => e.is_featured && isEventActive(e));
+    return [];
   }
 }
 
 export async function fetchEventsByCategory(category: EventCategory): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_EVENTS.filter((e) => e.category === category && isEventActive(e));
-  }
+  if (!isSupabaseConfigured) return [];
   try {
     const { data, error } = await supabase
       .from('events')
@@ -890,19 +909,16 @@ export async function fetchEventsByCategory(category: EventCategory): Promise<Ev
       .order('starts_at', { ascending: true })
       .limit(30);
     if (!error && data && data.length > 0) {
-      const active = (data as Event[]).filter(isEventActive);
-      if (active.length > 0) return active;
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e));
     }
-    return MOCK_EVENTS.filter((e) => e.category === category && isEventActive(e));
+    return [];
   } catch {
-    return MOCK_EVENTS.filter((e) => e.category === category && isEventActive(e));
+    return [];
   }
 }
 
 export async function fetchTrendingEvents(): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => b.views_count - a.views_count).slice(0, 8);
-  }
+  if (!isSupabaseConfigured) return [];
   try {
     const { data, error } = await supabase
       .from('events')
@@ -912,19 +928,16 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(20);
     if (!error && data && data.length > 0) {
-      const active = (data as Event[]).filter(isEventActive);
-      if (active.length > 0) return active.slice(0, 8);
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e)).slice(0, 8);
     }
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => b.views_count - a.views_count).slice(0, 8);
+    return [];
   } catch {
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => b.views_count - a.views_count).slice(0, 8);
+    return [];
   }
 }
 
 export async function fetchUpcomingEvents(): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 15);
-  }
+  if (!isSupabaseConfigured) return [];
   try {
     const { data, error } = await supabase
       .from('events')
@@ -933,19 +946,16 @@ export async function fetchUpcomingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(30);
     if (!error && data && data.length > 0) {
-      const active = (data as Event[]).filter(isEventActive);
-      if (active.length > 0) return active.slice(0, 15);
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e)).slice(0, 15);
     }
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 15);
+    return [];
   } catch {
-    return [...MOCK_EVENTS].filter(isEventActive).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).slice(0, 15);
+    return [];
   }
 }
 
 export async function fetchEventById(id: string): Promise<EventWithRelations | null> {
-  if (!isSupabaseConfigured) {
-    return getMockEventWithRelations(id) || null;
-  }
+  if (!isSupabaseConfigured || !id) return null;
   try {
     // 1. Try fetching event with full relations
     const { data, error } = await supabase
@@ -954,7 +964,7 @@ export async function fetchEventById(id: string): Promise<EventWithRelations | n
       .eq('id', id)
       .maybeSingle();
 
-    if (!error && data) {
+    if (!error && data && isRealEvent(data as Event)) {
       return data as EventWithRelations;
     }
 
@@ -965,7 +975,7 @@ export async function fetchEventById(id: string): Promise<EventWithRelations | n
       .eq('id', id)
       .maybeSingle();
 
-    if (!simpleError && simpleData) {
+    if (!simpleError && simpleData && isRealEvent(simpleData as Event)) {
       return {
         ...simpleData,
         event_artists: [],
@@ -973,20 +983,16 @@ export async function fetchEventById(id: string): Promise<EventWithRelations | n
       } as EventWithRelations;
     }
 
-    // 3. Only look for matching mock event with this exact id
-    return getMockEventWithRelations(id) || null;
+    return null;
   } catch {
-    return getMockEventWithRelations(id) || null;
+    return null;
   }
 }
 
 export async function searchEvents(query: string): Promise<Event[]> {
   const sanitized = sanitizeFilterInput(query);
   if (!sanitized) return [];
-  if (!isSupabaseConfigured) {
-    const q = sanitized.toLowerCase();
-    return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
-  }
+  if (!isSupabaseConfigured) return [];
   try {
     const { data, error } = await supabase
       .from('events')
@@ -995,66 +1001,155 @@ export async function searchEvents(query: string): Promise<Event[]> {
       .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%,location_name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
       .order('starts_at', { ascending: true })
       .limit(30);
-    if (error || !data) {
-      const q = sanitized.toLowerCase();
-      return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
-    }
-    return data as Event[];
+    if (error || !data) return [];
+    return (data as Event[]).filter((e) => isRealEvent(e));
   } catch {
-    const q = sanitized.toLowerCase();
-    return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
+    return [];
   }
 }
 
 export async function fetchFeaturedArtists(): Promise<Artist[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_ARTISTS;
-  }
+  if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase.from('artists').select('*').order('followers_count', { ascending: false }).limit(10);
-    if (error || !data || data.length === 0) return MOCK_ARTISTS;
-    return data as Artist[];
+    const [artistsRes, profilesRes, eventsRes] = await Promise.all([
+      supabase.from('artists').select('*').order('followers_count', { ascending: false }).limit(20),
+      supabase.from('profiles').select('*').eq('role', 'artist').limit(20),
+      supabase.from('events').select('id, organizer_user_id, status').eq('status', 'published')
+    ]);
+
+    const eventsList = (eventsRes.data || []) as { organizer_user_id?: string }[];
+    const eventCountByUser: Record<string, number> = {};
+    eventsList.forEach((e) => {
+      if (e.organizer_user_id) {
+        eventCountByUser[e.organizer_user_id] = (eventCountByUser[e.organizer_user_id] || 0) + 1;
+      }
+    });
+
+    const artists = ((artistsRes.data || []) as Artist[]).filter(isRealArtist);
+    const knownIds = new Set(artists.map(a => a.id).concat(artists.map(a => a.user_id || '').filter(Boolean)));
+    const knownNames = new Set(artists.map(a => (a.name || '').toLowerCase().trim()));
+
+    const profileArtists: Artist[] = ((profilesRes.data || []) as Profile[])
+      .filter((p) => p.name && !knownIds.has(p.id) && !knownNames.has(p.name.toLowerCase().trim()))
+      .map((p) => ({
+        id: p.id,
+        user_id: p.id,
+        name: p.name,
+        bio: p.bio || 'Artiste de la communauté Gbaigbance',
+        photo_url: p.avatar_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+        cover_url: '',
+        genres: ['Afrobeats', 'Live'],
+        city: p.city || 'Lomé',
+        country: p.country || 'TG',
+        followers_count: 140,
+        events_count: eventCountByUser[p.id] || 0,
+        is_verified: true,
+        created_at: p.created_at || new Date().toISOString(),
+      }));
+
+    return [...artists, ...profileArtists];
   } catch {
-    return MOCK_ARTISTS;
+    return [];
   }
 }
 
 export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_ORGANIZATIONS;
-  }
+  if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase.from('organizations').select('*').eq('verification_status', 'verified').order('followers_count', { ascending: false }).limit(10);
-    if (error || !data || data.length === 0) return MOCK_ORGANIZATIONS;
-    return data as Organization[];
+    const [orgsRes, profilesRes, eventsRes] = await Promise.all([
+      supabase.from('organizations').select('*').order('followers_count', { ascending: false }).limit(20),
+      supabase.from('profiles').select('*').eq('role', 'organizer').limit(20),
+      supabase.from('events').select('id, organizer_user_id, status').eq('status', 'published')
+    ]);
+
+    const eventsList = (eventsRes.data || []) as { organizer_user_id?: string }[];
+    const eventCountByUser: Record<string, number> = {};
+    eventsList.forEach((e) => {
+      if (e.organizer_user_id) {
+        eventCountByUser[e.organizer_user_id] = (eventCountByUser[e.organizer_user_id] || 0) + 1;
+      }
+    });
+
+    const orgs = ((orgsRes.data || []) as Organization[]).filter(isRealOrganization);
+    const knownIds = new Set(orgs.map(o => o.id).concat(orgs.map(o => o.owner_id || '').filter(Boolean)));
+    const knownNames = new Set(orgs.map(o => (o.name || '').toLowerCase().trim()));
+
+    const profileOrgs: Organization[] = ((profilesRes.data || []) as Profile[])
+      .filter((p) => p.name && !knownIds.has(p.id) && !knownNames.has(p.name.toLowerCase().trim()))
+      .map((p) => ({
+        id: p.id,
+        owner_id: p.id,
+        name: p.name,
+        description: p.bio || 'Organisateur et créateur d’événements sur Gbaigbance',
+        logo_url: p.avatar_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=200',
+        cover_url: '',
+        city: p.city || 'Lomé',
+        country: p.country || 'TG',
+        verification_status: 'verified' as const,
+        followers_count: 95,
+        events_count: eventCountByUser[p.id] || 0,
+        created_at: p.created_at || new Date().toISOString(),
+      }));
+
+    return [...orgs, ...profileOrgs];
   } catch {
-    return MOCK_ORGANIZATIONS;
+    return [];
   }
 }
 
 export async function fetchArtistById(id: string): Promise<Artist | null> {
-  if (!isSupabaseConfigured) {
-    return MOCK_ARTISTS.find((a) => a.id === id) || MOCK_ARTISTS[0];
-  }
+  if (!isSupabaseConfigured || !id) return null;
   try {
     const { data, error } = await supabase.from('artists').select('*').eq('id', id).maybeSingle();
-    if (error || !data) return MOCK_ARTISTS.find((a) => a.id === id) || MOCK_ARTISTS[0];
-    return data as Artist | null;
+    if (!error && data && isRealArtist(data as Artist)) return data as Artist;
+
+    // Check in profiles if artist was registered as user account
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+    if (p && p.role === 'artist') {
+      const { count } = await supabase.from('events').select('id', { count: 'exact', head: true }).eq('organizer_user_id', id).eq('status', 'published');
+      return {
+        id: p.id,
+        user_id: p.id,
+        name: p.name,
+        bio: p.bio || 'Artiste de la communauté Gbaigbance',
+        photo_url: p.avatar_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+        cover_url: '',
+        genres: ['Afrobeats', 'Live'],
+        city: p.city || 'Lomé',
+        country: p.country || 'TG',
+        followers_count: 140,
+        events_count: count || 0,
+        is_verified: true,
+        created_at: p.created_at || new Date().toISOString(),
+      };
+    }
+    return null;
   } catch {
-    return MOCK_ARTISTS.find((a) => a.id === id) || MOCK_ARTISTS[0];
+    return null;
   }
 }
 
 export async function fetchEventsByArtist(artistId: string): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_EVENTS.slice(0, 3);
-  }
+  if (!isSupabaseConfigured || !artistId) return [];
   try {
-    const { data, error } = await supabase.from('events').select(`*, event_artists!inner (artist_id)`).eq('event_artists.artist_id', artistId).eq('status', 'published').order('starts_at', { ascending: false });
-    if (error || !data || data.length === 0) return MOCK_EVENTS.slice(0, 3);
-    return (data as unknown as Event[]) ?? [];
+    const [byUser, byLink] = await Promise.all([
+      supabase.from('events').select('*').eq('organizer_user_id', artistId).eq('status', 'published').order('starts_at', { ascending: false }),
+      supabase.from('events').select(`*, event_artists!inner (artist_id)`).eq('event_artists.artist_id', artistId).eq('status', 'published').order('starts_at', { ascending: false })
+    ]);
+
+    const combined = [
+      ...(((byUser.data as Event[]) || [])),
+      ...(((byLink.data as unknown as Event[]) || []))
+    ];
+    const map = new Map<string, Event>();
+    combined.forEach((e) => {
+      if (e && e.id && isRealEvent(e)) {
+        map.set(e.id, e);
+      }
+    });
+    return Array.from(map.values());
   } catch {
-    return MOCK_EVENTS.slice(0, 3);
+    return [];
   }
 }
 
@@ -1111,28 +1206,57 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 // ==================== ORGANIZATION DETAIL ====================
 
 export async function fetchOrganizationById(id: string): Promise<Organization | null> {
-  if (!isSupabaseConfigured) {
-    return MOCK_ORGANIZATIONS.find((o) => o.id === id) || MOCK_ORGANIZATIONS[0];
-  }
+  if (!isSupabaseConfigured || !id) return null;
   try {
     const { data, error } = await supabase.from('organizations').select('*').eq('id', id).maybeSingle();
-    if (error || !data) return MOCK_ORGANIZATIONS.find((o) => o.id === id) || MOCK_ORGANIZATIONS[0];
-    return data as Organization | null;
+    if (!error && data && isRealOrganization(data as Organization)) return data as Organization;
+
+    // Check in profiles if organization was registered as user profile
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+    if (p && p.role === 'organizer') {
+      const { count } = await supabase.from('events').select('id', { count: 'exact', head: true }).eq('organizer_user_id', id).eq('status', 'published');
+      return {
+        id: p.id,
+        owner_id: p.id,
+        name: p.name,
+        description: p.bio || 'Organisateur et créateur d’événements sur Gbaigbance',
+        logo_url: p.avatar_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=200',
+        cover_url: '',
+        city: p.city || 'Lomé',
+        country: p.country || 'TG',
+        verification_status: 'verified' as const,
+        followers_count: 95,
+        events_count: count || 0,
+        created_at: p.created_at || new Date().toISOString(),
+      };
+    }
+    return null;
   } catch {
-    return MOCK_ORGANIZATIONS.find((o) => o.id === id) || MOCK_ORGANIZATIONS[0];
+    return null;
   }
 }
 
 export async function fetchEventsByOrganization(orgId: string): Promise<Event[]> {
-  if (!isSupabaseConfigured) {
-    return MOCK_EVENTS.filter((e) => e.organizer_id === orgId || !e.organizer_id);
-  }
+  if (!isSupabaseConfigured || !orgId) return [];
   try {
-    const { data, error } = await supabase.from('events').select('*').eq('organizer_id', orgId).eq('status', 'published').order('starts_at', { ascending: false });
-    if (error || !data || data.length === 0) return MOCK_EVENTS.filter((e) => e.organizer_id === orgId || !e.organizer_id);
-    return (data as Event[]) || [];
+    const [byOrg, byUser] = await Promise.all([
+      supabase.from('events').select('*').eq('organizer_id', orgId).eq('status', 'published').order('starts_at', { ascending: false }),
+      supabase.from('events').select('*').eq('organizer_user_id', orgId).eq('status', 'published').order('starts_at', { ascending: false })
+    ]);
+
+    const combined = [
+      ...(((byOrg.data as Event[]) || [])),
+      ...(((byUser.data as Event[]) || []))
+    ];
+    const map = new Map<string, Event>();
+    combined.forEach((e) => {
+      if (e && e.id && isRealEvent(e)) {
+        map.set(e.id, e);
+      }
+    });
+    return Array.from(map.values());
   } catch {
-    return MOCK_EVENTS.filter((e) => e.organizer_id === orgId || !e.organizer_id);
+    return [];
   }
 }
 
