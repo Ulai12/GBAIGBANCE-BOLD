@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
   ChevronLeft,
@@ -9,9 +9,11 @@ import {
   Ticket,
   Flame,
   ArrowRight,
+  Heart,
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -36,28 +38,33 @@ export function FeaturedCarousel({
 }: FeaturedCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [direction, setDirection] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const { isLiked, toggleLike } = useFavorites();
+  const prefersReducedMotion = useReducedMotion();
 
   const featuredList = events.length > 0 ? events.slice(0, 6) : [];
   const total = featuredList.length;
 
   const nextSlide = useCallback(() => {
     if (total <= 1) return;
+    setDirection(1);
     setCurrentIndex((prev) => (prev + 1) % total);
   }, [total]);
 
   const prevSlide = useCallback(() => {
     if (total <= 1) return;
+    setDirection(-1);
     setCurrentIndex((prev) => (prev - 1 + total) % total);
   }, [total]);
 
-  // Auto-scroll effect
+  // Auto-scroll loop
   useEffect(() => {
     if (isPaused || total <= 1) return;
 
     timerRef.current = setInterval(() => {
       nextSlide();
-    }, 4500);
+    }, 5000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -67,45 +74,81 @@ export function FeaturedCarousel({
   if (featuredList.length === 0) return null;
 
   const currentEvent = featuredList[currentIndex];
+  const liked = isLiked(currentEvent.id);
+
   const formattedPrice =
     currentEvent.price_min === 0
       ? 'Gratuit'
       : `${currentEvent.price_min.toLocaleString('fr-FR')} FCFA`;
 
+  const variants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 120 : -120,
+      opacity: 0,
+      scale: 0.96,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? -120 : 120,
+      opacity: 0,
+      scale: 0.96,
+    }),
+  };
+
   return (
     <div
-      className="relative w-full overflow-hidden rounded-[2rem] shadow-xl group"
+      className="relative w-full overflow-hidden rounded-[2rem] shadow-xl group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      {/* SLIDE CONTAINER */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[300px] overflow-hidden bg-neutral-200 dark:bg-[#1E172E]">
-        <AnimatePresence mode="wait">
+      {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[310px] overflow-hidden bg-gradient-to-br from-[#1E172E] via-[#2A1E45] to-[#120E22]">
+        <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={currentEvent.id}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-0 cursor-pointer"
+            custom={direction}
+            variants={prefersReducedMotion ? undefined : variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              x: { type: 'spring', stiffness: 320, damping: 32 },
+              opacity: { duration: 0.25 },
+            }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              const swipeThreshold = 50;
+              if (info.offset.x < -swipeThreshold) {
+                nextSlide();
+              } else if (info.offset.x > swipeThreshold) {
+                prevSlide();
+              }
+            }}
+            className="absolute inset-0 cursor-grab active:cursor-grabbing"
             onClick={() => onEventClick(currentEvent)}
           >
-            {/* BACKGROUND COVER */}
+            {/* BACKGROUND COVER IMAGE */}
             <SmartImage
               src={currentEvent.cover_url || currentEvent.images?.[0]}
               alt={currentEvent.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover pointer-events-none"
             />
 
-            {/* LIGHT AND OPTICAL GRADIENT OVERLAY - PRESERVES POSTER BRIGHTNESS */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+            {/* LIGHT AND OPTICAL GRADIENT OVERLAY */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20 pointer-events-none" />
 
-            {/* BADGES TOP */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+            {/* TOP BADGES & ACTIONS */}
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/90 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/90 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md border border-white/20">
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                   À LA UNE
                 </span>
@@ -114,21 +157,45 @@ export function FeaturedCarousel({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/90 text-white text-xs font-black backdrop-blur-md shadow-sm">
-                <Flame className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
-                <span>HOT</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/90 text-white text-xs font-black backdrop-blur-md shadow-sm border border-white/20">
+                  <Flame className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
+                  <span>HOT</span>
+                </div>
+
+                {/* LIKE BUTTON */}
+                <motion.button
+                  type="button"
+                  aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  whileTap={{ scale: 0.85 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(currentEvent.id);
+                  }}
+                  className="
+                    h-8 w-8 rounded-full bg-black/40 border border-white/20
+                    backdrop-blur-md flex items-center justify-center text-white
+                    hover:bg-black/60 transition-colors
+                  "
+                >
+                  <Heart
+                    className={`w-4 h-4 transition-transform ${
+                      liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
+                    }`}
+                  />
+                </motion.button>
               </div>
             </div>
 
             {/* CONTENT BOTTOM */}
-            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col gap-2.5">
-              {/* DATE & LOCATION */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col gap-2.5 z-10">
+              {/* DATE & VENUE */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/95">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 shadow-sm">
                   <CalendarDays className="w-3.5 h-3.5 text-[#C4B5FD]" />
                   {formatDate(currentEvent.starts_at)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 shadow-sm">
                   <MapPin className="w-3.5 h-3.5 text-[#C4B5FD]" />
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {currentEvent.location_name || currentEvent.city}
@@ -192,7 +259,7 @@ export function FeaturedCarousel({
                 e.stopPropagation();
                 prevSlide();
               }}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-10"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-20"
               aria-label="Événement précédent"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -203,7 +270,7 @@ export function FeaturedCarousel({
                 e.stopPropagation();
                 nextSlide();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-10"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-20"
               aria-label="Événement suivant"
             >
               <ChevronRight className="w-5 h-5" />
@@ -213,7 +280,7 @@ export function FeaturedCarousel({
 
         {/* BOTTOM INDICATOR PILLS */}
         {total > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 pointer-events-auto">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-auto">
             {featuredList.map((evt, idx) => {
               const isActive = idx === currentIndex;
               return (
@@ -222,6 +289,7 @@ export function FeaturedCarousel({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setDirection(idx > currentIndex ? 1 : -1);
                     setCurrentIndex(idx);
                   }}
                   className={`h-1.5 rounded-full transition-all duration-300 ${

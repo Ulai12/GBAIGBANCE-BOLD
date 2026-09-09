@@ -4,7 +4,8 @@ import {
   Star, BadgeCheck, Ticket, Settings, Eye,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
-import { fetchEventById, toggleEventLike, fetchCollaborators, incrementEventViews, subscribeToEventViews, subscribeToEventAttendees, isEventTerminated } from '@/services/events';
+import { fetchEventById, fetchCollaborators, incrementEventViews, subscribeToEventViews, subscribeToEventAttendees, isEventTerminated } from '@/services/events';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { formatFullDate, formatTime, formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
 import { BookingModal } from '@/components/BookingModal';
@@ -48,8 +49,9 @@ function useCountdown(targetDate: string) {
 
 export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettings, onToast }: EventDetailScreenProps) {
   const { t, language, user } = useApp();
+  const { isLiked, toggleLike } = useFavorites();
+  const liked = isLiked(event.id);
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
-  const [liked, setLiked] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [collaborators, setCollaborators] = useState<EventCollaborator[]>([]);
@@ -90,8 +92,16 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettin
   }, [event.id]);
 
   const handleLike = async () => {
-    if (!user) { onToast({ message: 'Connectez-vous pour aimer', type: 'info' }); return; }
-    try { await toggleEventLike(event.id, user.id); setLiked(!liked); } catch { onToast({ message: 'Erreur', type: 'error' }); }
+    try {
+      const willBeLiked = !liked;
+      await toggleLike(event.id);
+      onToast({
+        message: willBeLiked ? 'Ajouté aux favoris' : 'Retiré des favoris',
+        type: 'success',
+      });
+    } catch {
+      onToast({ message: 'Erreur lors de la mise à jour', type: 'error' });
+    }
   };
 
   const displayEvent = (fullEvent && fullEvent.id === event.id) ? fullEvent : event;

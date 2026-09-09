@@ -11,6 +11,8 @@ interface ProfileHeaderProps {
   followingCount?: number;
   onEditClick?: () => void;
   onOpenQR?: () => void;
+  onOpenSubscriptions?: () => void;
+  onOpenTickets?: () => void;
 }
 
 export function ProfileHeader({
@@ -18,9 +20,11 @@ export function ProfileHeader({
   eventsCount = 0,
   ticketsCount = 0,
   followersCount,
-  followingCount,
+  followingCount = 0,
   onEditClick,
   onOpenQR,
+  onOpenSubscriptions,
+  onOpenTickets,
 }: ProfileHeaderProps) {
   const { t } = useApp();
   const flag = COUNTRY_FLAGS[profile.country] || '🌍';
@@ -144,15 +148,19 @@ export function ProfileHeader({
         </div>
 
         {/* Grille de métriques clés style iOS Widget */}
-        <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]">
-          <div className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04]">
+        <div className={`grid ${isCreator && followersCount !== undefined ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-5 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]`}>
+          <button
+            type="button"
+            onClick={onOpenTickets}
+            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform"
+          >
             <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
               {ticketsCount}
             </p>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
               <Ticket className="w-3 h-3 text-[#10B981]" /> Billets
             </p>
-          </div>
+          </button>
 
           <div className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04]">
             <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
@@ -163,14 +171,29 @@ export function ProfileHeader({
             </p>
           </div>
 
-          <div className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04]">
+          {isCreator && followersCount !== undefined && (
+            <div className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04]">
+              <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
+                {followersCount}
+              </p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
+                <Users className="w-3 h-3 text-[#6600FF]" /> Abonnés
+              </p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onOpenSubscriptions}
+            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform"
+          >
             <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
-              {followersCount !== undefined ? followersCount : (followingCount ?? 12)}
+              {followingCount}
             </p>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
-              <Users className="w-3 h-3 text-[#EC4899]" /> Réseau
+              <Users className="w-3 h-3 text-[#EC4899]" /> Abonnements
             </p>
-          </div>
+          </button>
         </div>
       </div>
     </div>

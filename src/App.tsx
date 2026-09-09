@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
+import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
@@ -331,7 +332,12 @@ function AppContent() {
           <TicketsScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} onToast={addToast} />
         )}
         {activeTab === 'favorites' && (
-          <FavoritesScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} />
+          <FavoritesScreen
+            onEventClick={handleEventClick}
+            onLogin={() => setScreen('login')}
+            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
+          />
         )}
         {activeTab === 'profile' && (
           <ProfileScreen
@@ -341,6 +347,7 @@ function AppContent() {
             onOpenNotifications={() => setScreen('notifications')}
             onOpenNotificationSettings={() => setScreen('notificationSettings')}
             onOpenSubscriptions={() => setScreen('subscriptions')}
+            onOpenTickets={() => handleTabChange('tickets')}
             onOpenAISettings={() => setScreen('aiSettings')}
             onToast={addToast}
           />
@@ -405,9 +412,11 @@ function AppContent() {
 function App() {
   return (
     <AppProvider>
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-transparent"><div className="w-12 h-12 rounded-full border-4 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" /></div>}>
-        <AppContent />
-      </Suspense>
+      <FavoritesProvider>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-transparent"><div className="w-12 h-12 rounded-full border-4 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" /></div>}>
+          <AppContent />
+        </Suspense>
+      </FavoritesProvider>
     </AppProvider>
   );
 }

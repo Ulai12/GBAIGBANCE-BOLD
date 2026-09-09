@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
@@ -12,6 +11,7 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { isEventTerminated } from '@/services/events';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 interface EventCardProps {
   event: Event;
@@ -34,7 +34,8 @@ function formatAttendees(count: number) {
 }
 
 export function EventCard({ event, onClick }: EventCardProps) {
-  const [liked, setLiked] = useState(false);
+  const { isLiked, toggleLike } = useFavorites();
+  const liked = isLiked(event.id);
   const prefersReducedMotion = useReducedMotion();
 
   const formattedPrice =
@@ -101,11 +102,12 @@ export function EventCard({ event, onClick }: EventCardProps) {
             {/* FAVORITE */}
             <motion.button
               type="button"
+              aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
               whileTap={{ scale: 0.88 }}
               whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
               onClick={(e) => {
                 e.stopPropagation();
-                setLiked((v) => !v);
+                toggleLike(event.id);
               }}
               className="
                 flex h-7 w-7 shrink-0 items-center justify-center 

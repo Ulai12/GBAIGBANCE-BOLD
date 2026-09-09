@@ -1,20 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Register Service Worker for PWA
+// Register Service Worker for PWA with auto-update
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then(() => {
-        console.log('[PWA] Service Worker registered successfully.');
-      })
-      .catch((error) => {
-        console.warn('[PWA] Service Worker registration failed:', error);
-      });
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      updateSW(true);
+    },
+    onOfflineReady() {
+      console.log('[PWA] Prêt pour le mode hors ligne.');
+    },
   });
 }
 

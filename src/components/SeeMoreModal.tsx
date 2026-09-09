@@ -43,13 +43,15 @@ export function SeeMoreModal({
 
   const sectionMeta = useMemo(() => {
     switch (type) {
-      case 'nearby':
+      case 'nearby': {
+        const hasRealDistance = events.some((e) => typeof e.distanceKm === 'number');
         return {
-          title: 'À moins de 5 km',
-          subtitle: 'Événements autour de votre position',
+          title: hasRealDistance ? 'À proximité de vous' : 'Sorties à Lomé',
+          subtitle: hasRealDistance ? 'Événements autour de votre position' : 'Sélection des sorties locales',
           icon: Navigation,
           badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
         };
+      }
       case 'preferences':
         return {
           title: 'Selon vos préférences',
@@ -93,14 +95,15 @@ export function SeeMoreModal({
           badgeColor: 'bg-purple-500/15 text-[#6600FF] dark:text-purple-400',
         };
     }
-  }, [type]);
+  }, [type, events]);
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
     let list = events;
 
     if (type === 'nearby') {
-      if (distanceFilter !== 'all') {
+      const hasRealDistance = events.some((e) => typeof e.distanceKm === 'number');
+      if (hasRealDistance && distanceFilter !== 'all') {
         list = list.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= distanceFilter);
       }
     } else if (type === 'free') {

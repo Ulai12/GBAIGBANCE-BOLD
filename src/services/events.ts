@@ -886,11 +886,28 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
       .from('events')
       .select('*')
       .eq('status', 'published')
-      .order('is_featured', { ascending: false })
-      .order('views_count', { ascending: false })
-      .limit(20);
+      .order('starts_at', { ascending: true })
+      .limit(30);
+
     if (!error && data && data.length > 0) {
-      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e));
+      const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e));
+
+      // Organic sorting score: combines featured status, attendance, views, and likes
+      const sorted = [...activeList].sort((a, b) => {
+        const scoreA =
+          (a.is_featured ? 500 : 0) +
+          (a.attendees_count || 0) * 4 +
+          (a.views_count || 0) * 1.5 +
+          (a.likes_count || 0) * 3;
+        const scoreB =
+          (b.is_featured ? 500 : 0) +
+          (b.attendees_count || 0) * 4 +
+          (b.views_count || 0) * 1.5 +
+          (b.likes_count || 0) * 3;
+        return scoreB - scoreA;
+      });
+
+      return sorted.slice(0, 10);
     }
     return [];
   } catch {

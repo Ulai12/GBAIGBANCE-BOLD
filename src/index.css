@@ -35,6 +35,32 @@
     --glass-shadow-contact: rgba(46, 16, 94, 0.22);
   }
 
+  .dark {
+    --bg: #0c0a14;
+    --bg-2: #141022;
+    --bg-3: #08070d;
+    --card: rgba(26, 22, 41, 0.75);
+    --card-solid: #1b162b;
+    --card-dark: #120e20;
+    --purple: #7a1aff;
+    --purple-2: #8b5cf6;
+    --purple-3: #c4b5fd;
+    --purple-light: rgba(122, 26, 255, 0.18);
+    --purple-muted: rgba(196, 181, 253, 0.25);
+    --text: #F4F3F8;
+    --text-soft: #D1CFDB;
+    --text-muted: #9490A5;
+    --text-on-dark: #FFFFFF;
+    --border: rgba(196, 181, 253, 0.14);
+
+    --glass-tint: rgba(22, 18, 35, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.15);
+    --glass-highlight-soft: rgba(255, 255, 255, 0.08);
+    --glass-shadow-ambient: rgba(0, 0, 0, 0.4);
+    --glass-shadow-contact: rgba(0, 0, 0, 0.6);
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
@@ -57,6 +83,14 @@
     overscroll-behavior-y: none;
     min-height: 100dvh;
     letter-spacing: -0.01em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at top left, rgba(122, 26, 255, 0.18), transparent 36%),
+      radial-gradient(circle at bottom right, rgba(79, 70, 229, 0.14), transparent 32%),
+      linear-gradient(180deg, var(--bg-3) 0%, var(--bg) 40%, var(--bg-2) 100%);
   }
 
   body::before {
@@ -67,6 +101,11 @@
     background-image: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.04));
     mix-blend-mode: screen;
     opacity: 0.65;
+    transition: opacity 0.3s ease;
+  }
+
+  .dark body::before {
+    opacity: 0.05;
   }
 
   ::selection {
@@ -266,6 +305,7 @@
   .bg-purple-brand { background: #6600FF; }
   .border-purple-brand { border-color: #6600FF; }
   .bg-lavender { background: #EDE8FF; }
+  .dark .bg-lavender { background: #161224; }
   .squircle { border-radius: 1.5rem; } /* fallback pour les navigateurs sans corner-shape */
   .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
   .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -371,10 +411,15 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg, rgba(196,179,255,0.3) 0%, rgba(224,214,255,0.5) 50%, rgba(196,179,255,0.3) 100%);
+  background: linear-gradient(90deg, rgba(102,0,255,0.06) 0%, rgba(102,0,255,0.13) 50%, rgba(102,0,255,0.06) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite;
   border-radius: 0.75rem;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.04) 100%);
+  background-size: 200% 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

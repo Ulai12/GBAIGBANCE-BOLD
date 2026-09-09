@@ -59,6 +59,11 @@ export function formatDistance(distanceKm: number): string {
   return `${distanceKm.toFixed(1)} km`;
 }
 
+export function formatDistanceKm(distanceKm?: number): string {
+  if (distanceKm === undefined || isNaN(distanceKm)) return 'À proximité';
+  return formatDistance(distanceKm);
+}
+
 /**
  * Resolves coordinates for an event, using DB fields or venue name mapping.
  */
@@ -87,12 +92,20 @@ export function getEventCoordinates(event: Partial<Event>): { latitude: number; 
   };
 }
 
+export interface UserLocationState {
+  latitude: number;
+  longitude: number;
+  isActual: boolean;
+  status?: 'idle' | 'prompting' | 'granted' | 'denied' | 'fallback';
+  cityName?: string;
+}
+
 /**
  * Requests the user's geolocation with timeout and Lomé fallback.
  */
-export async function getCurrentUserLocation(): Promise<{ latitude: number; longitude: number; isActual: boolean }> {
+export async function getCurrentUserLocation(): Promise<UserLocationState> {
   if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-    return { ...LOME_CENTER, isActual: false };
+    return { ...LOME_CENTER, isActual: false, status: 'fallback', cityName: 'Lomé' };
   }
 
   return new Promise((resolve) => {
@@ -102,13 +115,40 @@ export async function getCurrentUserLocation(): Promise<{ latitude: number; long
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           isActual: true,
+          status: 'granted',
         });
       },
       () => {
         // Fallback to center of Lomé
-        resolve({ ...LOME_CENTER, isActual: false });
+        resolve({ ...LOME_CENTER, isActual: false, status: 'fallback', cityName: 'Lomé' });
       },
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+    );
+  });
+}
+
+/**
+ * Explicit user-triggered GPS request with high accuracy
+ */
+export async function requestUserLocation(): Promise<UserLocationState> {
+  if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+    return { ...LOME_CENTER, isActual: false, status: 'fallback', cityName: 'Lomé' };
+  }
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          isActual: true,
+          status: 'granted',
+        });
+      },
+      () => {
+        resolve({ ...LOME_CENTER, isActual: false, status: 'denied', cityName: 'Lomé' });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 }

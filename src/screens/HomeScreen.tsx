@@ -6,9 +6,15 @@ import {
   Settings, Gift, Navigation, Flame, Building2,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
+import { NearbyEventTile } from '@/components/NearbyEventTile';
 import { TrendingDeck } from '@/components/TrendingDeck';
 import { FeaturedCarousel } from '@/components/FeaturedCarousel';
-import { EventCardSkeleton } from '@/components/Skeleton';
+import {
+  EventCardSkeleton,
+  FeaturedCarouselSkeleton,
+  TrendingDeckSkeleton,
+  NearbyTileSkeleton,
+} from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
 import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
@@ -24,7 +30,12 @@ import {
 } from '@/services/events';
 import { getCachedHomeData, saveCachedHomeData } from '@/services/cache';
 import {
-  calculateDistanceKm, formatDistance, getCurrentUserLocation, getEventCoordinates, LOME_CENTER
+  calculateDistanceKm,
+  getCurrentUserLocation,
+  requestUserLocation,
+  getEventCoordinates,
+  LOME_CENTER,
+  type UserLocationState,
 } from '@/utils/geo';
 import type { Event, Artist, Organization, EventCategory } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -71,10 +82,14 @@ export function HomeScreen({
   const [loading, setLoading] = useState(!initialCache.hasCache);
 
   // User location for spatial distance calculation
-  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number }>({
+  const [userLocation, setUserLocation] = useState<UserLocationState>({
     latitude: LOME_CENTER.latitude,
     longitude: LOME_CENTER.longitude,
+    isActual: false,
+    status: 'idle',
+    cityName: 'Lomé',
   });
+  const [requestingGps, setRequestingGps] = useState(false);
 
   // Category filter state
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
@@ -87,9 +102,19 @@ export function HomeScreen({
   // Geolocation request with automatic Lomé fallback
   useEffect(() => {
     getCurrentUserLocation().then((loc) => {
-      setUserCoords({ latitude: loc.latitude, longitude: loc.longitude });
+      setUserLocation(loc);
     });
   }, []);
+
+  const handleRequestGPS = async () => {
+    setRequestingGps(true);
+    try {
+      const loc = await requestUserLocation();
+      setUserLocation(loc);
+    } finally {
+      setRequestingGps(false);
+    }
+  };
 
   // Background silent fetch to hydrate & refresh data without UI flashing
   useEffect(() => {
@@ -160,27 +185,57 @@ export function HomeScreen({
     return Array.from(map.values());
   }, [featured, trending, nearby]);
 
-  // Spatial enrichment: compute exact distance from user to each event venue
+  // Spatial enrichment: compute exact distance from user ONLY when GPS is real/actual!
   const allEventsWithDistance = useMemo(() => {
     return allActiveEvents.map((event) => {
+      if (!userLocation.isActual) {
+        return { ...event, distanceKm: undefined };
+      }
       const coords = getEventCoordinates(event);
       const distanceKm = calculateDistanceKm(
-        userCoords.latitude,
-        userCoords.longitude,
+        userLocation.latitude,
+        userLocation.longitude,
         coords.latitude,
         coords.longitude
       );
       return { ...event, distanceKm };
     });
-  }, [allActiveEvents, userCoords]);
+  }, [allActiveEvents, userLocation]);
 
-  // Section: À moins de 5 km (real distance <= 5 km or nearest in Lomé)
-  const nearbyUnder5km = useMemo(() => {
-    const sorted = [...allEventsWithDistance].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-    const strictlyUnder5 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 5.0);
-    // If strict match has at least 1, use it; otherwise show nearest Lomé events
-    return strictlyUnder5.length > 0 ? strictlyUnder5 : sorted.slice(0, 4);
-  }, [allEventsWithDistance]);
+  // Section: Proximité / Sorties locales adaptées (GPS réel vs sélection Lomé)
+  const nearbySectionData = useMemo(() => {
+    if (userLocation.isActual) {
+      const sorted = [...allEventsWithDistance]
+        .filter((e) => typeof e.distanceKm === 'number')
+        .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+
+      const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
+      if (strictlyUnder10.length > 0) {
+        const maxDist = Math.max(...strictlyUnder10.map((e) => e.distanceKm || 0));
+        return {
+          title: maxDist <= 5.0 ? 'À moins de 5 km' : 'À proximité de vous',
+          subtitle: 'Autour de votre position GPS réelle',
+          events: strictlyUnder10,
+          isActual: true,
+        };
+      }
+      // User is far from Lomé (e.g. abroad or outside city)
+      return {
+        title: 'Sorties populaires à Lomé',
+        subtitle: 'Position GPS hors Lomé · Sélection Togo',
+        events: allActiveEvents.slice(0, 6),
+        isActual: false,
+      };
+    }
+
+    // Default when GPS is not enabled / denied
+    return {
+      title: 'Sorties populaires à Lomé',
+      subtitle: 'Lieu : Lomé · Activez le GPS pour vos sorties proches',
+      events: allActiveEvents.slice(0, 6),
+      isActual: false,
+    };
+  }, [allActiveEvents, allEventsWithDistance, userLocation]);
 
   // Section: Selon vos préférences (matches user profile preferred categories or vibrant defaults)
   const userPreferencesEvents = useMemo(() => {
@@ -306,7 +361,7 @@ export function HomeScreen({
       {/* SECTION 1: Événements à la une */}
       <section className="mt-3 px-5" aria-label="Événements à la une">
         {loading && featured.length === 0 ? (
-          <div className="skeleton aspect-[16/10] sm:aspect-[21/10] w-full rounded-[2rem]" />
+          <FeaturedCarouselSkeleton />
         ) : featured.length > 0 ? (
           <FeaturedCarousel
             events={featured}
@@ -316,14 +371,7 @@ export function HomeScreen({
         ) : null}
       </section>
 
-      {/* SECTION 2: Tendances de la semaine */}
-      {trending.length > 0 && (
-        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
-          <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
-        </section>
-      )}
-
-      {/* SECTION 3: Explorer par catégorie */}
+      {/* SECTION 2: Explorer par catégorie */}
       <section className="mt-8 px-5">
         <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
           Explorer par catégorie
@@ -384,51 +432,97 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* SECTION 4: À moins de 5 km */}
-      {nearbyUnder5km.length > 0 && (
-        <section className="mt-9 px-5" aria-label="À moins de 5 km">
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2.5">
+      {/* SECTION 3: Tendances de la semaine (placé sous la section catégorie) */}
+      {loading && trending.length === 0 ? (
+        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+          <TrendingDeckSkeleton />
+        </section>
+      ) : trending.length > 0 ? (
+        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+          <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
+        </section>
+      ) : null}
+
+      {/* SECTION 4: Proximité / Sorties locales (Tuiles défilables horizontales compactes) */}
+      {loading && nearbySectionData.events.length === 0 ? (
+        <section className="mt-8 px-5" aria-label="Événements à proximité">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
                 <Navigation className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  À moins de 5 km
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
+                  À proximité de vous
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Autour de votre position actuelle
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                  Recherche des événements locaux...
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar py-1.5 -mx-5 px-5">
+            <NearbyTileSkeleton />
+            <NearbyTileSkeleton />
+            <NearbyTileSkeleton />
+          </div>
+        </section>
+      ) : nearbySectionData.events.length > 0 ? (
+        <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <Navigation className={`w-4 h-4 ${requestingGps ? 'animate-spin' : ''}`} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
+                  {nearbySectionData.title}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                  {nearbySectionData.subtitle}
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSeeMoreType('nearby')}
-              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
-            >
-              <span>Voir plus</span>
-              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {!userLocation.isActual && (
+                <button
+                  type="button"
+                  onClick={handleRequestGPS}
+                  disabled={requestingGps}
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 dark:bg-blue-500/20 px-2.5 py-1.5 rounded-full cursor-pointer transition-all active:scale-95"
+                  title="Activer le GPS"
+                >
+                  <Navigation className={`w-3 h-3 ${requestingGps ? 'animate-spin' : ''}`} />
+                  <span>{requestingGps ? 'GPS...' : 'Activer GPS'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSeeMoreType('nearby')}
+                className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+              >
+                <span>Voir plus</span>
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {nearbyUnder5km.slice(0, 4).map((event) => (
-              <div key={event.id} className="relative group">
-                <EventCard event={event} onClick={() => onEventClick(event)} />
-                {typeof event.distanceKm === 'number' && (
-                  <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-600/90 text-white backdrop-blur-md shadow-xs">
-                      <Navigation className="w-2.5 h-2.5" />
-                      {formatDistance(event.distanceKm)}
-                    </span>
-                  </div>
-                )}
-              </div>
+          {/* Tuiles défilables horizontales modernes compactes */}
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-5 px-5">
+            {nearbySectionData.events.map((event) => (
+              <NearbyEventTile
+                key={event.id}
+                event={event}
+                isActualLocation={nearbySectionData.isActual}
+                onClick={() => onEventClick(event)}
+                onBook={onBookEvent ? () => onBookEvent(event) : undefined}
+              />
             ))}
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* SECTION 5: Selon vos préférences */}
       {userPreferencesEvents.length > 0 && (

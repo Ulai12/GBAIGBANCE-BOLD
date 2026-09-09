@@ -23,6 +23,7 @@ import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { fetchPendingInvitations, respondToInvitation } from '@/services/events';
+import { ProfileScreenSkeleton } from '@/components/Skeleton';
 import type { Event, EventCollaborator } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -33,6 +34,7 @@ interface ProfileScreenProps {
   onOpenNotifications: () => void;
   onOpenNotificationSettings: () => void;
   onOpenSubscriptions: () => void;
+  onOpenTickets?: () => void;
   onOpenAISettings?: () => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
@@ -46,12 +48,16 @@ export function ProfileScreen({
   onOpenNotifications,
   onOpenNotificationSettings,
   onOpenSubscriptions,
+  onOpenTickets,
   onOpenAISettings,
   onToast,
 }: ProfileScreenProps) {
   const { user, session, refreshProfile } = useApp();
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
+  const [ticketsCount, setTicketsCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
+  const [followersCount, setFollowersCount] = useState<number>(0);
   const [invitations, setInvitations] = useState<(EventCollaborator & { event?: Event })[]>([]);
   const [responding, setResponding] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -69,8 +75,29 @@ export function ProfileScreen({
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setMyEvents((data as Event[]) || []);
-        setLoading(false);
-      });
+      })
+      .finally(() => setLoading(false));
+
+    // Récupérer les nombres réels d'abonnements, abonnés et billets depuis la base de données
+    void (async () => {
+      try {
+        const [ticketsRes, artRes, orgRes, userFollowingRes, userFollowersRes] = await Promise.all([
+          supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('organization_follows').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('follower_id', user.id),
+          supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', user.id),
+        ]);
+
+        setTicketsCount(ticketsRes.count || 0);
+        const totalFollowing = (artRes.count || 0) + (orgRes.count || 0) + (userFollowingRes.count || 0);
+        setFollowingCount(totalFollowing);
+        setFollowersCount(userFollowersRes.count || 0);
+      } catch {
+        // En cas d'erreur de requête isolée, conserver 0
+      }
+    })();
+
     fetchPendingInvitations(user.id)
       .then(setInvitations)
       .catch(() => setInvitations([]));
@@ -112,6 +139,10 @@ export function ProfileScreen({
     );
   }
 
+  if (loading && myEvents.length === 0 && !user.bio) {
+    return <ProfileScreenSkeleton />;
+  }
+
   const isCreator = user.role === 'organizer' || user.role === 'artist';
 
   return (
@@ -145,9 +176,13 @@ export function ProfileScreen({
         <ProfileHeader
           profile={user}
           eventsCount={myEvents.length}
-          ticketsCount={3}
+          ticketsCount={ticketsCount}
+          followersCount={isCreator ? followersCount : undefined}
+          followingCount={followingCount}
           onEditClick={() => setEditOpen(true)}
           onOpenQR={() => setQrOpen(true)}
+          onOpenSubscriptions={onOpenSubscriptions}
+          onOpenTickets={onOpenTickets}
         />
 
         {/* Accès rapide Espace Organisateur / Artiste (Bannière moderne) */}
