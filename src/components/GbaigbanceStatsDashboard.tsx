@@ -239,67 +239,58 @@ export function GbaigbanceStatsDashboard({
   const activeHoverPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
   return (
-    <div className="w-full rounded-[2.2rem] bg-white dark:bg-[#14121E] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_12px_36px_rgba(102,0,255,0.06)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-all">
-      {/* En-tête de section */}
-      <div className="p-5 pb-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 dark:bg-[#6600FF]/25 flex items-center justify-center text-[#6600FF] dark:text-[#A78BFA]">
-              <TrendingUp className="w-4 h-4" strokeWidth={2.5} />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-base font-extrabold text-[#17131D] dark:text-white tracking-tight">
-                  GBAIGBANCE EN CHIFFRES
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 text-[#10B981] text-[10px] font-extrabold flex items-center gap-0.5">
-                  <ArrowUpRight className="w-3 h-3" /> +24.8%
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                Performances et croissance en direct
-              </p>
-            </div>
-          </div>
+<div className="w-full rounded-[2.2rem] bg-white dark:bg-[#14121E] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_12px_36px_rgba(102,0,255,0.06)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-all">
 
-          {/* Sélecteur de période style iOS Segmented Control */}
-          <div className="relative inline-flex items-center p-1 bg-gray-100/90 dark:bg-white/10 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setPeriod('current_month')}
-              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                period === 'current_month'
-                  ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              Ce mois
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod('last_month')}
-              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                period === 'last_month'
-                  ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              Mois dernier
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod('quarter')}
-              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                period === 'quarter'
-                  ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              Trimestre
-            </button>
-          </div>
-        </div>
-      </div>
+  {/* Sélecteur de période — pleine largeur */}
+  <div className="p-4 sm:p-5">
+    <div className="relative flex w-full items-center p-1 bg-gray-100/90 dark:bg-white/10 rounded-2xl">
+
+      {/* Ce mois */}
+      <button
+        type="button"
+        onClick={() => setPeriod('current_month')}
+        className={`flex-1 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
+          period === 'current_month'
+            ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+        }`}
+      >
+        Ce mois
+      </button>
+
+      {/* Mois dernier */}
+      <button
+        type="button"
+        onClick={() => setPeriod('last_month')}
+        className={`flex-1 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
+          period === 'last_month'
+            ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+        }`}
+      >
+        Mois dernier
+      </button>
+
+      {/* Trimestre */}
+      <button
+        type="button"
+        onClick={() => setPeriod('quarter')}
+        className={`flex-1 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
+          period === 'quarter'
+            ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+        }`}
+      >
+        Trimestre
+      </button>
+
+    </div>
+  </div>
+
+  {/* Le reste du contenu de ta carte commence ici */}
+  {/* ... */}
+
+</div>
 
       {/* Cartes KPI clés interactives avec bascule de métrique */}
       <div className="px-5 grid grid-cols-2 gap-2.5 mb-4">
