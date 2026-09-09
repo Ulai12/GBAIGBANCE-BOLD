@@ -80,19 +80,17 @@ export function getGeminiConfig(): GeminiConfig {
       savedKey = '';
     }
 
-    const envKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
-
+    // BYOK: Client only reads keys configured by the user in device storage
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      const initialKey = savedKey || envKey;
       return {
         ...DEFAULT_CONFIG,
-        apiKey: initialKey,
-        enabled: Boolean(initialKey && initialKey.trim().length > 10),
+        apiKey: savedKey,
+        enabled: Boolean(savedKey && savedKey.trim().length > 10),
       };
     }
     const parsed = JSON.parse(raw);
-    const resolvedKey = (parsed.apiKey && parsed.apiKey.trim()) || savedKey || envKey;
+    const resolvedKey = (parsed.apiKey && parsed.apiKey.trim()) || savedKey;
     return {
       ...DEFAULT_CONFIG,
       ...parsed,

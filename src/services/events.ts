@@ -171,24 +171,34 @@ export async function removeCollaborator(collaboratorId: string): Promise<void> 
 
 // ==================== SEARCH USERS FOR COLLABORATION ====================
 
+/**
+ * Sanitizes search input to prevent PostgREST filter injections (.or, .ilike)
+ */
+export function sanitizeFilterInput(input: string): string {
+  if (!input) return '';
+  return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+
 export async function searchArtists(query: string): Promise<Artist[]> {
+  const sanitized = sanitizeFilterInput(query);
+  if (!sanitized) return [];
   const { data: seedArtists, error: err1 } = await supabase
     .from('artists')
     .select('*')
-    .or(`name.ilike.%${query}%,city.ilike.%${query}%`)
+    .or(`name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
     .limit(20);
   if (err1) throw err1;
   const { data: profileArtists, error: err2 } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, name, bio, avatar_url, city, country, created_at')
     .eq('role', 'artist')
-    .ilike('name', `%${query}%`)
+    .ilike('name', `%${sanitized}%`)
     .limit(20);
   if (err2) throw err2;
-  const fromProfiles = (profileArtists || []).map((p: Profile) => ({
-    id: p.id, user_id: p.id, name: p.name, bio: p.bio, photo_url: p.avatar_url, cover_url: null,
-    genres: [], city: p.city, country: p.country, instagram_url: null, twitter_url: null,
-    youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0, is_verified: false, created_at: p.created_at,
+  const fromProfiles = (profileArtists || []).map((p: Partial<Profile>) => ({
+    id: p.id || '', user_id: p.id, name: p.name || '', bio: p.bio || null, photo_url: p.avatar_url || null, cover_url: null,
+    genres: [], city: p.city || 'Lomé', country: p.country || 'TG', instagram_url: null, twitter_url: null,
+    youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0, is_verified: false, created_at: p.created_at || new Date().toISOString(),
   })) as Artist[];
   const seen = new Set<string>();
   const merged = [...(seedArtists || []), ...fromProfiles].filter((a) => {
@@ -200,23 +210,25 @@ export async function searchArtists(query: string): Promise<Artist[]> {
 }
 
 export async function searchOrganizations(query: string): Promise<Organization[]> {
+  const sanitized = sanitizeFilterInput(query);
+  if (!sanitized) return [];
   const { data: seedOrgs, error: err1 } = await supabase
     .from('organizations')
     .select('*')
-    .or(`name.ilike.%${query}%,city.ilike.%${query}%`)
+    .or(`name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
     .limit(20);
   if (err1) throw err1;
   const { data: profileOrgs, error: err2 } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, name, bio, avatar_url, city, country, created_at')
     .eq('role', 'organizer')
-    .ilike('name', `%${query}%`)
+    .ilike('name', `%${sanitized}%`)
     .limit(20);
   if (err2) throw err2;
-  const fromProfiles = (profileOrgs || []).map((p: Profile) => ({
-    id: p.id, owner_id: p.id, name: p.name, description: p.bio, logo_url: p.avatar_url, cover_url: null,
-    website: null, phone: p.phone, email: p.email, city: p.city, country: p.country,
-    verification_status: 'pending' as const, followers_count: 0, events_count: 0, created_at: p.created_at,
+  const fromProfiles = (profileOrgs || []).map((p: Partial<Profile>) => ({
+    id: p.id || '', owner_id: p.id || '', name: p.name || '', description: p.bio || null, logo_url: p.avatar_url || null, cover_url: null,
+    website: null, phone: null, email: null, city: p.city || 'Lomé', country: p.country || 'TG',
+    verification_status: 'pending' as const, followers_count: 0, events_count: 0, created_at: p.created_at || new Date().toISOString(),
   })) as Organization[];
   const seen = new Set<string>();
   const merged = [...(seedOrgs || []), ...fromProfiles].filter((o) => {
@@ -228,10 +240,13 @@ export async function searchOrganizations(query: string): Promise<Organization[]
 }
 
 export async function searchProfiles(query: string): Promise<Profile[]> {
+  const sanitized = sanitizeFilterInput(query);
+  if (!sanitized) return [];
+  // Restrict to safe public profile fields; never expose phone or email in directory search
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
-    .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+    .select('id, name, avatar_url, role, city, country, bio, created_at')
+    .ilike('name', `%${sanitized}%`)
     .limit(20);
   if (error) throw error;
   return (data as Profile[]) || [];
@@ -707,19 +722,27 @@ export async function fetchEventById(id: string): Promise<EventWithRelations | n
 }
 
 export async function searchEvents(query: string): Promise<Event[]> {
+  const sanitized = sanitizeFilterInput(query);
+  if (!sanitized) return [];
   if (!isSupabaseConfigured) {
-    const q = query.toLowerCase();
+    const q = sanitized.toLowerCase();
     return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
   }
   try {
-    const { data, error } = await supabase.from('events').select('*').eq('status', 'published').or(`title.ilike.%${query}%,description.ilike.%${query}%,location_name.ilike.%${query}%,city.ilike.%${query}%`).order('starts_at', { ascending: true }).limit(30);
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%,location_name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
+      .order('starts_at', { ascending: true })
+      .limit(30);
     if (error || !data) {
-      const q = query.toLowerCase();
+      const q = sanitized.toLowerCase();
       return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
     }
     return data as Event[];
   } catch {
-    const q = query.toLowerCase();
+    const q = sanitized.toLowerCase();
     return MOCK_EVENTS.filter((e) => e.title.toLowerCase().includes(q) || (e.description && e.description.toLowerCase().includes(q)) || e.location_name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q));
   }
 }
@@ -969,3 +992,15 @@ export async function fetchProfileById(id: string): Promise<Profile | null> {
   if (error) throw error;
   return data as Profile | null;
 }
+
+// ==================== TICKET VALIDATION (CHECK-IN) ====================
+
+export async function validateTicketQr(qrCode: string, eventId: string): Promise<{ success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string }> {
+  const { data, error } = await supabase.rpc('validate_ticket_qr', {
+    p_qr_code: qrCode,
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  return data as { success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string };
+}
+
