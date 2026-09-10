@@ -41,6 +41,20 @@ interface ProfileScreenProps {
 
 type ProfileTab = 'events' | 'invitations' | 'activity';
 
+function getInitialMyEvents(userId?: string): Event[] {
+  if (!userId || typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`gba_my_events_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Ignore storage parse error
+  }
+  return [];
+}
+
 export function ProfileScreen({
   onEventClick,
   onLogin,
@@ -53,7 +67,7 @@ export function ProfileScreen({
   onToast,
 }: ProfileScreenProps) {
   const { user, session, refreshProfile } = useApp();
-  const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [myEvents, setMyEvents] = useState<Event[]>(() => getInitialMyEvents(user?.id));
   const [loading, setLoading] = useState(false);
   const [ticketsCount, setTicketsCount] = useState<number>(0);
   const [followingCount, setFollowingCount] = useState<number>(0);
@@ -67,14 +81,23 @@ export function ProfileScreen({
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
+    const cached = getInitialMyEvents(user.id);
+    if (cached.length === 0 && (user.role === 'organizer' || user.role === 'artist')) {
+      setLoading(true);
+    }
     supabase
       .from('events')
       .select('*')
       .eq('organizer_user_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setMyEvents((data as Event[]) || []);
+        const list = (data as Event[]) || [];
+        setMyEvents(list);
+        try {
+          localStorage.setItem(`gba_my_events_${user.id}`, JSON.stringify(list));
+        } catch {
+          // Storage quota
+        }
       })
       .finally(() => setLoading(false));
 

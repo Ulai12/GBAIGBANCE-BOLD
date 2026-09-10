@@ -18,6 +18,8 @@ import { EventLiveLinks } from '@/components/EventLiveLinks';
 import { EventSponsors } from '@/components/EventSponsors';
 import { EventManagementModal } from '@/components/EventManagementModal';
 import { Lightbox } from '@/components/Lightbox';
+import { ShareModal } from '@/components/ShareModal';
+import { shareEventNative } from '@/utils/share';
 import type { Event, EventWithRelations, Artist, EventCollaborator } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -59,17 +61,13 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettin
   const [liveViews, setLiveViews] = useState<number>(event.views_count || 0);
   const [liveAttendees, setLiveAttendees] = useState<number>(event.attendees_count || 0);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   const countdown = useCountdown(event.starts_at);
 
   const handleShare = async () => {
-    const shareData = { title: displayEvent.title, text: `Découvrez ${displayEvent.title} sur Gbaigbance`, url: window.location.href };
-    try {
-      const nativeShare = typeof navigator.share === 'function';
-      if (nativeShare) await navigator.share(shareData);
-      else await navigator.clipboard.writeText(window.location.href);
-      onToast({ message: nativeShare ? 'Événement partagé' : 'Lien copié', type: 'success' });
-    } catch {
-      // L'utilisateur peut fermer la feuille de partage sans que ce soit une erreur.
+    const status = await shareEventNative(displayEvent, onToast);
+    if (status !== 'shared' && status !== 'cancelled') {
+      setShowShareModal(true);
     }
   };
 
@@ -228,6 +226,12 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettin
       <BookingModal open={showBooking} event={displayEvent as Event} onClose={() => setShowBooking(false)} onSuccess={(qrCode) => { onToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' }); }} />
       {isOrganizer && <EventManagementModal event={showManage ? (displayEvent as Event) : null} onClose={() => setShowManage(false)} onToast={onToast} />}
       {lightboxSrc && <Lightbox src={lightboxSrc} alt={displayEvent.title} onClose={() => setLightboxSrc(null)} />}
+      <ShareModal
+        isOpen={showShareModal}
+        event={displayEvent as Event}
+        onClose={() => setShowShareModal(false)}
+        onToast={onToast}
+      />
     </div>
   );
 }

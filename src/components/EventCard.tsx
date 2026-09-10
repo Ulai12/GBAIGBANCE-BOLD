@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
   Flame,
   Heart,
   MapPin,
+  Share2,
   Sparkles,
   Users,
   Zap,
@@ -12,10 +14,13 @@ import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { isEventTerminated } from '@/services/events';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { shareEventNative } from '@/utils/share';
+import { ShareModal } from '@/components/ShareModal';
 
 interface EventCardProps {
   event: Event;
   onClick?: () => void;
+  onShare?: (event: Event) => void;
 }
 
 function formatDate(dateString: string) {
@@ -33,10 +38,11 @@ function formatAttendees(count: number) {
   return count.toString();
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
+export function EventCard({ event, onClick, onShare }: EventCardProps) {
   const { isLiked, toggleLike } = useFavorites();
   const liked = isLiked(event.id);
   const prefersReducedMotion = useReducedMotion();
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const formattedPrice =
     event.price_min === 0
@@ -48,80 +54,113 @@ export function EventCard({ event, onClick }: EventCardProps) {
   const isPostponed = event.status === 'postponed';
   const isHot = (event.attendees_count || 0) >= 500 || (event.likes_count || 0) >= 200;
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onShare) {
+      onShare(event);
+      return;
+    }
+    const status = await shareEventNative(event);
+    if (status !== 'shared' && status !== 'cancelled') {
+      setShowShareModal(true);
+    }
+  };
+
   return (
-    <motion.article
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
-      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-      onClick={onClick}
-      className="
-        group relative isolate w-full
-        aspect-[0.78] sm:aspect-[0.82] min-h-[full]
-        overflow-hidden rounded-[1.5rem]
-        bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
-        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
-      "
-      aria-label={`Découvrir ${event.title}`}
-    >
-      {/* IMAGE */}
-      <motion.div
-        className="absolute inset-0 bg-neutral-200 dark:bg-[#1E172E]"
-        whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+    <>
+      <motion.article
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+        whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+        onClick={onClick}
+        className="
+          group relative isolate w-full
+          aspect-[0.78] sm:aspect-[0.82] min-h-[full]
+          overflow-hidden rounded-[1.5rem]
+          bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
+          shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+        "
+        aria-label={`Découvrir ${event.title}`}
       >
-        <SmartImage
-          src={event.cover_url || event.images?.[0]}
-          alt={event.title}
-          className="h-full w-full object-cover"
-        />
-      </motion.div>
+        {/* IMAGE */}
+        <motion.div
+          className="absolute inset-0 bg-neutral-200 dark:bg-[#1E172E]"
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <SmartImage
+            src={event.cover_url || event.images?.[0]}
+            alt={event.title}
+            className="h-full w-full object-cover"
+          />
+        </motion.div>
 
-      {/* GRADIENT OVERLAY */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+        {/* GRADIENT OVERLAY */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
-      {/* CONTENT LAYER */}
-      <div className="absolute inset-0 flex flex-col justify-between p-3">
-        
-        {/* TOP LAYER */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex w-full items-start justify-between gap-2">
-            {/* DATE PILL */}
-            <div className="
-              inline-flex h-7 min-w-0 max-w-[calc(100%-2.25rem)] 
-              items-center gap-1.5 rounded-full 
-              border border-white/20 bg-black/25 
-              px-2 backdrop-blur-md
-            ">
-              <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
-              <span className="truncate text-[10px] sm:text-[11px] font-semibold text-white">
-                {formatDate(event.starts_at)}
-              </span>
+        {/* CONTENT LAYER */}
+        <div className="absolute inset-0 flex flex-col justify-between p-3">
+          
+          {/* TOP LAYER */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex w-full items-start justify-between gap-2">
+              {/* DATE PILL */}
+              <div className="
+                inline-flex h-7 min-w-0 max-w-[calc(100%-4.5rem)] 
+                items-center gap-1.5 rounded-full 
+                border border-white/20 bg-black/25 
+                px-2 backdrop-blur-md
+              ">
+                <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
+                <span className="truncate text-[10px] sm:text-[11px] font-semibold text-white">
+                  {formatDate(event.starts_at)}
+                </span>
+              </div>
+
+              {/* ACTION BUTTONS: SHARE + FAVORITE */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* SHARE */}
+                <motion.button
+                  type="button"
+                  aria-label={`Partager ${event.title}`}
+                  title="Partager"
+                  whileTap={{ scale: 0.88 }}
+                  whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
+                  onClick={handleShare}
+                  className="
+                    flex h-7 w-7 shrink-0 items-center justify-center 
+                    rounded-full border border-white/20 bg-black/35 
+                    backdrop-blur-md transition-all hover:bg-white/25 active:scale-90 text-white shadow-xs
+                  "
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                </motion.button>
+
+                {/* FAVORITE */}
+                <motion.button
+                  type="button"
+                  aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  whileTap={{ scale: 0.88 }}
+                  whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(event.id);
+                  }}
+                  className="
+                    flex h-7 w-7 shrink-0 items-center justify-center 
+                    rounded-full border border-white/20 bg-black/35 
+                    backdrop-blur-md transition-colors hover:bg-white/20
+                  "
+                >
+                  <Heart
+                    className={`h-4 w-4 transition-all duration-300 ${
+                      liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
+                    }`}
+                  />
+                </motion.button>
+              </div>
             </div>
-
-            {/* FAVORITE */}
-            <motion.button
-              type="button"
-              aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              whileTap={{ scale: 0.88 }}
-              whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleLike(event.id);
-              }}
-              className="
-                flex h-7 w-7 shrink-0 items-center justify-center 
-                rounded-full border border-white/20 bg-black/25 
-                backdrop-blur-md transition-colors hover:bg-white/20
-              "
-            >
-              <Heart
-                className={`h-4 w-4 transition-all duration-300 ${
-                  liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-                }`}
-              />
-            </motion.button>
-          </div>
 
           {/* FUNCTIONAL HOT / STATUS BADGE */}
           {isCancelled ? (
@@ -199,6 +238,12 @@ export function EventCard({ event, onClick }: EventCardProps) {
         </div>
 
       </div>
-    </motion.article>
+      </motion.article>
+      <ShareModal
+        isOpen={showShareModal}
+        event={event}
+        onClose={() => setShowShareModal(false)}
+      />
+    </>
   );
 }

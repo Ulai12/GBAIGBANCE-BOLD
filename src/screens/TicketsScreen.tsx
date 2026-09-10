@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Share2, ArrowUpRight } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { fetchUserTickets, cancelTicket } from '@/services/events';
-import { getCachedUserTickets, saveCachedUserTickets } from '@/services/cache';
+import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { TicketsScreenSkeleton } from '@/components/Skeleton';
@@ -19,9 +19,12 @@ let cachedTickets: { userId: string; tickets: (Ticket & { event?: Event })[] } |
 
 export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenProps) {
   const { session, user, isSessionResolving } = useApp();
-  const hasCache = cachedTickets && cachedTickets.userId === user?.id;
-  const [tickets, setTickets] = useState<(Ticket & { event?: Event })[]>(() => hasCache ? cachedTickets!.tickets : []);
-  const [loading, setLoading] = useState(!hasCache);
+  const initialTickets = user
+    ? (cachedTickets && cachedTickets.userId === user.id ? cachedTickets.tickets : getSyncCachedUserTickets(user.id))
+    : [];
+  const hasCache = initialTickets.length > 0;
+  const [tickets, setTickets] = useState<(Ticket & { event?: Event })[]>(initialTickets);
+  const [loading, setLoading] = useState(() => !!user && !hasCache);
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);

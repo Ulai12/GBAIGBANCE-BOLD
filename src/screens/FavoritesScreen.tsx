@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Heart, Music2, Building2, Search, X, BadgeCheck } from 'lucide-react';
+import { Heart, Music2, Building2, Search, X } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
+import { getCachedHomeData } from '@/services/cache';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import type { Event, Artist, Organization } from '@/types';
@@ -16,6 +17,52 @@ interface FavoritesScreenProps {
 
 type FavTab = 'events' | 'artists' | 'organizations';
 
+function getInitialFavEvents(likedIds: Set<string>): Event[] {
+  if (likedIds.size === 0) return [];
+  const list: Event[] = [];
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('gba_fav_events_cache') : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((e: Event) => {
+          if (e && e.id && likedIds.has(e.id)) list.push(e);
+        });
+      }
+    }
+  } catch {
+    // Ignore storage parse
+  }
+  const home = getCachedHomeData().data;
+  if (home) {
+    const homeEvents = [...(home.featured || []), ...(home.trending || []), ...(home.nearby || [])];
+    homeEvents.forEach((e) => {
+      if (e && e.id && likedIds.has(e.id) && !list.some((x) => x.id === e.id)) {
+        list.push(e);
+      }
+    });
+  }
+  return list;
+}
+
+function getInitialFavArtists(artistIds: Set<string>): Artist[] {
+  if (artistIds.size === 0) return [];
+  const home = getCachedHomeData().data;
+  if (home && home.artists) {
+    return home.artists.filter((a) => artistIds.has(a.id));
+  }
+  return [];
+}
+
+function getInitialFavOrgs(orgIds: Set<string>): Organization[] {
+  if (orgIds.size === 0) return [];
+  const home = getCachedHomeData().data;
+  if (home && home.organizations) {
+    return home.organizations.filter((o) => orgIds.has(o.id));
+  }
+  return [];
+}
+
 export function FavoritesScreen({
   onEventClick,
   onLogin,
@@ -28,11 +75,11 @@ export function FavoritesScreen({
   const [activeTab, setActiveTab] = useState<FavTab>('events');
   const [query, setQuery] = useState('');
 
-  // Data states
-  const [events, setEvents] = useState<Event[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Warm Data states
+  const [events, setEvents] = useState<Event[]>(() => getInitialFavEvents(likedEventIds));
+  const [artists, setArtists] = useState<Artist[]>(() => getInitialFavArtists(followedArtistIds));
+  const [organizations, setOrganizations] = useState<Organization[]>(() => getInitialFavOrgs(followedOrgIds));
+  const [loading, setLoading] = useState(() => likedEventIds.size > 0 && getInitialFavEvents(likedEventIds).length === 0);
 
   // Charger les événements favoris
   useEffect(() => {
@@ -40,6 +87,7 @@ export function FavoritesScreen({
     async function loadFavoriteEvents() {
       if (likedEventIds.size === 0) {
         setEvents([]);
+        setLoading(false);
         return;
       }
       try {
@@ -51,9 +99,16 @@ export function FavoritesScreen({
 
         if (!error && data && !isCancelled) {
           setEvents(data as Event[]);
+          try {
+            localStorage.setItem('gba_fav_events_cache', JSON.stringify(data));
+          } catch {
+            // Storage quota
+          }
         }
       } catch {
         // Ignorer erreur réseau
+      } finally {
+        if (!isCancelled) setLoading(false);
       }
     }
 
@@ -67,7 +122,6 @@ export function FavoritesScreen({
   useEffect(() => {
     let isCancelled = false;
     async function loadFollowedEntities() {
-      setLoading(true);
       try {
         if (followedArtistIds.size > 0) {
           const artistIds = Array.from(followedArtistIds);
@@ -96,8 +150,6 @@ export function FavoritesScreen({
         }
       } catch {
         // Silence
-      } finally {
-        if (!isCancelled) setLoading(false);
       }
     }
 

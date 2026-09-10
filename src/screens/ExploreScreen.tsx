@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { BottomSheet } from '@/components/BottomSheet';
 import { useApp } from '@/hooks/useApp';
 import { searchEvents, fetchUpcomingEvents } from '@/services/events';
+import { getCachedHomeData } from '@/services/cache';
 import { EVENT_CATEGORIES, CITIES } from '@/constants';
 import type { Event, EventCategory } from '@/types';
 
@@ -16,11 +17,28 @@ interface ExploreScreenProps {
 
 let exploreCache: Event[] | null = null;
 
+function getWarmExploreEvents(): Event[] {
+  if (exploreCache && exploreCache.length > 0) return exploreCache;
+  const home = getCachedHomeData().data;
+  if (home) {
+    const map = new Map<string, Event>();
+    [...(home.featured || []), ...(home.trending || []), ...(home.nearby || [])].forEach((e) => {
+      if (e && e.id) map.set(e.id, e);
+    });
+    const list = Array.from(map.values());
+    if (list.length > 0) {
+      exploreCache = list;
+      return list;
+    }
+  }
+  return [];
+}
+
 export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
   const { t } = useApp();
   const [query, setQuery] = useState('');
-  const [events, setEvents] = useState<Event[]>(() => exploreCache || []);
-  const [loading, setLoading] = useState(() => !exploreCache);
+  const [events, setEvents] = useState<Event[]>(() => getWarmExploreEvents());
+  const [loading, setLoading] = useState(() => getWarmExploreEvents().length === 0);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -28,7 +46,6 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
 
   useEffect(() => {
     const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
-    // If we already have cache and it's default initial state, skip showing full spinner/skeleton
     const timer = setTimeout(() => {
       loadEvents(isDefault);
     }, isDefault && exploreCache ? 100 : 250);
@@ -36,7 +53,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
   }, [query, selectedCategory, selectedCity, priceFilter]);
 
   const loadEvents = async (isDefault = false) => {
-    if (!exploreCache || !isDefault) {
+    if (events.length === 0) {
       setLoading(true);
     }
     try {
@@ -50,7 +67,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
         exploreCache = result;
       }
     } catch {
-      setEvents([]);
+      // Retain warm cache on network failure
     } finally {
       setLoading(false);
     }

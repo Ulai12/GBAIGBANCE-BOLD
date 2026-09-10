@@ -5,20 +5,25 @@ import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
+import { HomeScreen } from '@/screens/HomeScreen';
+import { ExploreScreen } from '@/screens/ExploreScreen';
+import { TicketsScreen } from '@/screens/TicketsScreen';
+import { FavoritesScreen } from '@/screens/FavoritesScreen';
+import { ProfileScreen } from '@/screens/ProfileScreen';
+import { AIAssistantModal } from '@/components/AIAssistantModal';
+import { SettingsModal } from '@/components/SettingsModal';
+import { HomeScreenSkeleton } from '@/components/Skeleton';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { fetchEventById } from '@/services/events';
 import type { Event, Artist, Organization } from '@/types';
 
 const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then((module) => ({ default: module.OnboardingScreen })));
 const AuthScreen = lazy(() => import('@/screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
 const ForgotPasswordScreen = lazy(() => import('@/screens/ForgotPasswordScreen').then((module) => ({ default: module.ForgotPasswordScreen })));
 const OtpScreen = lazy(() => import('@/screens/OtpScreen').then((module) => ({ default: module.OtpScreen })));
-const HomeScreen = lazy(() => import('@/screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
-const ExploreScreen = lazy(() => import('@/screens/ExploreScreen').then((module) => ({ default: module.ExploreScreen })));
 const EventDetailScreen = lazy(() => import('@/screens/EventDetailScreen').then((module) => ({ default: module.EventDetailScreen })));
-const TicketsScreen = lazy(() => import('@/screens/TicketsScreen').then((module) => ({ default: module.TicketsScreen })));
-const ProfileScreen = lazy(() => import('@/screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
 const OrganizerDashboardScreen = lazy(() => import('@/screens/OrganizerDashboardScreen').then((module) => ({ default: module.OrganizerDashboardScreen })));
 const CreateEventScreen = lazy(() => import('@/screens/CreateEventWizardScreen').then((module) => ({ default: module.CreateEventWizardScreen })));
-const FavoritesScreen = lazy(() => import('@/screens/FavoritesScreen').then((module) => ({ default: module.FavoritesScreen })));
 const ArtistDetailScreen = lazy(() => import('@/screens/ArtistDetailScreen').then((module) => ({ default: module.ArtistDetailScreen })));
 const OrganizerDetailScreen = lazy(() => import('@/screens/OrganizerDetailScreen').then((module) => ({ default: module.OrganizerDetailScreen })));
 const NotificationsScreen = lazy(() => import('@/screens/NotificationsScreen').then((module) => ({ default: module.NotificationsScreen })));
@@ -26,9 +31,6 @@ const NotificationSettingsScreen = lazy(() => import('@/screens/NotificationSett
 const SubscriptionsScreen = lazy(() => import('@/screens/SubscriptionsScreen').then((module) => ({ default: module.SubscriptionsScreen })));
 const UserProfileScreen = lazy(() => import('@/screens/UserProfileScreen').then((module) => ({ default: module.UserProfileScreen })));
 const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((module) => ({ default: module.AISettingsScreen })));
-import { AIAssistantModal } from '@/components/AIAssistantModal';
-import { SettingsModal } from '@/components/SettingsModal';
-import { HomeScreenSkeleton } from '@/components/Skeleton';
 
 type Screen =
   | 'onboarding'
@@ -107,6 +109,33 @@ function AppContent() {
     window.addEventListener('pwa-update-available', handleUpdate);
     return () => window.removeEventListener('pwa-update-available', handleUpdate);
   }, [addToast]);
+
+  useEffect(() => {
+    const handleToastEvent = (e: globalThis.Event) => {
+      const customEvent = e as CustomEvent<Omit<ToastData, 'id'>>;
+      if (customEvent.detail) {
+        addToast(customEvent.detail);
+      }
+    };
+    window.addEventListener('gba-toast', handleToastEvent);
+    return () => window.removeEventListener('gba-toast', handleToastEvent);
+  }, [addToast]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('event');
+    if (eventId) {
+      fetchEventById(eventId)
+        .then((ev) => {
+          if (ev) {
+            setSelectedEvent(ev);
+            setScreen('eventDetail');
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   const closeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -188,7 +217,12 @@ function AppContent() {
       <>
         <EventDetailScreen
           event={selectedEvent}
-          onBack={() => setScreen(activeTab)}
+          onBack={() => {
+            setScreen(activeTab);
+            if (typeof window !== 'undefined' && window.location.search.includes('event=')) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          }}
           onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
           onBook={handleBookEvent}
           onOpenAISettings={() => setScreen('aiSettings')}
@@ -342,24 +376,20 @@ function AppContent() {
             onToast={addToast}
           />
         </div>
-        {activeTab === 'explore' && (
-          <div>
-            <ExploreScreen onEventClick={handleEventClick} />
-          </div>
-        )}
+        <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
+          <ExploreScreen onEventClick={handleEventClick} />
+        </div>
         <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
           <TicketsScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} onToast={addToast} />
         </div>
-        {activeTab === 'favorites' && (
-          <div>
-            <FavoritesScreen
-              onEventClick={handleEventClick}
-              onLogin={() => setScreen('login')}
-              onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-              onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
-            />
-          </div>
-        )}
+        <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
+          <FavoritesScreen
+            onEventClick={handleEventClick}
+            onLogin={() => setScreen('login')}
+            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
+          />
+        </div>
         <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
           <ProfileScreen
             onEventClick={handleEventClick}
@@ -432,13 +462,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <FavoritesProvider>
-        <Suspense fallback={<HomeScreenSkeleton />}>
-          <AppContent />
-        </Suspense>
-      </FavoritesProvider>
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <FavoritesProvider>
+          <Suspense fallback={null}>
+            <AppContent />
+          </Suspense>
+        </FavoritesProvider>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 

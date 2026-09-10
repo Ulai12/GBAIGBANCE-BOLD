@@ -404,15 +404,39 @@ export async function saveCachedUserTickets(userId: string, tickets: (Ticket & {
   if (!userId || !Array.isArray(tickets)) return;
   try {
     await set(`${TICKETS_CACHE_PREFIX}${userId}`, tickets);
+    try {
+      localStorage.setItem(`gba_tickets_digest_${userId}`, JSON.stringify(tickets));
+    } catch {
+      // Storage quota
+    }
   } catch {
     // Ignore error
   }
+}
+
+export function getSyncCachedUserTickets(userId?: string): (Ticket & { event?: Event })[] {
+  if (!userId || typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`gba_tickets_digest_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Parse error
+  }
+  return [];
 }
 
 export async function clearCachedUserTickets(userId?: string): Promise<void> {
   try {
     if (userId) {
       await del(`${TICKETS_CACHE_PREFIX}${userId}`);
+      try {
+        localStorage.removeItem(`gba_tickets_digest_${userId}`);
+      } catch {
+        // Ignore storage error
+      }
     } else {
       const allKeys = await keys();
       for (const k of allKeys) {

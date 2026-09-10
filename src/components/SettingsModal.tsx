@@ -309,7 +309,19 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
                 <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
-                  v3.1 · Offline Tickets IDB & Safe Snapshot
+                  v3.3.1 · Error Boundary & Resilience Patch
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Partage & Social</span>
+                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
+                  Web Share API natif + Fiche iOS 27 (WhatsApp, 𝕏, Telegram)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Deep Linking</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Résolution URL instantanée (?event=...)
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -325,15 +337,15 @@ export function SettingsModal({
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Sécurité & Profil</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Affichage & Rendu</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Snapshot minimalisé (pas de clés ni emails)
+                  Zéro squelette plein écran · Navigation 0ms instantanée
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Gestion Mémoire</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Cache Chaud Étendu</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Écrans inactifs démontés (RAM optimisée)
+                  Home, Explorer, Favoris, Billets & Profil
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -360,7 +372,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaïgbancê v3.1 · Expérience Offline-First sans faille
+              Gbaïgbancê v3.3 · Web Share Natif & Deep Linking
             </p>
           </div>
         </div>
