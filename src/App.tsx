@@ -92,8 +92,9 @@ function AppContent() {
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ update: () => void }>;
       addToast({
-        message: 'Mise à jour disponible pour Gbaigbance',
+        message: 'Mise à jour disponible pour Gbaïgbancê',
         type: 'info',
+        persistent: true,
         action: customEvent.detail?.update
           ? {
               label: 'Actualiser',
@@ -341,20 +342,24 @@ function AppContent() {
             onToast={addToast}
           />
         </div>
-        <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
-          <ExploreScreen onEventClick={handleEventClick} />
-        </div>
+        {activeTab === 'explore' && (
+          <div>
+            <ExploreScreen onEventClick={handleEventClick} />
+          </div>
+        )}
         <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
           <TicketsScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} onToast={addToast} />
         </div>
-        <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
-          <FavoritesScreen
-            onEventClick={handleEventClick}
-            onLogin={() => setScreen('login')}
-            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
-          />
-        </div>
+        {activeTab === 'favorites' && (
+          <div>
+            <FavoritesScreen
+              onEventClick={handleEventClick}
+              onLogin={() => setScreen('login')}
+              onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+              onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
+            />
+          </div>
+        )}
         <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
           <ProfileScreen
             onEventClick={handleEventClick}

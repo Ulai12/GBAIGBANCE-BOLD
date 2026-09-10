@@ -308,26 +308,38 @@ export function SettingsModal({
             <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] p-4 text-xs space-y-2.5 shadow-xs">
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
-                <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2 py-0.5 rounded-full text-[11px]">
-                  v3.0 · Offline-First IDB & Workbox
+                <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
+                  v3.1 · Offline Tickets IDB & Safe Snapshot
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Architecture</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  PWA + IndexedDB + Workbox
+                  PWA (Workbox Prompt) + Private IDB Store
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Cache & Persistence</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Billetterie Hors-ligne</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  QR Codes persistés dans IndexedDB privé
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Sécurité & Profil</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  idb-keyval · Stale-While-Revalidate
+                  Snapshot minimalisé (pas de clés ni emails)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Gestion Mémoire</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Écrans inactifs démontés (RAM optimisée)
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">APIs & Backend</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Supabase · Gemini AI · Sentry
+                  Supabase (RPC bookTicket) · Gemini AI · Sentry
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -339,7 +351,7 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Licence</span>
                 <span className="text-gray-600 dark:text-gray-300">
-                  Propriétaire · Gbaigbance © 2026
+                  Propriétaire · Gbaïgbancê © 2026
                 </span>
               </div>
             </div>
@@ -348,7 +360,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaigbance v3.0 · L'événementiel africain à portée de main
+              Gbaïgbancê v3.1 · Expérience Offline-First sans faille
             </p>
           </div>
         </div>

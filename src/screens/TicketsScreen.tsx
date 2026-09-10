@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Share2, ArrowUpRight } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { fetchUserTickets, cancelTicket } from '@/services/events';
+import { getCachedUserTickets, saveCachedUserTickets } from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { TicketsScreenSkeleton } from '@/components/Skeleton';
@@ -17,7 +18,7 @@ interface TicketsScreenProps {
 let cachedTickets: { userId: string; tickets: (Ticket & { event?: Event })[] } | null = null;
 
 export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenProps) {
-  const { session, user } = useApp();
+  const { session, user, isSessionResolving } = useApp();
   const hasCache = cachedTickets && cachedTickets.userId === user?.id;
   const [tickets, setTickets] = useState<(Ticket & { event?: Event })[]>(() => hasCache ? cachedTickets!.tickets : []);
   const [loading, setLoading] = useState(!hasCache);
@@ -31,24 +32,49 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       setLoading(false);
       return;
     }
+
+    // 1. Instant hydration from private IndexedDB for 0ms access at concert gates even if offline
+    let isMounted = true;
+    getCachedUserTickets(user.id).then((storedTickets) => {
+      if (isMounted && storedTickets && storedTickets.length > 0) {
+        cachedTickets = { userId: user.id, tickets: storedTickets };
+        setTickets(storedTickets);
+        setLoading(false);
+      }
+    });
+
+    // 2. Background revalidation from network
     fetchUserTickets(user.id)
       .then((data) => {
+        if (!isMounted) return;
         const list = (data as (Ticket & { event?: Event })[]) || [];
         setTickets(list);
         cachedTickets = { userId: user.id, tickets: list };
+        saveCachedUserTickets(user.id, list).catch(() => {});
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {
+        // Keep private offline tickets loaded from IndexedDB
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleCancel = async () => {
-    if (!cancelTarget) return;
+    if (!cancelTarget || !user) return;
     setCancelling(true);
     try {
       const result = await cancelTicket(cancelTarget);
       if (result.success) {
         onToast({ message: 'Billet annulé avec succès', type: 'success' });
-        setTickets(tickets.map((t) => (t.id === cancelTarget ? { ...t, status: 'cancelled' } : t)));
+        const updated = tickets.map((t) => (t.id === cancelTarget ? { ...t, status: 'cancelled' } : t));
+        setTickets(updated);
+        cachedTickets = { userId: user.id, tickets: updated };
+        saveCachedUserTickets(user.id, updated).catch(() => {});
       } else {
         onToast({ message: result.error || 'Erreur lors de l’annulation', type: 'error' });
       }
@@ -81,7 +107,13 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     }
   };
 
-  if (!session) {
+  // Prevent login flash: if session is still resolving on boot and we don't have user yet, show skeleton
+  if (isSessionResolving && !user) {
+    return <TicketsScreenSkeleton />;
+  }
+
+  // If session resolution has finished and there is strictly no user nor session, show login CTA
+  if (!session && !user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 pb-32 text-center">
         <div className="w-20 h-20 rounded-3xl bg-[#6600FF]/10 dark:bg-[#6600FF]/25 flex items-center justify-center mb-4 text-[#6600FF] dark:text-[#A78BFA]">
@@ -104,7 +136,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     );
   }
 
-  if (loading && !hasCache) {
+  if (loading && tickets.length === 0) {
     return <TicketsScreenSkeleton />;
   }
 
@@ -131,6 +163,14 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           Tous vos pass d'entrée sécurisés avec QR code hors-ligne
         </p>
       </div>
+
+      {/* Offline banner notice */}
+      {typeof navigator !== 'undefined' && !navigator.onLine && tickets.length > 0 && (
+        <div className="mx-5 mb-3 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
+          <QrCode className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="font-medium">Mode hors-ligne : Billets & QR codes sauvegardés prêts pour scan à l'entrée</span>
+        </div>
+      )}
 
       {/* Segmented control */}
       <div className="px-5 mt-3">

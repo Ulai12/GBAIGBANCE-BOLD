@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, createContext, type ReactNode } from 
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
 import { syncGeminiConfigFromAccount } from '@/services/gemini';
-import { saveCachedProfile } from '@/services/cache';
+import { saveCachedProfile, clearCachedUserTickets } from '@/services/cache';
+import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
 
@@ -10,6 +11,7 @@ export interface AppContextValue {
   user: Profile | null;
   session: import('@supabase/supabase-js').Session | null;
   loading: boolean;
+  isSessionResolving: boolean;
   language: Language;
   theme: 'light' | 'dark';
   setLanguage: (lang: Language) => void;
@@ -24,22 +26,30 @@ export const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(() => {
-    try {
-      const cached = localStorage.getItem('gba_profile');
-      if (cached) return JSON.parse(cached) as Profile;
-    } catch {
-      // Ignore parse error
+    const local = getLocalProfile();
+    if (local) {
+      return {
+        id: local.id,
+        name: local.name,
+        email: null,
+        phone: null,
+        avatar_url: local.avatar_url,
+        role: local.role,
+        city: local.city || 'Lomé',
+        country: local.country || 'Togo',
+        bio: null,
+        gemini_config: null,
+        created_at: '',
+        updated_at: '',
+      } as Profile;
     }
     return null;
   });
   const [session, setSession] = useState<AppContextValue['session']>(null);
+  const [isSessionResolving, setIsSessionResolving] = useState(isSupabaseConfigured);
   const [loading, setLoading] = useState(() => {
-    try {
-      // If we have a cached user profile, do not block the app on splash screen
-      return !localStorage.getItem('gba_profile');
-    } catch {
-      return true;
-    }
+    // If we have a cached minimal profile snapshot, do not block the app on splash screen
+    return !getLocalProfile();
   });
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('gba_lang') as Language) || 'fr';
@@ -77,14 +87,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .catch(() => {
             // Keep cached profile if offline
           })
-          .finally(() => setLoading(false));
+          .finally(() => {
+            setLoading(false);
+            setIsSessionResolving(false);
+          });
       } else {
         saveCachedProfile(null).catch(() => {});
+        clearLocalProfile();
         setUser(null);
         setLoading(false);
+        setIsSessionResolving(false);
       }
     }).catch(() => {
       setLoading(false);
+      setIsSessionResolving(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -135,17 +151,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
+    const currentUserId = user?.id;
     try { await authSignOut(); } catch { setSession(null); }
+    if (currentUserId) {
+      clearCachedUserTickets(currentUserId).catch(() => {});
+    }
+    clearLocalProfile();
     saveCachedProfile(null).catch(() => {});
     setUser(null);
     setSession(null);
-  }, []);
+  }, [user?.id]);
 
   const t = useCallback((domain: string, key: string) => translate(language, domain, key), [language]);
 
   return (
     <AppContext.Provider value={{
-      user, session, loading, language, theme,
+      user, session, loading, isSessionResolving, language, theme,
       setLanguage, toggleTheme, refreshProfile,
       signOut: handleSignOut, t,
     }}>

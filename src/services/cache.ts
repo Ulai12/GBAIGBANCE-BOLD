@@ -1,7 +1,8 @@
-import { get, set, del } from 'idb-keyval';
+import { get, set, del, keys } from 'idb-keyval';
 import { useState, useEffect, useRef } from 'react';
-import type { Event, EventWithRelations, Artist, Organization, Profile } from '@/types';
+import type { Event, EventWithRelations, Artist, Organization, Profile, Ticket } from '@/types';
 import type { PlatformStats } from '@/services/events';
+import { sanitizeProfileSnapshot } from '@/hooks/useLocalProfile';
 
 /**
  * CACHE PHILOSOPHY (Stale-While-Revalidate):
@@ -45,6 +46,7 @@ const MEMORY_CACHE: {
 const HOME_CACHE_KEY = 'gba_idb_home_v5';
 const EVENT_CACHE_PREFIX = 'gba_idb_event_';
 const PROFILE_CACHE_PREFIX = 'gba_idb_profile_';
+export const TICKETS_CACHE_PREFIX = 'gba_my_tickets_';
 
 export const HOME_CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes
 export const EVENT_CACHE_TTL_MS = 1000 * 60 * 5;  // 5 minutes
@@ -54,6 +56,29 @@ function isValidEvent(e: unknown): e is Event {
   if (!e || typeof e !== 'object') return false;
   const evt = e as Partial<Event>;
   return Boolean(evt.id && evt.title && evt.starts_at && evt.status === 'published');
+}
+
+function stripEventForDigest(e: Event): Event {
+  return {
+    id: e.id,
+    title: e.title,
+    starts_at: e.starts_at,
+    ends_at: e.ends_at,
+    location_name: e.location_name,
+    city: e.city,
+    country: e.country,
+    cover_url: e.cover_url,
+    price_min: e.price_min,
+    price_max: e.price_max,
+    currency: e.currency,
+    category: e.category,
+    status: e.status,
+    is_featured: e.is_featured,
+    is_trending: e.is_trending,
+    total_tickets: e.total_tickets,
+    attendees_count: e.attendees_count,
+    likes_count: e.likes_count,
+  } as Event;
 }
 
 // Hydrate memory cache asynchronously from IndexedDB on startup
@@ -123,16 +148,25 @@ export function saveCachedHomeData(data: Omit<HomeCacheData, 'timestamp'>): void
 
   MEMORY_CACHE.home = sanitized;
 
-  // 1. Synchronous localStorage for immediate boot
+  // 1. Synchronous lightweight digest in localStorage for immediate 0ms boot without quota exhaustion
   try {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(sanitized));
+      const digest: HomeCacheData = {
+        featured: sanitized.featured.slice(0, 15).map(stripEventForDigest),
+        trending: sanitized.trending.slice(0, 10).map(stripEventForDigest),
+        nearby: sanitized.nearby.slice(0, 10).map(stripEventForDigest),
+        artists: sanitized.artists.slice(0, 8),
+        organizations: sanitized.organizations.slice(0, 6),
+        stats: sanitized.stats,
+        timestamp: sanitized.timestamp,
+      };
+      localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(digest));
     }
   } catch {
-    // LocalStorage quota may be exceeded
+    // LocalStorage quota may be exceeded on constrained devices
   }
 
-  // 2. Persistent IndexedDB via idb-keyval (handles large payloads without quota issues)
+  // 2. Persistent complete IndexedDB via idb-keyval (handles large payloads without quota issues)
   set(HOME_CACHE_KEY, sanitized).catch(() => {});
 }
 
@@ -309,14 +343,16 @@ export async function hydrateHomeFromIndexedDB(): Promise<HomeCacheData | null> 
 }
 
 /**
- * Saves authenticated user profile snapshot to localStorage and IndexedDB
+ * Saves authenticated user profile snapshot to localStorage and IndexedDB.
+ * Uses sanitizeProfileSnapshot to strip sensitive data (gemini_config, API keys, email, phone).
  */
 export async function saveCachedProfile(profile: Profile | null): Promise<void> {
   try {
+    const snapshot = sanitizeProfileSnapshot(profile);
     if (typeof window !== 'undefined') {
-      if (profile) {
-        localStorage.setItem('gba_profile', JSON.stringify(profile));
-        await set('gba_profile_idb', { data: profile, timestamp: Date.now() });
+      if (snapshot) {
+        localStorage.setItem('gba_profile', JSON.stringify(snapshot));
+        await set('gba_profile_idb', { data: snapshot, timestamp: Date.now() });
       } else {
         localStorage.removeItem('gba_profile');
         await del('gba_profile_idb');
@@ -328,7 +364,7 @@ export async function saveCachedProfile(profile: Profile | null): Promise<void> 
 }
 
 /**
- * Gets cached profile from localStorage or IndexedDB
+ * Gets cached profile snapshot from localStorage or IndexedDB
  */
 export async function getCachedProfile(): Promise<Profile | null> {
   try {
@@ -345,7 +381,53 @@ export async function getCachedProfile(): Promise<Profile | null> {
 }
 
 /**
- * Clear all cached data
+ * PRIVATE OFFLINE TICKETS CACHE (IndexedDB only)
+ * Stored securely in IndexedDB under `gba_my_tickets_${userId}`.
+ * NEVER stored in Workbox, NEVER in Service Worker cache.
+ * Ensures the QR code and ticket access pass are fully visible at concert gates
+ * even when 4G mobile network is completely unreachable in Lomé or Cotonou.
+ */
+export async function getCachedUserTickets(userId: string): Promise<(Ticket & { event?: Event })[] | null> {
+  if (!userId) return null;
+  try {
+    const cached = await get<(Ticket & { event?: Event })[]>(`${TICKETS_CACHE_PREFIX}${userId}`);
+    if (Array.isArray(cached) && cached.length > 0) {
+      return cached;
+    }
+  } catch {
+    // Ignore IDB read error
+  }
+  return null;
+}
+
+export async function saveCachedUserTickets(userId: string, tickets: (Ticket & { event?: Event })[]): Promise<void> {
+  if (!userId || !Array.isArray(tickets)) return;
+  try {
+    await set(`${TICKETS_CACHE_PREFIX}${userId}`, tickets);
+  } catch {
+    // Ignore error
+  }
+}
+
+export async function clearCachedUserTickets(userId?: string): Promise<void> {
+  try {
+    if (userId) {
+      await del(`${TICKETS_CACHE_PREFIX}${userId}`);
+    } else {
+      const allKeys = await keys();
+      for (const k of allKeys) {
+        if (typeof k === 'string' && k.startsWith(TICKETS_CACHE_PREFIX)) {
+          await del(k);
+        }
+      }
+    }
+  } catch {
+    // Ignore error
+  }
+}
+
+/**
+ * Clear all cached public and private data
  */
 export async function clearAllLocalCache(): Promise<void> {
   delete MEMORY_CACHE.home;
@@ -353,7 +435,21 @@ export async function clearAllLocalCache(): Promise<void> {
   MEMORY_CACHE.profiles?.clear();
   try {
     localStorage.removeItem(HOME_CACHE_KEY);
+    localStorage.removeItem('gba_profile');
     await del(HOME_CACHE_KEY);
+    await del('gba_profile_idb');
+
+    const allKeys = await keys();
+    for (const k of allKeys) {
+      if (
+        typeof k === 'string' &&
+        (k.startsWith(EVENT_CACHE_PREFIX) ||
+         k.startsWith(PROFILE_CACHE_PREFIX) ||
+         k.startsWith(TICKETS_CACHE_PREFIX))
+      ) {
+        await del(k);
+      }
+    }
   } catch {
     // Ignore
   }

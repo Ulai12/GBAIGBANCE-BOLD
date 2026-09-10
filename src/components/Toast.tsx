@@ -7,6 +7,7 @@ export interface ToastData {
   id: string;
   message: string;
   type: ToastType;
+  persistent?: boolean;
   action?: {
     label: string;
     onClick: () => void;
@@ -23,6 +24,7 @@ export function Toast({ toast, onClose }: ToastProps) {
 
   useEffect(() => {
     setVisible(true);
+    if (toast.persistent) return;
     // If action is present, stay a bit longer (6s) to let user tap
     const duration = toast.action ? 6000 : 3000;
     const timer = setTimeout(() => {
@@ -30,7 +32,7 @@ export function Toast({ toast, onClose }: ToastProps) {
       setTimeout(() => onClose(toast.id), 300);
     }, duration);
     return () => clearTimeout(timer);
-  }, [toast.id, toast.action, onClose]);
+  }, [toast.id, toast.action, toast.persistent, onClose]);
 
   const icons = { success: CheckCircle2, error: AlertCircle, info: Info };
   const colors = { success: 'text-green-500', error: 'text-red-500', info: 'text-[#6600FF] dark:text-[#A855F7]' };
