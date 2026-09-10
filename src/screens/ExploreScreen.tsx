@@ -151,7 +151,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
 
       {/* Grid Results */}
       <div className="max-w-md mx-auto px-5 mt-4">
-        {loading ? (
+        {loading && events.length === 0 ? (
           <div className="grid grid-cols-2 gap-3.5">
             {Array.from({ length: 6 }).map((_, i) => (
               <EventCardSkeleton key={i} />

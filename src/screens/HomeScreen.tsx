@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
@@ -28,7 +28,7 @@ import {
   fetchPlatformStats, isEventTerminated, isEventActive,
   type PlatformStats,
 } from '@/services/events';
-import { getCachedHomeData, saveCachedHomeData } from '@/services/cache';
+import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
 import {
   calculateDistanceKm,
   getCurrentUserLocation,
@@ -68,6 +68,7 @@ export function HomeScreen({
   onBookEvent,
   onOpenAIAssistant,
   onOpenSettings,
+  onToast,
 }: HomeScreenProps) {
   const { user, t } = useApp();
 
@@ -80,6 +81,11 @@ export function HomeScreen({
   const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
   const [loading, setLoading] = useState(!initialCache.hasCache);
+  const onToastRef = useRef(onToast);
+
+  useEffect(() => {
+    onToastRef.current = onToast;
+  });
 
   // User location for spatial distance calculation
   const [userLocation, setUserLocation] = useState<UserLocationState>({
@@ -115,6 +121,23 @@ export function HomeScreen({
       setRequestingGps(false);
     }
   };
+
+  // IndexedDB background fallback if localStorage was cleared
+  useEffect(() => {
+    if (!initialCache.hasCache) {
+      hydrateHomeFromIndexedDB().then((cached) => {
+        if (cached && (cached.featured.length > 0 || cached.nearby.length > 0)) {
+          setFeatured(cached.featured);
+          setTrending(cached.trending);
+          setNearby(cached.nearby);
+          setArtists(cached.artists);
+          setOrganizations(cached.organizations);
+          setPlatformStats(cached.stats);
+          setLoading(false);
+        }
+      });
+    }
+  }, [initialCache.hasCache]);
 
   // Background silent fetch to hydrate & refresh data without UI flashing
   useEffect(() => {
@@ -157,7 +180,14 @@ export function HomeScreen({
           stats,
         });
       })
-      .catch(() => {})
+      .catch(() => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          onToastRef.current({
+            message: 'Mode hors-ligne : données sauvegardées affichées',
+            type: 'info',
+          });
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 

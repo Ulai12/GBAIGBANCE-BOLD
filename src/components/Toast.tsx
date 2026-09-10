@@ -7,6 +7,10 @@ export interface ToastData {
   id: string;
   message: string;
   type: ToastType;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ToastProps {
@@ -19,22 +23,49 @@ export function Toast({ toast, onClose }: ToastProps) {
 
   useEffect(() => {
     setVisible(true);
+    // If action is present, stay a bit longer (6s) to let user tap
+    const duration = toast.action ? 6000 : 3000;
     const timer = setTimeout(() => {
       setVisible(false);
       setTimeout(() => onClose(toast.id), 300);
-    }, 3000);
+    }, duration);
     return () => clearTimeout(timer);
-  }, [toast.id, onClose]);
+  }, [toast.id, toast.action, onClose]);
 
   const icons = { success: CheckCircle2, error: AlertCircle, info: Info };
-  const colors = { success: 'text-green-500', error: 'text-red-500', info: 'text-[#6600FF]' };
+  const colors = { success: 'text-green-500', error: 'text-red-500', info: 'text-[#6600FF] dark:text-[#A855F7]' };
   const Icon = icons[toast.type];
 
   return (
-    <div role={toast.type === 'error' ? 'alert' : 'status'} aria-live={toast.type === 'error' ? 'assertive' : 'polite'} className={`glass-surface rounded-2xl px-4 py-3 flex items-center gap-3 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-4 opacity-0 scale-90'}`}>
+    <div
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+      className={`rounded-2xl px-4 py-3 flex items-center gap-3 bg-white/95 dark:bg-[#1C1A29]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.12] shadow-lg transition-all duration-300 ${
+        visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-4 opacity-0 scale-90'
+      }`}
+    >
       <Icon className={`w-5 h-5 ${colors[toast.type]} shrink-0 animate-pop`} />
-      <p className="text-sm font-medium text-[#1A1A2E] flex-1">{toast.message}</p>
-      <button type="button" onClick={() => onClose(toast.id)} aria-label="Fermer la notification" className="text-gray-400"><X className="w-4 h-4" /></button>
+      <p className="text-sm font-medium text-[#1A1A2E] dark:text-white flex-1">{toast.message}</p>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onClick();
+            onClose(toast.id);
+          }}
+          className="px-3 py-1 rounded-xl bg-[#6600FF] hover:bg-[#5500DD] text-white text-xs font-bold active:scale-95 transition-all shadow-xs"
+        >
+          {toast.action.label}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => onClose(toast.id)}
+        aria-label="Fermer la notification"
+        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }

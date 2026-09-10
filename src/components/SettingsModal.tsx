@@ -300,10 +300,55 @@ export function SettingsModal({
             </div>
           )}
 
+          {/* Groupe 5: Crédits & Système */}
+          <div>
+            <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
+              À Propos & Crédits
+            </h3>
+            <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] p-4 text-xs space-y-2.5 shadow-xs">
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
+                <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2 py-0.5 rounded-full text-[11px]">
+                  v3.0 · Offline-First IDB & Workbox
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Architecture</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  PWA + IndexedDB + Workbox
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Cache & Persistence</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  idb-keyval · Stale-While-Revalidate
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">APIs & Backend</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Supabase · Gemini AI · Sentry
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Traduction</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Français · English
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Licence</span>
+                <span className="text-gray-600 dark:text-gray-300">
+                  Propriétaire · Gbaigbance © 2026
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Footer note */}
-          <div className="text-center pt-2 pb-2">
+          <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaigbance v2.8 · Plateforme de billetterie Ouest-Africaine
+              Gbaigbance v3.0 · L'événementiel africain à portée de main
             </p>
           </div>
         </div>

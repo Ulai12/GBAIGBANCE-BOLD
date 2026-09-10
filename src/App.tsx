@@ -28,6 +28,7 @@ const UserProfileScreen = lazy(() => import('@/screens/UserProfileScreen').then(
 const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((module) => ({ default: module.AISettingsScreen })));
 import { AIAssistantModal } from '@/components/AIAssistantModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { HomeScreenSkeleton } from '@/components/Skeleton';
 
 type Screen =
   | 'onboarding'
@@ -87,6 +88,25 @@ function AppContent() {
     setToasts((prev) => [...prev, { ...toast, id }]);
   }, []);
 
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ update: () => void }>;
+      addToast({
+        message: 'Mise à jour disponible pour Gbaigbance',
+        type: 'info',
+        action: customEvent.detail?.update
+          ? {
+              label: 'Actualiser',
+              onClick: () => customEvent.detail.update(),
+            }
+          : undefined,
+      });
+    };
+
+    window.addEventListener('pwa-update-available', handleUpdate);
+    return () => window.removeEventListener('pwa-update-available', handleUpdate);
+  }, [addToast]);
+
   const closeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -106,11 +126,7 @@ function AppContent() {
   }, [session, addToast]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div className="w-16 h-16 rounded-full border-4 border-[#6600FF]/30 border-t-[#6600FF] animate-spin" />
-      </div>
-    );
+    return <HomeScreenSkeleton />;
   }
 
   if (screen === 'onboarding') {
@@ -310,7 +326,7 @@ function AppContent() {
   return (
     <>
       <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent pb-28">
-        {activeTab === 'home' && (
+        <div className={activeTab === 'home' ? 'block' : 'hidden'}>
           <HomeScreen
             onEventClick={handleEventClick}
             onBookEvent={handleBookEvent}
@@ -324,22 +340,22 @@ function AppContent() {
             onOpenSettings={() => setSettingsModalOpen(true)}
             onToast={addToast}
           />
-        )}
-        {activeTab === 'explore' && (
+        </div>
+        <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
           <ExploreScreen onEventClick={handleEventClick} />
-        )}
-        {activeTab === 'tickets' && (
+        </div>
+        <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
           <TicketsScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} onToast={addToast} />
-        )}
-        {activeTab === 'favorites' && (
+        </div>
+        <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
           <FavoritesScreen
             onEventClick={handleEventClick}
             onLogin={() => setScreen('login')}
             onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
             onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
           />
-        )}
-        {activeTab === 'profile' && (
+        </div>
+        <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
           <ProfileScreen
             onEventClick={handleEventClick}
             onLogin={() => setScreen('login')}
@@ -351,7 +367,7 @@ function AppContent() {
             onOpenAISettings={() => setScreen('aiSettings')}
             onToast={addToast}
           />
-        )}
+        </div>
       </div>
       <BottomNav
         active={activeTab}
@@ -413,7 +429,7 @@ function App() {
   return (
     <AppProvider>
       <FavoritesProvider>
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-transparent"><div className="w-12 h-12 rounded-full border-4 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" /></div>}>
+        <Suspense fallback={<HomeScreenSkeleton />}>
           <AppContent />
         </Suspense>
       </FavoritesProvider>

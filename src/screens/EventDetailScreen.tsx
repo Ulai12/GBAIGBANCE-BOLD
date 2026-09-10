@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { fetchEventById, fetchCollaborators, incrementEventViews, subscribeToEventViews, subscribeToEventAttendees, isEventTerminated } from '@/services/events';
+import { getPublicEventCache, setPublicEventCache } from '@/services/cache';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { formatFullDate, formatTime, formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
@@ -73,16 +74,26 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettin
   };
 
   useEffect(() => {
-    setFullEvent(null);
+    // 1. Instant paint from IndexedDB cache if available
+    getPublicEventCache(event.id).then(({ data: cached }) => {
+      if (cached && cached.id === event.id) {
+        setFullEvent((curr) => curr || cached);
+      }
+    });
+
+    // 2. Fresh network fetch
     fetchEventById(event.id)
       .then((data) => {
         if (data && data.id === event.id) {
           setFullEvent(data);
           setLiveViews(data.views_count || 0);
           setLiveAttendees(data.attendees_count || 0);
+          setPublicEventCache(event.id, data);
         }
       })
-      .catch(() => setFullEvent(null));
+      .catch(() => {
+        // Keep cached state if network fails
+      });
 
     fetchCollaborators(event.id).then(setCollaborators).catch(() => {});
     incrementEventViews(event.id).catch(() => {});

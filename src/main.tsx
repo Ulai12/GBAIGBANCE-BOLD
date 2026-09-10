@@ -5,12 +5,12 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Register Service Worker for PWA with auto-update
+// Register Service Worker for PWA with prompt update
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      updateSW(true);
+      window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { update: () => updateSW(true) } }));
     },
     onOfflineReady() {
       console.log('[PWA] Prêt pour le mode hors ligne.');

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, createContext, type ReactNode } from 
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
 import { syncGeminiConfigFromAccount } from '@/services/gemini';
+import { saveCachedProfile } from '@/services/cache';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
 
@@ -22,9 +23,24 @@ export interface AppContextValue {
 export const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Profile | null>(null);
+  const [user, setUser] = useState<Profile | null>(() => {
+    try {
+      const cached = localStorage.getItem('gba_profile');
+      if (cached) return JSON.parse(cached) as Profile;
+    } catch {
+      // Ignore parse error
+    }
+    return null;
+  });
   const [session, setSession] = useState<AppContextValue['session']>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    try {
+      // If we have a cached user profile, do not block the app on splash screen
+      return !localStorage.getItem('gba_profile');
+    } catch {
+      return true;
+    }
+  });
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('gba_lang') as Language) || 'fr';
   });
@@ -55,11 +71,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fetchProfile(session.user.id)
           .then((profile) => {
             setUser(profile);
+            saveCachedProfile(profile).catch(() => {});
             syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
           })
-          .catch(() => setUser(null))
+          .catch(() => {
+            // Keep cached profile if offline
+          })
           .finally(() => setLoading(false));
       } else {
+        saveCachedProfile(null).catch(() => {});
+        setUser(null);
         setLoading(false);
       }
     }).catch(() => {
@@ -73,12 +94,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           try {
             const profile = await fetchProfile(session.user.id);
             setUser(profile);
+            saveCachedProfile(profile).catch(() => {});
             syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
           } catch {
-            setUser(null);
+            // keep existing state
           }
         })();
       } else {
+        saveCachedProfile(null).catch(() => {});
         setUser(null);
       }
     });
@@ -103,13 +126,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const profile = await fetchProfile(session.user.id);
         setUser(profile);
+        saveCachedProfile(profile).catch(() => {});
         syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
-      } catch { setUser(null); }
+      } catch {
+        // Keep cached
+      }
     }
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
     try { await authSignOut(); } catch { setSession(null); }
+    saveCachedProfile(null).catch(() => {});
     setUser(null);
     setSession(null);
   }, []);
