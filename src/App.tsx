@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Ticket as TicketIcon } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
@@ -596,6 +597,7 @@ function App() {
         </FavoritesProvider>
       </AppProvider>
       <Analytics />
+      <SpeedInsights />
     </ErrorBoundary>
   );
 }
