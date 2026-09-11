@@ -22,6 +22,21 @@ export interface AppContextValue {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
+export const defaultAppContextFallback: AppContextValue = {
+  user: null,
+  session: null,
+  loading: true,
+  isSessionResolving: false,
+  language: 'fr',
+  theme: 'light',
+  setLanguage: () => {},
+  toggleTheme: () => {},
+  refreshProfile: async () => {},
+  signOut: async () => {},
+  t: (domain: string, key: string) => translate('fr', domain, key),
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
 export const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {

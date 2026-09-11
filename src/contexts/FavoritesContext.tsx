@@ -240,11 +240,26 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const defaultFavoritesContextFallback: FavoritesContextType = {
+  likedEventIds: new Set<string>(),
+  isLiked: () => false,
+  toggleLike: () => {},
+  followedArtistIds: new Set<string>(),
+  isFollowingArtist: () => false,
+  toggleFollowArtist: () => {},
+  followedOrgIds: new Set<string>(),
+  isFollowingOrg: () => false,
+  toggleFollowOrg: () => {},
+};
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useFavorites() {
   const context = useContext(FavoritesContext);
   if (!context) {
-    throw new Error('useFavorites must be used within a FavoritesProvider');
+    if (import.meta.env.DEV) {
+      console.warn('[useFavorites] FavoritesContext is temporarily unavailable (HMR or mounting outside FavoritesProvider). Using fallback.');
+    }
+    return defaultFavoritesContextFallback;
   }
   return context;
 }

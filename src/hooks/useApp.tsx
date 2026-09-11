@@ -1,8 +1,13 @@
 import { useContext } from 'react';
-import { AppContext, type AppContextValue } from '@/contexts/AppContext';
+import { AppContext, type AppContextValue, defaultAppContextFallback } from '@/contexts/AppContext';
 
 export function useApp(): AppContextValue {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used within AppProvider');
+  if (!ctx) {
+    if (import.meta.env.DEV) {
+      console.warn('[useApp] AppContext is temporarily unavailable (HMR or mounting outside AppProvider). Using fallback.');
+    }
+    return defaultAppContextFallback;
+  }
   return ctx;
 }
