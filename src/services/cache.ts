@@ -58,7 +58,7 @@ function isValidEvent(e: unknown): e is Event {
   return Boolean(evt.id && evt.title && evt.starts_at && evt.status === 'published');
 }
 
-function stripEventForDigest(e: Event & Record<string, unknown>): Event {
+function stripEventForDigest(e: Event): Event {
   return {
     id: e.id,
     title: e.title,
@@ -74,8 +74,8 @@ function stripEventForDigest(e: Event & Record<string, unknown>): Event {
     category: e.category,
     status: e.status,
     is_featured: e.is_featured,
-    is_trending: e.is_trending,
-    total_tickets: e.total_tickets,
+    is_trending: (e as unknown as Record<string, unknown>).is_trending as boolean | undefined,
+    total_tickets: (e as unknown as Record<string, unknown>).total_tickets as number | undefined,
     attendees_count: e.attendees_count,
     likes_count: e.likes_count,
   } as unknown as Event;

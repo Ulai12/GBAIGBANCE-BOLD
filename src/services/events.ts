@@ -509,8 +509,10 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
 export async function createEventWithCollaborators(
   eventData: {
     title: string; description: string; category: EventCategory; location_name: string;
-    city: string; starts_at: string; price_min: number; cover_url: string;
-    capacity?: number; created_by_role: 'organizer' | 'artist';
+    location_address?: string | null; city: string; country?: string;
+    latitude?: number | null; longitude?: number | null;
+    starts_at: string; ends_at?: string | null; price_min: number; cover_url: string;
+    images?: string[]; video_url?: string | null; capacity?: number; created_by_role: 'organizer' | 'artist';
   },
   collaborators: { user_id: string; role: 'co_organizer' | 'performer' }[],
   ticketOptions: { ticket_type: string; label: string; price: number; quantity_total: number; description?: string }[],
@@ -525,11 +527,24 @@ export async function createEventWithCollaborators(
   const { data: event, error: eventError } = await supabase
     .from('events')
     .insert({
-      title: eventData.title.trim(), description: eventData.description || null, category: eventData.category,
-      location_name: eventData.location_name || 'Lieu à définir', city: eventData.city,
-      starts_at: new Date(eventData.starts_at).toISOString(), price_min: eventData.price_min,
-      cover_url: eventData.cover_url || null, capacity: eventData.capacity || null,
-      organizer_user_id: organizerUserId, created_by_role: eventData.created_by_role,
+      title: eventData.title.trim(),
+      description: eventData.description || null,
+      category: eventData.category,
+      location_name: eventData.location_name || 'Lieu à définir',
+      location_address: eventData.location_address || null,
+      city: eventData.city,
+      country: eventData.country || 'TG',
+      latitude: eventData.latitude ?? null,
+      longitude: eventData.longitude ?? null,
+      starts_at: new Date(eventData.starts_at).toISOString(),
+      ends_at: eventData.ends_at ? new Date(eventData.ends_at).toISOString() : null,
+      price_min: eventData.price_min,
+      cover_url: eventData.cover_url || null,
+      images: eventData.images || [],
+      video_url: eventData.video_url || null,
+      capacity: eventData.capacity || null,
+      organizer_user_id: organizerUserId,
+      created_by_role: eventData.created_by_role,
       status: validCollaborators.length > 0 ? 'pending' : 'published',
     })
     .select().maybeSingle();
@@ -553,6 +568,131 @@ export async function createEventWithCollaborators(
     if (collabError) throw new Error(collabError.message || "Erreur lors de l'invitation des collaborateurs");
   }
   return createdEvent;
+}
+
+// ==================== UPDATE EVENT FULL ====================
+
+export interface UpdateEventPayload {
+  title: string;
+  description: string;
+  category: EventCategory;
+  location_name: string;
+  location_address?: string | null;
+  city: string;
+  country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  starts_at: string;
+  ends_at?: string | null;
+  price_min: number;
+  cover_url: string;
+  images?: string[];
+  video_url?: string | null;
+  capacity?: number | null;
+  status?: EventStatus;
+}
+
+export async function updateEventFull(
+  eventId: string,
+  eventData: UpdateEventPayload,
+  collaborators?: { user_id: string; role: 'co_organizer' | 'performer' }[],
+  ticketOptions?: { id?: string; ticket_type: string; label: string; price: number; quantity_total: number; description?: string }[],
+  organizerUserId?: string
+): Promise<Event | null> {
+  if (!eventId) throw new Error("ID d'événement manquant");
+  if (!eventData.title.trim()) throw new Error('Le titre est obligatoire.');
+  if (!eventData.starts_at) throw new Error("La date et l'heure sont obligatoires.");
+
+  const updateFields: Record<string, unknown> = {
+    title: eventData.title.trim(),
+    description: eventData.description || null,
+    category: eventData.category,
+    location_name: eventData.location_name || 'Lieu à définir',
+    location_address: eventData.location_address || null,
+    city: eventData.city,
+    country: eventData.country || 'TG',
+    latitude: eventData.latitude ?? null,
+    longitude: eventData.longitude ?? null,
+    starts_at: new Date(eventData.starts_at).toISOString(),
+    ends_at: eventData.ends_at ? new Date(eventData.ends_at).toISOString() : null,
+    price_min: eventData.price_min,
+    cover_url: eventData.cover_url || null,
+    images: eventData.images || [],
+    video_url: eventData.video_url || null,
+    capacity: eventData.capacity || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (eventData.status) {
+    updateFields.status = eventData.status;
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('events')
+    .update(updateFields)
+    .eq('id', eventId)
+    .select()
+    .maybeSingle();
+
+  if (updateError) {
+    throw new Error(updateError.message || "Erreur lors de la mise à jour de l'événement");
+  }
+
+  // Sync ticket options if provided
+  if (ticketOptions && Array.isArray(ticketOptions)) {
+    const validTicketTypes = ['free', 'standard', 'vip', 'vvip'];
+    const validTickets = ticketOptions.filter((t) => t.label.trim() && validTicketTypes.includes(t.ticket_type));
+
+    // Handle updates and additions
+    for (const opt of validTickets) {
+      if (opt.id && !opt.id.startsWith('temp-') && !opt.id.startsWith('fallback-')) {
+        await supabase
+          .from('ticket_options')
+          .update({
+            ticket_type: opt.ticket_type,
+            label: opt.label.trim(),
+            price: opt.price,
+            quantity_total: opt.quantity_total,
+            description: opt.description || null,
+          })
+          .eq('id', opt.id);
+      } else {
+        await supabase.from('ticket_options').insert({
+          event_id: eventId,
+          ticket_type: opt.ticket_type,
+          label: opt.label.trim(),
+          price: opt.price,
+          quantity_total: opt.quantity_total,
+          description: opt.description || null,
+        });
+      }
+    }
+  }
+
+  // Sync collaborators if provided
+  if (collaborators && Array.isArray(collaborators) && organizerUserId) {
+    const validCollabs = collaborators.filter((c) => c.user_id && c.user_id.trim());
+    for (const c of validCollabs) {
+      const { data: existing } = await supabase
+        .from('event_collaborators')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', c.user_id)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('event_collaborators').insert({
+          event_id: eventId,
+          user_id: c.user_id,
+          role: c.role,
+          invited_by: organizerUserId,
+          status: 'pending',
+        });
+      }
+    }
+  }
+
+  return updated as Event | null;
 }
 
 // ==================== DELETE EVENT ====================

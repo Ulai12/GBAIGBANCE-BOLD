@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Navigation, ExternalLink, Copy, Check, Compass } from 'lucide-react';
+import { MapPin, Navigation, ExternalLink, Copy, Check } from 'lucide-react';
 
 interface EventMapPreviewProps {
   locationName: string;
@@ -43,11 +43,6 @@ export function EventMapPreview({
       // ignore
     }
   };
-
-  // Format coordinates for display
-  const formattedCoords = hasCoords
-    ? `${Math.abs(latitude).toFixed(4)}° ${latitude >= 0 ? 'N' : 'S'}, ${Math.abs(longitude).toFixed(4)}° ${longitude >= 0 ? 'E' : 'O'}`
-    : null;
 
   return (
     <div className="mt-3 rounded-2xl overflow-hidden border border-[#6600FF]/15 bg-white shadow-sm">
@@ -152,38 +147,16 @@ export function EventMapPreview({
           </div>
         </div>
 
-        {/* Top-left: Coordinates / City Tag */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md shadow-sm border border-gray-100 text-[11px] font-semibold text-[#171726]">
-          <Compass className="w-3.5 h-3.5 text-[#6600FF]" />
-          <span>{city}</span>
-          {formattedCoords && (
-            <>
-              <span className="text-gray-300">·</span>
-              <span className="text-gray-500 font-mono text-[10px]">{formattedCoords}</span>
-            </>
-          )}
-        </div>
-
-        {/* Top-right: Interactive hint badge */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#6600FF] text-white text-[11px] font-bold shadow-md shadow-[#6600FF]/30 group-hover:bg-[#5200CC] transition-colors">
+        {/* Top-right: Discreet navigation hint badge */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 group-hover:bg-[#6600FF] transition-colors">
           <Navigation className="w-3 h-3 fill-white" />
-          <span>Maps</span>
+          <span>Itinéraire</span>
           <ExternalLink className="w-2.5 h-2.5 opacity-80 ml-0.5" />
-        </div>
-
-        {/* Bottom hover bar */}
-        <div className="absolute bottom-2 inset-x-3 flex items-center justify-between pointer-events-none">
-          <span className="text-[11px] font-medium text-white/90 drop-shadow truncate pr-2">
-            {locationAddress || locationName}
-          </span>
-          <span className="shrink-0 text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-            Itinéraire ↗
-          </span>
         </div>
       </a>
 
       {/* Action Footer with direct navigation link and copy button */}
-      <div className="p-3 bg-[#FBFBFF] flex items-center justify-between gap-2 border-t border-[#6600FF]/10">
+      <div className="p-3 bg-[#FBFBFF] dark:bg-[#1A1828] flex items-center justify-between gap-2 border-t border-[#6600FF]/10 dark:border-white/10">
         <a
           id="event-map-nav-action"
           href={navigationUrl}
@@ -192,7 +165,7 @@ export function EventMapPreview({
           className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#6600FF] hover:bg-[#5500D4] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm shadow-[#6600FF]/20"
         >
           <Navigation className="w-3.5 h-3.5 fill-white" />
-          <span>Ouvrir l'itinéraire Google Maps</span>
+          <span>Ouvrir dans Google Maps</span>
           <ExternalLink className="w-3 h-3 text-white/80" />
         </a>
 
@@ -202,16 +175,16 @@ export function EventMapPreview({
           onClick={handleCopyAddress}
           title="Copier l'adresse"
           aria-label="Copier l'adresse du lieu"
-          className="shrink-0 inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-gray-50 active:scale-95 border border-gray-200 text-xs font-semibold text-gray-700 transition-colors shadow-2xs"
+          className="shrink-0 inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/15 active:scale-95 border border-gray-200 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-emerald-700">Copié</span>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold">Copié</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5 text-gray-500" />
+              <Copy className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               <span>Copier</span>
             </>
           )}

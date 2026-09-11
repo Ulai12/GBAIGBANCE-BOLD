@@ -120,7 +120,7 @@ export function FeaturedCarousel({
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[310px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
         {/* Ambient subtle color wash behind slides to prevent pitch black flash */}
         {coverUrl && (
           <div
@@ -210,14 +210,14 @@ export function FeaturedCarousel({
             </div>
 
             {/* CONTENT BOTTOM */}
-            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col gap-2.5 z-10">
+            <div className="absolute bottom-0 left-0 right-0 px-5 pt-5 pb-9 sm:px-7 sm:pb-10 flex flex-col gap-2.5 z-10">
               {/* DATE & VENUE */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/95">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/15 backdrop-blur-md border border-white/15 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/25 backdrop-blur-md border border-white/15 shadow-sm">
                   <CalendarDays className="w-3.5 h-3.5 text-[#A78BFA]" />
                   {formatDate(currentEvent.starts_at)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/15 backdrop-blur-md border border-white/15 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/25 backdrop-blur-md border border-white/15 shadow-sm">
                   <MapPin className="w-3.5 h-3.5 text-[#A78BFA]" />
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {currentEvent.location_name || currentEvent.city}
@@ -249,10 +249,10 @@ export function FeaturedCarousel({
                         e.stopPropagation();
                         onBookEvent(currentEvent);
                       }}
-                      className="px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-[#6600FF]/10 hover:bg-[#5200CC] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+                      className="px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-[#6600FF]/10 hover:bg-[#5200CC] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
                     >
                       <Ticket className="w-4 h-4 text-[#6600FF]" />
-                      <span className="text-black text-black uppercase">Réserver</span>
+                      <span className="text-black uppercase">Réserver</span>
                     </button>
                   )}
                   <button
@@ -261,7 +261,7 @@ export function FeaturedCarousel({
                       e.stopPropagation();
                       onEventClick(currentEvent);
                     }}
-                    className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md active:scale-90 transition-all"
+                    className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md active:scale-90 transition-all cursor-pointer"
                     aria-label="Voir l'événement"
                   >
                     <ArrowRight className="w-4 h-4" />
@@ -273,31 +273,31 @@ export function FeaturedCarousel({
         </AnimatePresence>
       </div>
 
-        {/* BOTTOM INDICATOR PILLS */}
-        {total > 1 && (
-          <div className="absolute bottom-3 left-2/4 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-auto">
-            {featuredList.map((evt, idx) => {
-              const isActive = idx === currentIndex;
-              return (
-                <button
-                  key={evt.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDirection(idx > currentIndex ? 1 : -1);
-                    setCurrentIndex(idx);
-                  }}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    isActive
-                      ? 'w-7 bg-white shadow-xs'
-                      : 'w-2 bg-white/40 hover:bg-white/70'
-                  }`}
-                  aria-label={`Aller au slide ${idx + 1}`}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* BOTTOM INDICATOR PILLS (Apple Glass Capsule) */}
+      {total > 1 && (
+        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md border border-white/15 z-20 pointer-events-auto shadow-sm">
+          {featuredList.map((evt, idx) => {
+            const isActive = idx === currentIndex;
+            return (
+              <button
+                key={evt.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDirection(idx > currentIndex ? 1 : -1);
+                  setCurrentIndex(idx);
+                }}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  isActive
+                    ? 'w-6 bg-white shadow-xs'
+                    : 'w-1.5 bg-white/40 hover:bg-white/70'
+                }`}
+                aria-label={`Aller au slide ${idx + 1}`}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

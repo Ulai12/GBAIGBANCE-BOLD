@@ -502,34 +502,17 @@ export function HomeScreen({
         </section>
       ) : nearbySectionData.events.length > 0 ? (
         <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
-                <Navigation className={`w-4 h-4 ${requestingGps ? 'animate-spin' : ''}`} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
+          {/* En-tête aérée et ergonomique (iOS 27 - Zéro troncature) */}
+          <div className="flex flex-col gap-1.5 mb-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Navigation className={`w-4 h-4 ${requestingGps ? 'animate-spin' : ''}`} />
+                </div>
+                <h2 className="text-lg sm:text-xl font-black tracking-[-0.03em] text-[#17131d] dark:text-white leading-tight">
                   {nearbySectionData.title}
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                  {nearbySectionData.subtitle}
-                </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {!userLocation.isActual && (
-                <button
-                  type="button"
-                  onClick={handleRequestGPS}
-                  disabled={requestingGps}
-                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 dark:bg-blue-500/20 px-2.5 py-1.5 rounded-full cursor-pointer transition-all active:scale-95"
-                  title="Activer le GPS"
-                >
-                  <Navigation className={`w-3 h-3 ${requestingGps ? 'animate-spin' : ''}`} />
-                  <span>{requestingGps ? 'GPS...' : 'Activer GPS'}</span>
-                </button>
-              )}
 
               <button
                 type="button"
@@ -540,10 +523,31 @@ export function HomeScreen({
                 <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
               </button>
             </div>
+
+            {/* Ligne de statut de localisation & Action GPS intelligente */}
+            <div className="flex items-center gap-2 pl-10.5">
+              {!userLocation.isActual ? (
+                <button
+                  type="button"
+                  onClick={handleRequestGPS}
+                  disabled={requestingGps}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 dark:bg-blue-500/20 px-2.5 py-1 rounded-full cursor-pointer transition-all active:scale-95 border border-blue-500/20"
+                  title="Activer la géolocalisation"
+                >
+                  <Navigation className={`w-3 h-3 ${requestingGps ? 'animate-spin' : ''}`} />
+                  <span>{requestingGps ? 'Localisation en cours...' : 'Activer le GPS pour filtrer'}</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {nearbySectionData.subtitle}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Tuiles défilables horizontales modernes compactes */}
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-[10px]">
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-5 px-5">
             {nearbySectionData.events.map((event) => (
               <NearbyEventTile
                 key={event.id}
@@ -702,8 +706,7 @@ export function HomeScreen({
                     type="button"
                     key={artist.id}
                     onClick={() => onArtistClick?.(artist)}
-                    className="flex flex-col items-center gap-1.5 w-[4rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 
-                    ease-out cursor-pointer text-center w-full whitespace-nowrap"
+                    className="flex flex-col items-center gap-1.5 w-18 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
                   >
                     <UserAvatar
                       src={artist.photo_url}
@@ -713,7 +716,7 @@ export function HomeScreen({
                       shape="circle"
                       isVerified={artist.is_verified}
                     />
-                    <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
+                    <span className="text-[11px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {artist.name}
                     </span>
                     <span className="text-[10px] text-gray-400 font-bold">
@@ -765,18 +768,17 @@ export function HomeScreen({
                     type="button"
                     key={org.id}
                     onClick={() => onOrganizationClick?.(org)}
-                    className="flex flex-col gap-1.5 w-[4rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 
-                    ease-out cursor-pointer text-center w-full whitespace-nowrap"
+                    className="flex flex-col items-center gap-1.5 w-18 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
                   >
                     <UserAvatar
                       src={org.logo_url}
                       name={org.name}
                       role="organizer"
-                      size="xl"
+                      size="md"
                       shape="squircle"
                       isVerified={org.verification_status === 'verified'}
                     />
-                    <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
+                    <span className="text-[11px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {org.name}
                     </span>
 

@@ -88,9 +88,9 @@ export function UserAvatar({
   const RoleIcon = role === 'artist' ? Music2 : role === 'organizer' ? Building2 : User;
 
   return (
-    <div className={`relative inline-flex items-center justify-center shrink-0 aspect-square ${roundedClass} ${className}`}>
+    <div className={`relative inline-flex items-center justify-center shrink-0 ${sizeConfig.box} ${roundedClass} ${className}`}>
       <div
-        className={`relative overflow-hidden flex items-center justify-center aspect-square select-none w-full h-full ${sizeConfig.box} ${roundedClass} ${ringClass} ${
+        className={`relative overflow-hidden flex items-center justify-center select-none w-full h-full ${roundedClass} ${ringClass} ${
           hasValidImage ? 'bg-zinc-100 dark:bg-zinc-800' : `bg-gradient-to-tr ${gradientClass} text-white shadow-sm`
         }`}
       >

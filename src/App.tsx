@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
+import { Ticket as TicketIcon } from 'lucide-react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
@@ -22,6 +23,7 @@ const AuthScreen = lazy(() => import('@/screens/AuthScreen').then((module) => ({
 const ForgotPasswordScreen = lazy(() => import('@/screens/ForgotPasswordScreen').then((module) => ({ default: module.ForgotPasswordScreen })));
 const OtpScreen = lazy(() => import('@/screens/OtpScreen').then((module) => ({ default: module.OtpScreen })));
 const EventDetailScreen = lazy(() => import('@/screens/EventDetailScreen').then((module) => ({ default: module.EventDetailScreen })));
+const EditEventScreen = lazy(() => import('@/screens/EditEventScreen').then((module) => ({ default: module.EditEventScreen })));
 const OrganizerDashboardScreen = lazy(() => import('@/screens/OrganizerDashboardScreen').then((module) => ({ default: module.OrganizerDashboardScreen })));
 const CreateEventScreen = lazy(() => import('@/screens/CreateEventWizardScreen').then((module) => ({ default: module.CreateEventWizardScreen })));
 const ArtistDetailScreen = lazy(() => import('@/screens/ArtistDetailScreen').then((module) => ({ default: module.ArtistDetailScreen })));
@@ -44,6 +46,7 @@ type Screen =
   | 'favorites'
   | 'profile'
   | 'eventDetail'
+  | 'editEvent'
   | 'organizerDashboard'
   | 'createEvent'
   | 'artistDetail'
@@ -55,6 +58,15 @@ type Screen =
   | 'aiSettings';
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
+
+interface HistoryItem {
+  screen: Screen;
+  activeTab: Tab;
+  selectedEvent: Event | null;
+  selectedArtist: Artist | null;
+  selectedOrganization: Organization | null;
+  selectedUserId: string | null;
+}
 
 function AppContent() {
   const { loading, session, user } = useApp();
@@ -70,6 +82,7 @@ function AppContent() {
     return 'onboarding';
   });
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [, setHistoryStack] = useState<HistoryItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
@@ -79,6 +92,7 @@ function AppContent() {
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const canCreate = !!(user && (user.role === 'organizer' || user.role === 'artist'));
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
@@ -89,6 +103,79 @@ function AppContent() {
     const id = Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev, { ...toast, id }]);
   }, []);
+
+  const navigateTo = useCallback((nextScreen: Screen, payload?: {
+    event?: Event | null;
+    artist?: Artist | null;
+    organization?: Organization | null;
+    userId?: string | null;
+    tab?: Tab;
+  }) => {
+    setHistoryStack((prev) => [
+      ...prev,
+      {
+        screen,
+        activeTab,
+        selectedEvent,
+        selectedArtist,
+        selectedOrganization,
+        selectedUserId,
+      },
+    ]);
+
+    if (payload?.event !== undefined) setSelectedEvent(payload.event);
+    if (payload?.artist !== undefined) setSelectedArtist(payload.artist);
+    if (payload?.organization !== undefined) setSelectedOrganization(payload.organization);
+    if (payload?.userId !== undefined) setSelectedUserId(payload.userId);
+    if (payload?.tab) setActiveTab(payload.tab);
+
+    setScreen(nextScreen);
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ screen: nextScreen }, '');
+      }
+    } catch {
+      // Ignore in restricted environments
+    }
+  }, [screen, activeTab, selectedEvent, selectedArtist, selectedOrganization, selectedUserId]);
+
+  const handleGoBack = useCallback(() => {
+    setHistoryStack((prev) => {
+      if (prev.length === 0) {
+        setScreen(activeTab);
+        return [];
+      }
+
+      const nextStack = [...prev];
+      const previous = nextStack.pop()!;
+
+      setScreen(previous.screen);
+      setActiveTab(previous.activeTab);
+      setSelectedEvent(previous.selectedEvent);
+      setSelectedArtist(previous.selectedArtist);
+      setSelectedOrganization(previous.selectedOrganization);
+      setSelectedUserId(previous.selectedUserId);
+
+      return nextStack;
+    });
+
+    if (typeof window !== 'undefined' && window.location.search.includes('event=')) {
+      try {
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch {
+        void 0;
+      }
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      handleGoBack();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [handleGoBack]);
 
   useEffect(() => {
     const handleUpdate = (e: globalThis.Event) => {
@@ -142,18 +229,17 @@ function AppContent() {
   }, []);
 
   const handleEventClick = (event: Event) => {
-    setSelectedEvent(event);
-    setScreen('eventDetail');
+    navigateTo('eventDetail', { event });
   };
 
   const handleBookEvent = useCallback((event: Event) => {
     if (!session) {
       addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
-      setScreen('login');
+      navigateTo('login');
       return;
     }
     setBookingEvent(event);
-  }, [session, addToast]);
+  }, [session, addToast, navigateTo]);
 
   if (loading) {
     return <HomeScreenSkeleton />;
@@ -197,7 +283,7 @@ function AppContent() {
   if (screen === 'forgot') {
     return (
       <>
-        <ForgotPasswordScreen onBack={() => setScreen('login')} onToast={addToast} />
+        <ForgotPasswordScreen onBack={handleGoBack} onToast={addToast} />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
     );
@@ -206,7 +292,7 @@ function AppContent() {
   if (screen === 'otp') {
     return (
       <>
-        <OtpScreen email="user@example.com" onBack={() => setScreen('login')} onVerify={() => setScreen('home')} />
+        <OtpScreen email="user@example.com" onBack={handleGoBack} onVerify={() => setScreen('home')} />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
     );
@@ -217,15 +303,29 @@ function AppContent() {
       <>
         <EventDetailScreen
           event={selectedEvent}
-          onBack={() => {
-            setScreen(activeTab);
-            if (typeof window !== 'undefined' && window.location.search.includes('event=')) {
-              window.history.replaceState({}, '', window.location.pathname);
-            }
-          }}
-          onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
+          onBack={handleGoBack}
+          onArtistClick={(artist) => navigateTo('artistDetail', { artist })}
+          onEditEvent={(event) => navigateTo('editEvent', { event })}
           onBook={handleBookEvent}
-          onOpenAISettings={() => setScreen('aiSettings')}
+          onOpenAISettings={() => navigateTo('aiSettings')}
+          onToast={addToast}
+        />
+        <ToastContainer toasts={toasts} onClose={closeToast} />
+      </>
+    );
+  }
+
+  if (screen === 'editEvent' && selectedEvent) {
+    return (
+      <>
+        <EditEventScreen
+          eventId={selectedEvent.id}
+          onBack={handleGoBack}
+          onSaved={(updatedEvent) => {
+            setSelectedEvent(updatedEvent);
+            addToast({ message: 'Événement mis à jour avec succès', type: 'success' });
+            handleGoBack();
+          }}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -237,7 +337,7 @@ function AppContent() {
     return (
       <>
         <AISettingsScreen
-          onBack={() => setScreen(activeTab)}
+          onBack={handleGoBack}
           onToast={(t) => addToast({ message: t.message, type: t.type || 'info' })}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -250,10 +350,10 @@ function AppContent() {
       <>
         <ArtistDetailScreen
           artist={selectedArtist}
-          onBack={() => setScreen(activeTab)}
-          onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
+          onBack={handleGoBack}
+          onEventClick={(event) => navigateTo('eventDetail', { event })}
           onToast={addToast}
-          onLogin={() => setScreen('login')}
+          onLogin={() => navigateTo('login')}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
@@ -265,10 +365,10 @@ function AppContent() {
       <>
         <OrganizerDetailScreen
           organization={selectedOrganization}
-          onBack={() => setScreen(activeTab)}
-          onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
+          onBack={handleGoBack}
+          onEventClick={(event) => navigateTo('eventDetail', { event })}
           onToast={addToast}
-          onLogin={() => setScreen('login')}
+          onLogin={() => navigateTo('login')}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
@@ -279,7 +379,7 @@ function AppContent() {
     return (
       <>
         <NotificationsScreen
-          onBack={() => setScreen(activeTab)}
+          onBack={handleGoBack}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -291,7 +391,7 @@ function AppContent() {
     return (
       <>
         <NotificationSettingsScreen
-          onBack={() => setScreen(activeTab)}
+          onBack={handleGoBack}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -303,10 +403,10 @@ function AppContent() {
     return (
       <>
         <SubscriptionsScreen
-          onBack={() => setScreen(activeTab)}
-          onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-          onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
-          onUserClick={(profile) => { setSelectedUserId(profile.id); setScreen('userProfile'); }}
+          onBack={handleGoBack}
+          onArtistClick={(artist) => navigateTo('artistDetail', { artist })}
+          onOrganizationClick={(org) => navigateTo('organizerDetail', { organization: org })}
+          onUserClick={(profile) => navigateTo('userProfile', { userId: profile.id })}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
@@ -318,7 +418,7 @@ function AppContent() {
       <>
         <UserProfileScreen
           userId={selectedUserId}
-          onBack={() => setScreen(activeTab)}
+          onBack={handleGoBack}
           onEventClick={handleEventClick}
           onToast={addToast}
         />
@@ -331,8 +431,9 @@ function AppContent() {
     return (
       <>
         <OrganizerDashboardScreen
-          onBack={() => setScreen('profile')}
-          onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
+          onBack={handleGoBack}
+          onEventClick={(event) => navigateTo('eventDetail', { event })}
+          onEditEvent={(event) => navigateTo('editEvent', { event })}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -341,11 +442,33 @@ function AppContent() {
   }
 
   if (screen === 'createEvent') {
+    if (!canCreate) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-[#6600FF] mb-4">
+            <TicketIcon className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-[#17131D] dark:text-white mb-2">
+            Espace Créateur Réservé
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mb-6">
+            La publication d'événements est réservée aux comptes Organisateurs et Artistes vérifiés.
+          </p>
+          <button
+            type="button"
+            onClick={handleGoBack}
+            className="btn-purple px-6 py-2.5 text-xs font-bold cursor-pointer"
+          >
+            Retour
+          </button>
+        </div>
+      );
+    }
     return (
       <>
         <CreateEventScreen
-          onBack={() => setScreen('home')}
-          onCreated={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
+          onBack={handleGoBack}
+          onCreated={(event) => { setSelectedEvent(event); navigateTo('eventDetail', { event }); }}
           onToast={addToast}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
@@ -356,9 +479,8 @@ function AppContent() {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     setScreen(tab);
+    setHistoryStack([]);
   };
-
-  const canCreate = !!(user && (user.role === 'organizer' || user.role === 'artist'));
 
   return (
     <>
@@ -368,12 +490,12 @@ function AppContent() {
             onEventClick={handleEventClick}
             onBookEvent={handleBookEvent}
             onSearchClick={() => { setActiveTab('explore'); setScreen('explore'); }}
-            onOpenNotifications={() => setScreen('notifications')}
+            onOpenNotifications={() => navigateTo('notifications')}
             onProfileClick={() => { setActiveTab('profile'); setScreen('profile'); }}
-            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
+            onArtistClick={(artist) => navigateTo('artistDetail', { artist })}
+            onOrganizationClick={(org) => navigateTo('organizerDetail', { organization: org })}
             onOpenAIAssistant={() => setAiAssistantOpen(true)}
-            onOpenAISettings={() => setScreen('aiSettings')}
+            onOpenAISettings={() => navigateTo('aiSettings')}
             onOpenSettings={() => setSettingsModalOpen(true)}
             onToast={addToast}
           />
@@ -382,26 +504,26 @@ function AppContent() {
           <ExploreScreen onEventClick={handleEventClick} />
         </div>
         <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
-          <TicketsScreen onEventClick={handleEventClick} onLogin={() => setScreen('login')} onToast={addToast} />
+          <TicketsScreen onEventClick={handleEventClick} onLogin={() => navigateTo('login')} onToast={addToast} />
         </div>
         <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
           <FavoritesScreen
             onEventClick={handleEventClick}
-            onLogin={() => setScreen('login')}
-            onArtistClick={(artist) => { setSelectedArtist(artist); setScreen('artistDetail'); }}
-            onOrganizationClick={(org) => { setSelectedOrganization(org); setScreen('organizerDetail'); }}
+            onLogin={() => navigateTo('login')}
+            onArtistClick={(artist) => navigateTo('artistDetail', { artist })}
+            onOrganizationClick={(org) => navigateTo('organizerDetail', { organization: org })}
           />
         </div>
         <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
           <ProfileScreen
             onEventClick={handleEventClick}
-            onLogin={() => setScreen('login')}
-            onOrganizerDashboard={() => setScreen('organizerDashboard')}
-            onOpenNotifications={() => setScreen('notifications')}
-            onOpenNotificationSettings={() => setScreen('notificationSettings')}
-            onOpenSubscriptions={() => setScreen('subscriptions')}
+            onLogin={() => navigateTo('login')}
+            onOrganizerDashboard={() => navigateTo('organizerDashboard')}
+            onOpenNotifications={() => navigateTo('notifications')}
+            onOpenNotificationSettings={() => navigateTo('notificationSettings')}
+            onOpenSubscriptions={() => navigateTo('subscriptions')}
             onOpenTickets={() => handleTabChange('tickets')}
-            onOpenAISettings={() => setScreen('aiSettings')}
+            onOpenAISettings={() => navigateTo('aiSettings')}
             onToast={addToast}
           />
         </div>
@@ -412,9 +534,9 @@ function AppContent() {
         onCreate={() => {
           if (!session) {
             addToast({ message: 'Connectez-vous pour créer un événement', type: 'info' });
-            setScreen('login');
+            navigateTo('login');
           } else {
-            setScreen('createEvent');
+            navigateTo('createEvent');
           }
         }}
         canCreate={canCreate}
@@ -433,7 +555,7 @@ function AppContent() {
         onClose={() => setAiAssistantOpen(false)}
         onOpenSettings={() => {
           setAiAssistantOpen(false);
-          setScreen('aiSettings');
+          navigateTo('aiSettings');
         }}
       />
       <SettingsModal
@@ -441,15 +563,15 @@ function AppContent() {
         onClose={() => setSettingsModalOpen(false)}
         onOpenAISettings={() => {
           setSettingsModalOpen(false);
-          setScreen('aiSettings');
+          navigateTo('aiSettings');
         }}
         onOpenNotifications={() => {
           setSettingsModalOpen(false);
-          setScreen('notifications');
+          navigateTo('notifications');
         }}
         onOpenNotificationSettings={() => {
           setSettingsModalOpen(false);
-          setScreen('notificationSettings');
+          navigateTo('notificationSettings');
         }}
         onEditProfile={() => {
           setSettingsModalOpen(false);

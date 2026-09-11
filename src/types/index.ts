@@ -85,6 +85,8 @@ export interface Event {
   category: EventCategory;
   cover_url: string | null;
   images: string[];
+  video_url?: string | null;
+  allow_comments?: boolean;
   location_name: string;
   location_address: string | null;
   city: string;

@@ -38,7 +38,10 @@ export function SettingsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg bg-[#F8F7FC] dark:bg-[#12111D] rounded-t-[2.5rem] sm:rounded-[2.5rem] max-h-[90vh] flex flex-col shadow-2xl border border-black/10 dark:border-white/10 overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
@@ -309,7 +312,37 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
                 <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
-                  v3.3.1 · Error Boundary & Resilience Patch
+                  v3.5.0 · Back-Stack Router & Full Event Studio
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Routage & Navigation</span>
+                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
+                  Pile d'historique contextuelle (Back Stack) + Sync popstate natif
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Gestion Événement</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Édition complète (billetterie, collabs, lieu, dates, médias vidéo/photos)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Fiche Événement iOS 27</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Aura frosted glass, lecteur vidéo, galerie, pass & dispo temps réel
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Navigation Dock</span>
+                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
+                  Apple iOS 27 Fluid Dock (Stacking z-index & auto-hide sous modals)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Recherche & Explorer</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  En-tête unifiée (Favoris/Billets) + Taxonomie Home avec icônes Lucide
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -372,7 +405,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaïgbancê v3.3 · Web Share Natif & Deep Linking
+              Gbaïgbancê v3.5.0 · Apple iOS 27 Fluid Experience
             </p>
           </div>
         </div>

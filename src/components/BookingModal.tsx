@@ -7,11 +7,12 @@ import type { Event, TicketOption } from '@/types';
 interface BookingModalProps {
   open: boolean;
   event: Event | null;
+  initialOptionId?: string | null;
   onClose: () => void;
   onSuccess: (qrCode: string) => void;
 }
 
-export function BookingModal({ open, event, onClose, onSuccess }: BookingModalProps) {
+export function BookingModal({ open, event, initialOptionId, onClose, onSuccess }: BookingModalProps) {
   const [options, setOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -30,7 +31,8 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
       .then((data) => {
         if (data && data.length > 0) {
           setOptions(data);
-          setSelectedOption(data[0]);
+          const matched = initialOptionId ? data.find((o) => o.id === initialOptionId) : null;
+          setSelectedOption(matched || data[0]);
         } else {
           setOptions([]);
           setSelectedOption(null);
@@ -42,7 +44,7 @@ export function BookingModal({ open, event, onClose, onSuccess }: BookingModalPr
         setSelectedOption(null);
       })
       .finally(() => setLoading(false));
-  }, [event]);
+  }, [event, initialOptionId]);
 
   useEffect(() => {
     if (!open || !event) return;

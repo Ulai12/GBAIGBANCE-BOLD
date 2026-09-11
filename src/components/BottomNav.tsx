@@ -7,30 +7,22 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { prefetchCreateEvent } from '@/utils/prefetchRoutes';
+import { useApp } from '@/hooks/useApp';
 
 /**
- * GBAIGBANCE — Bottom Navigation
+ * GBAIGBANCE — Navigation Dock (iOS 27 Fluid Architecture)
  *
- * Architecture inspirée de l'approche iOS 26 :
+ * Logique de rôle & ergonomie psychologique :
+ * - Participants (canCreate === false) :
+ *   Dock équilibré à 4 destinations réparties à 25% chacune :
+ *   [Accueil] [Explorer] [Billets] [Favoris]
  *
- * ┌──────────────────────────────────────────┐
- * │   Home    Explore    Tickets    Favorites│  ← navigation
- * └──────────────────────────────────────────┘
- *                    ╭──────╮
- *                    │  ＋   │                 ← action
- *                    ╰──────╯
- *
- * Le bouton "+" n'est PAS une destination de navigation.
- * Il est traité comme une action indépendante, flottante
- * au-dessus de la Tab Bar.
- *
- * Conséquences :
- * - 4 onglets toujours parfaitement répartis ;
- * - aucune colonne réservée au "+" ;
- * - aucun "trou" lorsque canCreate === false ;
- * - le layout de la navigation reste identique selon le rôle ;
- * - l'action de création peut être ajoutée/retirée sans
- *   provoquer de déplacement brutal des onglets.
+ * - Créateurs & Artistes (canCreate === true) :
+ *   Dock intégré à 5 colonnes avec le joyau d'action central dédié :
+ *   [Accueil] [Explorer] [  (＋) Créer  ] [Billets] [Favoris]
+ *   Le bouton central n'est PLUS superposé à l'aveugle sur les autres onglets.
+ *   Il possède sa propre colonne, sa propre zone tactile et une élévation
+ *   organique Apple Liquid Glass.
  */
 
 type Tab =
@@ -51,39 +43,37 @@ interface BottomNavProps {
 interface NavItem {
   id: Tab;
   icon: typeof Home;
-  label: string;
+  labelFr: string;
+  labelEn: string;
 }
 
-/**
- * Navigation principale.
- *
- * IMPORTANT :
- * Le bouton profile n'est volontairement pas ajouté ici,
- * car ton système actuel utilise quatre destinations principales.
- *
- * Si "profile" doit devenir un onglet principal plus tard,
- * ajoute-le ici et passe la navigation à 5 items.
- */
-const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS_LEFT: NavItem[] = [
   {
     id: 'home',
     icon: Home,
-    label: 'Accueil',
+    labelFr: 'Accueil',
+    labelEn: 'Home',
   },
   {
     id: 'explore',
     icon: Search,
-    label: 'Explorer',
+    labelFr: 'Explorer',
+    labelEn: 'Explore',
   },
+];
+
+const NAV_ITEMS_RIGHT: NavItem[] = [
   {
     id: 'tickets',
     icon: Ticket,
-    label: 'Billets',
+    labelFr: 'Billets',
+    labelEn: 'Tickets',
   },
   {
     id: 'favorites',
     icon: Heart,
-    label: 'Favoris',
+    labelFr: 'Favoris',
+    labelEn: 'Favorites',
   },
 ];
 
@@ -94,30 +84,16 @@ export function BottomNav({
   ticketCount = 0,
   canCreate = false,
 }: BottomNavProps) {
-  /**
-   * Permet de donner un retour tactile visuel immédiat
-   * sans dépendre d'une grosse animation.
-   */
+  const { language, theme } = useApp();
   const [pressed, setPressed] = useState<string | null>(null);
+  const isDark = theme === 'dark';
 
-  /**
-   * Rend un onglet de navigation.
-   *
-   * Chaque item occupe exactement la même largeur :
-   *
-   * 25% | 25% | 25% | 25%
-   *
-   * Le bouton "+" ne participe jamais à ce calcul.
-   */
-  const renderNavItem = (item: NavItem) => {
+  const renderTabButton = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = active === item.id;
     const isPressed = pressed === item.id;
+    const label = language === 'en' ? item.labelEn : item.labelFr;
 
-    /**
-     * Le badge est affiché uniquement lorsqu'il y a
-     * effectivement quelque chose de nouveau à signaler.
-     */
     const showTicketBadge =
       item.id === 'tickets' &&
       ticketCount > 0 &&
@@ -132,539 +108,176 @@ export function BottomNav({
         onPointerUp={() => setPressed(null)}
         onPointerCancel={() => setPressed(null)}
         onPointerLeave={() => setPressed(null)}
-        aria-label={item.label}
+        aria-label={label}
         aria-current={isActive ? 'page' : undefined}
         className={[
-          'relative',
-          'flex-1',
-          'min-w-0',
-          'h-auto',
-          'flex',
-          'items-center',
-          'justify-center',
-          'rounded-full',
-          'transition-all',
-          'duration-300',
-          'ease-[cubic-bezier(.22,1,.36,1)]',
-          'touch-manipulation',
+          'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-2xl select-none',
+          'touch-manipulation transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] cursor-pointer',
           isPressed ? 'scale-[0.91]' : 'scale-100',
         ].join(' ')}
       >
-        {/*
-          ------------------------------------------------------------
-          INDICATEUR ACTIF
-          ------------------------------------------------------------
-
-          On utilise une petite capsule Liquid Glass à l'intérieur
-          de la Tab Bar plutôt qu'une grosse zone violette occupant
-          toute la hauteur de la navigation.
-        */}
+        {/* Capsule active Liquid Glass */}
         <span
           aria-hidden="true"
           className={[
-            'absolute',
-            'inset-[3px]',
-            'rounded-full',
-            'pointer-events-none',
-            'transition-all',
-            'duration-300',
-            'ease-[cubic-bezier(.22,1,.36,1)]',
+            'absolute inset-x-1 inset-y-1 rounded-xl pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
             isActive
               ? 'opacity-100 scale-100'
-              : 'opacity-0 scale-[0.72]',
+              : 'opacity-0 scale-75',
           ].join(' ')}
           style={{
-            background: isActive
-              ? 'linear-gradient(145deg, rgba(139,92,246,0.96), rgba(102,0,255,0.92))'
-              : 'transparent',
-
-            border: isActive
-              ? '1px solid rgba(255,255,255,0.38)'
-              : '1px solid transparent',
-
-            boxShadow: isActive
-              ? [
-                  '0 7px 18px rgba(102,0,255,0.18)',
-                  'inset 0 1px 0 rgba(255,255,255,0.46)',
-                  'inset 0 -2px 5px rgba(45,0,95,0.10)',
-                ].join(', ')
-              : 'none',
+            background: isDark
+              ? 'linear-gradient(145deg, rgba(102,0,255,0.40), rgba(139,92,246,0.25))'
+              : 'linear-gradient(145deg, rgba(102,0,255,0.12), rgba(139,92,246,0.06))',
+            border: isDark
+              ? '1px solid rgba(255,255,255,0.14)'
+              : '1px solid rgba(102,0,255,0.18)',
+            boxShadow: isDark
+              ? '0 4px 14px rgba(102,0,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)'
+              : '0 4px 12px rgba(102,0,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8)',
           }}
         />
 
-        {/*
-          ------------------------------------------------------------
-          HALO TRÈS LÉGER
-          ------------------------------------------------------------
-
-          Donne de la profondeur à l'état actif sans tomber
-          dans l'effet "neon glow".
-        */}
-        <span
-          aria-hidden="true"
-          className={[
-            'absolute',
-            'inset-[-5px]',
-            'rounded-full',
-            'pointer-events-none',
-            'transition-opacity',
-            'duration-500',
-            isActive
-              ? 'opacity-100'
-              : 'opacity-0',
-          ].join(' ')}
-          style={{
-            background:
-              'radial-gradient(circle, rgba(102,0,255,0.13), transparent 68%)',
-            filter: 'blur(9px)',
-          }}
-        />
-
-        {/*
-          ------------------------------------------------------------
-          ICÔNE
-          ------------------------------------------------------------
-        */}
-        <Icon
-          className={[
-            'font-weight:900',
-            'relative',
-            'z-10',
-            'w-[22px]',
-            'h-[22px]',
-            'transition-all',
-            'duration-300',
-            'ease-[cubic-bezier(.22,1,.36,1)]',
-            isActive
-              ? 'text-white scale-[1.04]'
-              : 'text-black/70 scale-100 group-hover:text-zinc-800',
-          ].join(' ')}
-          strokeWidth={isActive ? 4 : 2.70}
-          fill={
-            isActive && item.id === 'home'
-              ? 'currentColor'
-              : 'none'
-          }
-        />
-
-        {/*
-          ------------------------------------------------------------
-          BADGE BILLETS
-          ------------------------------------------------------------
-
-          Le badge est indépendant de l'état actif.
-          Il ne change donc jamais la géométrie de la Tab Bar.
-        */}
-        {showTicketBadge && (
+        {/* Halo ambiant actif */}
+        {isActive && (
           <span
-            aria-label={`${ticketCount} billet${
-              ticketCount > 1 ? 's' : ''
-            }`}
-            className="absolute top-[7px] right-[24%] z-20"
-          >
-            <span
-              className="block w-[9px] h-[9px] rounded-full"
-              style={{
-                background: '#FF3B30',
-                border:
-                  '2px solid rgba(255,255,255,0.96)',
-                boxShadow:
-                  '0 2px 7px rgba(255,59,48,0.25)',
-              }}
-            />
-          </span>
+            aria-hidden="true"
+            className="absolute -inset-1 rounded-full pointer-events-none blur-md transition-opacity duration-300"
+            style={{
+              background: 'radial-gradient(circle, rgba(102,0,255,0.20), transparent 70%)',
+            }}
+          />
         )}
 
-        {/*
-          ------------------------------------------------------------
-          TOOLTIP DESKTOP
-          ------------------------------------------------------------
+        {/* Conteneur d'icône & badge */}
+        <div className="relative z-10 flex items-center justify-center">
+          <Icon
+            className={[
+              'w-5 h-5 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+              isActive
+                ? 'text-[#6600FF] dark:text-purple-300 scale-110'
+                : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200',
+            ].join(' ')}
+            strokeWidth={isActive ? 2.5 : 2}
+            fill={isActive && (item.id === 'home' || item.id === 'favorites') ? 'currentColor' : 'none'}
+          />
 
-          Invisible sur mobile.
-        */}
+          {showTicketBadge && (
+            <span
+              aria-label={`${ticketCount} billet${ticketCount > 1 ? 's' : ''}`}
+              className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5"
+            >
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 ring-2 ring-white dark:ring-[#14121E]" />
+            </span>
+          )}
+        </div>
+
+        {/* Micro-label ergonomique */}
         <span
           className={[
-            'pointer-events-none',
-            'absolute',
-            'bottom-[calc(100%+12px)]',
-            'left-1/2',
-            '-translate-x-1/2',
-            'whitespace-nowrap',
-            'rounded-full',
-            'px-3',
-            'py-1.5',
-            'text-[11px]',
-            'font-semibold',
-            'opacity-0',
-            'translate-y-1',
-            'group-hover:opacity-100',
-            'group-hover:translate-y-0',
-            'transition-all',
-            'duration-200',
-            'hidden',
-            'md:block',
+            'relative z-10 mt-1 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
+            isActive
+              ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
+              : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300',
           ].join(' ')}
-          style={{
-            background:
-              'rgba(26,26,32,0.88)',
-            color: '#FFFFFF',
-            boxShadow:
-              '0 8px 24px rgba(0,0,0,0.14)',
-            backdropFilter:
-              'blur(14px)',
-            WebkitBackdropFilter:
-              'blur(14px)',
-          }}
         >
-          {item.label}
+          {label}
         </span>
       </button>
     );
   };
 
+  const createLabel = language === 'en' ? 'Create' : 'Créer';
+
   return (
-    <>
-      <style>
-        {`
-          /*
-           * =========================================================
-           * CREATE ACTION — iOS 26 INSPIRED MOTION
-           * =========================================================
-           *
-           * Le bouton de création reste subtilement "vivant".
-           * Il ne pulse pas rapidement : le mouvement doit donner
-           * une sensation de matériau, pas attirer constamment
-           * l'attention de l'utilisateur.
-           */
-
-          @keyframes gbaigbanceCreateBreathing {
-            0%,
-            100% {
-              transform:
-                translate(-50%, -50%)
-                scale(1);
-            }
-
-            50% {
-              transform:
-                translate(-50%, -50%)
-                scale(1.025);
-            }
-          }
-
-          /*
-           * Reflet spéculaire.
-           *
-           * Le reflet passe lentement sur la surface du bouton
-           * comme une lumière qui glisse sur du verre.
-           */
-          @keyframes gbaigbanceCreateReflection {
-            0% {
-              transform:
-                translateX(-160%)
-                rotate(20deg);
-              opacity: 0;
-            }
-
-            20% {
-              opacity: 0.28;
-            }
-
-            50% {
-              opacity: 0.08;
-            }
-
-            100% {
-              transform:
-                translateX(190%)
-                rotate(20deg);
-              opacity: 0;
-            }
-          }
-
-          /*
-           * Petite rotation du "+" lorsque l'utilisateur survole
-           * le bouton sur desktop.
-           */
-          @keyframes gbaigbancePlusHover {
-            from {
-              transform:
-                rotate(0deg)
-                scale(1);
-            }
-
-            to {
-              transform:
-                rotate(90deg)
-                scale(1.04);
-            }
-          }
-
-          /*
-           * Accessibilité :
-           * les animations sont réduites lorsque le système demande
-           * explicitement moins de mouvement.
-           */
-          @media (prefers-reduced-motion: reduce) {
-            .gbaigbance-create-motion,
-            .gbaigbance-create-reflection {
-              animation: none !important;
-              transition-duration: 0.01ms !important;
-            }
-          }
-        `}
-      </style>
-
-      {/*
-        ==============================================================
-        CONTENEUR DE NAVIGATION
-        ==============================================================
-
-        La barre est flottante au-dessus du contenu.
-        On ne l'étend volontairement PAS jusqu'aux bords de l'écran :
-        cela donne une lecture plus proche d'une surface système
-        flottante que d'une barre web collée au viewport.
-      */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
-        <nav
-          aria-label="Navigation principale"
-          className={[
-            'relative',
-            'pointer-events-auto',
-            'w-[calc(100%-96px)]',
-            'max-w-[auto]',
-            'h-[64px]',
-            'mb-[10px]',
-            'px-[5px]',
-            'py-[5px]',
-            'rounded-[39px]',
-            'flex',
-            'items-center',
-            'transition-all',
-            'duration-500',
-          ].join(' ')}
+    <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-2.5">
+      <nav
+        aria-label="Navigation principale"
+        className={[
+          'relative pointer-events-auto w-full max-w-md h-[68px] px-2 py-1.5 rounded-[2.25rem]',
+          'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
+        ].join(' ')}
+        style={{
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(24,21,36,0.88), rgba(16,14,26,0.95))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,243,255,0.85))',
+          border: isDark
+            ? '1px solid rgba(255,255,255,0.10)'
+            : '1px solid rgba(255,255,255,0.85)',
+          boxShadow: isDark
+            ? '0 16px 40px rgba(0,0,0,0.45), 0 4px 12px rgba(102,0,255,0.15), inset 0 1px 0 rgba(255,255,255,0.15)'
+            : '0 16px 36px rgba(102,0,255,0.12), 0 4px 14px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)',
+          marginBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
+        {/* Filet de lumière supérieur */}
+        <span
+          aria-hidden="true"
+          className="absolute left-[12%] right-[12%] top-0 h-px rounded-full pointer-events-none"
           style={{
-            /*
-             * --------------------------------------------------------
-             * LIQUID GLASS
-             * --------------------------------------------------------
-             *
-             * On réutilise les variables globales lorsqu'elles
-             * existent dans l'index.css de GBAIGBANCE.
-             *
-             * Aucun violet ici :
-             * le matériau lui-même doit rester neutre.
-             */
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.74), rgba(255,255,255,0.47))',
-
-            border:
-              '1px solid rgba(255,255,255,0.80)',
-
-            backdropFilter:
-              'blur(5px) saturate(1.35)',
-
-            WebkitBackdropFilter:
-              'blur(5px) saturate(1.35)',
-
-            boxShadow: [
-              '0 22px 60px rgba(38,20,70,0.16)',
-              '0 5px 18px rgba(38,20,70,0.07)',
-              'inset 0 1px 0 rgba(255,255,255,0.96)',
-              'inset 0 -1px 0 rgba(255,255,255,0.28)',
-            ].join(', '),
-
-            /*
-             * La safe area ne modifie pas la géométrie interne.
-             */
-            marginBottom:
-              'calc(10px + env(safe-area-inset-bottom))',
+            background: isDark
+              ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)'
+              : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
           }}
-        >
-          {/*
-            ==========================================================
-            HIGHLIGHT SUPÉRIEUR
-            ==========================================================
+        />
 
-            Une seule ligne de lumière.
-            Cela permet de comprendre immédiatement que la surface
-            est translucide.
-          */}
-          <span
-            aria-hidden="true"
-            className="absolute left-[15%] right-[15%] top-0 h-px rounded-full pointer-events-none"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, rgba(255,255,255,0.92), transparent)',
-            }}
-          />
+        {/* Grille dynamique proportionnée */}
+        <div className={`w-full h-full grid ${canCreate ? 'grid-cols-5' : 'grid-cols-4'} items-center gap-1`}>
+          {NAV_ITEMS_LEFT.map(renderTabButton)}
 
-          {/*
-            ==========================================================
-            NAVIGATION — TOUJOURS 4 ITEMS
-            ==========================================================
-
-            C'est le cœur de la correction.
-
-            Le grid reste 4 colonnes dans TOUS les rôles :
-
-            ┌────┬────┬────┬────┐
-            │ 25 │ 25 │ 25 │ 25 │
-            └────┴────┴────┴────┘
-
-            Le "+" n'occupe aucune de ces colonnes.
-          */}
-          <div
-            className="grid grid-cols-4 w-full h-full gap-[2px]"
-          >
-            {NAV_ITEMS.map(renderNavItem)}
-          </div>
-
-          {/*
-            ==========================================================
-            CREATE ACTION / TAB BAR ACCESSORY
-            ==========================================================
-
-            Le bouton est un ACCESSOIRE FLOATING.
-            Il est positionné en dehors du flux du grid.
-
-            Donc :
-              canCreate = true
-                → les 4 onglets gardent exactement leur géométrie
-
-              canCreate = false
-                → le bouton disparaît complètement
-
-            AUCUN espace blanc.
-            AUCUNE colonne fantôme.
-            AUCUN déplacement des onglets.
-          */}
+          {/* Bouton Créer intégré (Uniquement si Organisateur ou Artiste) */}
           {canCreate && (
-            <button
-              type="button"
-              onClick={onCreate}
-              onMouseEnter={prefetchCreateEvent}
-              onTouchStart={prefetchCreateEvent}
-              onPointerDown={() => setPressed('create')}
-              onPointerUp={() => setPressed(null)}
-              onPointerCancel={() => setPressed(null)}
-              onPointerLeave={() => setPressed(null)}
-              aria-label="Créer un événement"
-              className={[
-                'gbaigbance-create-motion',
-                'group',
-                'absolute',
-                'left-1/2',
-                'top-[50%]',
-                '-translate-x-1/2',
-                '-translate-y-1/2',
-                'w-[56px]',
-                'h-[56px]',
-                'rounded-full',
-                'z-40',
-                'flex',
-                'items-center',
-                'justify-center',
-                'overflow-hidden',
-                'touch-manipulation',
-                'transition-all',
-                'duration-250',
-                'ease-[cubic-bezier(.22,1,.36,1)]',
-                pressed === 'create'
-                  ? 'scale-[0.86]'
-                  : 'scale-100',
-              ].join(' ')}
-              style={{
-                /*
-                 * Couleur réservée exclusivement à l'action primaire.
-                 */
-                background:
-                  'linear-gradient(145deg, #8B5CF6 0%, #6600FF 48%, #5500D4 100%)',
-
-                border:
-                  '1px solid rgba(255,255,255,0.44)',
-
-                boxShadow: [
-                  '0 14px 34px rgba(102,0,255,0.34)',
-                  '0 5px 13px rgba(102,0,255,0.14)',
-                  'inset 0 1px 0 rgba(255,255,255,0.52)',
-                  'inset 0 -5px 10px rgba(40,0,95,0.12)',
-                ].join(', '),
-
-                animation:
-                  'gbaigbanceCreateBreathing 4.8s ease-in-out infinite',
-              }}
-            >
-              {/*
-                Halo externe.
-              */}
-              <span
-                aria-hidden="true"
-                className="absolute inset-[-16px] rounded-full pointer-events-none"
-                style={{
-                  background:
-                    'radial-gradient(circle, rgba(124,58,237,0.24), transparent 68%)',
-                  filter: 'blur(14px)',
-                }}
-              />
-
-              {/*
-                Reflet animé du Liquid Glass.
-              */}
-              <span
-                aria-hidden="true"
-                className="gbaigbance-create-reflection absolute top-[-80%] left-0 w-[52%] h-[260%] pointer-events-none"
-                style={{
-                  background:
-                    'linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent)',
-                  animation:
-                    'gbaigbanceCreateReflection 5s ease-in-out infinite',
-                }}
-              />
-
-              {/*
-                Lentille interne.
-                Elle donne au "+" une profondeur supplémentaire.
-              */}
-              <span
+            <div className="flex flex-col items-center justify-center h-full px-0.5">
+              <button
+                type="button"
+                onClick={onCreate}
+                onMouseEnter={prefetchCreateEvent}
+                onTouchStart={prefetchCreateEvent}
+                onPointerDown={() => setPressed('create')}
+                onPointerUp={() => setPressed(null)}
+                onPointerCancel={() => setPressed(null)}
+                onPointerLeave={() => setPressed(null)}
+                aria-label={createLabel}
                 className={[
-                  'relative',
-                  'z-10',
-                  'w-[37px]',
-                  'h-[37px]',
-                  'rounded-full',
-                  'flex',
-                  'items-center',
-                  'justify-center',
-                  'transition-all',
-                  'duration-300',
-                  'ease-[cubic-bezier(.22,1,.36,1)]',
+                  'group relative w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer select-none',
+                  'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
                   pressed === 'create'
-                    ? 'scale-[0.90] rotate-[135deg]'
-                    : 'scale-100 rotate-0',
-                  'group-hover:scale-[1.05]',
-                  'group-hover:rotate-90',
+                    ? 'scale-[0.88] brightness-90'
+                    : 'scale-100 hover:scale-105 active:scale-95',
                 ].join(' ')}
                 style={{
-                  background:
-                    'rgba(255,255,255,0.13)',
-
-                  border:
-                    '1px solid rgba(255,255,255,0.22)',
-
-                  boxShadow:
-                    'inset 0 1px 0 rgba(255,255,255,0.22)',
+                  background: 'linear-gradient(135deg, #7C3AED 0%, #6600FF 55%, #4C1D95 100%)',
+                  boxShadow: isDark
+                    ? '0 6px 18px rgba(102,0,255,0.40), inset 0 1px 0 rgba(255,255,255,0.45)'
+                    : '0 6px 16px rgba(102,0,255,0.30), inset 0 1px 0 rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.35)',
                 }}
               >
-                <Plus
-                  className="w-[23px] h-[23px] text-white"
-                  strokeWidth={2.45}
+                {/* Lueur d'ambiance */}
+                <span
+                  aria-hidden="true"
+                  className="absolute -inset-1 rounded-2xl pointer-events-none opacity-60 blur-md"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)',
+                  }}
                 />
+
+                <Plus
+                  className="w-5 h-5 text-white transition-transform duration-300 group-hover:rotate-90"
+                  strokeWidth={2.6}
+                />
+              </button>
+
+              <span className="text-[9px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
+                {createLabel}
               </span>
-            </button>
+            </div>
           )}
-        </nav>
-      </div>
-    </>
+
+          {NAV_ITEMS_RIGHT.map(renderTabButton)}
+        </div>
+      </nav>
+    </div>
   );
 }

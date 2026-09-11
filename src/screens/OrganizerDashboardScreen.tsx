@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
-import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings } from 'lucide-react';
+import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3 } from 'lucide-react';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
@@ -15,11 +15,16 @@ import { EventManagementModal } from '@/components/EventManagementModal';
 import type { Event, EventCategory, Artist, Organization } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
-interface OrganizerDashboardScreenProps { onBack: () => void; onEventClick: (event: Event) => void; onToast: (toast: Omit<ToastData, 'id'>) => void; }
+interface OrganizerDashboardScreenProps {
+  onBack: () => void;
+  onEventClick: (event: Event) => void;
+  onEditEvent?: (event: Event) => void;
+  onToast: (toast: Omit<ToastData, 'id'>) => void;
+}
 type CollabType = 'artist' | 'organizer';
 interface SelectedCollab { user_id: string; name: string; role: 'co_organizer' | 'performer'; type: CollabType; }
 
-export function OrganizerDashboardScreen({ onBack, onEventClick, onToast }: OrganizerDashboardScreenProps) {
+export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, onToast }: OrganizerDashboardScreenProps) {
   const { user, t } = useApp();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,9 +168,23 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onToast }: Orga
                     {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
                   </div>
                 </div>
+                {onEditEvent && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                    aria-label="Modifier l'événement"
+                    title="Modifier l'événement"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                )}
                 <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); setManageTarget(event); }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                  aria-label="Programme et Sponsors"
+                  title="Programme et Sponsors"
                 >
                   <Settings className="w-4 h-4" />
                 </button>

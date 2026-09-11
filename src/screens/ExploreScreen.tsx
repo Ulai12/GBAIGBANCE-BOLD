@@ -1,6 +1,21 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
-import { SlidersHorizontal, MapPin, Search, X } from 'lucide-react';
+import {
+  SlidersHorizontal,
+  MapPin,
+  Search,
+  X,
+  Sparkles,
+  Music,
+  PartyPopper,
+  Mic,
+  GraduationCap,
+  Palette,
+  Theater,
+  Landmark,
+  Lock,
+  type LucideIcon,
+} from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -14,6 +29,17 @@ import type { Event, EventCategory } from '@/types';
 interface ExploreScreenProps {
   onEventClick: (event: Event) => void;
 }
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Music,
+  PartyPopper,
+  Mic,
+  GraduationCap,
+  Palette,
+  Theater,
+  Landmark,
+  Lock,
+};
 
 let exploreCache: Event[] | null = null;
 
@@ -85,84 +111,94 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
 
   return (
     <div className="min-h-screen pb-32">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-30 px-5 pt-7 pb-4 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-2xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="max-w-md mx-auto space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-                Recherche & Découverte
-              </p>
-              <h1 className="mt-0.5 text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
-                Explorer
-              </h1>
-            </div>
+      {/* Header — Coherent with Favorites & Tickets */}
+      <div className="px-5 pt-8 pb-3">
+        <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
+          Recherche & Découverte
+        </p>
+        <div className="flex items-center justify-between mt-1">
+          <h1 className="text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
+            Explorer
+          </h1>
+          <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
+            {events.length} {events.length > 1 ? 'événements' : 'événement'}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Trouvez les meilleurs concerts, festivals, spectacles et sorties près de chez vous
+        </p>
+      </div>
+
+      {/* Barre de recherche iOS & Bouton Filtres */}
+      <div className="px-5 mt-2 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Événement, artiste, lieu, ambiance..."
+            className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] text-xs font-semibold text-[#17131D] dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 shadow-xs"
+          />
+          {query && (
             <button
               type="button"
-              onClick={() => setShowFilters(true)}
-              className="w-11 h-11 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.1] shadow-xs flex items-center justify-center relative active:scale-95 transition-transform"
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
             >
-              <SlidersHorizontal className="w-5 h-5 text-[#6600FF] dark:text-[#A78BFA]" />
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#6600FF] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                  {activeFiltersCount}
-                </span>
-              )}
+              <X className="w-3.5 h-3.5" />
             </button>
-          </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(true)}
+          className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs flex items-center justify-center relative active:scale-95 transition-transform shrink-0 cursor-pointer"
+          aria-label="Filtres avancés"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-[#6600FF] dark:text-[#A78BFA]" />
+          {activeFiltersCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#6600FF] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              {activeFiltersCount}
+            </span>
+          )}
+        </button>
+      </div>
 
-          {/* Search bar input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Événement, artiste, lieu, ambiance..."
-              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-gray-100/80 dark:bg-white/10 border border-black/[0.05] dark:border-white/[0.08] text-xs font-bold text-[#17131D] dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 shadow-xs"
-            />
-            {query && (
+      {/* Catégories harmonisées avec Home Screen (Icônes + Libellés) */}
+      <div className="px-5 mt-3">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory(null)}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              selectedCategory === null
+                ? 'bg-[#6600FF] text-white shadow-xs'
+                : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Tous</span>
+          </button>
+          {EVENT_CATEGORIES.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.icon] || Music;
+            const isActive = selectedCategory === cat.value;
+            return (
               <button
+                key={cat.value}
                 type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-[#6600FF] text-white shadow-xs'
+                    : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+                }`}
               >
-                <X className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
+                <span>{t('events', `categories.${cat.value}`)}</span>
               </button>
-            )}
-          </div>
-
-          {/* Categories chips horizontal */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all shrink-0 ${
-                selectedCategory === null
-                  ? 'bg-[#6600FF] text-white shadow-xs'
-                  : 'bg-white dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-black/[0.04] dark:border-white/[0.06]'
-              }`}
-            >
-              Tous
-            </button>
-            {EVENT_CATEGORIES.map((cat) => {
-              const isActive = selectedCategory === cat.value;
-              return (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all shrink-0 ${
-                    isActive
-                      ? 'bg-[#6600FF] text-white shadow-xs'
-                      : 'bg-white dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-black/[0.04] dark:border-white/[0.06]'
-                  }`}
-                >
-                  {t('events', `categories.${cat.value}`)}
-                </button>
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
       </div>
 
@@ -184,7 +220,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
                   <button
                     type="button"
                     onClick={resetFilters}
-                    className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all"
+                    className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all cursor-pointer"
                   >
                     Réinitialiser les filtres
                   </button>
@@ -214,19 +250,21 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
             </h3>
             <div className="flex flex-wrap gap-2">
               {EVENT_CATEGORIES.map((cat) => {
+                const Icon = CATEGORY_ICONS[cat.icon] || Music;
                 const isSelected = selectedCategory === cat.value;
                 return (
                   <button
                     key={cat.value}
                     type="button"
                     onClick={() => setSelectedCategory(isSelected ? null : cat.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
                     }`}
                   >
-                    {t('events', `categories.${cat.value}`)}
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{t('events', `categories.${cat.value}`)}</span>
                   </button>
                 );
               })}
@@ -245,7 +283,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
                     key={city.value}
                     type="button"
                     onClick={() => setSelectedCity(isSelected ? null : city.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
@@ -270,7 +308,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
                     key={p}
                     type="button"
                     onClick={() => setPriceFilter(p)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all text-center ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
@@ -287,14 +325,14 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
             <button
               type="button"
               onClick={resetFilters}
-              className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 font-black text-xs hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 font-black text-xs hover:bg-gray-200 transition-colors cursor-pointer"
             >
               Réinitialiser
             </button>
             <button
               type="button"
               onClick={() => setShowFilters(false)}
-              className="flex-1 py-3 rounded-2xl bg-[#6600FF] text-white font-black text-xs shadow-md hover:bg-[#5200cc] transition-colors"
+              className="flex-1 py-3 rounded-2xl bg-[#6600FF] text-white font-black text-xs shadow-md hover:bg-[#5200cc] transition-colors cursor-pointer"
             >
               Voir les résultats
             </button>

@@ -16,7 +16,7 @@ import { getCachedHomeData } from '@/services/cache';
 import { isEventTerminated } from '@/services/events';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
-import type { Event, Artist, Organization } from '@/types';
+import type { Event, Artist, Organization, Profile } from '@/types';
 
 interface FavoritesScreenProps {
   onEventClick: (event: Event) => void;
@@ -68,10 +68,11 @@ function getInitialFavArtists(artistIds: Set<string>): Artist[] {
 function getInitialFavOrgs(orgIds: Set<string>): Organization[] {
   if (orgIds.size === 0) return [];
   const home = getCachedHomeData().data;
+  const found: Organization[] = [];
   if (home && home.organizations) {
-    return home.organizations.filter((o) => orgIds.has(o.id));
+    found.push(...home.organizations.filter((o) => orgIds.has(o.id)));
   }
-  return [];
+  return found;
 }
 
 export function FavoritesScreen({
@@ -168,12 +169,76 @@ export function FavoritesScreen({
 
         if (followedOrgIds.size > 0) {
           const orgIds = Array.from(followedOrgIds);
+          // 1. Check organizations table
           const { data: orgData } = await supabase
             .from('organizations')
             .select('*')
             .in('id', orgIds);
-          if (!isCancelled && orgData) {
-            setOrganizations(orgData as Organization[]);
+
+          const loadedOrgs: Organization[] = (orgData as Organization[]) || [];
+          const foundIds = new Set(loadedOrgs.map((o) => o.id));
+          const missingIds = orgIds.filter((id) => !foundIds.has(id));
+
+          // 2. Check profiles for any organizer users followed
+          if (missingIds.length > 0) {
+            const { data: profileOrgs } = await supabase
+              .from('profiles')
+              .select('*')
+              .in('id', missingIds)
+              .eq('role', 'organizer');
+
+            if (profileOrgs && profileOrgs.length > 0) {
+              (profileOrgs as unknown as Profile[]).forEach((p) => {
+                loadedOrgs.push({
+                  id: p.id,
+                  owner_id: p.id,
+                  name: p.name || 'Organisateur',
+                  description: p.bio || 'Organisateur sur Gbaigbance',
+                  logo_url: p.avatar_url || null,
+                  cover_url: null,
+                  city: p.city || 'Lomé',
+                  country: p.country || 'TG',
+                  verification_status: 'verified',
+                  followers_count: 0,
+                  events_count: 0,
+                  created_at: p.created_at || new Date().toISOString(),
+                });
+                foundIds.add(p.id);
+              });
+            }
+          }
+
+          // 3. Fallback to cached home organizations
+          const cachedOrgs = getCachedHomeData().data?.organizations || [];
+          cachedOrgs.forEach((c) => {
+            if (followedOrgIds.has(c.id) && !foundIds.has(c.id)) {
+              loadedOrgs.push(c);
+              foundIds.add(c.id);
+            }
+          });
+
+          // 4. If any ID remains unfound, create a fallback so the card displays properly
+          orgIds.forEach((missingId) => {
+            if (!foundIds.has(missingId)) {
+              loadedOrgs.push({
+                id: missingId,
+                owner_id: missingId,
+                name: 'Organisateur Gbaigbance',
+                description: 'Organisateur officiel sur Gbaigbance',
+                logo_url: null,
+                cover_url: null,
+                city: 'Lomé',
+                country: 'TG',
+                verification_status: 'verified',
+                followers_count: 1,
+                events_count: 0,
+                created_at: new Date().toISOString(),
+              });
+            }
+          });
+
+          if (!isCancelled) {
+            setOrganizations(loadedOrgs);
           }
         } else {
           setOrganizations([]);
@@ -281,42 +346,42 @@ export function FavoritesScreen({
 
       {/* Segmented Control iOS Principal */}
       <div className="px-5 mt-4">
-        <div className="p-1 bg-gray-200/70 dark:bg-white/10 rounded-2xl flex items-center">
+        <div className="p-1 bg-black/[0.05] dark:bg-white/[0.08] backdrop-blur-md rounded-2xl flex items-center gap-1 border border-black/[0.04] dark:border-white/[0.06]">
           <button
             type="button"
             onClick={() => setActiveTab('events')}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'events'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
-            <Heart className={`w-3.5 h-3.5 ${activeTab === 'events' ? 'fill-current' : ''}`} />
-            <span>Événements ({likedEventIds.size})</span>
+            <Heart className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'events' ? 'fill-current text-red-500 dark:text-white' : ''}`} />
+            <span className="truncate">Événements ({likedEventIds.size})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('artists')}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'artists'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
-            <Music2 className="w-3.5 h-3.5" />
-            <span>Artistes ({followedArtistIds.size})</span>
+            <Music2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Artistes ({followedArtistIds.size})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('organizations')}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'organizations'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Orgas ({followedOrgIds.size})</span>
+            <Building2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Orgas ({followedOrgIds.size})</span>
           </button>
         </div>
       </div>
