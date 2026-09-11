@@ -253,6 +253,7 @@ function AppContent() {
           onBack={() => setScreen(activeTab)}
           onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
           onToast={addToast}
+          onLogin={() => setShowAuth(true)}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
@@ -267,6 +268,7 @@ function AppContent() {
           onBack={() => setScreen(activeTab)}
           onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
           onToast={addToast}
+          onLogin={() => setShowAuth(true)}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>

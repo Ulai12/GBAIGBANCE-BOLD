@@ -58,6 +58,18 @@ export function FeaturedCarousel({
     setCurrentIndex((prev) => (prev - 1 + total) % total);
   }, [total]);
 
+  // Preload all featured event images into memory to completely eliminate black flashes on transitions
+  useEffect(() => {
+    if (featuredList.length === 0 || typeof window === 'undefined') return;
+    featuredList.forEach((ev) => {
+      const url = ev.cover_url || ev.images?.[0];
+      if (url) {
+        const img = new Image();
+        img.src = url;
+      }
+    });
+  }, [featuredList]);
+
   // Auto-scroll loop
   useEffect(() => {
     if (isPaused || total <= 1) return;
@@ -83,9 +95,9 @@ export function FeaturedCarousel({
 
   const variants = {
     enter: (dir: number) => ({
-      x: dir > 0 ? 120 : -120,
+      x: dir > 0 ? 80 : -80,
       opacity: 0,
-      scale: 0.96,
+      scale: 0.98,
     }),
     center: {
       x: 0,
@@ -93,11 +105,13 @@ export function FeaturedCarousel({
       scale: 1,
     },
     exit: (dir: number) => ({
-      x: dir > 0 ? -120 : 120,
+      x: dir > 0 ? -80 : 80,
       opacity: 0,
-      scale: 0.96,
+      scale: 0.98,
     }),
   };
+
+  const coverUrl = currentEvent.cover_url || currentEvent.images?.[0];
 
   return (
     <div
@@ -108,7 +122,15 @@ export function FeaturedCarousel({
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[310px] overflow-hidden bg-gradient-to-br from-[#1E172E] via-[#2A1E45] to-[#120E22]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[310px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
+        {/* Ambient subtle color wash behind slides to prevent pitch black flash */}
+        {coverUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-all duration-700 blur-2xl scale-110 opacity-30 pointer-events-none"
+            style={{ backgroundImage: `url(${coverUrl})` }}
+          />
+        )}
+
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={currentEvent.id}
@@ -119,7 +141,7 @@ export function FeaturedCarousel({
             exit="exit"
             transition={{
               x: { type: 'spring', stiffness: 320, damping: 32 },
-              opacity: { duration: 0.25 },
+              opacity: { duration: 0.22 },
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
@@ -137,9 +159,11 @@ export function FeaturedCarousel({
           >
             {/* BACKGROUND COVER IMAGE */}
             <SmartImage
-              src={currentEvent.cover_url || currentEvent.images?.[0]}
+              src={coverUrl}
               alt={currentEvent.title}
               className="w-full h-full object-cover pointer-events-none"
+              loading="eager"
+              fetchPriority="high"
             />
 
             {/* LIGHT AND OPTICAL GRADIENT OVERLAY */}

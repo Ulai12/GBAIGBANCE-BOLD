@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, MapPin, Music2, Calendar } from 'lucide-react';
 import { fetchEventSchedule } from '@/services/events';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, EventScheduleSlot, Artist } from '@/types';
 
 interface EventScheduleProps {
@@ -87,10 +88,12 @@ export function EventSchedule({ event, onArtistClick, isDark }: EventSchedulePro
                       onClick={() => onArtistClick?.(slot.artist!)}
                       className="flex items-center gap-2 mt-2 group"
                     >
-                      <img
-                        src={slot.artist.photo_url || `https://i.pravatar.cc/100?u=${slot.artist.id}`}
-                        alt=""
-                        className="w-8 h-8 rounded-full object-cover"
+                      <UserAvatar
+                        src={slot.artist.photo_url}
+                        name={slot.artist.name}
+                        role="artist"
+                        size="xs"
+                        isVerified={slot.artist.is_verified}
                       />
                       <div className="text-left">
                         <span className={`flex items-center gap-1 text-sm font-semibold ${textMain} group-hover:text-[#6600FF] transition-colors`}>

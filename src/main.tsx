@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+import '@/utils/prefetchRoutes';
 
 // Register Service Worker for PWA with prompt update
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

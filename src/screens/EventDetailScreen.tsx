@@ -20,6 +20,7 @@ import { EventManagementModal } from '@/components/EventManagementModal';
 import { Lightbox } from '@/components/Lightbox';
 import { ShareModal } from '@/components/ShareModal';
 import { shareEventNative } from '@/utils/share';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, EventWithRelations, Artist, EventCollaborator } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -189,17 +190,81 @@ export function EventDetailScreen({ event, onBack, onArtistClick, onOpenAISettin
         )}
 
         {fullEvent?.organizer && (
-          <div className="mt-5"><h2 className="text-lg font-bold text-[#1A1A2E] mb-3">Organisateur</h2><div className="card p-4 flex items-center gap-3"><img src={fullEvent.organizer.logo_url || ''} alt="" className="w-12 h-12 rounded-2xl object-cover" /><div className="flex-1"><div className="flex items-center gap-1"><h3 className="font-bold text-[#1A1A2E]">{fullEvent.organizer.name}</h3>{fullEvent.organizer.verification_status === 'verified' && <BadgeCheck className="w-4 h-4 text-[#6600FF]" />}</div><p className="text-xs text-gray-500">{fullEvent.organizer.city}</p></div></div></div>
+          <div className="mt-5">
+            <h2 className="text-lg font-bold text-[#1A1A2E] mb-3">Organisateur</h2>
+            <div className="card p-4 flex items-center gap-3">
+              <UserAvatar
+                src={fullEvent.organizer.logo_url}
+                name={fullEvent.organizer.name}
+                role="organizer"
+                size="md"
+                shape="squircle"
+                isVerified={fullEvent.organizer.verification_status === 'verified'}
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1">
+                  <h3 className="font-bold text-[#1A1A2E]">{fullEvent.organizer.name}</h3>
+                  {fullEvent.organizer.verification_status === 'verified' && <BadgeCheck className="w-4 h-4 text-[#6600FF]" />}
+                </div>
+                <p className="text-xs text-gray-500">{fullEvent.organizer.city}</p>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="card p-4 mt-3 flex items-center gap-3">
-          <div className="flex -space-x-2">{collaborators.filter((c) => c.status === 'accepted').slice(0, 3).map((c) => (<img key={c.id} src={c.profile?.avatar_url || `https://i.pravatar.cc/100?u=${c.user_id}`} alt="" className="w-8 h-8 rounded-full border-2 border-white" />))}{collaborators.filter((c) => c.status === 'accepted').length === 0 && ([1,2,3].map((i) => (<img key={i} src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" className="w-8 h-8 rounded-full border-2 border-white" />)))}</div>
+          <div className="flex -space-x-2">
+            {collaborators.filter((c) => c.status === 'accepted').slice(0, 3).map((c) => (
+              <UserAvatar
+                key={c.id}
+                src={c.profile?.avatar_url}
+                name={c.profile?.name || 'Membre'}
+                role={c.role === 'performer' ? 'artist' : 'attendee'}
+                size="xs"
+                className="ring-2 ring-white"
+              />
+            ))}
+            {collaborators.filter((c) => c.status === 'accepted').length === 0 && (
+              <div className="w-8 h-8 rounded-full bg-[#6600FF]/15 text-[#6600FF] font-bold text-xs flex items-center justify-center ring-2 ring-white">
+                VIP
+              </div>
+            )}
+          </div>
           <p className="text-sm text-gray-600"><span className="font-bold text-[#1A1A2E]">{formatNumber(liveAttendees, language)}</span> {t('settings', 'views.participants')}</p>
           <div className="ml-auto flex items-center gap-1.5 text-xs text-gray-500"><Eye className="w-4 h-4 text-[#6600FF]" /><span className="font-bold text-[#1A1A2E] tabular-nums animate-pop">{formatNumber(liveViews, language)}</span><span>{t('settings', 'views.views')}</span></div>
         </div>
 
         {collaborators.length > 0 && (
-          <div className="mt-5"><h2 className="text-lg font-bold text-[#1A1A2E] mb-3">Collaborateurs</h2><div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 pb-2">{collaborators.map((c) => (<div key={c.id} className="flex flex-col items-center gap-2 w-20 shrink-0"><div className="relative"><img src={c.profile?.avatar_url || c.artist?.photo_url || `https://i.pravatar.cc/100?u=${c.user_id}`} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-[#6600FF]/30" />{c.status === 'pending' && <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full p-0.5"><Clock className="w-3 h-3 text-white" /></div>}</div><span className="text-xs font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full">{c.profile?.name || c.artist?.name || 'Inconnu'}</span><span className="text-[10px] text-gray-500 capitalize">{c.role === 'co_organizer' ? 'Co-org.' : c.role === 'performer' ? 'Artiste' : c.role}</span></div>))}</div></div>
+          <div className="mt-5">
+            <h2 className="text-lg font-bold text-[#1A1A2E] mb-3">Collaborateurs</h2>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 pb-2">
+              {collaborators.map((c) => (
+                <div key={c.id} className="flex flex-col items-center gap-2 w-20 shrink-0">
+                  <div className="relative">
+                    <UserAvatar
+                      src={c.profile?.avatar_url || c.artist?.photo_url}
+                      name={c.profile?.name || c.artist?.name || 'Inconnu'}
+                      role={c.role === 'performer' ? 'artist' : 'attendee'}
+                      size="lg"
+                      shape="circle"
+                      isVerified={c.artist?.is_verified}
+                    />
+                    {c.status === 'pending' && (
+                      <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full p-0.5 shadow-xs">
+                        <Clock className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs font-semibold text-[#1A1A2E] text-center line-clamp-1 w-full">
+                    {c.profile?.name || c.artist?.name || 'Inconnu'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 capitalize">
+                    {c.role === 'co_organizer' ? 'Co-org.' : c.role === 'performer' ? 'Artiste' : c.role}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

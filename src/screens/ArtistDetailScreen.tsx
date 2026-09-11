@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, BadgeCheck, Music2, Calendar, Share2, Heart, Eye, Sparkles } from 'lucide-react';
+import { ChevronLeft, Music2, Calendar, Share2, Heart, Eye, Sparkles } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { fetchArtistById, fetchEventsByArtist } from '@/services/events';
@@ -16,10 +17,11 @@ interface ArtistDetailScreenProps {
   onBack: () => void;
   onEventClick: (event: Event) => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
+  onLogin?: () => void;
 }
 
-export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: ArtistDetailScreenProps) {
-  const { language } = useApp();
+export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLogin }: ArtistDetailScreenProps) {
+  const { language, session, t } = useApp();
   const { isFollowingArtist, toggleFollowArtist } = useFavorites();
   const [fullArtist, setFullArtist] = useState<Artist>(artist);
   const [events, setEvents] = useState<Event[]>([]);
@@ -37,15 +39,26 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
   }, [artist.id]);
 
   const handleFollow = async () => {
+    if (!session) {
+      onToast({
+        message: t('events', 'artist.followPromptLogin') || 'Connectez-vous pour vous abonner et recevoir les alertes.',
+        type: 'info',
+      });
+      onLogin?.();
+      return;
+    }
+
     try {
       const willFollow = !following;
       await toggleFollowArtist(artist.id);
       onToast({
-        message: willFollow ? `Vous suivez maintenant ${fullArtist.name}` : `Désabonné de ${fullArtist.name}`,
+        message: willFollow
+          ? t('events', 'artist.followedToast') || `Vous suivez maintenant ${fullArtist.name}`
+          : t('events', 'artist.unfollowedToast') || `Désabonné de ${fullArtist.name}`,
         type: 'success',
       });
     } catch {
-      onToast({ message: 'Erreur lors de la mise à jour', type: 'error' });
+      onToast({ message: t('common', 'error') || 'Une erreur est survenue', type: 'error' });
     }
   };
 
@@ -58,10 +71,10 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share(shareData);
-        onToast({ message: 'Profil partagé', type: 'success' });
+        onToast({ message: t('events', 'artist.profileShared') || 'Profil partagé', type: 'success' });
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        onToast({ message: 'Lien copié dans le presse-papiers', type: 'success' });
+        onToast({ message: t('events', 'artist.linkCopied') || 'Lien copié dans le presse-papiers', type: 'success' });
       }
     } catch {
       // Ignorer l'annulation du partage
@@ -107,18 +120,15 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
       {/* Profile Info Container */}
       <div className="max-w-md mx-auto px-5 -mt-16 relative">
         <div className="flex items-end gap-4">
-          <div className="relative">
-            <img
-              src={fullArtist.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=400'}
-              alt={fullArtist.name}
-              className="w-28 h-28 rounded-3xl object-cover ring-4 ring-white dark:ring-[#14121E] shadow-xl"
-            />
-            {fullArtist.is_verified && (
-              <div className="absolute -bottom-1 -right-1 bg-[#6600FF] rounded-full p-1.5 shadow-md">
-                <BadgeCheck className="w-5 h-5 text-white" />
-              </div>
-            )}
-          </div>
+          <UserAvatar
+            src={fullArtist.photo_url}
+            name={fullArtist.name}
+            role="artist"
+            size="2xl"
+            shape="circle"
+            isVerified={fullArtist.is_verified}
+            className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-white dark:ring-[#14121E] shadow-xl"
+          />
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-[#17131D] dark:text-white tracking-tight">
@@ -138,21 +148,27 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
             <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
               {formatNumber(displayFollowers, language)}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Abonnés</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+              {t('events', 'artist.followers') || 'Abonnés'}
+            </p>
           </div>
           <div className="rounded-[1.4rem] p-3 text-center bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs">
             <Calendar className="w-4 h-4 text-[#6600FF] mx-auto mb-1" />
             <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
               {events.length}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Événements</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+              {t('events', 'artist.events') || 'Événements'}
+            </p>
           </div>
           <div className="rounded-[1.4rem] p-3 text-center bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs">
             <Eye className="w-4 h-4 text-[#6600FF] mx-auto mb-1" />
             <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
               {formatNumber(totalViews, language)}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Vues</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+              {t('events', 'artist.views') || 'Vues'}
+            </p>
           </div>
         </div>
 
@@ -182,16 +198,18 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
           }`}
         >
           <Heart className={`w-4 h-4 ${following ? 'fill-[#6600FF] dark:fill-white' : ''}`} />
-          {following ? 'Abonné · Ne plus suivre' : 'Suivre cet artiste'}
+          {following
+            ? (t('events', 'artist.unfollow') || 'Abonné · Ne plus suivre')
+            : (t('events', 'artist.follow') || 'Suivre cet artiste')}
         </button>
 
         {/* Bio */}
         {fullArtist.bio && (
           <div className="mt-6 rounded-2xl bg-white/70 dark:bg-white/5 p-4 border border-black/5 dark:border-white/10">
             <h2 className="text-sm font-black uppercase tracking-wider text-[#17131D] dark:text-white mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#6600FF]" /> Biographie
+              <Sparkles className="w-4 h-4 text-[#6600FF]" /> {t('events', 'artist.biography') || 'Biographie'}
             </h2>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal">
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal break-words whitespace-pre-line">
               {fullArtist.bio}
             </p>
           </div>
@@ -201,10 +219,13 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 text-lg font-black text-[#17131D] dark:text-white">
-              <Calendar className="w-5 h-5 text-[#6600FF]" /> Événements & Concerts
+              <Calendar className="w-5 h-5 text-[#6600FF]" /> {t('events', 'artist.eventsAndConcerts') || 'Événements & Concerts'}
             </h2>
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              {events.length} disponible{events.length > 1 ? 's' : ''}
+              {events.length}{' '}
+              {events.length > 1
+                ? (t('events', 'artist.availablePlural') || 'disponibles')
+                : (t('events', 'artist.available') || 'disponible')}
             </span>
           </div>
 
@@ -222,8 +243,8 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast }: Ar
             </div>
           ) : events.length === 0 ? (
             <EmptyState
-              title="Aucun événement"
-              description="Cet artiste n'a pas d'événement programmé pour le moment. Abonnez-vous pour être alerté dès la mise en vente !"
+              title={t('events', 'noEvents') || 'Aucun événement'}
+              description={t('events', 'artist.noEvents') || "Cet artiste n'a pas d'événement programmé pour le moment."}
             />
           ) : (
             <div className="grid grid-cols-2 gap-3.5">

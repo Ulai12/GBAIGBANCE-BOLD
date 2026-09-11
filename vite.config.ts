@@ -1,11 +1,46 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+interface OutputChunkLike {
+  type?: string;
+  isDynamicEntry?: boolean;
+}
+
+function dynamicChunkPrefetchPlugin(): Plugin {
+  return {
+    name: 'gbaigbance-chunk-prefetch',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html;
+        const prefetchLinks: string[] = [];
+        for (const [fileName, chunk] of Object.entries(ctx.bundle)) {
+          const chunkItem = chunk as OutputChunkLike;
+          const isChunk = fileName.endsWith('.js') && chunkItem.type === 'chunk';
+          const isDynamic = Boolean(chunkItem.isDynamicEntry);
+          if (isChunk && isDynamic) {
+            prefetchLinks.push(`<link rel="prefetch" as="script" crossorigin="anonymous" href="/${fileName}" />`);
+          }
+        }
+        if (prefetchLinks.length === 0) return html;
+        const insertBlock = `\n    <!-- Auto-injected dynamic chunk prefetch for instant navigation -->\n    ${prefetchLinks.join('\n    ')}\n  `;
+        return html.replace('</head>', `${insertBlock}</head>`);
+      },
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     react(),
+    dynamicChunkPrefetchPlugin(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,

@@ -16,13 +16,53 @@
     <meta property="og:title" content="Gbaigbance — L'événementiel africain" />
     <meta property="og:description" content="Gbaigbance — La plateforme événementielle africaine premium. Découvrez, réservez et participez aux meilleurs événements au Togo, Bénin et en Afrique francophone." />
     <meta property="og:image" content="/pwa-512x512.png" />
+
+    <!-- Performance: DNS Prefetch & Preconnect for Critical External CDNs -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.pexels.com" />
+    <link rel="preconnect" href="https://images.pexels.com" crossorigin />
+
+    <!-- Performance: Preload Critical Local Brand Assets -->
+    <link rel="preload" href="/icon.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/pwa-192x192.png" as="image" type="image/png" />
+
+    <!-- Performance: Module Preload for Instant Application Boot -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+    <link rel="modulepreload" href="/src/App.tsx" />
+
+    <!-- Performance: Preload Font Stylesheet -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+
     <title>Gbaigbance — L'événementiel africain</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Navigation Acceleration: Browser Idle Prefetch for Lazy-loaded Routes -->
+    <script>
+      (function() {
+        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (conn && (conn.saveData || /2g/.test(conn.effectiveType))) {
+          return;
+        }
+        function triggerIdlePrefetch() {
+          if (typeof window.__gba_prefetch_critical_routes === 'function') {
+            window.__gba_prefetch_critical_routes();
+          }
+        }
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(triggerIdlePrefetch, { timeout: 3000 });
+        } else {
+          setTimeout(triggerIdlePrefetch, 2000);
+        }
+      })();
+    </script>
   </body>
 </html>

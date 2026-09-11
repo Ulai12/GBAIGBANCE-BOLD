@@ -12,6 +12,7 @@ import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { formatDistanceKm } from '@/utils/geo';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 
 interface NearbyEventTileProps {
   event: Event & { distanceKm?: number };
@@ -59,6 +60,8 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
       whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.015 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
+      onMouseEnter={prefetchEventDetail}
+      onTouchStart={prefetchEventDetail}
       className="
         group relative w-[235px] sm:w-[255px] shrink-0 snap-start
         rounded-[1.6rem] p-2.5

@@ -6,6 +6,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+import { prefetchCreateEvent } from '@/utils/prefetchRoutes';
 
 /**
  * GBAIGBANCE — Bottom Navigation
@@ -542,6 +543,8 @@ export function BottomNav({
             <button
               type="button"
               onClick={onCreate}
+              onMouseEnter={prefetchCreateEvent}
+              onTouchStart={prefetchCreateEvent}
               onPointerDown={() => setPressed('create')}
               onPointerUp={() => setPressed(null)}
               onPointerCancel={() => setPressed(null)}

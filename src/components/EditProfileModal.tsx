@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
-import { Camera, Loader2, Check, X } from 'lucide-react';
+import { useState } from 'react';
+import { Camera, Loader2, Check, X, Sliders } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { updateProfile } from '@/services/auth';
-import { supabase } from '@/services/supabase';
+import { UserAvatar } from '@/components/UserAvatar';
+import { ProfilePictureModal } from '@/components/ProfilePictureModal';
 import { CITIES, COUNTRY_FLAGS, COUNTRY_NAMES } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 
@@ -15,33 +16,13 @@ interface EditProfileModalProps {
 
 export function EditProfileModal({ open, onClose, onToast }: EditProfileModalProps) {
   const { user, refreshProfile } = useApp();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(user?.name || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [city, setCity] = useState(user?.city || 'Lomé');
   const [country, setCountry] = useState(user?.country || 'TG');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop();
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { cacheControl: '3600', upsert: true });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      setAvatarUrl(pub.publicUrl);
-      onToast({ message: 'Photo mise à jour', type: 'success' });
-    } catch {
-      onToast({ message: 'Erreur lors de l\'upload', type: 'error' });
-    } finally {
-      setUploading(false);
-    }
-  };
+  const [pictureModalOpen, setPictureModalOpen] = useState(false);
 
   const handleSave = async () => {
     if (!user) return;
@@ -49,7 +30,7 @@ export function EditProfileModal({ open, onClose, onToast }: EditProfileModalPro
     try {
       await updateProfile(user.id, { name, bio, city, country, avatar_url: avatarUrl });
       await refreshProfile();
-      onToast({ message: 'Profil mis à jour', type: 'success' });
+      onToast({ message: 'Profil mis à jour avec succès', type: 'success' });
       onClose();
     } catch {
       onToast({ message: 'Erreur lors de la sauvegarde', type: 'error' });
@@ -59,28 +40,40 @@ export function EditProfileModal({ open, onClose, onToast }: EditProfileModalPro
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Modifier le profil">
-      {/* Zone Avatar */}
-      <div className="flex flex-col items-center mb-6">
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full ring-4 ring-gray-50 dark:ring-[#0F0F1A] overflow-hidden bg-gray-100 dark:bg-white/5 flex items-center justify-center">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-3xl font-extrabold text-[#6600FF]">{name.charAt(0).toUpperCase()}</span>
-            )}
+    <>
+      <Modal open={open} onClose={onClose} title="Modifier le profil">
+        {/* Zone Avatar avec outil de recadrage/redimensionnement */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative group cursor-pointer" onClick={() => setPictureModalOpen(true)}>
+            <div className="ring-4 ring-gray-100 dark:ring-white/10 rounded-full shadow-lg">
+              <UserAvatar
+                src={avatarUrl}
+                name={name || 'Membre'}
+                role={user?.role || 'attendee'}
+                size="2xl"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPictureModalOpen(true);
+              }}
+              className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-[#6600FF] flex items-center justify-center shadow-lg active:scale-90 transition-transform ring-4 ring-white dark:ring-[#1A1A2E] text-white"
+              title="Changer et recadrer la photo de profil"
+            >
+              <Camera className="w-5 h-5" />
+            </button>
           </div>
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="absolute bottom-0 right-0 w-9 h-9 rounded-full bg-[#6600FF] flex items-center justify-center shadow-md active:scale-90 transition-transform disabled:opacity-50 ring-2 ring-white dark:ring-[#1A1A2E]"
+            type="button"
+            onClick={() => setPictureModalOpen(true)}
+            className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA] mt-3 hover:underline flex items-center gap-1.5"
           >
-            {uploading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+            <Sliders className="w-3.5 h-3.5" />
+            Recadrer ou changer la photo
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">Appuyez pour modifier</p>
-      </div>
 
       {/* Formulaire */}
       <div className="space-y-4">
@@ -150,5 +143,15 @@ export function EditProfileModal({ open, onClose, onToast }: EditProfileModalPro
         </button>
       </div>
     </Modal>
+
+    <ProfilePictureModal
+      open={pictureModalOpen}
+      onClose={() => setPictureModalOpen(false)}
+      onSuccess={(newAvatarUrl) => {
+        setAvatarUrl(newAvatarUrl);
+      }}
+      onToast={onToast}
+    />
+  </>
   );
 }

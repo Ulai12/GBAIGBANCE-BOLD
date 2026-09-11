@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, Trash2, HelpCircle, Reply, BadgeCheck, Flame, CheckCircle2 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { UserAvatar } from '@/components/UserAvatar';
 import {
   fetchEventComments, addEventComment, deleteEventComment,
   fetchEventReactions, toggleEventReaction,
@@ -188,7 +189,13 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
             <div className="divide-y divide-black/[0.07] mb-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/45">
               {comments.map((c) => (
                 <div key={c.id} className={`flex gap-3 p-4 transition-opacity ${c.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'} ${c.is_organizer_reply ? 'bg-[#6600FF]/[0.04]' : ''}`}>
-                  <img src={c.profile?.avatar_url || `https://i.pravatar.cc/100?u=${c.user_id}`} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                  <UserAvatar
+                    src={c.profile?.avatar_url}
+                    name={c.profile?.name || 'Anonyme'}
+                    role={c.is_organizer_reply ? 'organizer' : 'attendee'}
+                    size="sm"
+                    className="shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-[#1A1A2E]">{c.profile?.name || 'Anonyme'}</span>
@@ -205,7 +212,13 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
           )}
           {user ? (
             <div className="flex gap-2 items-end rounded-2xl border border-black/[0.07] bg-white/60 p-2">
-              <img src={user.avatar_url || `https://i.pravatar.cc/100?u=${user.id}`} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+              <UserAvatar
+                src={user.avatar_url}
+                name={user.name}
+                role={user.role}
+                size="sm"
+                className="shrink-0"
+              />
               <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }} placeholder="Ajouter un commentaire..." className="flex-1 px-4 py-3 bg-gray-50 rounded-2xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 resize-none min-h-[44px] max-h-24" rows={1} />
               <button onClick={handleAddComment} disabled={!commentText.trim() || submittingComment} className="w-11 h-11 rounded-full bg-[#6600FF] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform shrink-0"><Send className="w-4 h-4" /></button>
             </div>
@@ -240,7 +253,13 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
               {questions.map((q) => (
                 <div key={q.id} className={`rounded-2xl overflow-hidden transition-opacity ${q.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'} ${q.answer ? 'bg-white' : 'bg-amber-50'}`}>
                   <div className="flex gap-3 p-4">
-                    <img src={q.profile?.avatar_url || `https://i.pravatar.cc/100?u=${q.user_id}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" />
+                    <UserAvatar
+                      src={q.profile?.avatar_url}
+                      name={q.profile?.name || 'Anonyme'}
+                      role="attendee"
+                      size="xs"
+                      className="shrink-0 mt-0.5"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-bold text-[#1A1A2E]">{q.profile?.name || 'Anonyme'}</span>
@@ -275,7 +294,13 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
           )}
           {user ? (
             <div className="flex gap-2 items-center">
-              <img src={user.avatar_url || `https://i.pravatar.cc/100?u=${user.id}`} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+              <UserAvatar
+                src={user.avatar_url}
+                name={user.name}
+                role={user.role}
+                size="sm"
+                className="shrink-0"
+              />
               <input type="text" value={questionText} onChange={(e) => setQuestionText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAskQuestion(); }} placeholder="Posez une question à l'organisateur..." className="flex-1 px-4 py-3 bg-gray-50 rounded-2xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" />
               <button onClick={handleAskQuestion} disabled={!questionText.trim() || submittingQuestion} className="w-11 h-11 rounded-full bg-[#6600FF] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform shrink-0"><Send className="w-4 h-4" /></button>
             </div>

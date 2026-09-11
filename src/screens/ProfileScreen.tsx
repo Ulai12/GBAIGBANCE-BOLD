@@ -14,11 +14,13 @@ import {
   UserCheck,
   PlusCircle,
   Layers,
+  Ticket,
 } from 'lucide-react';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { EventCard } from '@/components/EventCard';
 import { EditProfileModal } from '@/components/EditProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { ProfilePictureModal } from '@/components/ProfilePictureModal';
 import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
@@ -39,7 +41,7 @@ interface ProfileScreenProps {
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
 
-type ProfileTab = 'events' | 'invitations' | 'activity';
+type ProfileTab = 'events' | 'tickets' | 'invitations' | 'activity';
 
 function getInitialMyEvents(userId?: string): Event[] {
   if (!userId || typeof window === 'undefined') return [];
@@ -75,9 +77,11 @@ export function ProfileScreen({
   const [invitations, setInvitations] = useState<(EventCollaborator & { event?: Event })[]>([]);
   const [responding, setResponding] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [pictureModalOpen, setPictureModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<ProfileTab>('events');
+  const isCreator = user?.role === 'organizer' || user?.role === 'artist';
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => (isCreator ? 'events' : 'tickets'));
 
   useEffect(() => {
     if (!user) return;
@@ -166,8 +170,6 @@ export function ProfileScreen({
     return <ProfileScreenSkeleton />;
   }
 
-  const isCreator = user.role === 'organizer' || user.role === 'artist';
-
   return (
     <div className="min-h-screen pb-40">
       <div className="max-w-md mx-auto">
@@ -203,6 +205,7 @@ export function ProfileScreen({
           followersCount={isCreator ? followersCount : undefined}
           followingCount={followingCount}
           onEditClick={() => setEditOpen(true)}
+          onAvatarClick={() => setPictureModalOpen(true)}
           onOpenQR={() => setQrOpen(true)}
           onOpenSubscriptions={onOpenSubscriptions}
           onOpenTickets={onOpenTickets}
@@ -244,14 +247,14 @@ export function ProfileScreen({
           <div className="p-1 bg-gray-200/70 dark:bg-white/10 rounded-2xl flex items-center">
             <button
               type="button"
-              onClick={() => setActiveTab('events')}
+              onClick={() => setActiveTab(isCreator ? 'events' : 'tickets')}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'events'
+                (isCreator && activeTab === 'events') || (!isCreator && activeTab === 'tickets')
                   ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              Mes Événements ({myEvents.length})
+              {isCreator ? `Mes Événements (${myEvents.length})` : `Mes Billets (${ticketsCount})`}
             </button>
             <button
               type="button"
@@ -283,8 +286,48 @@ export function ProfileScreen({
           </div>
         </div>
 
-        {/* CONTENU ONGLET 1 : Mes Événements */}
-        {activeTab === 'events' && (
+        {/* CONTENU ONGLET 1 : Mes Billets (Pour participants / attendees) */}
+        {!isCreator && activeTab === 'tickets' && (
+          <div className="px-5 mt-5 space-y-4 animate-fade-in">
+            {ticketsCount > 0 ? (
+              <div className="rounded-[2.2rem] bg-white dark:bg-[#1A1829] p-6 text-center border border-black/[0.05] dark:border-white/[0.08] shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center mx-auto mb-3">
+                  <Ticket className="w-7 h-7" />
+                </div>
+                <p className="text-base font-extrabold text-[#17131D] dark:text-white">
+                  Vous avez {ticketsCount} billet{ticketsCount > 1 ? 's' : ''} actif{ticketsCount > 1 ? 's' : ''}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+                  Consultez vos pass et présentez vos QR codes directement à l'entrée des événements.
+                </p>
+                {onOpenTickets && (
+                  <button
+                    type="button"
+                    onClick={onOpenTickets}
+                    className="mt-4 px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-bold hover:bg-[#5800DC] shadow-purple transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <QrCode className="w-4 h-4" /> Voir tous mes billets
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-[2.2rem] bg-white dark:bg-[#1A1829] p-8 text-center border border-black/[0.05] dark:border-white/[0.08] shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center mx-auto mb-3">
+                  <Ticket className="w-7 h-7" />
+                </div>
+                <p className="text-base font-extrabold text-[#17131D] dark:text-white">
+                  Aucun billet pour le moment
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+                  Vos réservations de concerts, festivals et soirées apparaîtront ici dès vos premiers achats.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CONTENU ONGLET 1 : Mes Événements (Pour créateurs / artistes / organisateurs) */}
+        {isCreator && activeTab === 'events' && (
           <div className="px-5 mt-5 space-y-4 animate-fade-in">
             {loading ? (
               <div className="grid grid-cols-2 gap-4">
@@ -491,6 +534,13 @@ export function ProfileScreen({
 
       {/* Modale d'édition de profil */}
       <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} onToast={onToast} />
+
+      {/* Modale de gestion, recadrage et redimensionnement photo de profil */}
+      <ProfilePictureModal
+        open={pictureModalOpen}
+        onClose={() => setPictureModalOpen(false)}
+        onToast={onToast}
+      />
 
       {/* Modale Paramètres Système Stratégique */}
       <SettingsModal

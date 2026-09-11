@@ -4,11 +4,13 @@ import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as Ti
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
+import { SmartImage } from '@/components/SmartImage';
+import { OrganizerMetricsChart, type OrganizerPerformanceData } from '@/components/OrganizerMetricsChart';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { EVENT_CATEGORIES } from '@/constants';
 import { formatNumber } from '@/utils/format';
-import { createEventWithCollaborators, searchArtists, searchOrganizations, fetchEventDeletionInfo, cancelEvent, deleteEvent, fetchOrganizerStats } from '@/services/events';
+import { createEventWithCollaborators, searchArtists, searchOrganizations, fetchEventDeletionInfo, cancelEvent, deleteEvent, fetchOrganizerPerformanceMetrics } from '@/services/events';
 import { EventManagementModal } from '@/components/EventManagementModal';
 import type { Event, EventCategory, Artist, Organization } from '@/types';
 import type { ToastData } from '@/components/Toast';
@@ -22,7 +24,6 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onToast }: Orga
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [stats, setStats] = useState({ totalAttendees: 0, totalViews: 0, totalLikes: 0 });
   const [form, setForm] = useState({ title: '', description: '', category: 'concert' as EventCategory, location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
   const [creating, setCreating] = useState(false);
   const [ticketOptions, setTicketOptions] = useState([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]);
@@ -37,12 +38,37 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onToast }: Orga
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'cancel' | 'delete'>('cancel');
   const [manageTarget, setManageTarget] = useState<Event | null>(null);
-  const [orgStats, setOrgStats] = useState<{ totalEvents: number; totalAttendees: number; totalViews: number; totalLikes: number; totalTickets: number; totalRevenue: number; activeEvents: number } | null>(null);
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [perfData, setPerfData] = useState<OrganizerPerformanceData>({
+    timeSeries: [],
+    categoryBreakdown: [],
+    summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
+  });
 
-  useEffect(() => { loadEvents(); }, [user]);
+  useEffect(() => { loadEvents(); loadMetrics(); }, [user, timeRange]);
   useEffect(() => { if (!collabSearch.trim()) { setSearchResults({ artists: [], orgs: [] }); return; } setSearching(true); Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)]).then(([artists, orgs]) => setSearchResults({ artists, orgs })).catch(() => setSearchResults({ artists: [], orgs: [] })).finally(() => setSearching(false)); }, [collabSearch]);
 
-  const loadEvents = async () => { if (!user) return; setLoading(true); const { data } = await supabase.from('events').select('*').eq('organizer_user_id', user.id).order('created_at', { ascending: false }); setEvents((data as Event[]) || []); if (data) { setStats({ totalAttendees: data.reduce((sum, e) => sum + e.attendees_count, 0), totalViews: data.reduce((sum, e) => sum + e.views_count, 0), totalLikes: data.reduce((sum, e) => sum + e.likes_count, 0) }); } fetchOrganizerStats(user.id).then(setOrgStats).catch(() => {}); setLoading(false); };
+  const loadEvents = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase.from('events').select('*').eq('organizer_user_id', user.id).order('created_at', { ascending: false });
+    setEvents((data as Event[]) || []);
+    setLoading(false);
+  };
+
+  const loadMetrics = async () => {
+    if (!user) return;
+    setMetricsLoading(true);
+    try {
+      const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
+      setPerfData(data);
+    } catch {
+      // Keep previous
+    } finally {
+      setMetricsLoading(false);
+    }
+  };
 
   const addCollaborator = (id: string, name: string, type: CollabType) => { if (collaborators.some((c) => c.user_id === id)) return; setCollaborators([...collaborators, { user_id: id, name, role: collabRole, type }]); setShowCollabSearch(false); setCollabSearch(''); };
   const removeCollaborator = (userId: string) => { setCollaborators(collaborators.filter((c) => c.user_id !== userId)); };
@@ -57,21 +83,102 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onToast }: Orga
       if (!event) throw new Error('Échec de création');
       onToast({ message: 'Événement créé !', type: 'success' }); setShowCreate(false);
       setForm({ title: '', description: '', category: 'concert', location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
-      setTicketOptions([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]); setCollaborators([]); loadEvents();
+      setTicketOptions([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]); setCollaborators([]); loadEvents(); loadMetrics();
     } catch { onToast({ message: 'Erreur lors de la création', type: 'error' }); } finally { setCreating(false); }
   };
 
   const isArtist = user?.role === 'artist';
   const openDeleteModal = async (event: Event) => { setDeleteTarget(event); setDeleteInfo(null); setDeleteMode('cancel'); const info = await fetchEventDeletionInfo(event.id); setDeleteInfo(info); };
-  const confirmDelete = async () => { if (!deleteTarget) return; setDeleteLoading(true); try { if (deleteMode === 'cancel') { await cancelEvent(deleteTarget.id); onToast({ message: 'Événement annulé.', type: 'success' }); } else { await deleteEvent(deleteTarget.id); onToast({ message: 'Événement supprimé.', type: 'success' }); } setDeleteTarget(null); loadEvents(); } catch (err) { const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur'; onToast({ message: msg, type: 'error' }); } finally { setDeleteLoading(false); } };
+  const confirmDelete = async () => { if (!deleteTarget) return; setDeleteLoading(true); try { if (deleteMode === 'cancel') { await cancelEvent(deleteTarget.id); onToast({ message: 'Événement annulé.', type: 'success' }); } else { await deleteEvent(deleteTarget.id); onToast({ message: 'Événement supprimé.', type: 'success' }); } setDeleteTarget(null); loadEvents(); loadMetrics(); } catch (err) { const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur'; onToast({ message: msg, type: 'error' }); } finally { setDeleteLoading(false); } };
 
   return (
     <div className="min-h-screen pb-32">
-      <div className="sticky top-0 z-30 px-5 py-4 bg-[#EDE8FF]/80 backdrop-blur-lg"><div className="max-w-md mx-auto flex items-center justify-between"><button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button><h1 className="text-lg font-bold text-[#1A1A2E]">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1><button onClick={() => setShowCreate(true)} className="w-10 h-10 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple"><Plus className="w-5 h-5" /></button></div></div>
+      <div className="sticky top-0 z-30 px-5 py-4 bg-[#EDE8FF]/80 dark:bg-[#0D0B14]/80 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
+          <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>
+          <button onClick={() => setShowCreate(true)} className="w-10 h-10 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple">
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
       <div className="max-w-md mx-auto px-5 mt-6">
-        <div className="card-dark p-5 mb-6 relative overflow-hidden"><div className="absolute -top-10 -right-10 w-32 h-32 bg-[#6600FF]/20 rounded-full blur-2xl" /><div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#8B5CF6]/20 rounded-full blur-2xl" /><div className="relative"><div className="flex items-center gap-2 mb-4"><BarChart3 className="w-5 h-5 text-[#8B5CF6]" /><h3 className="text-white font-bold text-base">Vue d'ensemble</h3></div><div className="grid grid-cols-3 gap-3"><div className="text-center"><p className="text-2xl font-extrabold text-white animate-pop">{orgStats?.totalEvents ?? events.length}</p><p className="text-xs text-white/60">Événements</p></div><div className="text-center"><p className="text-2xl font-extrabold text-white animate-pop">{formatNumber(orgStats?.totalAttendees ?? stats.totalAttendees)}</p><p className="text-xs text-white/60">Participants</p></div><div className="text-center"><p className="text-2xl font-extrabold text-white animate-pop">{formatNumber(orgStats?.totalViews ?? stats.totalViews)}</p><p className="text-xs text-white/60">Vues</p></div></div><div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10"><div className="text-center"><p className="text-lg font-bold text-[#8B5CF6] animate-pop">{orgStats?.totalTickets ?? 0}</p><p className="text-[10px] text-white/60">Billets vendus</p></div><div className="text-center"><p className="text-lg font-bold text-green-400 animate-pop">{(orgStats?.totalRevenue ?? 0).toLocaleString('fr-FR')}</p><p className="text-[10px] text-white/60">FCFA revenus</p></div><div className="text-center"><p className="text-lg font-bold text-yellow-400 animate-pop">{orgStats?.activeEvents ?? 0}</p><p className="text-[10px] text-white/60">Actifs</p></div></div></div></div>
-        <div className="flex items-center justify-between mb-4"><h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E]"><BarChart3 className="w-5 h-5 text-[#6600FF]" /> Mes événements</h2><span className="text-sm text-gray-500">{events.length}</span></div>
-        {loading ? (<div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="card p-4 flex gap-3"><Skeleton className="w-16 h-16 rounded-xl" /><div className="flex-1 space-y-2 py-1"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-1/2" /></div></div>))}</div>) : events.length === 0 ? (<EmptyState title="Aucun événement" description={isArtist ? "Créez votre premier événement" : "Créez votre premier événement"} action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>} />) : (<div className="space-y-3">{events.map((event) => (<div key={event.id} className="card p-4 flex items-center gap-3 cursor-pointer hover:shadow-card-hover transition-all" onClick={() => onEventClick(event)}><div className="w-14 h-14 rounded-xl overflow-hidden shrink-0"><img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" /></div><div className="flex-1 min-w-0"><h3 className="font-semibold text-[#1A1A2E] text-sm line-clamp-1">{event.title}</h3><p className="text-xs text-gray-500">{t('events', `categories.${event.category}`)} · {event.city}</p><div className="flex items-center gap-3 mt-1 text-xs text-gray-500"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span><span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>{event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}{event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}</div></div><button onClick={(e) => { e.stopPropagation(); setManageTarget(event); }} className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0"><Settings className="w-4 h-4" /></button><button onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }} className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"><Trash2 className="w-4 h-4" /></button></div>))}</div>)}
+        {/* Recharts Performance Trends & Sales Visualization */}
+        <OrganizerMetricsChart
+          data={perfData}
+          loading={metricsLoading}
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+        />
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
+            <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Mes événements
+          </h2>
+          <span className="text-sm text-gray-500">{events.length}</span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="card p-4 flex gap-3">
+                <Skeleton className="w-16 h-16 rounded-xl" />
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <EmptyState
+            title="Aucun événement"
+            description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
+            action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
+          />
+        ) : (
+          <div className="space-y-3">
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className="card p-4 flex items-center gap-3 cursor-pointer hover:shadow-card-hover transition-all"
+                onClick={() => onEventClick(event)}
+              >
+                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
+                  <SmartImage
+                    src={event.cover_url}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                    sizes="56px"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[#1A1A2E] dark:text-white text-sm line-clamp-1">{event.title}</h3>
+                  <p className="text-xs text-gray-500">{t('events', `categories.${event.category}`)} · {event.city}</p>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
+                    {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
+                    {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setManageTarget(event); }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title={isArtist ? 'Créer un événement (artiste)' : 'Créer un événement'}>

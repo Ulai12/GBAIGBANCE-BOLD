@@ -16,6 +16,7 @@ import { isEventTerminated } from '@/services/events';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
+import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 
 interface EventCardProps {
   event: Event;
@@ -74,6 +75,8 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
         whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         onClick={onClick}
+        onMouseEnter={prefetchEventDetail}
+        onTouchStart={prefetchEventDetail}
         className="
           group relative isolate w-full
           aspect-[0.78] sm:aspect-[0.82] min-h-[full]

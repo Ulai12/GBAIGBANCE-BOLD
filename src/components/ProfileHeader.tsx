@@ -1,7 +1,8 @@
-import { BadgeCheck, MapPin, Sparkles, QrCode, Share2, Camera, Calendar, Ticket, Users } from 'lucide-react';
+import { MapPin, Sparkles, QrCode, Share2, Camera, Calendar, Ticket, Users } from 'lucide-react';
 import type { Profile } from '@/types';
 import { COUNTRY_FLAGS } from '@/constants';
 import { useApp } from '@/hooks/useApp';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -10,6 +11,7 @@ interface ProfileHeaderProps {
   followersCount?: number;
   followingCount?: number;
   onEditClick?: () => void;
+  onAvatarClick?: () => void;
   onOpenQR?: () => void;
   onOpenSubscriptions?: () => void;
   onOpenTickets?: () => void;
@@ -22,6 +24,7 @@ export function ProfileHeader({
   followersCount,
   followingCount = 0,
   onEditClick,
+  onAvatarClick,
   onOpenQR,
   onOpenSubscriptions,
   onOpenTickets,
@@ -56,40 +59,30 @@ export function ProfileHeader({
         <div className="flex items-start justify-between mb-4">
           {/* Avatar avec bague VIP et overlay d'édition */}
           <div className="relative">
-            <div className="relative w-22 h-22 rounded-[1.8rem] overflow-hidden ring-4 ring-[#6600FF]/25 dark:ring-[#6600FF]/40 bg-gradient-to-tr from-[#6600FF] to-[#A855F7] p-0.5 shadow-lg">
-              <div className="w-full h-full rounded-[1.7rem] overflow-hidden bg-white dark:bg-[#1E1B2E] flex items-center justify-center">
-                {profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-3xl font-black text-[#6600FF]">
-                    {profile.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
+            <div
+              className="relative cursor-pointer group active:scale-95 transition-transform"
+              onClick={onAvatarClick || onEditClick}
+              title="Modifier et redimensionner la photo de profil"
+            >
+              <UserAvatar
+                src={profile.avatar_url}
+                name={profile.name}
+                role={profile.role}
+                size="2xl"
+                shape={isCreator ? 'squircle' : 'circle'}
+                isVerified={isCreator}
+                className="w-24 h-24 ring-4 ring-[#6600FF]/25 dark:ring-[#6600FF]/40 shadow-lg"
+              />
             </div>
 
-            {/* Badge de rôle vérifié */}
-            {isCreator && (
-              <div
-                className="absolute -bottom-1 -right-1 bg-[#6600FF] text-white p-1.5 rounded-full ring-4 ring-white dark:ring-[#151322] shadow-sm"
-                title="Compte Créateur Vérifié"
-              >
-                <BadgeCheck className="w-4 h-4" />
-              </div>
-            )}
-
-            {onEditClick && (
+            {(onAvatarClick || onEditClick) && (
               <button
                 type="button"
-                onClick={onEditClick}
-                className="absolute -top-1 -right-1 bg-white dark:bg-[#1E1B2E] text-gray-700 dark:text-gray-200 p-1.5 rounded-full ring-2 ring-black/10 dark:ring-white/20 shadow-xs hover:bg-gray-100 transition-all"
-                title="Changer la photo"
+                onClick={onAvatarClick || onEditClick}
+                className="absolute -bottom-1 -right-1 bg-white dark:bg-[#1E1B2E] text-gray-700 dark:text-gray-200 p-2 rounded-full ring-2 ring-black/10 dark:ring-white/20 shadow-md hover:bg-gray-100 dark:hover:bg-[#2A2640] transition-all cursor-pointer z-20"
+                title="Changer et recadrer la photo"
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA]" />
               </button>
             )}
           </div>

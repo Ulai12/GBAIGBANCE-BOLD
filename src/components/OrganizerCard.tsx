@@ -1,8 +1,9 @@
-import { BadgeCheck, Calendar, MapPin, Share2, UserCheck, UserPlus } from 'lucide-react';
+import { Calendar, MapPin, Share2, UserCheck, UserPlus } from 'lucide-react';
 import type { Organization } from '@/types';
 import { formatNumber } from '@/utils/format';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface OrganizerCardProps {
   organization: Organization;
@@ -44,18 +45,14 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="relative shrink-0">
-              <img
-                src={organization.logo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=100'}
-                alt={organization.name}
-                className="w-13 h-13 rounded-2xl object-cover ring-2 ring-[#6600FF]/20"
-              />
-              {isVerified && (
-                <div className="absolute -bottom-1 -right-1 bg-[#6600FF] rounded-full p-0.5 shadow-xs">
-                  <BadgeCheck className="w-3.5 h-3.5 text-white" />
-                </div>
-              )}
-            </div>
+            <UserAvatar
+              src={organization.logo_url}
+              name={organization.name}
+              role="organizer"
+              size="lg"
+              shape="squircle"
+              isVerified={isVerified}
+            />
             <div className="min-w-0 flex-1">
               <h3 className="font-extrabold text-sm text-[#17131D] dark:text-white truncate">
                 {organization.name}

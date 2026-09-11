@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
-  Building2,
   MapPin,
   BadgeCheck,
   Globe,
@@ -15,9 +14,11 @@ import {
 } from 'lucide-react';
 import { fetchOrganizationById, fetchEventsByOrganization } from '@/services/events';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useApp } from '@/hooks/useApp';
 import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { Organization, Event } from '@/types';
 
 interface OrganizerDetailScreenProps {
@@ -25,6 +26,7 @@ interface OrganizerDetailScreenProps {
   onBack: () => void;
   onEventClick: (event: Event) => void;
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void;
+  onLogin?: () => void;
 }
 
 export function OrganizerDetailScreen({
@@ -32,7 +34,9 @@ export function OrganizerDetailScreen({
   onBack,
   onEventClick,
   onToast,
+  onLogin,
 }: OrganizerDetailScreenProps) {
+  const { session, t } = useApp();
   const { isFollowingOrg, toggleFollowOrg } = useFavorites();
   const [fullOrg, setFullOrg] = useState<Organization | null>(organization);
   const [events, setEvents] = useState<Event[]>([]);
@@ -50,17 +54,26 @@ export function OrganizerDetailScreen({
   }, [organization.id]);
 
   const handleFollow = async () => {
+    if (!session) {
+      onToast({
+        message: t('events', 'organizer.followPromptLogin') || 'Connectez-vous pour vous abonner à cet organisateur.',
+        type: 'info',
+      });
+      onLogin?.();
+      return;
+    }
+
     try {
       const willFollow = !following;
       await toggleFollowOrg(organization.id);
       onToast({
         message: willFollow
-          ? `Vous suivez désormais ${(fullOrg || organization).name}`
-          : `Désabonné de ${(fullOrg || organization).name}`,
+          ? (t('events', 'organizer.followedToast') || `Vous suivez désormais ${(fullOrg || organization).name}`)
+          : (t('events', 'organizer.unfollowedToast') || `Désabonné de ${(fullOrg || organization).name}`),
         type: 'success',
       });
     } catch {
-      onToast({ message: 'Erreur lors de la mise à jour', type: 'error' });
+      onToast({ message: t('common', 'error') || 'Erreur lors de la mise à jour', type: 'error' });
     }
   };
 
@@ -74,10 +87,10 @@ export function OrganizerDetailScreen({
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share(shareData);
-        onToast({ message: 'Profil partagé avec succès', type: 'success' });
+        onToast({ message: t('events', 'organizer.profileShared') || 'Profil partagé avec succès', type: 'success' });
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        onToast({ message: 'Lien copié dans le presse-papiers', type: 'success' });
+        onToast({ message: t('events', 'organizer.linkCopied') || 'Lien copié dans le presse-papiers', type: 'success' });
       }
     } catch {
       // Annulation utilisateur
@@ -136,17 +149,15 @@ export function OrganizerDetailScreen({
       {/* Main Body */}
       <div className="max-w-md mx-auto px-5 -mt-14 relative">
         <div className="flex items-end gap-4">
-          <div className="w-24 h-24 rounded-3xl bg-white dark:bg-[#1A1829] shadow-xl ring-4 ring-white dark:ring-[#14121E] flex items-center justify-center overflow-hidden shrink-0 border border-black/5 dark:border-white/10">
-            {displayOrg.logo_url ? (
-              <img
-                src={displayOrg.logo_url}
-                alt={displayOrg.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <Building2 className="w-10 h-10 text-[#6600FF]" />
-            )}
-          </div>
+          <UserAvatar
+            src={displayOrg.logo_url}
+            name={displayOrg.name}
+            role="organizer"
+            size="2xl"
+            shape="squircle"
+            isVerified={displayOrg.verification_status === 'verified'}
+            className="w-24 h-24 shadow-xl ring-4 ring-white dark:ring-[#14121E]"
+          />
           <div className="flex-1 pb-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h1 className="text-xl font-black text-[#17131D] dark:text-white tracking-tight truncate">
@@ -173,7 +184,9 @@ export function OrganizerDetailScreen({
               <p className="text-base font-black text-[#17131D] dark:text-white">
                 {followersCount}
               </p>
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Abonnés</p>
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                {t('events', 'organizer.followers') || 'Abonnés'}
+              </p>
             </div>
           </div>
 
@@ -185,7 +198,9 @@ export function OrganizerDetailScreen({
               <p className="text-base font-black text-[#17131D] dark:text-white">
                 {events.length}
               </p>
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Événements</p>
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                {t('events', 'organizer.events') || 'Événements'}
+              </p>
             </div>
           </div>
         </div>
@@ -201,16 +216,18 @@ export function OrganizerDetailScreen({
           }`}
         >
           <Heart className={`w-4 h-4 ${following ? 'fill-[#6600FF] dark:fill-white' : ''}`} />
-          {following ? 'Abonné · Ne plus suivre' : 'Suivre cet organisateur'}
+          {following
+            ? (t('events', 'organizer.unfollow') || 'Abonné · Ne plus suivre')
+            : (t('events', 'organizer.follow') || 'Suivre cet organisateur')}
         </button>
 
         {/* Description */}
         {displayOrg.description && (
           <div className="mt-5 rounded-2xl bg-white/70 dark:bg-white/5 p-4 border border-black/5 dark:border-white/10">
             <h2 className="text-xs font-black uppercase tracking-wider text-[#17131D] dark:text-white mb-1.5 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#6600FF]" /> À propos
+              <Sparkles className="w-4 h-4 text-[#6600FF]" /> {t('events', 'organizer.about') || 'À propos'}
             </h2>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal">
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal break-words whitespace-pre-line">
               {displayOrg.description}
             </p>
           </div>
@@ -255,10 +272,10 @@ export function OrganizerDetailScreen({
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-black text-[#17131D] dark:text-white">
-              Événements organisés
+              {t('events', 'organizer.eventsOrganized') || 'Événements organisés'}
             </h2>
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              {events.length} au total
+              {events.length} {t('common', 'total') || 'au total'}
             </span>
           </div>
 
@@ -286,8 +303,8 @@ export function OrganizerDetailScreen({
             </div>
           ) : (
             <EmptyState
-              title="Aucun événement"
-              description="Cet organisateur n'a pas d'événement programmé pour l'instant."
+              title={t('events', 'noEvents') || 'Aucun événement'}
+              description={t('events', 'organizer.noEvents') || "Cet organisateur n'a pas d'événement programmé pour l'instant."}
             />
           )}
         </div>

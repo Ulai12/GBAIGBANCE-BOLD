@@ -64,5 +64,57 @@
       "outdoor": "Plein air",
       "indoor": "Indoor"
     }
+  },
+  "artist": {
+    "followers": "Abonnés",
+    "events": "Événements",
+    "views": "Vues",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "unfollow": "Abonné · Ne plus suivre",
+    "biography": "Biographie",
+    "noBio": "Aucune biographie renseignée pour le moment.",
+    "eventsAndConcerts": "Événements & Concerts",
+    "available": "disponible",
+    "availablePlural": "disponibles",
+    "noEvents": "Cet artiste n'a pas d'événement programmé pour le moment.",
+    "noEventsTitle": "Aucun événement",
+    "followPromptLogin": "Connectez-vous pour vous abonner et recevoir les alertes de cet artiste.",
+    "followedToast": "Vous suivez maintenant cet artiste !",
+    "unfollowedToast": "Vous ne suivez plus cet artiste.",
+    "profileShared": "Profil partagé",
+    "linkCopied": "Lien copié dans le presse-papiers"
+  },
+  "organizer": {
+    "official": "Organisateur Officiel",
+    "followers": "Abonnés",
+    "events": "Événements",
+    "views": "Vues",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "unfollow": "Abonné · Ne plus suivre",
+    "about": "À propos de l'organisateur",
+    "noBio": "Aucune information supplémentaire fournie.",
+    "contact": "Contact",
+    "eventsOrganized": "Événements organisés",
+    "noEvents": "Cet organisateur n'a aucun événement public pour le moment.",
+    "noEventsTitle": "Aucun événement",
+    "followPromptLogin": "Connectez-vous pour vous abonner à cet organisateur.",
+    "followedToast": "Vous suivez maintenant cet organisateur !",
+    "unfollowedToast": "Vous ne suivez plus cet organisateur.",
+    "profileShared": "Organisateur partagé",
+    "linkCopied": "Lien copié dans le presse-papiers"
+  },
+  "favorites": {
+    "title": "Mes Favoris",
+    "all": "Tous",
+    "upcoming": "À venir",
+    "past": "Terminés",
+    "activeSection": "À venir & En cours",
+    "pastSection": "Événements passés / Terminés",
+    "emptyActive": "Aucun événement à venir dans vos favoris.",
+    "emptyPast": "Aucun événement terminé dans vos favoris.",
+    "emptyAll": "Vous n'avez aucun événement en favoris.",
+    "explore": "Découvrir des événements"
   }
 }

@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
 import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
 import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { EVENT_CATEGORIES } from '@/constants';
 import type { ToastData } from '@/components/Toast';
@@ -346,16 +347,16 @@ export function HomeScreen({
 
             <button
               onClick={onProfileClick}
-              className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden bg-white/90 dark:bg-white/10 shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+              className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
               aria-label="Profil"
             >
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-sm font-black text-[#6600FF]">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              )}
+              <UserAvatar
+                src={user?.avatar_url}
+                name={user?.name || 'Invité'}
+                role={user?.role || 'attendee'}
+                size="sm"
+                className="w-full h-full"
+              />
             </button>
           </div>
         </div>
@@ -701,30 +702,21 @@ export function HomeScreen({
                     onClick={() => onArtistClick?.(artist)}
                     className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
                   >
-                    <div className="relative">
-                      <img
-                        src={artist.photo_url || `https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200`}
-                        alt={artist.name}
-                        loading="lazy"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        className="w-[5.25rem] h-[5.25rem] rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-xs"
-                      />
-                      {artist.is_verified && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#6600FF] ring-2 ring-white flex items-center justify-center">
-                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={artist.photo_url}
+                      name={artist.name}
+                      role="artist"
+                      size="xl"
+                      shape="circle"
+                      isVerified={artist.is_verified}
+                    />
                     <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {artist.name}
                     </span>
                     <span className="text-[10px] text-gray-400 font-medium">
                       {followersCount > 1000
                         ? `${(followersCount / 1000).toFixed(1)}K fans`
-                        : `${followersCount} fans`}
+                        : `${followersCount} fan${followersCount > 1 ? 's' : ''}`}
                     </span>
                   </button>
                 );
@@ -772,23 +764,14 @@ export function HomeScreen({
                     onClick={() => onOrganizationClick?.(org)}
                     className="flex flex-col items-center gap-2.5 w-[6.5rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
                   >
-                    <div className="relative">
-                      <img
-                        src={org.logo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=200'}
-                        alt={org.name}
-                        loading="lazy"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        className="w-[5.25rem] h-[5.25rem] rounded-2xl object-cover ring-2 ring-black/5 dark:ring-white/10 shadow-xs"
-                      />
-                      {org.verification_status === 'verified' && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#6600FF] ring-2 ring-white flex items-center justify-center">
-                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M16.4 5.4a1 1 0 0 1 .2 1.4l-7 9a1 1 0 0 1-1.5.1l-4-4a1 1 0 1 1 1.4-1.4l3.2 3.2 6.3-8.1a1 1 0 0 1 1.4-.2z" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={org.logo_url}
+                      name={org.name}
+                      role="organizer"
+                      size="xl"
+                      shape="squircle"
+                      isVerified={org.verification_status === 'verified'}
+                    />
                     <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {org.name}
                     </span>

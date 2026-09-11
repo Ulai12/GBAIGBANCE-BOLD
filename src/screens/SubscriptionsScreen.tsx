@@ -5,6 +5,7 @@ import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers }
 import { ArtistCard } from '@/components/ArtistCard';
 import { OrganizerCard } from '@/components/OrganizerCard';
 import { SubscriptionsScreenSkeleton } from '@/components/Skeleton';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { Artist, Organization, Profile } from '@/types';
 
 interface SubscriptionsScreenProps {
@@ -158,10 +159,12 @@ export function SubscriptionsScreen({
                 onClick={() => onUserClick(u)}
                 className="w-full card p-4 flex items-center gap-3 hover:shadow-card-hover transition-all text-left"
               >
-                <img
-                  src={u.avatar_url || `https://i.pravatar.cc/100?u=${u.id}`}
-                  alt={u.name}
-                  className="w-12 h-12 rounded-full object-cover shrink-0"
+                <UserAvatar
+                  src={u.avatar_url}
+                  name={u.name}
+                  role={u.role}
+                  size="md"
+                  className="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">

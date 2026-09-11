@@ -64,5 +64,57 @@
       "outdoor": "Outdoor",
       "indoor": "Indoor"
     }
+  },
+  "artist": {
+    "followers": "Followers",
+    "events": "Events",
+    "views": "Views",
+    "follow": "Follow",
+    "following": "Following",
+    "unfollow": "Following · Unfollow",
+    "biography": "Biography",
+    "noBio": "No biography provided at this time.",
+    "eventsAndConcerts": "Events & Concerts",
+    "available": "available",
+    "availablePlural": "available",
+    "noEvents": "This artist has no scheduled events at this time.",
+    "noEventsTitle": "No events",
+    "followPromptLogin": "Sign in to follow this artist and receive updates.",
+    "followedToast": "You are now following this artist!",
+    "unfollowedToast": "You unfollowed this artist.",
+    "profileShared": "Profile shared",
+    "linkCopied": "Link copied to clipboard"
+  },
+  "organizer": {
+    "official": "Official Organizer",
+    "followers": "Followers",
+    "events": "Events",
+    "views": "Views",
+    "follow": "Follow",
+    "following": "Following",
+    "unfollow": "Following · Unfollow",
+    "about": "About the Organizer",
+    "noBio": "No additional details provided.",
+    "contact": "Contact",
+    "eventsOrganized": "Organized Events",
+    "noEvents": "This organizer has no public events at this time.",
+    "noEventsTitle": "No events",
+    "followPromptLogin": "Sign in to follow this organizer.",
+    "followedToast": "You are now following this organizer!",
+    "unfollowedToast": "You unfollowed this organizer.",
+    "profileShared": "Organizer shared",
+    "linkCopied": "Link copied to clipboard"
+  },
+  "favorites": {
+    "title": "My Favorites",
+    "all": "All",
+    "upcoming": "Upcoming",
+    "past": "Ended",
+    "activeSection": "Upcoming & Ongoing",
+    "pastSection": "Past / Ended Events",
+    "emptyActive": "No upcoming events in your favorites.",
+    "emptyPast": "No ended events in your favorites.",
+    "emptyAll": "You have no events in your favorites.",
+    "explore": "Explore Events"
   }
 }

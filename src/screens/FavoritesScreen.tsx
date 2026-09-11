@@ -1,9 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Heart, Music2, Building2, Search, X } from 'lucide-react';
+import {
+  Heart,
+  Music2,
+  Building2,
+  Search,
+  X,
+  BadgeCheck,
+  Calendar,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
 import { getCachedHomeData } from '@/services/cache';
+import { isEventTerminated } from '@/services/events';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import type { Event, Artist, Organization } from '@/types';
@@ -16,6 +27,7 @@ interface FavoritesScreenProps {
 }
 
 type FavTab = 'events' | 'artists' | 'organizations';
+type EventStatusFilter = 'all' | 'upcoming' | 'past';
 
 function getInitialFavEvents(likedIds: Set<string>): Event[] {
   if (likedIds.size === 0) return [];
@@ -69,10 +81,11 @@ export function FavoritesScreen({
   onArtistClick,
   onOrganizationClick,
 }: FavoritesScreenProps) {
-  const { session } = useApp();
+  const { session, t } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds, toggleFollowArtist, toggleFollowOrg } = useFavorites();
 
   const [activeTab, setActiveTab] = useState<FavTab>('events');
+  const [eventFilter, setEventFilter] = useState<EventStatusFilter>('all');
   const [query, setQuery] = useState('');
 
   // Warm Data states
@@ -81,7 +94,7 @@ export function FavoritesScreen({
   const [organizations, setOrganizations] = useState<Organization[]>(() => getInitialFavOrgs(followedOrgIds));
   const [loading, setLoading] = useState(() => likedEventIds.size > 0 && getInitialFavEvents(likedEventIds).length === 0);
 
-  // Charger les événements favoris
+  // Charger les événements favoris avec découpage en lots sécurisé (support des passés et actifs)
   useEffect(() => {
     let isCancelled = false;
     async function loadFavoriteEvents() {
@@ -92,18 +105,36 @@ export function FavoritesScreen({
       }
       try {
         const ids = Array.from(likedEventIds);
-        const { data, error } = await supabase
-          .from('events')
-          .select('*')
-          .in('id', ids);
+        const batches: string[][] = [];
+        for (let i = 0; i < ids.length; i += 40) {
+          batches.push(ids.slice(i, i + 40));
+        }
 
-        if (!error && data && !isCancelled) {
-          setEvents(data as Event[]);
-          try {
-            localStorage.setItem('gba_fav_events_cache', JSON.stringify(data));
-          } catch {
-            // Storage quota
+        const loadedEvents: Event[] = [];
+        for (const batch of batches) {
+          const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .in('id', batch);
+
+          if (!error && data) {
+            loadedEvents.push(...(data as Event[]));
           }
+        }
+
+        if (!isCancelled) {
+          setEvents((prev) => {
+            const map = new Map<string, Event>();
+            prev.forEach((e) => map.set(e.id, e));
+            loadedEvents.forEach((e) => map.set(e.id, e));
+            const merged = Array.from(map.values()).filter((e) => likedEventIds.has(e.id));
+            try {
+              localStorage.setItem('gba_fav_events_cache', JSON.stringify(merged));
+            } catch {
+              // Quota storage
+            }
+            return merged;
+          });
         }
       } catch {
         // Ignorer erreur réseau
@@ -159,12 +190,34 @@ export function FavoritesScreen({
     };
   }, [followedArtistIds, followedOrgIds]);
 
-  // Filtrage
-  const filteredEvents = useMemo(() => {
+  // Séparation organisée des événements en cours / à venir et des événements passés
+  const { activeEvents, terminatedEvents } = useMemo(() => {
+    const active: Event[] = [];
+    const terminated: Event[] = [];
+
     const list = events.filter((e) => likedEventIds.has(e.id));
-    if (!query.trim()) return list;
-    const q = query.toLowerCase();
-    return list.filter((e) => e.title.toLowerCase().includes(q) || e.location_name?.toLowerCase().includes(q));
+    const filtered = !query.trim()
+      ? list
+      : list.filter((e) =>
+          e.title.toLowerCase().includes(query.toLowerCase()) ||
+          e.location_name?.toLowerCase().includes(query.toLowerCase()) ||
+          e.category?.toLowerCase().includes(query.toLowerCase())
+        );
+
+    filtered.forEach((e) => {
+      if (isEventTerminated(e)) {
+        terminated.push(e);
+      } else {
+        active.push(e);
+      }
+    });
+
+    // À venir : tri chronologique croissant (plus proche en premier)
+    active.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+    // Terminés : tri antichronologique (plus récent en premier)
+    terminated.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
+
+    return { activeEvents: active, terminatedEvents: terminated };
   }, [events, likedEventIds, query]);
 
   const filteredArtists = useMemo(() => {
@@ -182,6 +235,7 @@ export function FavoritesScreen({
   }, [organizations, followedOrgIds, query]);
 
   const totalFavoritesCount = likedEventIds.size + followedArtistIds.size + followedOrgIds.size;
+  const totalFavEventsCount = activeEvents.length + terminatedEvents.length;
 
   return (
     <div className="min-h-screen pb-32">
@@ -226,7 +280,7 @@ export function FavoritesScreen({
         </div>
       </div>
 
-      {/* Segmented Control iOS */}
+      {/* Segmented Control iOS Principal */}
       <div className="px-5 mt-4">
         <div className="p-1 bg-gray-200/70 dark:bg-white/10 rounded-2xl flex items-center">
           <button
@@ -268,6 +322,47 @@ export function FavoritesScreen({
         </div>
       </div>
 
+      {/* Sous-filtre intelligent iOS pour les événements (Tous / À venir / Terminés) */}
+      {activeTab === 'events' && likedEventIds.size > 0 && (
+        <div className="px-5 mt-3 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setEventFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              eventFilter === 'all'
+                ? 'bg-[#17131D] dark:bg-white text-white dark:text-[#17131D] shadow-xs'
+                : 'bg-white dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-black/5 dark:border-white/10'
+            }`}
+          >
+            {t('events', 'favorites.all') || 'Tous'} ({totalFavEventsCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setEventFilter('upcoming')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              eventFilter === 'upcoming'
+                ? 'bg-[#6600FF] text-white shadow-xs'
+                : 'bg-white dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-black/5 dark:border-white/10'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            {t('events', 'favorites.upcoming') || 'À venir'} ({activeEvents.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setEventFilter('past')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              eventFilter === 'past'
+                ? 'bg-gray-700 dark:bg-gray-600 text-white shadow-xs'
+                : 'bg-white dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-black/5 dark:border-white/10'
+            }`}
+          >
+            <Clock className="w-3 h-3 text-gray-400" />
+            {t('events', 'favorites.past') || 'Terminés'} ({terminatedEvents.length})
+          </button>
+        </div>
+      )}
+
       {/* Sync Banner if not logged in */}
       {!session && (
         <div className="px-5 mt-4">
@@ -287,7 +382,7 @@ export function FavoritesScreen({
       )}
 
       {/* Main List Area */}
-      <div className="px-5 mt-5">
+      <div className="px-5 mt-4">
         {/* ONGLET 1 : ÉVÉNEMENTS AIMÉS */}
         {activeTab === 'events' && (
           <div>
@@ -300,9 +395,9 @@ export function FavoritesScreen({
                   />
                 ))}
               </div>
-            ) : filteredEvents.length === 0 ? (
+            ) : totalFavEventsCount === 0 ? (
               <EmptyState
-                title={query ? 'Aucun événement correspondant' : 'Aucun événement aimé'}
+                title={query ? 'Aucun événement correspondant' : (t('events', 'favorites.emptyAll') || 'Aucun événement aimé')}
                 description={
                   query
                     ? 'Essayez avec un autre terme de recherche'
@@ -311,14 +406,80 @@ export function FavoritesScreen({
                 icon={<Heart className="w-12 h-12 text-[#6600FF]/40" />}
               />
             ) : (
-              <div className="grid grid-cols-2 gap-3.5">
-                {filteredEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    onClick={() => onEventClick(event)}
+              <div className="space-y-6">
+                {/* 1. SECTION ÉVÉNEMENTS ACTIFS / À VENIR */}
+                {(eventFilter === 'all' || eventFilter === 'upcoming') && activeEvents.length > 0 && (
+                  <div>
+                    {eventFilter === 'all' && (
+                      <div className="flex items-center justify-between mb-3 px-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <h2 className="text-xs font-black uppercase tracking-wider text-[#17131D] dark:text-white">
+                            {t('events', 'favorites.activeSection') || 'À venir & En cours'}
+                          </h2>
+                        </div>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          {activeEvents.length}
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {activeEvents.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onClick={() => onEventClick(event)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* État vide spécifique filtre "À venir" */}
+                {eventFilter === 'upcoming' && activeEvents.length === 0 && (
+                  <EmptyState
+                    title="Aucun événement à venir"
+                    description="Tous vos événements favoris sont déjà passés."
+                    icon={<Calendar className="w-12 h-12 text-emerald-500/40" />}
                   />
-                ))}
+                )}
+
+                {/* 2. SECTION ÉVÉNEMENTS PASSÉS / TERMINÉS */}
+                {(eventFilter === 'all' || eventFilter === 'past') && terminatedEvents.length > 0 && (
+                  <div>
+                    {eventFilter === 'all' && (
+                      <div className="flex items-center justify-between mb-3 px-0.5 pt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gray-400" />
+                          <h2 className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            {t('events', 'favorites.pastSection') || 'Événements passés / Terminés'}
+                          </h2>
+                        </div>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-600 dark:text-gray-400">
+                          {terminatedEvents.length}
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3.5 opacity-90">
+                      {terminatedEvents.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onClick={() => onEventClick(event)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* État vide spécifique filtre "Terminés" */}
+                {eventFilter === 'past' && terminatedEvents.length === 0 && (
+                  <EmptyState
+                    title="Aucun événement terminé"
+                    description="Vous n'avez aucun événement passé dans votre sélection."
+                    icon={<Clock className="w-12 h-12 text-gray-400/40" />}
+                  />
+                )}
               </div>
             )}
           </div>

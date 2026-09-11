@@ -5,6 +5,7 @@ import {
 import { EventCard } from '@/components/EventCard';
 import { OrganizerCard } from '@/components/OrganizerCard';
 import { EmptyState } from '@/components/EmptyState';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, Artist, Organization } from '@/types';
 import { formatDistance } from '@/utils/geo';
 
@@ -295,10 +296,14 @@ export function SeeMoreModal({
                   }}
                   className="glass-card p-4 rounded-2xl flex flex-col items-center text-center cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
-                  <img
-                    src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200'}
-                    alt={artist.name}
-                    className="w-20 h-20 rounded-full object-cover ring-2 ring-[#6600FF]/30 shadow-xs mb-3"
+                  <UserAvatar
+                    src={artist.photo_url}
+                    name={artist.name}
+                    role="artist"
+                    size="xl"
+                    shape="circle"
+                    isVerified={artist.is_verified}
+                    className="mb-3"
                   />
                   <h3 className="font-bold text-sm text-[#17131D] dark:text-white line-clamp-1">
                     {artist.name}
