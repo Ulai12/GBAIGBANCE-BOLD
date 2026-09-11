@@ -788,14 +788,12 @@ export function HomeScreen({
 
       {/* STATS GLOBALES GBAIGBANCE (Titre et sous-titre intacts comme demandé) */}
       <section className="mt-9 px-5">
-        <div className="mb-4">
-          <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-            Gbaigbance en chiffres
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-            Statistiques globales de la plateforme · Données en direct
-          </p>
-        </div>
+         <div className="text-center mb-5">
+            <h3 className="text-2xl font-black text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
+            <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
+              Statistiques globales de la plateforme · Données en direct
+            </p>
+          </div>
         <GbaigbanceStatsDashboard
           events={allActiveEvents}
           platformStats={platformStats || undefined}
