@@ -31,10 +31,12 @@ export interface Profile {
   city: string;
   country: string;
   bio: string | null;
+  preferred_genres?: string[]; // Propriété ajoutée pour le filtrage des préférences
   gemini_config?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export type PublicProfile = Pick<Profile, 'id' | 'name' | 'avatar_url' | 'role'>;
 
