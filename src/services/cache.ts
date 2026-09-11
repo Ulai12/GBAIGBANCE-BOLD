@@ -58,7 +58,7 @@ function isValidEvent(e: unknown): e is Event {
   return Boolean(evt.id && evt.title && evt.starts_at && evt.status === 'published');
 }
 
-function stripEventForDigest(e: Event): Event {
+function stripEventForDigest(e: Event & Record<string, any>): Event {
   return {
     id: e.id,
     title: e.title,
@@ -78,8 +78,9 @@ function stripEventForDigest(e: Event): Event {
     total_tickets: e.total_tickets,
     attendees_count: e.attendees_count,
     likes_count: e.likes_count,
-  } as Event;
+  } as unknown as Event;
 }
+
 
 // Hydrate memory cache asynchronously from IndexedDB on startup
 if (typeof window !== 'undefined') {
