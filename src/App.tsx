@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Ticket as TicketIcon } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
@@ -594,6 +595,7 @@ function App() {
           </Suspense>
         </FavoritesProvider>
       </AppProvider>
+      <Analytics />
     </ErrorBoundary>
   );
 }
