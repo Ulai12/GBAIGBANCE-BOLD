@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   MapPin,
   Sparkles,
   Ticket,
@@ -43,7 +41,7 @@ export function FeaturedCarousel({
   const { isLiked, toggleLike } = useFavorites();
   const prefersReducedMotion = useReducedMotion();
 
-  const featuredList = events.length > 0 ? events.slice(0, 6) : [];
+  const featuredList = useMemo(() => (events.length > 0 ? events.slice(0, 6) : []), [events]);
   const total = featuredList.length;
 
   const nextSlide = useCallback(() => {
@@ -95,19 +93,19 @@ export function FeaturedCarousel({
 
   const variants = {
     enter: (dir: number) => ({
-      x: dir > 0 ? 80 : -80,
-      opacity: 0,
-      scale: 0.98,
+      x: dir > 0 ? '100%' : '-100%',
+      opacity: 1,
+      zIndex: 2,
     }),
     center: {
       x: 0,
       opacity: 1,
-      scale: 1,
+      zIndex: 1,
     },
     exit: (dir: number) => ({
-      x: dir > 0 ? -80 : 80,
-      opacity: 0,
-      scale: 0.98,
+      x: dir > 0 ? '-30%' : '30%',
+      opacity: 0.95,
+      zIndex: 0,
     }),
   };
 

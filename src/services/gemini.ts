@@ -147,21 +147,28 @@ export async function saveGeminiConfigToAccount(config: Partial<GeminiConfig>): 
     if (!user) return localSaved;
 
     // 1. Update Auth User Metadata
-    await supabase.auth.updateUser({
-      data: {
-        gemini_config: localSaved,
-      },
-    }).catch((err) => console.debug('Failed to update auth metadata for Gemini config:', err));
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          gemini_config: localSaved,
+        },
+      });
+    } catch (err) {
+      console.debug('Failed to update auth metadata for Gemini config:', err);
+    }
 
     // 2. Also update profiles table
-    await supabase
-      .from('profiles')
-      .update({
-        gemini_config: localSaved,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
-      .catch((err) => console.debug('Failed to update profiles table for Gemini config:', err));
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          gemini_config: localSaved,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+    } catch (err) {
+      console.debug('Failed to update profiles table for Gemini config:', err);
+    }
   } catch (err) {
     console.warn('Error saving Gemini config to user account:', err);
   }

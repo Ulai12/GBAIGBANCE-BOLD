@@ -94,16 +94,21 @@ export function ProfileScreen({
       .select('*')
       .eq('organizer_user_id', user.id)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        const list = (data as Event[]) || [];
-        setMyEvents(list);
-        try {
-          localStorage.setItem(`gba_my_events_${user.id}`, JSON.stringify(list));
-        } catch {
-          // Storage quota
+      .then(
+        ({ data }) => {
+          const list = (data as Event[]) || [];
+          setMyEvents(list);
+          try {
+            localStorage.setItem(`gba_my_events_${user.id}`, JSON.stringify(list));
+          } catch {
+            // Storage quota
+          }
+          setLoading(false);
+        },
+        () => {
+          setLoading(false);
         }
-      })
-      .finally(() => setLoading(false));
+      );
 
     // Récupérer les nombres réels d'abonnements, abonnés et billets depuis la base de données
     void (async () => {

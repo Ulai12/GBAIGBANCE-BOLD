@@ -58,7 +58,7 @@ function isValidEvent(e: unknown): e is Event {
   return Boolean(evt.id && evt.title && evt.starts_at && evt.status === 'published');
 }
 
-function stripEventForDigest(e: Event & Record<string, any>): Event {
+function stripEventForDigest(e: Event & Record<string, unknown>): Event {
   return {
     id: e.id,
     title: e.title,

@@ -73,7 +73,7 @@ export function getEventCoordinates(event: Partial<Event>): { latitude: number; 
   }
 
   const loc = (event.location_name || '').toLowerCase().trim();
-  const address = (event.address || '').toLowerCase().trim();
+  const address = (event.location_address || '').toLowerCase().trim();
 
   for (const [key, coords] of Object.entries(KNOWN_VENUE_COORDINATES)) {
     if (loc.includes(key) || address.includes(key)) {

@@ -8,7 +8,6 @@ import {
   BadgeCheck,
   Calendar,
   Clock,
-  Sparkles,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';

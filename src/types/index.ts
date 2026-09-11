@@ -10,7 +10,7 @@ export type EventCategory =
   | 'cultural'
   | 'private';
 
-export type EventStatus = 'draft' | 'pending' | 'published' | 'paused' | 'suspended' | 'cancelled' | 'completed';
+export type EventStatus = 'draft' | 'pending' | 'published' | 'paused' | 'suspended' | 'cancelled' | 'postponed' | 'completed';
 export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | 'unavailable';
 
 export type TicketType = 'free' | 'standard' | 'vip' | 'vvip';
@@ -47,9 +47,9 @@ export interface Organization {
   description: string | null;
   logo_url: string | null;
   cover_url: string | null;
-  website: string | null;
-  phone: string | null;
-  email: string | null;
+  website?: string | null;
+  phone?: string | null;
+  email?: string | null;
   city: string;
   country: string;
   verification_status: VerificationStatus;
@@ -68,10 +68,10 @@ export interface Artist {
   genres: string[];
   city: string;
   country: string;
-  instagram_url: string | null;
-  twitter_url: string | null;
-  youtube_url: string | null;
-  spotify_url: string | null;
+  instagram_url?: string | null;
+  twitter_url?: string | null;
+  youtube_url?: string | null;
+  spotify_url?: string | null;
   followers_count: number;
   events_count: number;
   is_verified: boolean;
@@ -111,7 +111,7 @@ export interface Event {
   created_by_role?: 'organizer' | 'artist';
   created_at: string;
   updated_at: string;
-  event_artists?: Artist[];
+  event_artists?: Artist[] | { artist: Artist }[];
   organizer?: Organization | null;
 }
 

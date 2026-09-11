@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { Event, EventWithRelations, Artist, Organization, TicketOption, EventCollaborator, Profile, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier, EventStatus } from '@/types';
+import type { Event, EventWithRelations, Artist, Organization, TicketOption, TicketType, EventCollaborator, Profile, PublicProfile, EventComment, EventReaction, EventQuestion, EventScheduleSlot, EventLiveLink, EventSponsor, SponsorTier, EventStatus } from '@/types';
 import type { EventCategory } from '@/types';
 
 // ==================== IMAGE UPLOAD ====================
@@ -82,7 +82,7 @@ function generateFallbackTicketOptions(eventId: string, priceMin: number = 5000)
     {
       id: `fallback-opt-std-${eventId}`,
       event_id: eventId,
-      ticket_type: isFree ? 'free' : 'standard',
+      ticket_type: (isFree ? 'free' : 'standard') as TicketType,
       label: isFree ? 'Accès Libre (Gratuit)' : 'Billet Standard',
       price: isFree ? 0 : priceMin,
       quantity_total: isFree ? 500 : 250,
@@ -94,7 +94,7 @@ function generateFallbackTicketOptions(eventId: string, priceMin: number = 5000)
       {
         id: `fallback-opt-vip-${eventId}`,
         event_id: eventId,
-        ticket_type: 'vip',
+        ticket_type: 'vip' as TicketType,
         label: 'Billet VIP Privilège',
         price: Math.max(10000, Math.round(priceMin * 2.2)),
         quantity_total: 50,

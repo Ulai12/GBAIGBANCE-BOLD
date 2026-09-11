@@ -91,7 +91,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const handleUpdate = (e: Event) => {
+    const handleUpdate = (e: globalThis.Event) => {
       const customEvent = e as CustomEvent<{ update: () => void }>;
       addToast({
         message: 'Mise à jour disponible pour Gbaïgbancê',
@@ -253,7 +253,7 @@ function AppContent() {
           onBack={() => setScreen(activeTab)}
           onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
           onToast={addToast}
-          onLogin={() => setShowAuth(true)}
+          onLogin={() => setScreen('login')}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>
@@ -268,7 +268,7 @@ function AppContent() {
           onBack={() => setScreen(activeTab)}
           onEventClick={(event) => { setSelectedEvent(event); setScreen('eventDetail'); }}
           onToast={addToast}
-          onLogin={() => setShowAuth(true)}
+          onLogin={() => setScreen('login')}
         />
         <ToastContainer toasts={toasts} onClose={closeToast} />
       </>

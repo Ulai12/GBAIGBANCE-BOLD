@@ -147,7 +147,7 @@ export function EditProfileModal({ open, onClose, onToast }: EditProfileModalPro
     <ProfilePictureModal
       open={pictureModalOpen}
       onClose={() => setPictureModalOpen(false)}
-      onSuccess={(newAvatarUrl) => {
+      onSuccess={(newAvatarUrl: string) => {
         setAvatarUrl(newAvatarUrl);
       }}
       onToast={onToast}

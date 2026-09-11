@@ -19,9 +19,10 @@ interface ProfilePictureModalProps {
   open: boolean;
   onClose: () => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
+  onSuccess?: (url: string) => void | Promise<void>;
 }
 
-export function ProfilePictureModal({ open, onClose, onToast }: ProfilePictureModalProps) {
+export function ProfilePictureModal({ open, onClose, onToast, onSuccess }: ProfilePictureModalProps) {
   const { user, refreshProfile } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -211,6 +212,9 @@ export function ProfilePictureModal({ open, onClose, onToast }: ProfilePictureMo
       // 3. Update profile record
       await updateProfile(user.id, { avatar_url: avatarUrl });
       await refreshProfile();
+      if (onSuccess) {
+        await onSuccess(avatarUrl);
+      }
 
       onToast({ message: 'Photo de profil mise à jour avec succès !', type: 'success' });
       onClose();
@@ -227,6 +231,9 @@ export function ProfilePictureModal({ open, onClose, onToast }: ProfilePictureMo
     try {
       await updateProfile(user.id, { avatar_url: null });
       await refreshProfile();
+      if (onSuccess) {
+        await onSuccess('');
+      }
       onToast({ message: 'Photo de profil supprimée', type: 'info' });
       onClose();
     } catch {

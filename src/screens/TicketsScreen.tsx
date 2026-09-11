@@ -6,7 +6,7 @@ import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets }
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { TicketsScreenSkeleton } from '@/components/Skeleton';
-import type { Event, Ticket } from '@/types';
+import type { Event, Ticket, TicketStatus } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
 interface TicketsScreenProps {
@@ -50,7 +50,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     fetchUserTickets(user.id)
       .then((data) => {
         if (!isMounted) return;
-        const list = (data as (Ticket & { event?: Event })[]) || [];
+        const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
         setTickets(list);
         cachedTickets = { userId: user.id, tickets: list };
         saveCachedUserTickets(user.id, list).catch(() => {});
@@ -74,7 +74,9 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       const result = await cancelTicket(cancelTarget);
       if (result.success) {
         onToast({ message: 'Billet annulé avec succès', type: 'success' });
-        const updated = tickets.map((t) => (t.id === cancelTarget ? { ...t, status: 'cancelled' } : t));
+        const updated: (Ticket & { event?: Event })[] = tickets.map((t) =>
+          t.id === cancelTarget ? { ...t, status: 'cancelled' as TicketStatus } : t
+        );
         setTickets(updated);
         cachedTickets = { userId: user.id, tickets: updated };
         saveCachedUserTickets(user.id, updated).catch(() => {});

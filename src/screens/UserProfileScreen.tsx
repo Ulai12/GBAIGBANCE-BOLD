@@ -76,7 +76,7 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
       <ProfilePictureModal
         open={pictureModalOpen}
         onClose={() => setPictureModalOpen(false)}
-        onSuccess={async (url) => {
+        onSuccess={async (url: string) => {
           if (profile) setProfile({ ...profile, avatar_url: url });
           await refreshProfile();
         }}
