@@ -172,7 +172,7 @@ export function FeaturedCarousel({
             {/* TOP BADGES & ACTIONS */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/90 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md border border-white/20">
+                <span className="inline-flex items-center uppercase gap-1.5 px-3 py-1.5 rounded-full bg-[#6600FF]/30 text-white text-xs font-black tracking-wide backdrop-blur-md shadow-md border border-white/20">
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                   À LA UNE
                 </span>
@@ -182,8 +182,8 @@ export function FeaturedCarousel({
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/90 text-white text-xs font-black backdrop-blur-md shadow-sm border border-white/20">
-                  <Flame className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/50 text-white text-xs font-black backdrop-blur-md shadow-sm border border-white/20">
+                  <Flame className="w-3.5 h-3.5 text-yellow-200 uppercase animate-pulse" />
                   <span>HOT</span>
                 </div>
 
@@ -215,12 +215,12 @@ export function FeaturedCarousel({
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col gap-2.5 z-10">
               {/* DATE & VENUE */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-white/95">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 shadow-sm">
-                  <CalendarDays className="w-3.5 h-3.5 text-[#C4B5FD]" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/15 backdrop-blur-md border border-white/15 shadow-sm">
+                  <CalendarDays className="w-3.5 h-3.5 text-[#A78BFA]" />
                   {formatDate(currentEvent.starts_at)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 shadow-sm">
-                  <MapPin className="w-3.5 h-3.5 text-[#C4B5FD]" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/15 backdrop-blur-md border border-white/15 shadow-sm">
+                  <MapPin className="w-3.5 h-3.5 text-[#A78BFA]" />
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {currentEvent.location_name || currentEvent.city}
                   </span>
@@ -238,7 +238,7 @@ export function FeaturedCarousel({
                   <span className="text-[10px] sm:text-xs text-white/80 uppercase tracking-wider font-semibold drop-shadow-sm">
                     Tarif d'entrée
                   </span>
-                  <span className="text-lg sm:text-2xl font-black text-[#DDD6FE] drop-shadow-md">
+                  <span className="text-lg sm:text-2xl font-black text-[#A78BFA] drop-shadow-md shadow-white">
                     {formattedPrice}
                   </span>
                 </div>
@@ -251,10 +251,10 @@ export function FeaturedCarousel({
                         e.stopPropagation();
                         onBookEvent(currentEvent);
                       }}
-                      className="px-4 py-2.5 rounded-full bg-[#6600FF] hover:bg-[#5200CC] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
+                      className="px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-[#6600FF]/10 hover:bg-[#5200CC] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
                     >
-                      <Ticket className="w-4 h-4" />
-                      <span>Réserver</span>
+                      <Ticket className="w-4 h-4 text-[#6600FF]" />
+                      <span className="text-black text-black uppercase">Réserver</span>
                     </button>
                   )}
                   <button
@@ -273,38 +273,11 @@ export function FeaturedCarousel({
             </div>
           </motion.div>
         </AnimatePresence>
-
-        {/* LEFT / RIGHT NAV ARROWS */}
-        {total > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                prevSlide();
-              }}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-20"
-              aria-label="Événement précédent"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                nextSlide();
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 group-hover:opacity-100 z-20"
-              aria-label="Événement suivant"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
+      </div>
 
         {/* BOTTOM INDICATOR PILLS */}
         {total > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-auto">
+          <div className="absolute bottom-3 left-2/4 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-auto">
             {featuredList.map((evt, idx) => {
               const isActive = idx === currentIndex;
               return (
@@ -328,6 +301,5 @@ export function FeaturedCarousel({
           </div>
         )}
       </div>
-    </div>
   );
 }

@@ -404,9 +404,11 @@ export function HomeScreen({
 
       {/* SECTION 2: Explorer par catégorie */}
       <section className="mt-8 px-5">
-        <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
+        <div className="text-center">
+        <h2 className="text-xl uppercase items-center sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
           Explorer par catégorie
         </h2>
+        </div>
         <div className="grid grid-cols-4 gap-2.5 py-1">
           {EVENT_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.icon] || Music;
@@ -483,10 +485,10 @@ export function HomeScreen({
                 <Navigation className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
                   À proximité de vous
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0 whiterap">
                   Recherche des événements locaux...
                 </p>
               </div>
@@ -541,7 +543,7 @@ export function HomeScreen({
           </div>
 
           {/* Tuiles défilables horizontales modernes compactes */}
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-5 px-5">
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-[10px]">
             {nearbySectionData.events.map((event) => (
               <NearbyEventTile
                 key={event.id}
@@ -692,7 +694,7 @@ export function HomeScreen({
           </div>
 
           <div className="relative">
-            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
+            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
                 const followersCount = artist.followers_count ?? 0;
                 return (
@@ -700,20 +702,21 @@ export function HomeScreen({
                     type="button"
                     key={artist.id}
                     onClick={() => onArtistClick?.(artist)}
-                    className="flex flex-col items-center gap-2.5 w-[5.75rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
+                    className="flex flex-col items-center gap-1.5 w-[4rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 
+                    ease-out cursor-pointer text-center w-full whitespace-nowrap"
                   >
                     <UserAvatar
                       src={artist.photo_url}
                       name={artist.name}
                       role="artist"
-                      size="xl"
+                      size="md"
                       shape="circle"
                       isVerified={artist.is_verified}
                     />
                     <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {artist.name}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-[10px] text-gray-400 font-bold">
                       {followersCount > 1000
                         ? `${(followersCount / 1000).toFixed(1)}K fans`
                         : `${followersCount} fan${followersCount > 1 ? 's' : ''}`}
@@ -728,7 +731,7 @@ export function HomeScreen({
 
       {/* SECTION 9: Organisateurs officiels (vrais comptes organisateurs) */}
       {organizations.length > 0 && (
-        <section className="mt-9" aria-label="Organisateurs officiels">
+        <section className="mt-6" aria-label="Organisateurs officiels">
           <div className="px-5 flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -755,14 +758,15 @@ export function HomeScreen({
           </div>
 
           <div className="relative">
-            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2 snap-x snap-mandatory scroll-pl-5">
+            <div className="flex gap-4 items-center overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {organizations.map((org) => {
                 return (
                   <button
                     type="button"
                     key={org.id}
                     onClick={() => onOrganizationClick?.(org)}
-                    className="flex flex-col items-center gap-2.5 w-[6.5rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-left"
+                    className="flex flex-col gap-1.5 w-[4rem] shrink-0 snap-start active:scale-95 transition-transform duration-200 
+                    ease-out cursor-pointer text-center w-full whitespace-nowrap"
                   >
                     <UserAvatar
                       src={org.logo_url}
@@ -775,7 +779,8 @@ export function HomeScreen({
                     <span className="text-[12px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
                       {org.name}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">
+
+                    <span className="text-[10px] text-gray-400 font-bold">
                       {org.events_count ?? 0} événement{(org.events_count ?? 0) > 1 ? 's' : ''}
                     </span>
                   </button>
@@ -789,9 +794,10 @@ export function HomeScreen({
       {/* STATS GLOBALES GBAIGBANCE (Titre et sous-titre intacts comme demandé) */}
       <section className="mt-9 px-5">
          <div className="text-center mb-5">
-            <h3 className="text-2xl font-black text-[#1A1A2E] tracking-[-0.01em]">GBAIGBANCE EN CHIFFRES</h3>
-            <p className="text-[10px] font-extrabold text-[#6600FF]/60 tracking-[0.18em] uppercase mt-1">
-              Statistiques globales de la plateforme · Données en direct
+            <h3 className="text-2xl font-black text-[#1A1A2E] dark:text-white tracking-[-0.01em]">
+              GBAIGBANCE EN CHIFFRES</h3>
+            <p className="text-[10px] font-extrabold text-[#6600FF]/80 dark:text-gray-400 tracking-[0.18em] uppercase mt-1">
+              Statistiques globales de la plateforme · En Direct
             </p>
           </div>
         <GbaigbanceStatsDashboard

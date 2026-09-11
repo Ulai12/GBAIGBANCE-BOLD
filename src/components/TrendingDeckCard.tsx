@@ -139,7 +139,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
               <MapPin className="h-3.5 w-3.5" />
               {event.location_name || 'Lieu à confirmer'}
             </p>
-            <p className="mt-1 text-[1.3em] font-black text-[#DDD6FE]">
+            <p className="mt-1 text-[1.3em] font-black text-[#A78BFA]">
               {event.price_min === 0 ? 'Entrée libre' : `${event.price_min.toLocaleString('fr-FR')} FCFA`}
             </p>
           </div>
@@ -149,7 +149,8 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
               eventClick.stopPropagation();
               onBook();
             }}
-            className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#17131D] transition-all hover:bg-gray-100 hover:scale-105 active:scale-95 shadow-lg"
+            className="flex h-11 items-center gap-2 rounded-full bg-white/90 border border-1 border-[#6600FF]/10
+             px-5 uppercase text-sm font-black text-[#17131D] transition-all hover:bg-gray-100 hover:scale-105 active:scale-95 shadow-lg"
           >
             <Ticket className="h-4 w-4 text-[#6600FF]" /> Réserver
           </button>
