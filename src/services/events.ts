@@ -58,19 +58,15 @@ export function isRealEvent(event: Partial<Event> | null | undefined): boolean {
 
 export function isRealArtist(artist: Partial<Artist> | null | undefined): boolean {
   if (!artist || !artist.id) return false;
-  const id = String(artist.id);
-  if (id.startsWith('b1000000-') || id.startsWith('mock-')) return false;
-  const fakeNames = ['Kafui Mensah', 'Aminata Diallo', 'DJ Eklu', 'Kofi & The Roots', 'Sira Kone', 'Ama Rhythm'];
-  if (artist.name && fakeNames.includes(artist.name)) return false;
+  const id = String(artist.id).trim();
+  if (!id || id.startsWith('mock-')) return false;
   return true;
 }
 
 export function isRealOrganization(org: Partial<Organization> | null | undefined): boolean {
   if (!org || !org.id) return false;
-  const id = String(org.id);
-  if (id.startsWith('a1000000-') || id.startsWith('mock-')) return false;
-  const fakeNames = ['AfroVibe Events', 'Culture Bénin', 'Grand Place Productions'];
-  if (org.name && fakeNames.includes(org.name)) return false;
+  const id = String(org.id).trim();
+  if (!id || id.startsWith('mock-')) return false;
   return true;
 }
 
@@ -506,13 +502,37 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
 
 // ==================== CREATE EVENT WITH COLLABORATORS ====================
 
+const ALLOWED_DB_CATEGORIES: EventCategory[] = [
+  'concert', 'festival', 'conference', 'formation', 'exposition', 'spectacle', 'cultural', 'private',
+];
+
+export function normalizeEventCategory(cat?: string | null): EventCategory {
+  if (cat && ALLOWED_DB_CATEGORIES.includes(cat as EventCategory)) {
+    return cat as EventCategory;
+  }
+  return 'concert';
+}
+
 export async function createEventWithCollaborators(
   eventData: {
-    title: string; description: string; category: EventCategory; location_name: string;
-    location_address?: string | null; city: string; country?: string;
-    latitude?: number | null; longitude?: number | null;
-    starts_at: string; ends_at?: string | null; price_min: number; cover_url: string;
-    images?: string[]; video_url?: string | null; capacity?: number; created_by_role: 'organizer' | 'artist';
+    title: string;
+    description: string;
+    category: EventCategory;
+    subcategory?: string | null;
+    location_name: string;
+    location_address?: string | null;
+    city: string;
+    country?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    starts_at: string;
+    ends_at?: string | null;
+    price_min: number;
+    cover_url: string;
+    images?: string[];
+    video_url?: string | null;
+    capacity?: number;
+    created_by_role: 'organizer' | 'artist';
   },
   collaborators: { user_id: string; role: 'co_organizer' | 'performer' }[],
   ticketOptions: { ticket_type: string; label: string; price: number; quantity_total: number; description?: string }[],
@@ -521,15 +541,25 @@ export async function createEventWithCollaborators(
   if (!organizerUserId) throw new Error('Utilisateur non identifié. Reconnectez-vous.');
   if (!eventData.title.trim()) throw new Error('Le titre est obligatoire.');
   if (!eventData.starts_at) throw new Error("La date et l'heure sont obligatoires.");
+
   const validCollaborators = collaborators.filter((c) => c.user_id && c.user_id.trim());
   const validTicketTypes = ['free', 'standard', 'vip', 'vvip'];
   const validTickets = ticketOptions.filter((t) => t.label.trim() && validTicketTypes.includes(t.ticket_type));
+
+  const safeCategory = normalizeEventCategory(eventData.category);
+
+  // Preserve subcategory tag in description if provided so it is never lost
+  let formattedDescription = eventData.description ? eventData.description.trim() : '';
+  if (eventData.subcategory && !formattedDescription.includes(`[Sous-catégorie:`)) {
+    formattedDescription = `[Sous-catégorie: ${eventData.subcategory}]\n${formattedDescription}`.trim();
+  }
+
   const { data: event, error: eventError } = await supabase
     .from('events')
     .insert({
       title: eventData.title.trim(),
-      description: eventData.description || null,
-      category: eventData.category,
+      description: formattedDescription || null,
+      category: safeCategory,
       location_name: eventData.location_name || 'Lieu à définir',
       location_address: eventData.location_address || null,
       city: eventData.city,
@@ -541,32 +571,61 @@ export async function createEventWithCollaborators(
       price_min: eventData.price_min,
       cover_url: eventData.cover_url || null,
       images: eventData.images || [],
-      video_url: eventData.video_url || null,
       capacity: eventData.capacity || null,
       organizer_user_id: organizerUserId,
       created_by_role: eventData.created_by_role,
       status: validCollaborators.length > 0 ? 'pending' : 'published',
     })
-    .select().maybeSingle();
+    .select()
+    .maybeSingle();
+
   if (eventError) throw new Error(eventError.message || "Erreur lors de la création de l'événement");
   const createdEvent = event as Event | null;
   if (!createdEvent) return null;
+
+  // If video_url was provided, save in event_live_links
+  if (eventData.video_url && eventData.video_url.trim()) {
+    try {
+      await supabase.from('event_live_links').insert({
+        event_id: createdEvent.id,
+        platform: 'video',
+        url: eventData.video_url.trim(),
+        title: 'Vidéo Teaser',
+      });
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  // Populate client-side subcategory & video_url
+  createdEvent.subcategory = eventData.subcategory || null;
+  createdEvent.video_url = eventData.video_url || null;
+
   if (validTickets.length > 0) {
     const optionsToInsert = validTickets.map((opt) => ({
-      event_id: createdEvent.id, ticket_type: opt.ticket_type, label: opt.label.trim(),
-      price: opt.price, quantity_total: opt.quantity_total, description: opt.description || null,
+      event_id: createdEvent.id,
+      ticket_type: opt.ticket_type,
+      label: opt.label.trim(),
+      price: opt.price,
+      quantity_total: opt.quantity_total,
+      description: opt.description || null,
     }));
     const { error: optError } = await supabase.from('ticket_options').insert(optionsToInsert);
     if (optError) throw new Error(optError.message || "Erreur lors de l'ajout des billets");
   }
+
   if (validCollaborators.length > 0) {
     const collabsToInsert = validCollaborators.map((c) => ({
-      event_id: createdEvent.id, user_id: c.user_id, role: c.role,
-      invited_by: organizerUserId, status: 'pending' as const,
+      event_id: createdEvent.id,
+      user_id: c.user_id,
+      role: c.role,
+      invited_by: organizerUserId,
+      status: 'pending' as const,
     }));
     const { error: collabError } = await supabase.from('event_collaborators').insert(collabsToInsert);
     if (collabError) throw new Error(collabError.message || "Erreur lors de l'invitation des collaborateurs");
   }
+
   return createdEvent;
 }
 
@@ -576,6 +635,7 @@ export interface UpdateEventPayload {
   title: string;
   description: string;
   category: EventCategory;
+  subcategory?: string | null;
   location_name: string;
   location_address?: string | null;
   city: string;
@@ -603,10 +663,17 @@ export async function updateEventFull(
   if (!eventData.title.trim()) throw new Error('Le titre est obligatoire.');
   if (!eventData.starts_at) throw new Error("La date et l'heure sont obligatoires.");
 
+  const safeCategory = normalizeEventCategory(eventData.category);
+
+  let formattedDescription = eventData.description ? eventData.description.trim() : '';
+  if (eventData.subcategory && !formattedDescription.includes(`[Sous-catégorie:`)) {
+    formattedDescription = `[Sous-catégorie: ${eventData.subcategory}]\n${formattedDescription}`.trim();
+  }
+
   const updateFields: Record<string, unknown> = {
     title: eventData.title.trim(),
-    description: eventData.description || null,
-    category: eventData.category,
+    description: formattedDescription || null,
+    category: safeCategory,
     location_name: eventData.location_name || 'Lieu à définir',
     location_address: eventData.location_address || null,
     city: eventData.city,
@@ -618,7 +685,6 @@ export async function updateEventFull(
     price_min: eventData.price_min,
     cover_url: eventData.cover_url || null,
     images: eventData.images || [],
-    video_url: eventData.video_url || null,
     capacity: eventData.capacity || null,
     updated_at: new Date().toISOString(),
   };
@@ -636,6 +702,42 @@ export async function updateEventFull(
 
   if (updateError) {
     throw new Error(updateError.message || "Erreur lors de la mise à jour de l'événement");
+  }
+
+  // Handle video_url via event_live_links
+  if (eventData.video_url && eventData.video_url.trim()) {
+    try {
+      const { data: existingLink } = await supabase
+        .from('event_live_links')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('platform', 'video')
+        .maybeSingle();
+
+      if (existingLink) {
+        await supabase
+          .from('event_live_links')
+          .update({ url: eventData.video_url.trim() })
+          .eq('id', existingLink.id);
+      } else {
+        await supabase
+          .from('event_live_links')
+          .insert({
+            event_id: eventId,
+            platform: 'video',
+            url: eventData.video_url.trim(),
+            title: 'Vidéo Teaser',
+          });
+      }
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  const updatedEvent = updated as Event | null;
+  if (updatedEvent) {
+    updatedEvent.subcategory = eventData.subcategory || null;
+    updatedEvent.video_url = eventData.video_url || null;
   }
 
   // Sync ticket options if provided
@@ -779,6 +881,10 @@ export async function answerEventQuestion(questionId: string, answer: string, an
 }
 
 export async function toggleOrganizationFollow(organizationId: string, userId: string): Promise<boolean> {
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!UUID_REGEX.test(organizationId) || !UUID_REGEX.test(userId)) {
+    return true;
+  }
   const { data: existing } = await supabase.from('organization_follows').select('id').eq('organization_id', organizationId).eq('user_id', userId).maybeSingle();
   if (existing) { await supabase.from('organization_follows').delete().eq('id', existing.id); return false; }
   await supabase.from('organization_follows').insert({ organization_id: organizationId, user_id: userId }); return true;
@@ -1581,6 +1687,10 @@ export async function toggleEventLike(eventId: string, userId: string): Promise<
 }
 
 export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!UUID_REGEX.test(artistId) || !UUID_REGEX.test(userId)) {
+    return true;
+  }
   const { data: existing } = await supabase.from('artist_follows').select('*').eq('artist_id', artistId).eq('user_id', userId).maybeSingle();
   if (existing) { await supabase.from('artist_follows').delete().eq('artist_id', artistId).eq('user_id', userId); return false; }
   await supabase.from('artist_follows').insert({ artist_id: artistId, user_id: userId }); return true;

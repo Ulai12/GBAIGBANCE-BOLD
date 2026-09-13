@@ -83,6 +83,7 @@ export interface Event {
   title: string;
   description: string | null;
   category: EventCategory;
+  subcategory?: string | null;
   cover_url: string | null;
   images: string[];
   video_url?: string | null;
@@ -93,6 +94,7 @@ export interface Event {
   country: string;
   latitude: number | null;
   longitude: number | null;
+  distanceKm?: number;
   starts_at: string;
   ends_at: string | null;
   price_min: number;

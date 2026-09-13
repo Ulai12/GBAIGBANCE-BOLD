@@ -149,42 +149,127 @@ export function FavoritesScreen({
     };
   }, [likedEventIds]);
 
-  // Charger les artistes et organisations suivis
+  // Charger les artistes et organisations suivis avec leurs vrais comptes
   useEffect(() => {
     let isCancelled = false;
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
     async function loadFollowedEntities() {
       try {
+        // --- 1. CHARGEMENT DES ARTISTES SUIVIS ---
         if (followedArtistIds.size > 0) {
-          const artistIds = Array.from(followedArtistIds);
-          const { data: artData } = await supabase
-            .from('artists')
-            .select('*')
-            .in('id', artistIds);
-          if (!isCancelled && artData) {
-            setArtists(artData as Artist[]);
+          const rawArtistIds = Array.from(followedArtistIds);
+          const validUuids = rawArtistIds.filter((id) => UUID_REGEX.test(id));
+          const loadedArtists: Artist[] = [];
+          const foundIds = new Set<string>();
+
+          // a) Recherche dans la table artists (UUIDs valides uniquement)
+          if (validUuids.length > 0) {
+            const { data: artData } = await supabase
+              .from('artists')
+              .select('*')
+              .in('id', validUuids);
+            if (artData && artData.length > 0) {
+              (artData as Artist[]).forEach((a) => {
+                loadedArtists.push(a);
+                foundIds.add(a.id);
+              });
+            }
+          }
+
+          // b) Recherche dans les profiles pour les profils créateurs/artistes
+          const missingForProfiles = rawArtistIds.filter((id) => !foundIds.has(id) && UUID_REGEX.test(id));
+          if (missingForProfiles.length > 0) {
+            const { data: profileArts } = await supabase
+              .from('profiles')
+              .select('*')
+              .in('id', missingForProfiles)
+              .eq('role', 'artist');
+            if (profileArts && profileArts.length > 0) {
+              (profileArts as unknown as Profile[]).forEach((p) => {
+                loadedArtists.push({
+                  id: p.id,
+                  user_id: p.id,
+                  name: p.name || 'Artiste Gbaïgbancê',
+                  bio: p.bio || 'Artiste de la communauté',
+                  photo_url: p.avatar_url || null,
+                  cover_url: '',
+                  genres: ['Afrobeats', 'Live'],
+                  city: p.city || 'Lomé',
+                  country: p.country || 'TG',
+                  followers_count: 1,
+                  events_count: 0,
+                  is_verified: true,
+                  created_at: p.created_at || new Date().toISOString(),
+                });
+                foundIds.add(p.id);
+              });
+            }
+          }
+
+          // c) Recherche dans le cache local (pour les artistes mis en avant)
+          const cachedArtists = getCachedHomeData().data?.artists || [];
+          cachedArtists.forEach((ca) => {
+            if (followedArtistIds.has(ca.id) && !foundIds.has(ca.id)) {
+              loadedArtists.push(ca);
+              foundIds.add(ca.id);
+            }
+          });
+
+          // d) Récupération du nombre RÉEL de followers depuis artist_follows pour chaque artiste
+          const enrichedArtists = await Promise.all(
+            loadedArtists.map(async (art) => {
+              if (UUID_REGEX.test(art.id)) {
+                try {
+                  const { count } = await supabase
+                    .from('artist_follows')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('artist_id', art.id);
+                  const realCount = typeof count === 'number' && count > 0 ? count : (art.followers_count || 1);
+                  return { ...art, followers_count: realCount };
+                } catch {
+                  return { ...art, followers_count: Math.max(1, art.followers_count || 1) };
+                }
+              }
+              return { ...art, followers_count: Math.max(1, art.followers_count || 1) };
+            })
+          );
+
+          if (!isCancelled) {
+            setArtists(enrichedArtists);
           }
         } else {
-          setArtists([]);
+          if (!isCancelled) setArtists([]);
         }
 
+        // --- 2. CHARGEMENT DES ORGANISATIONS SUIVIES ---
         if (followedOrgIds.size > 0) {
-          const orgIds = Array.from(followedOrgIds);
-          // 1. Check organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('*')
-            .in('id', orgIds);
+          const rawOrgIds = Array.from(followedOrgIds);
+          const validOrgUuids = rawOrgIds.filter((id) => UUID_REGEX.test(id));
+          const loadedOrgs: Organization[] = [];
+          const foundIds = new Set<string>();
 
-          const loadedOrgs: Organization[] = (orgData as Organization[]) || [];
-          const foundIds = new Set(loadedOrgs.map((o) => o.id));
-          const missingIds = orgIds.filter((id) => !foundIds.has(id));
+          // a) Recherche dans la table organizations
+          if (validOrgUuids.length > 0) {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('*')
+              .in('id', validOrgUuids);
+            if (orgData && orgData.length > 0) {
+              (orgData as Organization[]).forEach((o) => {
+                loadedOrgs.push(o);
+                foundIds.add(o.id);
+              });
+            }
+          }
 
-          // 2. Check profiles for any organizer users followed
-          if (missingIds.length > 0) {
+          // b) Recherche dans profiles pour les comptes organisateurs
+          const missingOrgUuids = rawOrgIds.filter((id) => !foundIds.has(id) && UUID_REGEX.test(id));
+          if (missingOrgUuids.length > 0) {
             const { data: profileOrgs } = await supabase
               .from('profiles')
               .select('*')
-              .in('id', missingIds)
+              .in('id', missingOrgUuids)
               .eq('role', 'organizer');
 
             if (profileOrgs && profileOrgs.length > 0) {
@@ -193,13 +278,13 @@ export function FavoritesScreen({
                   id: p.id,
                   owner_id: p.id,
                   name: p.name || 'Organisateur',
-                  description: p.bio || 'Organisateur sur Gbaigbance',
+                  description: p.bio || 'Organisateur sur Gbaïgbancê',
                   logo_url: p.avatar_url || null,
                   cover_url: null,
                   city: p.city || 'Lomé',
                   country: p.country || 'TG',
                   verification_status: 'verified',
-                  followers_count: 0,
+                  followers_count: 1,
                   events_count: 0,
                   created_at: p.created_at || new Date().toISOString(),
                 });
@@ -208,40 +293,39 @@ export function FavoritesScreen({
             }
           }
 
-          // 3. Fallback to cached home organizations
+          // c) Recherche dans le cache local
           const cachedOrgs = getCachedHomeData().data?.organizations || [];
-          cachedOrgs.forEach((c) => {
-            if (followedOrgIds.has(c.id) && !foundIds.has(c.id)) {
-              loadedOrgs.push(c);
-              foundIds.add(c.id);
+          cachedOrgs.forEach((co) => {
+            if (followedOrgIds.has(co.id) && !foundIds.has(co.id)) {
+              loadedOrgs.push(co);
+              foundIds.add(co.id);
             }
           });
 
-          // 4. If any ID remains unfound, create a fallback so the card displays properly
-          orgIds.forEach((missingId) => {
-            if (!foundIds.has(missingId)) {
-              loadedOrgs.push({
-                id: missingId,
-                owner_id: missingId,
-                name: 'Organisateur Gbaigbance',
-                description: 'Organisateur officiel sur Gbaigbance',
-                logo_url: null,
-                cover_url: null,
-                city: 'Lomé',
-                country: 'TG',
-                verification_status: 'verified',
-                followers_count: 1,
-                events_count: 0,
-                created_at: new Date().toISOString(),
-              });
-            }
-          });
+          // d) Récupération du nombre RÉEL de followers depuis organization_follows
+          const enrichedOrgs = await Promise.all(
+            loadedOrgs.map(async (org) => {
+              if (UUID_REGEX.test(org.id)) {
+                try {
+                  const { count } = await supabase
+                    .from('organization_follows')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('organization_id', org.id);
+                  const realCount = typeof count === 'number' && count > 0 ? count : (org.followers_count || 1);
+                  return { ...org, followers_count: realCount };
+                } catch {
+                  return { ...org, followers_count: Math.max(1, org.followers_count || 1) };
+                }
+              }
+              return { ...org, followers_count: Math.max(1, org.followers_count || 1) };
+            })
+          );
 
           if (!isCancelled) {
-            setOrganizations(loadedOrgs);
+            setOrganizations(enrichedOrgs);
           }
         } else {
-          setOrganizations([]);
+          if (!isCancelled) setOrganizations([]);
         }
       } catch {
         // Silence
@@ -344,44 +428,65 @@ export function FavoritesScreen({
         </div>
       </div>
 
-      {/* Segmented Control iOS Principal */}
+      {/* Segmented Control iOS Principal - Texte entier lisible sans troncature */}
       <div className="px-5 mt-4">
-        <div className="p-1 bg-black/[0.05] dark:bg-white/[0.08] backdrop-blur-md rounded-2xl flex items-center gap-1 border border-black/[0.04] dark:border-white/[0.06]">
+        <div className="p-1 bg-black/[0.05] dark:bg-white/[0.08] backdrop-blur-md rounded-2xl flex items-center gap-1 border border-black/[0.04] dark:border-white/[0.06] overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('events')}
-            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 min-w-[124px] py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'events'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
             <Heart className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'events' ? 'fill-current text-red-500 dark:text-white' : ''}`} />
-            <span className="truncate">Événements ({likedEventIds.size})</span>
+            <span className="font-extrabold">Événements</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeTab === 'events'
+                ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
+                : 'bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+            }`}>
+              {likedEventIds.size}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('artists')}
-            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 min-w-[108px] py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'artists'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
             <Music2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Artistes ({followedArtistIds.size})</span>
+            <span className="font-extrabold">Artistes</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeTab === 'artists'
+                ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
+                : 'bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+            }`}>
+              {followedArtistIds.size}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('organizations')}
-            className={`flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 min-w-[130px] py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'organizations'
-                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Orgas ({followedOrgIds.size})</span>
+            <span className="font-extrabold">Organisateurs</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeTab === 'organizations'
+                ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
+                : 'bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+            }`}>
+              {followedOrgIds.size}
+            </span>
           </button>
         </div>
       </div>
@@ -576,7 +681,7 @@ export function FavoritesScreen({
                     <img
                       src={art.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=150'}
                       alt={art.name}
-                      className="w-13 h-13 rounded-2xl object-cover ring-2 ring-[#6600FF]/20 shrink-0"
+                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-[#6600FF]/20 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1">
@@ -588,7 +693,7 @@ export function FavoritesScreen({
                         )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {art.city || 'Côte d’Ivoire'} · {art.genres?.join(', ') || 'Afro'}
+                        {art.city || 'Lomé'} · {art.followers_count ?? 1} {(art.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
                       </p>
                     </div>
                   </button>
@@ -629,7 +734,7 @@ export function FavoritesScreen({
                     onClick={() => onOrganizationClick?.(org)}
                     className="flex items-center gap-3 min-w-0 flex-1 text-left"
                   >
-                    <div className="w-13 h-13 rounded-2xl bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center overflow-hidden shrink-0">
+                    <div className="w-14 h-14 rounded-2xl bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center overflow-hidden shrink-0">
                       {org.logo_url ? (
                         <img src={org.logo_url} alt={org.name} className="w-full h-full object-cover" />
                       ) : (
@@ -646,7 +751,7 @@ export function FavoritesScreen({
                         )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {org.city || 'Abidjan'} · {org.events_count || 0} événements
+                        {org.city || 'Lomé'} · {org.followers_count ?? 1} {(org.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {org.events_count || 0} événement{(org.events_count || 0) > 1 ? 's' : ''}
                       </p>
                     </div>
                   </button>

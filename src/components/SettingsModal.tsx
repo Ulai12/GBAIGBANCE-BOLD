@@ -10,6 +10,9 @@ import {
   ChevronRight,
   User,
   Inbox,
+  Database,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
@@ -34,6 +37,7 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const { user, theme, toggleTheme, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   if (!isOpen) return null;
 
@@ -302,6 +306,64 @@ export function SettingsModal({
               </div>
             </div>
           )}
+
+          {/* Groupe 4b: Supabase Backend & Migration */}
+          <div>
+            <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
+              Backend Supabase
+            </h3>
+            <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] p-4 text-xs space-y-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#17131D] dark:text-white">Projet Supabase</p>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Connecté à lwwiolbofrqakvrdvbbj
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold">
+                  Actif
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] space-y-1.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 break-all">
+                <div className="text-[10px] uppercase font-bold text-gray-400 font-sans">Instance :</div>
+                <div>https://lwwiolbofrqakvrdvbbj.supabase.co</div>
+              </div>
+
+              <div className="pt-1 flex items-center justify-between gap-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+                <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Schéma complet : <span className="font-mono font-semibold">supabase/complete_schema.sql</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText('supabase/complete_schema.sql');
+                    setCopiedScript(true);
+                    setTimeout(() => setCopiedScript(false), 2000);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 hover:bg-[#6600FF]/20 transition-all text-[11px] font-bold flex items-center gap-1 shrink-0"
+                >
+                  {copiedScript ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>Copié !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copier nom</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Groupe 5: Crédits & Système */}
           <div>

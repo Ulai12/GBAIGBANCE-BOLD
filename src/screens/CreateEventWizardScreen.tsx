@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
+  Calendar,
   Check,
   ChevronLeft,
+  Clock,
   ImagePlus,
   Info,
   Loader2,
@@ -18,7 +20,7 @@ import {
 } from 'lucide-react';
 import { EventOptionalSteps, type LiveItem, type ScheduleItem, type SponsorItem } from '@/components/EventOptionalSteps';
 import { useApp } from '@/hooks/useApp';
-import { EVENT_CATEGORIES, CITIES, COUNTRIES } from '@/constants';
+import { EVENT_CATEGORIES, CITIES, COUNTRIES, getCategorySubcategories } from '@/constants';
 import {
   createEventWithCollaborators,
   searchArtists,
@@ -82,6 +84,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     title: '',
     description: '',
     category: 'concert' as EventCategory,
+    subcategory: '',
     location_name: '',
     location_address: '',
     city: 'Lomé',
@@ -171,6 +174,65 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       },
       { timeout: 8000 }
     );
+  };
+
+  const setQuickDate = (type: 'today' | 'tomorrow' | 'friday' | 'saturday') => {
+    const now = new Date();
+    const target = new Date();
+
+    if (type === 'today') {
+      target.setHours(20, 0, 0, 0);
+    } else if (type === 'tomorrow') {
+      target.setDate(now.getDate() + 1);
+      target.setHours(20, 0, 0, 0);
+    } else if (type === 'friday') {
+      const day = now.getDay();
+      const diff = (5 - day + 7) % 7 || 7;
+      target.setDate(now.getDate() + diff);
+      target.setHours(21, 0, 0, 0);
+    } else if (type === 'saturday') {
+      const day = now.getDay();
+      const diff = (6 - day + 7) % 7 || 7;
+      target.setDate(now.getDate() + diff);
+      target.setHours(21, 0, 0, 0);
+    }
+
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, '0');
+    const date = String(target.getDate()).padStart(2, '0');
+    const hours = String(target.getHours()).padStart(2, '0');
+    const mins = String(target.getMinutes()).padStart(2, '0');
+    const startIso = `${year}-${month}-${date}T${hours}:${mins}`;
+
+    const endTarget = new Date(target.getTime() + 5 * 3600 * 1000);
+    const endYear = endTarget.getFullYear();
+    const endMonth = String(endTarget.getMonth() + 1).padStart(2, '0');
+    const endDate = String(endTarget.getDate()).padStart(2, '0');
+    const endHours = String(endTarget.getHours()).padStart(2, '0');
+    const endMins = String(endTarget.getMinutes()).padStart(2, '0');
+    const endIso = `${endYear}-${endMonth}-${endDate}T${endHours}:${endMins}`;
+
+    setForm((curr) => ({
+      ...curr,
+      starts_at: startIso,
+      ends_at: endIso,
+    }));
+  };
+
+  const formatFrenchDatePreview = (val: string) => {
+    if (!val) return '';
+    try {
+      const d = new Date(val);
+      return new Intl.DateTimeFormat('fr-FR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(d);
+    } catch {
+      return val;
+    }
   };
 
   // Add multiple gallery photos
@@ -264,6 +326,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           title: form.title.trim(),
           description: form.description.trim(),
           category: form.category,
+          subcategory: form.subcategory ? form.subcategory.trim() : undefined,
           location_name: form.location_name.trim(),
           location_address: form.location_address.trim() || null,
           city: form.city.trim(),
@@ -445,12 +508,17 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                Catégorie *
+                Catégorie principale *
               </label>
               <select
                 className={fieldClass}
                 value={form.category}
-                onChange={(e) => updateForm('category', e.target.value as EventCategory)}
+                onChange={(e) => {
+                  const newCat = e.target.value as EventCategory;
+                  updateForm('category', newCat);
+                  const subcats = getCategorySubcategories(newCat);
+                  updateForm('subcategory', subcats[0]?.value || '');
+                }}
               >
                 {EVENT_CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -458,6 +526,35 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Dynamic Subcategories selection */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Sous-catégorie / Genre
+                </label>
+                <span className="text-[11px] text-gray-400">Précisez l'ambiance</span>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {getCategorySubcategories(form.category).map((sub) => {
+                  const isSelected = form.subcategory === sub.value;
+                  return (
+                    <button
+                      key={sub.value}
+                      type="button"
+                      onClick={() => updateForm('subcategory', isSelected ? '' : sub.value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#6600FF] text-white shadow-xs scale-[1.02]'
+                          : 'bg-black/[0.04] dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-black/[0.08] dark:hover:bg-white/[0.12]'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
@@ -488,10 +585,10 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           </section>
         )}
 
-        {/* STEP 2: LIEU & DATES (ENHANCED LOCATION) */}
+        {/* STEP 2: LIEU & DATES (ENHANCED LOCATION & ACCURATE DATES) */}
         {step === 'Lieu & Dates' && (
           <section className="space-y-4 animate-slide-up">
-            <div className="card p-4 space-y-3.5">
+            <div className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-2 text-[#6600FF] dark:text-purple-300">
                 <MapPin className="w-4 h-4" />
                 <h3 className="text-sm font-bold text-[#17131D] dark:text-white">Localisation & Accès</h3>
@@ -588,33 +685,93 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               </div>
             </div>
 
-            {/* Dates & Heures */}
-            <div className="card p-4 space-y-3">
-              <h3 className="text-sm font-bold text-[#17131D] dark:text-white">Dates & Horaires</h3>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Début de l’événement *
-                </label>
-                <input
-                  type="datetime-local"
-                  className={fieldClass}
-                  value={form.starts_at}
-                  onChange={(e) => updateForm('starts_at', e.target.value)}
-                />
+            {/* Dates & Heures Tile with Quick Presets and Real-time Preview */}
+            <div className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[#6600FF] dark:text-purple-300">
+                  <Calendar className="w-4 h-4" />
+                  <h3 className="text-sm font-bold text-[#17131D] dark:text-white">Dates & Horaires</h3>
+                </div>
+                <span className="text-[11px] text-gray-400">Fuseau local</span>
               </div>
 
+              {/* Quick Preset Buttons */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Fin de l’événement (recommandé)
-                </label>
-                <input
-                  type="datetime-local"
-                  className={fieldClass}
-                  value={form.ends_at}
-                  onChange={(e) => updateForm('ends_at', e.target.value)}
-                />
+                <span className="block text-[11px] font-bold text-gray-400 mb-1.5">Raccourcis rapides :</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate('today')}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 hover:text-[#6600FF] dark:hover:text-purple-300 transition-colors cursor-pointer"
+                  >
+                    Ce soir 20h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate('tomorrow')}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 hover:text-[#6600FF] dark:hover:text-purple-300 transition-colors cursor-pointer"
+                  >
+                    Demain 20h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate('friday')}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 hover:text-[#6600FF] dark:hover:text-purple-300 transition-colors cursor-pointer"
+                  >
+                    Vendredi 21h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate('saturday')}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 hover:text-[#6600FF] dark:hover:text-purple-300 transition-colors cursor-pointer"
+                  >
+                    Samedi 21h
+                  </button>
+                </div>
               </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+                    Début de l’événement *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      className={`${fieldClass} pr-10`}
+                      value={form.starts_at}
+                      onChange={(e) => updateForm('starts_at', e.target.value)}
+                    />
+                    <Clock className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+                    Fin de l’événement (recommandé)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      className={`${fieldClass} pr-10`}
+                      value={form.ends_at}
+                      onChange={(e) => updateForm('ends_at', e.target.value)}
+                    />
+                    <Clock className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Formatted live preview badge */}
+              {form.starts_at && (
+                <div className="p-3 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 text-[#6600FF] dark:text-purple-300 text-xs font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 shrink-0" />
+                  <span>
+                    {formatFrenchDatePreview(form.starts_at)}
+                    {form.ends_at ? ` → ${formatFrenchDatePreview(form.ends_at)}` : ''}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -740,7 +897,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             </div>
 
             {tickets.map((ticket, index) => (
-              <div key={index} className="card p-4 space-y-3">
+              <div key={index} className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-4 sm:p-5 space-y-3">
                 <div className="flex justify-between items-center">
                   <select
                     className={fieldClass}
@@ -801,6 +958,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       placeholder="0"
                     />
                   </div>
+
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 mb-1">Quantité totale</label>
                     <input
@@ -882,7 +1040,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   type="button"
                   key={artist.id}
                   onClick={() => addCollaborator(artist.user_id || '', artist.name, 'artist')}
-                  className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors"
+                  className="w-full p-3 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors shadow-xs"
                 >
                   <Music2 className="w-4 h-4 text-[#6600FF] shrink-0" />
                   <span className="text-xs font-bold text-[#17131D] dark:text-white">{artist.name}</span>
@@ -894,7 +1052,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   type="button"
                   key={org.id}
                   onClick={() => addCollaborator(org.owner_id || '', org.name, 'organizer')}
-                  className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors"
+                  className="w-full p-3 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors shadow-xs"
                 >
                   <Building2 className="w-4 h-4 text-[#6600FF] shrink-0" />
                   <span className="text-xs font-bold text-[#17131D] dark:text-white">{org.name}</span>
@@ -903,7 +1061,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             </div>
 
             {collaborators.length > 0 && (
-              <div className="card p-4 space-y-2">
+              <div className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-4 space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Collaborateurs invités</p>
                 {collaborators.map((item) => (
                   <div key={item.user_id} className="flex items-center justify-between text-xs py-1">
@@ -913,7 +1071,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     <button
                       type="button"
                       onClick={() => setCollaborators(collaborators.filter((c) => c.user_id !== item.user_id))}
-                      className="text-red-500 hover:text-red-600"
+                      className="text-red-500 hover:text-red-600 cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -942,7 +1100,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         {/* STEP 9: CONFIRMATION */}
         {step === 'Confirmation' && (
           <section className="space-y-4 animate-slide-up">
-            <div className="card p-5 space-y-3">
+            <div className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-5 space-y-3">
               <h2 className="text-xl font-extrabold text-[#171726] dark:text-white">
                 {form.title || 'Votre événement'}
               </h2>
@@ -950,6 +1108,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 <span className="px-2.5 py-1 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 font-bold">
                   {t('events', `categories.${form.category}`)}
                 </span>
+                {form.subcategory && (
+                  <span className="px-2.5 py-1 rounded-full bg-[#6600FF] text-white font-bold">
+                    {form.subcategory}
+                  </span>
+                )}
                 <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 font-medium">
                   {form.city}
                 </span>
@@ -974,7 +1137,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               </div>
             </div>
 
-            <div className="card p-4 space-y-2">
+            <div className="rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs p-4 sm:p-5 space-y-2">
               <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 <TicketIcon className="w-4 h-4 text-[#6600FF]" /> Billets prévus
               </h3>

@@ -7,7 +7,6 @@ import { OrganizerCard } from '@/components/OrganizerCard';
 import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, Artist, Organization } from '@/types';
-import { formatDistance } from '@/utils/geo';
 
 export type SeeMoreSectionType =
   | 'nearby'
@@ -346,23 +345,14 @@ export function SeeMoreModal({
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {filteredEvents.map((event) => (
-              <div key={event.id} className="relative group">
-                <EventCard
-                  event={event}
-                  onClick={() => {
-                    onClose();
-                    onEventClick(event);
-                  }}
-                />
-                {typeof event.distanceKm === 'number' && (
-                  <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-600/90 text-white backdrop-blur-md shadow-xs">
-                      <Navigation className="w-2.5 h-2.5" />
-                      {formatDistance(event.distanceKm)}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => {
+                  onClose();
+                  onEventClick(event);
+                }}
+              />
             ))}
           </div>
         )}

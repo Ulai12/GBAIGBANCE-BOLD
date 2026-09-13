@@ -53,4 +53,12 @@ AS $$
 $$;
 
 -- 4. Enable realtime on events table (for live view counter)
-ALTER PUBLICATION supabase_realtime ADD TABLE events;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'events'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE events;
+  END IF;
+END $$;

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
-import { formatDistanceKm } from '@/utils/geo';
+import { formatDistanceKm, getAccurateTravelEstimate } from '@/utils/geo';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 
@@ -29,17 +29,6 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
-function getTravelEstimate(distanceKm?: number): { label: string; isWalk: boolean } | null {
-  if (distanceKm === undefined || isNaN(distanceKm)) return null;
-  if (distanceKm > 50) return null; // Too far for walk/short drive estimate
-  if (distanceKm <= 1.5) {
-    const mins = Math.max(3, Math.round(distanceKm * 12));
-    return { label: `~${mins} min à pied`, isWalk: true };
-  }
-  const mins = Math.max(4, Math.round(distanceKm * 3));
-  return { label: `~${mins} min en voiture`, isWalk: false };
-}
-
 export function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {
   const { isLiked, toggleLike } = useFavorites();
   const liked = isLiked(event.id);
@@ -50,7 +39,7 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
       ? 'Gratuit'
       : `${event.price_min.toLocaleString('fr-FR')} F`;
 
-  const travel = isActualLocation ? getTravelEstimate(event.distanceKm) : null;
+  const travel = isActualLocation ? getAccurateTravelEstimate(event.distanceKm) : null;
   const showRealDistance = isActualLocation && typeof event.distanceKm === 'number' && event.distanceKm < 50;
 
   return (

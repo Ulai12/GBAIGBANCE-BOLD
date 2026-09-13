@@ -132,12 +132,17 @@
 
 @layer components {
   .card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.88), rgba(255,255,255,0.66));
-    border: 1px solid rgba(255,255,255,0.78);
-    border-radius: 1.45rem;
-    box-shadow: 0 16px 38px rgba(76, 29, 149, 0.1), inset 0 1px 0 rgba(255,255,255,0.82);
+    background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72));
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 30px rgba(76, 29, 149, 0.05), inset 0 1px 0 rgba(255,255,255,0.8);
     backdrop-filter: blur(16px) saturate(1.12);
     -webkit-backdrop-filter: blur(16px) saturate(1.12);
+  }
+  .dark .card {
+    background: linear-gradient(180deg, rgba(26, 24, 41, 0.94), rgba(19, 18, 30, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 36px rgba(10, 8, 20, 0.35);
   }
   .card-dark {
     background: linear-gradient(180deg, rgba(25, 27, 45, 0.94), rgba(17, 19, 31, 0.9));
