@@ -125,7 +125,7 @@ function AppContent() {
     return () => window.removeEventListener('pwa-update-available', handleUpdate);
   }, [addToast]);
 
-  // Global toast event listener
+  // Global toast and rollback event listeners
   useEffect(() => {
     const handleToastEvent = (e: globalThis.Event) => {
       const customEvent = e as CustomEvent<Omit<ToastData, 'id'>>;
@@ -133,8 +133,23 @@ function AppContent() {
         addToast(customEvent.detail);
       }
     };
+
+    const handleRollbackEvent = (e: globalThis.Event) => {
+      const customEvent = e as CustomEvent<{ message?: string }>;
+      if (customEvent.detail?.message) {
+        addToast({
+          message: customEvent.detail.message,
+          type: 'error',
+        });
+      }
+    };
+
     window.addEventListener('gba-toast', handleToastEvent);
-    return () => window.removeEventListener('gba-toast', handleToastEvent);
+    window.addEventListener('gba-optimistic-rollback', handleRollbackEvent);
+    return () => {
+      window.removeEventListener('gba-toast', handleToastEvent);
+      window.removeEventListener('gba-optimistic-rollback', handleRollbackEvent);
+    };
   }, [addToast]);
 
   const handleEventClick = (event: Event) => {

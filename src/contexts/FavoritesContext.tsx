@@ -1,11 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
+import { haptic } from '@/hooks/useHaptics';
 import {
   toggleEventLike as apiToggleEventLike,
   toggleArtistFollow as apiToggleArtistFollow,
   toggleOrganizationFollow as apiToggleOrgFollow,
 } from '@/services/events';
+
+export interface OptimisticRollbackDetail {
+  type: 'favorite' | 'artist_follow' | 'org_follow' | 'ticket';
+  id: string;
+  message: string;
+}
 
 export interface FavoritesContextValue {
   likedEventIds: Set<string>;
@@ -126,10 +133,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleLike = useCallback(
-    async (eventId: string): Promise<boolean> => {
+    (eventId: string): Promise<boolean> => {
       const willBeLiked = !likedEventIds.has(eventId);
 
-      // Optimistic update
+      // 1. Immediate haptic feedback (Taptic pulse)
+      haptic.medium();
+
+      // 2. Instantaneous optimistic state update (0ms latency)
       setLikedEventIds((prev) => {
         const next = new Set(prev);
         if (willBeLiked) next.add(eventId);
@@ -138,11 +148,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
+      // 3. Asynchronous background network sync
       if (isSupabaseConfigured && user?.id) {
-        try {
-          await apiToggleEventLike(eventId, user.id);
-        } catch {
-          // Revert if API fails
+        apiToggleEventLike(eventId, user.id).catch(() => {
+          // Transparent rollback on failure
           setLikedEventIds((prev) => {
             const next = new Set(prev);
             if (willBeLiked) next.delete(eventId);
@@ -150,11 +159,25 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(STORAGE_LIKES_KEY, next);
             return next;
           });
-          return !willBeLiked;
-        }
+          haptic.error();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-optimistic-rollback', {
+                detail: {
+                  type: 'favorite',
+                  id: eventId,
+                  message: willBeLiked
+                    ? "Échec de l'ajout aux favoris (problème réseau). Rétablissement..."
+                    : "Échec du retrait des favoris (problème réseau). Rétablissement...",
+                },
+              })
+            );
+          }
+        });
       }
 
-      return willBeLiked;
+      // Resolves immediately so callers can animate and display toasts without waiting
+      return Promise.resolve(willBeLiked);
     },
     [likedEventIds, user?.id]
   );
@@ -165,9 +188,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleFollowArtist = useCallback(
-    async (artistId: string): Promise<boolean> => {
+    (artistId: string): Promise<boolean> => {
       const willFollow = !followedArtistIds.has(artistId);
 
+      // 1. Immediate tactile confirmation
+      haptic.selection();
+
+      // 2. Instantaneous optimistic state update (0ms latency)
       setFollowedArtistIds((prev) => {
         const next = new Set(prev);
         if (willFollow) next.add(artistId);
@@ -176,10 +203,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
+      // 3. Background network sync
       if (isSupabaseConfigured && user?.id) {
-        try {
-          await apiToggleArtistFollow(artistId, user.id);
-        } catch {
+        apiToggleArtistFollow(artistId, user.id).catch(() => {
+          // Transparent rollback on network error
           setFollowedArtistIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(artistId);
@@ -187,11 +214,24 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, next);
             return next;
           });
-          return !willFollow;
-        }
+          haptic.error();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-optimistic-rollback', {
+                detail: {
+                  type: 'artist_follow',
+                  id: artistId,
+                  message: willFollow
+                    ? "Impossible de suivre cet artiste pour l'instant. Connexion instable."
+                    : "Impossible de se désabonner actuellement. Connexion instable.",
+                },
+              })
+            );
+          }
+        });
       }
 
-      return willFollow;
+      return Promise.resolve(willFollow);
     },
     [followedArtistIds, user?.id]
   );
@@ -202,9 +242,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleFollowOrg = useCallback(
-    async (orgId: string): Promise<boolean> => {
+    (orgId: string): Promise<boolean> => {
       const willFollow = !followedOrgIds.has(orgId);
 
+      // 1. Immediate tactile confirmation
+      haptic.selection();
+
+      // 2. Instantaneous optimistic state update (0ms latency)
       setFollowedOrgIds((prev) => {
         const next = new Set(prev);
         if (willFollow) next.add(orgId);
@@ -213,10 +257,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
+      // 3. Background network sync
       if (isSupabaseConfigured && user?.id) {
-        try {
-          await apiToggleOrgFollow(orgId, user.id);
-        } catch {
+        apiToggleOrgFollow(orgId, user.id).catch(() => {
+          // Transparent rollback on network error
           setFollowedOrgIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(orgId);
@@ -224,11 +268,24 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, next);
             return next;
           });
-          return !willFollow;
-        }
+          haptic.error();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-optimistic-rollback', {
+                detail: {
+                  type: 'org_follow',
+                  id: orgId,
+                  message: willFollow
+                    ? "Impossible de suivre cet organisateur pour l'instant. Connexion instable."
+                    : "Impossible de se désabonner actuellement. Connexion instable.",
+                },
+              })
+            );
+          }
+        });
       }
 
-      return willFollow;
+      return Promise.resolve(willFollow);
     },
     [followedOrgIds, user?.id]
   );

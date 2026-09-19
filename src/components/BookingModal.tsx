@@ -1,8 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Ticket, Minus, Plus, Check, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { useApp } from '@/hooks/useApp';
+import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, bookTicket, isEventTerminated, subscribeToTicketInventory } from '@/services/events';
-import type { Event, TicketOption } from '@/types';
+import { saveLocalStoredTicket, removeLocalStoredTicket } from '@/features/tickets/service';
+import { saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
+import type { Event, Ticket as TicketTypeItem, TicketOption, TicketType } from '@/types';
 
 interface BookingModalProps {
   open: boolean;
@@ -13,6 +17,7 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ open, event, initialOptionId, onClose, onSuccess }: BookingModalProps) {
+  const { user } = useApp();
   const [options, setOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -21,6 +26,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const currentTicketIdRef = useRef<string | null>(null);
 
   const loadOptions = useCallback(() => {
     if (!event) return;
@@ -82,28 +88,135 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const eventUnavailable = !event || isTerminated || event.status === 'cancelled';
   const soldOut = options.length > 0 && options.every((option) => option.quantity_total - option.quantity_sold <= 0);
 
-  const handleBook = async () => {
+  const handleBook = () => {
     if (!event || !selectedOption) return;
-    setBooking(true);
+
+    // 1. Immediate Face ID / Apple Pay tactile confirmation
+    haptic.success();
     setError(null);
-    try {
-      const result = await bookTicket(event.id, selectedOption.id, quantity);
-      if (result.success) {
-        const ticket = result.ticket as { qr_code?: string };
-        setSuccess(true);
-        setTimeout(() => {
-          onSuccess(ticket?.qr_code || '');
-          onClose();
-          setSuccess(false);
-        }, 1500);
-      } else {
-        setError(result.error || 'Erreur lors de la réservation');
-      }
-    } catch {
-      setError('Erreur réseau. Réessayez.');
-    } finally {
-      setBooking(false);
+
+    // 2. Generate optimistic ticket representation with unique QR code
+    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const qrCode = `GBA-${Date.now().toString(36).toUpperCase()}-${randomSuffix}`;
+    const optimisticTicketId = `tkt_opt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    currentTicketIdRef.current = optimisticTicketId;
+
+    const optimisticTicket: TicketTypeItem & { event?: Event } = {
+      id: optimisticTicketId,
+      event_id: event.id,
+      user_id: user?.id || 'guest',
+      ticket_type: selectedOption.ticket_type as TicketType,
+      ticket_option_id: selectedOption.id,
+      quantity,
+      price_paid: totalPrice,
+      currency: 'XOF',
+      status: 'active',
+      qr_code: qrCode,
+      seat_info: null,
+      created_at: new Date().toISOString(),
+      event,
+    };
+
+    // 3. Persist optimistically to local storage & IndexedDB cache for instant offline access
+    saveLocalStoredTicket(optimisticTicket);
+    if (user?.id) {
+      const prevTickets = getSyncCachedUserTickets(user.id);
+      saveCachedUserTickets(user.id, [optimisticTicket, ...prevTickets.filter((t) => t.id !== optimisticTicketId)]).catch(() => {});
     }
+
+    // 4. Instant decrement of inventory on screen
+    const optionId = selectedOption.id;
+    const bookedQty = quantity;
+    setOptions((prev) =>
+      prev.map((o) => (o.id === optionId ? { ...o, quantity_sold: o.quantity_sold + bookedQty } : o))
+    );
+
+    // 5. Broadcast optimistic booking so TicketsScreen updates instantly (0ms)
+    window.dispatchEvent(
+      new CustomEvent('gba-ticket-booked', {
+        detail: { ticket: optimisticTicket },
+      })
+    );
+
+    // 6. Transition immediately to celebratory success view without waiting for network
+    setSuccess(true);
+    setBooking(false);
+
+    // 7. Background synchronization with backend/Supabase with transparent rollback
+    bookTicket(event.id, optionId, bookedQty, {
+      name: user?.name,
+      email: user?.email,
+    })
+      .then((result) => {
+        if (result.success && result.ticket) {
+          const confirmed = result.ticket as TicketTypeItem & { event?: Event };
+          // Reconcile optimistic ticket with server ID
+          saveLocalStoredTicket({ ...confirmed, event });
+          removeLocalStoredTicket(optimisticTicketId);
+
+          if (user?.id) {
+            const currentTickets = getSyncCachedUserTickets(user.id);
+            const reconciled = currentTickets.map((t) =>
+              t.id === optimisticTicketId ? { ...confirmed, event } : t
+            );
+            saveCachedUserTickets(user.id, reconciled).catch(() => {});
+          }
+
+          window.dispatchEvent(
+            new CustomEvent('gba-ticket-synced', {
+              detail: { oldId: optimisticTicketId, ticket: confirmed },
+            })
+          );
+        } else {
+          // Transparent rollback on rejection
+          rollbackBooking(optimisticTicketId, optionId, bookedQty, result.error || 'Quota serveur atteint');
+        }
+      })
+      .catch(() => {
+        rollbackBooking(optimisticTicketId, optionId, bookedQty, 'Erreur de connexion serveur');
+      });
+
+    // 8. Timed progression to success callback
+    setTimeout(() => {
+      onSuccess(qrCode);
+      onClose();
+      setSuccess(false);
+    }, 1500);
+  };
+
+  const rollbackBooking = (
+    ticketId: string,
+    optId: string,
+    qty: number,
+    reason: string
+  ) => {
+    haptic.error();
+    // Revert inventory count
+    setOptions((prev) =>
+      prev.map((o) => (o.id === optId ? { ...o, quantity_sold: Math.max(0, o.quantity_sold - qty) } : o))
+    );
+    // Remove optimistic ticket
+    removeLocalStoredTicket(ticketId);
+    if (user?.id) {
+      const current = getSyncCachedUserTickets(user.id);
+      saveCachedUserTickets(user.id, current.filter((t) => t.id !== ticketId)).catch(() => {});
+    }
+    // Broadcast cancellation
+    window.dispatchEvent(
+      new CustomEvent('gba-ticket-cancelled', {
+        detail: { ticketId },
+      })
+    );
+    // Alert user via Dynamic Island
+    window.dispatchEvent(
+      new CustomEvent('gba-optimistic-rollback', {
+        detail: {
+          type: 'ticket',
+          id: ticketId,
+          message: `Réservation non validée : ${reason}. Vos billets n'ont pas été débités.`,
+        },
+      })
+    );
   };
 
   if (!event) return null;
@@ -197,7 +310,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 return (
                   <button
                     key={opt.id}
-                    onClick={() => { setSelectedOption(opt); setQuantity(1); }}
+                    onClick={() => {
+                      haptic.selection();
+                      setSelectedOption(opt);
+                      setQuantity(1);
+                    }}
                     disabled={optAvailable <= 0}
                     className={`glass-surface w-full p-4 rounded-2xl border-2 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected ? 'border-[#6600FF] bg-[#6600FF]/10' : 'border-transparent hover:border-[#6600FF]/20'
@@ -231,9 +348,12 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    onClick={() => {
+                      haptic.selection();
+                      setQuantity(Math.max(1, quantity - 1));
+                    }}
                     aria-label="Diminuer la quantité"
-                    className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
+                    className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
                     disabled={quantity <= 1}
                   >
                     <Minus className="w-4 h-4 text-[#1A1A2E]" />
@@ -241,9 +361,12 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   <span className="text-lg font-extrabold text-[#1A1A2E] w-6 text-center">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.min(available, quantity + 1))}
+                    onClick={() => {
+                      haptic.selection();
+                      setQuantity(Math.min(available, quantity + 1));
+                    }}
                     aria-label="Augmenter la quantité"
-                    className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
+                    className="glass-surface w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
                     disabled={quantity >= available}
                   >
                     <Plus className="w-4 h-4 text-[#1A1A2E]" />

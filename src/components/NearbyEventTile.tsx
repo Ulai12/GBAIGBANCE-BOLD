@@ -13,6 +13,7 @@ import { SmartImage } from '@/components/SmartImage';
 import { formatDistanceKm, getAccurateTravelEstimate } from '@/utils/geo';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
+import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
 interface NearbyEventTileProps {
   event: Event & { distanceKm?: number };
@@ -110,26 +111,11 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
           )}
 
           {/* Like Heart Button */}
-          <motion.button
-            type="button"
-            aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            whileTap={{ scale: 0.85 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleLike(event.id);
-            }}
-            className="
-              h-7 w-7 rounded-full bg-black/45 border border-white/20
-              backdrop-blur-md flex items-center justify-center
-              text-white transition-colors hover:bg-black/65
-            "
-          >
-            <Heart
-              className={`w-3.5 h-3.5 transition-transform ${
-                liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-              }`}
-            />
-          </motion.button>
+          <OptimisticHeartButton
+            eventId={event.id}
+            size="sm"
+            variant="card"
+          />
         </div>
 
         {/* Bottom Tag inside Image: Travel estimate or Category */}

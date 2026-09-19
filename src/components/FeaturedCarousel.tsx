@@ -12,6 +12,7 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -188,26 +189,11 @@ export function FeaturedCarousel({
                 </div>
 
                 {/* LIKE BUTTON */}
-                <motion.button
-                  type="button"
-                  aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  whileTap={{ scale: 0.85 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike(currentEvent.id);
-                  }}
-                  className="
-                    h-8 w-8 rounded-full bg-black/40 border border-white/20
-                    backdrop-blur-md flex items-center justify-center text-white
-                    hover:bg-black/60 transition-colors
-                  "
-                >
-                  <Heart
-                    className={`w-4 h-4 transition-transform ${
-                      liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-                    }`}
-                  />
-                </motion.button>
+                <OptimisticHeartButton
+                  eventId={currentEvent.id}
+                  size="md"
+                  variant="glass"
+                />
               </div>
             </div>
 

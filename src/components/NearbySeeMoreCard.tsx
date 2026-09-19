@@ -15,6 +15,7 @@ import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { formatDistance, getAccurateTravelEstimate } from '@/utils/geo';
+import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
 interface NearbySeeMoreCardProps {
   event: Event & { distanceKm?: number };
@@ -132,26 +133,11 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
                 <Share2 className="h-3.5 w-3.5" />
               </motion.button>
 
-              <motion.button
-                type="button"
-                aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                whileTap={{ scale: 0.88 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLike(event.id);
-                }}
-                className="
-                  flex h-7 w-7 shrink-0 items-center justify-center
-                  rounded-full border border-white/20 bg-black/40
-                  backdrop-blur-md transition-colors hover:bg-white/25 shadow-xs
-                "
-              >
-                <Heart
-                  className={`h-4 w-4 transition-all duration-300 ${
-                    liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-                  }`}
-                />
-              </motion.button>
+              <OptimisticHeartButton
+                eventId={event.id}
+                size="sm"
+                variant="card"
+              />
             </div>
           </div>
 

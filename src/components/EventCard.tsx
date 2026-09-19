@@ -17,6 +17,7 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
+import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
 interface EventCardProps {
   event: Event;
@@ -152,27 +153,11 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
                 </motion.button>
 
                 {/* FAVORITE */}
-                <motion.button
-                  type="button"
-                  aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  whileTap={{ scale: 0.88 }}
-                  whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike(event.id);
-                  }}
-                  className="
-                    flex h-7 w-7 shrink-0 items-center justify-center 
-                    rounded-full border border-white/20 bg-black/35 
-                    backdrop-blur-md transition-colors hover:bg-white/20
-                  "
-                >
-                  <Heart
-                    className={`h-4 w-4 transition-all duration-300 ${
-                      liked ? 'scale-110 fill-red-500 text-red-500' : 'text-white'
-                    }`}
-                  />
-                </motion.button>
+                <OptimisticHeartButton
+                  eventId={event.id}
+                  size="sm"
+                  variant="card"
+                />
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Share2, ArrowUpRight } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { haptic } from '@/hooks/useHaptics';
 import { fetchUserTickets, cancelTicket, subscribeToUserTicketsLive } from '@/services/events';
 import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
@@ -90,33 +91,72 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       },
     });
 
+    // 4. Listen to optimistic ticket events from BookingModal
+    const handleTicketBooked = (e: Event) => {
+      const custom = e as CustomEvent<{ ticket: Ticket & { event?: Event } }>;
+      if (custom.detail?.ticket) {
+        setTickets((prev) => [custom.detail.ticket, ...prev.filter((t) => t.id !== custom.detail.ticket.id)]);
+      }
+    };
+
+    const handleTicketSynced = (e: Event) => {
+      const custom = e as CustomEvent<{ oldId: string; ticket: Ticket & { event?: Event } }>;
+      if (custom.detail?.ticket && custom.detail?.oldId) {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === custom.detail.oldId ? { ...custom.detail.ticket, event: t.event } : t))
+        );
+      }
+    };
+
+    const handleTicketCancelledEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ ticketId: string }>;
+      if (custom.detail?.ticketId) {
+        setTickets((prev) => prev.filter((t) => t.id !== custom.detail.ticketId));
+      }
+    };
+
+    window.addEventListener('gba-ticket-booked', handleTicketBooked);
+    window.addEventListener('gba-ticket-synced', handleTicketSynced);
+    window.addEventListener('gba-ticket-cancelled', handleTicketCancelledEvent);
+
     return () => {
       isMounted = false;
       unsubRealtime();
+      window.removeEventListener('gba-ticket-booked', handleTicketBooked);
+      window.removeEventListener('gba-ticket-synced', handleTicketSynced);
+      window.removeEventListener('gba-ticket-cancelled', handleTicketCancelledEvent);
     };
   }, [user, onToast]);
 
   const handleCancel = async () => {
     if (!cancelTarget || !user) return;
-    setCancelling(true);
+    const targetId = cancelTarget;
+    haptic.medium();
+    setCancelTarget(null); // Close modal with 0ms delay
+
+    // 1. Instant optimistic state update
+    const previousTickets = [...tickets];
+    const updated: (Ticket & { event?: Event })[] = tickets.map((t) =>
+      t.id === targetId ? { ...t, status: 'cancelled' as TicketStatus } : t
+    );
+    setTickets(updated);
+    cachedTickets = { userId: user.id, tickets: updated };
+    saveCachedUserTickets(user.id, updated).catch(() => {});
+    onToast({ message: 'Billet annulé avec succès', type: 'success' });
+
+    // 2. Background synchronization with backend
     try {
-      const result = await cancelTicket(cancelTarget);
-      if (result.success) {
-        onToast({ message: 'Billet annulé avec succès', type: 'success' });
-        const updated: (Ticket & { event?: Event })[] = tickets.map((t) =>
-          t.id === cancelTarget ? { ...t, status: 'cancelled' as TicketStatus } : t
-        );
-        setTickets(updated);
-        cachedTickets = { userId: user.id, tickets: updated };
-        saveCachedUserTickets(user.id, updated).catch(() => {});
-      } else {
-        onToast({ message: result.error || 'Erreur lors de l’annulation', type: 'error' });
+      const result = await cancelTicket(targetId);
+      if (!result.success) {
+        throw new Error(result.error || "Erreur lors de l'annulation");
       }
     } catch {
-      onToast({ message: 'Erreur réseau', type: 'error' });
-    } finally {
-      setCancelling(false);
-      setCancelTarget(null);
+      // Revert if API fails
+      haptic.error();
+      setTickets(previousTickets);
+      cachedTickets = { userId: user.id, tickets: previousTickets };
+      saveCachedUserTickets(user.id, previousTickets).catch(() => {});
+      onToast({ message: "Échec de l'annulation sur le serveur. Billet rétabli.", type: 'error' });
     }
   };
 

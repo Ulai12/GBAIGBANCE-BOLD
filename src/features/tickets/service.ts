@@ -106,6 +106,26 @@ export function saveLocalStoredTicket(ticket: Record<string, unknown>) {
   }
 }
 
+export function removeLocalStoredTicket(ticketId: string) {
+  try {
+    const current = getLocalStoredTickets();
+    const updated = current.filter((t) => t.id !== ticketId);
+    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+export function updateLocalStoredTicket(ticketId: string, updates: Record<string, unknown>) {
+  try {
+    const current = getLocalStoredTickets();
+    const updated = current.map((t) => (t.id === ticketId ? { ...t, ...updates } : t));
+    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 export async function bookTicket(
   eventId: string,
   ticketOptionId: string,
