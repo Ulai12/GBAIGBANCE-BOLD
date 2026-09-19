@@ -341,6 +341,7 @@ export async function streamGeminiDirect(
   const model = await resolveAvailableGeminiModel(apiKey);
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   let maxRounds = 3;
+  let finalReplyText = '';
 
   while (maxRounds > 0) {
     maxRounds--;
@@ -349,7 +350,7 @@ export async function streamGeminiDirect(
       contents,
       systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
       tools: GEMINI_TOOLS,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
     };
 
     const res = await fetch(geminiUrl, {
@@ -392,56 +393,27 @@ export async function streamGeminiDirect(
       continue;
     }
 
+    // Le modèle a terminé et renvoie sa réponse finale
+    const textParts = parts
+      .filter((p: { text?: string }) => typeof p.text === 'string')
+      .map((p: { text: string }) => p.text);
+
+    finalReplyText = textParts.join('');
     break;
   }
 
-  // Streaming final
-  const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-  const streamPayload = {
-    contents,
-    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
-  };
-
-  const streamRes = await fetch(streamUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(streamPayload),
-    signal,
-  });
-
-  if (!streamRes.ok || !streamRes.body) {
-    throw new Error(`Erreur flux streaming direct (${streamRes.status})`);
+  if (!finalReplyText) {
+    finalReplyText =
+      "Désolé, je n'ai pas pu trouver de réponse précise pour cette demande. Pouvez-vous reformuler ou préciser une catégorie (concert, festival, conférence) ?";
   }
 
-  const reader = streamRes.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const jsonStr = trimmed.slice(5).trim();
-      if (!jsonStr) continue;
-
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textChunk) {
-          callbacks.onChunk(textChunk);
-        }
-      } catch {
-        // ignorer JSON partiel
-      }
-    }
+  // Rendu de frappe progressif fluide (UX iOS)
+  const tokens = finalReplyText.match(/(\S+\s*|\s+)/g) || [finalReplyText];
+  for (const token of tokens) {
+    if (signal.aborted) return;
+    callbacks.onChunk(token);
+    // Micro pause pour un affichage progressif naturel et élégant
+    await new Promise((resolve) => setTimeout(resolve, 8));
   }
 
   callbacks.onDone(Array.from(turnEventIds));

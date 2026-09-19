@@ -449,7 +449,9 @@ async function executeToolCall(
 // --------------------------------------------------------------------
 // HANDLER HTTP PRINCIPAL
 // --------------------------------------------------------------------
-serve(async (req: Request) => {
+// Supporte Deno.serve natif (nouveau standard Supabase Edge Runtime) et serve hérité
+const handler = async (req: Request): Promise<Response> => {
+
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
@@ -747,4 +749,14 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
+
+// Deno.serve natif moderne (Supabase Edge Runtime v2) ou serve std
+if (typeof Deno !== 'undefined' && 'serve' in Deno && typeof (Deno as { serve?: unknown }).serve === 'function') {
+  (Deno as unknown as { serve: (h: typeof handler) => void }).serve(handler);
+} else {
+  serve(handler);
+}
+
+export default handler;
+

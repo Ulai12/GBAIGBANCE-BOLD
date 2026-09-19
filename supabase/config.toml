@@ -1,0 +1,3 @@
+# Supabase Configuration
+[functions.ai-assistant]
+verify_jwt = false

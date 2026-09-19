@@ -51,7 +51,12 @@ export function getUserGeminiApiKey(): string {
       // Ignorer
     }
   }
-  return (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+  return (
+    (import.meta.env.VITE_GEMINI_API_KEY as string) ||
+    (import.meta.env.NEXT_PUBLIC_GEMINI_API_KEY as string) ||
+    (import.meta.env.GEMINI_API_KEY as string) ||
+    ''
+  );
 }
 
 export function setUserGeminiApiKey(key: string): void {
@@ -112,14 +117,17 @@ export function clearGeminiLocalConfig(): void {
   removeUserGeminiApiKey();
 }
 
-let cachedResolvedModel: string | null = null;
+const resolvedModelsMap = new Map<string, string>();
 
 /**
  * Détecte dynamiquement le modèle Gemini disponible et supporté par la clé API de l'utilisateur.
  * Évite les erreurs 404 (Requested entity was not found) lorsque certains modèles ne sont pas activés sur la clé.
  */
 export async function resolveAvailableGeminiModel(apiKey: string): Promise<string> {
-  if (cachedResolvedModel) return cachedResolvedModel;
+  const trimmed = apiKey.trim();
+  if (resolvedModelsMap.has(trimmed)) {
+    return resolvedModelsMap.get(trimmed)!;
+  }
 
   const candidateModels = [
     'gemini-2.0-flash',
@@ -130,9 +138,15 @@ export async function resolveAvailableGeminiModel(apiKey: string): Promise<strin
   ];
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
     const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${trimmed}`,
+      { signal: controller.signal }
     );
+    clearTimeout(timeout);
+
     if (listRes.ok) {
       const data = await listRes.json();
       const models = data.models || [];
@@ -145,19 +159,19 @@ export async function resolveAvailableGeminiModel(apiKey: string): Promise<strin
 
       for (const cand of candidateModels) {
         if (supported.includes(cand)) {
-          cachedResolvedModel = cand;
+          resolvedModelsMap.set(trimmed, cand);
           return cand;
         }
       }
 
       const anyFlash = supported.find((n: string) => n.includes('flash'));
       if (anyFlash) {
-        cachedResolvedModel = anyFlash;
+        resolvedModelsMap.set(trimmed, anyFlash);
         return anyFlash;
       }
 
       if (supported.length > 0) {
-        cachedResolvedModel = supported[0];
+        resolvedModelsMap.set(trimmed, supported[0]);
         return supported[0];
       }
     }
@@ -167,8 +181,11 @@ export async function resolveAvailableGeminiModel(apiKey: string): Promise<strin
 
   for (const cand of candidateModels) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+
       const testRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${cand}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${cand}:generateContent?key=${trimmed}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -176,10 +193,13 @@ export async function resolveAvailableGeminiModel(apiKey: string): Promise<strin
             contents: [{ parts: [{ text: 'ping' }] }],
             generationConfig: { maxOutputTokens: 1 },
           }),
+          signal: controller.signal,
         }
       );
+      clearTimeout(timeout);
+
       if (testRes.ok) {
-        cachedResolvedModel = cand;
+        resolvedModelsMap.set(trimmed, cand);
         return cand;
       }
     } catch {
@@ -188,8 +208,9 @@ export async function resolveAvailableGeminiModel(apiKey: string): Promise<strin
   }
 
   // Modèle le plus largement déployé par défaut
-  cachedResolvedModel = 'gemini-1.5-flash';
-  return cachedResolvedModel;
+  const fallback = 'gemini-1.5-flash';
+  resolvedModelsMap.set(trimmed, fallback);
+  return fallback;
 }
 
 export async function testGeminiApiKey(key?: string): Promise<{ success: boolean; message: string; model?: string }> {
@@ -202,7 +223,7 @@ export async function testGeminiApiKey(key?: string): Promise<{ success: boolean
   }
 
   try {
-    cachedResolvedModel = null;
+    resolvedModelsMap.delete(activeKey);
     const model = await resolveAvailableGeminiModel(activeKey);
 
     const res = await fetch(

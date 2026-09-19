@@ -214,7 +214,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   <span>Utiliser votre propre clé API Gemini (Google AI Studio)</span>
                 </h3>
                 <p className="text-gray-500 dark:text-zinc-400 text-[11px] mt-0.5 leading-relaxed">
-                  Votre clé fonctionne en <strong>mode serveur</strong> (envoyée de manière sécurisée via <code>x-gemini-api-key</code>) et en <strong>mode direct</strong> sans attendre le déploiement de l’Edge Function.
+                  Votre clé active instantanément l'assistant avec recherche d'événements en direct, sans dépendre du serveur.
                 </p>
               </div>
               <a

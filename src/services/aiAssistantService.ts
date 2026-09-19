@@ -38,7 +38,7 @@ export async function streamAIAssistant(
   }
 
   (async () => {
-    // 0. Clé API utilisateur si fournie (BYOK)
+    // 0. Clé API Gemini (BYOK ou variable d'environnement Vercel/Vite)
     const userApiKey = getUserGeminiApiKey();
 
     // Arrondi GPS à ~1 km pour préserver la vie privée
@@ -54,8 +54,28 @@ export async function streamAIAssistant(
       };
     }
 
+    // Si l'utilisateur ou le projet dispose d'une clé Gemini (BYOK ou VITE_GEMINI_API_KEY/GEMINI_API_KEY),
+    // nous exécutons directement en mode haute performance sans dépendre du déploiement de l'Edge Function Supabase.
+    if (userApiKey) {
+      try {
+        await streamGeminiDirect(
+          userApiKey,
+          options.messages,
+          sanitizedLocation,
+          callbacks,
+          controller.signal
+        );
+        return;
+      } catch (directErr: unknown) {
+        if (controller.signal.aborted) return;
+        const msg = directErr instanceof Error ? directErr.message : 'Erreur de connexion avec l’API Gemini';
+        callbacks.onError(msg);
+        return;
+      }
+    }
+
     try {
-      // 1. Récupération du JWT de session active s'il existe
+      // 1. Mode Cloud Edge Function (si aucune clé locale/BYOK n'est fournie)
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
@@ -75,11 +95,8 @@ export async function streamAIAssistant(
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${accessToken || supabaseAnonKey}`,
       };
-
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
 
       if (userApiKey) {
         headers['x-gemini-api-key'] = userApiKey;
@@ -101,37 +118,16 @@ export async function streamAIAssistant(
           signal: controller.signal,
         });
       } catch {
-        // En cas d'échec réseau (fonction introuvable / non déployée)
-        if (userApiKey) {
-          await streamGeminiDirect(
-            userApiKey,
-            options.messages,
-            sanitizedLocation,
-            callbacks,
-            controller.signal
-          );
-          return;
-        }
-        throw new Error(
-          'L’Edge Function Supabase est inaccessible. Renseignez votre propre clé API Gemini dans les réglages pour activer l’assistant immédiatement.'
+        callbacks.onError(
+          'L’Edge Function Supabase n’est pas joignable. Renseignez votre clé API Google Gemini dans les réglages (icône clé en haut) pour activer l’assistant immédiatement.'
         );
+        return;
       }
 
       // 4. Gestion spécifique du 404 (fonction non déployée sur Supabase)
       if (response.status === 404) {
-        if (userApiKey) {
-          await streamGeminiDirect(
-            userApiKey,
-            options.messages,
-            sanitizedLocation,
-            callbacks,
-            controller.signal
-          );
-          return;
-        }
-
         callbacks.onError(
-          'L’Edge Function Supabase n’est pas encore déployée (HTTP 404). Entrez votre propre clé API Google Gemini pour utiliser l’assistant tout de suite !'
+          'L’Edge Function Supabase n’est pas trouvée (HTTP 404). Renseignez votre clé API Google Gemini via l’icône clé en haut à droite pour utiliser l’assistant tout de suite !'
         );
         return;
       }
@@ -139,13 +135,13 @@ export async function streamAIAssistant(
       // Autres erreurs HTTP
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Erreur serveur (${response.status})`;
+        const errorMessage = errorData.error || errorData.message || `Erreur serveur (${response.status})`;
         const isQuota = response.status === 429 || errorData.reason === 'window_limit' || errorData.reason === 'daily_limit';
         
-        // Si l'erreur est un manque de clé sur le serveur et qu'on n'en a pas
-        if (response.status === 400 && !userApiKey) {
+        // Si l'erreur est un manque de clé sur le serveur
+        if (response.status === 400 && errorMessage.toLowerCase().includes('gemini')) {
           callbacks.onError(
-            'Aucune clé Gemini configurée sur le serveur. Veuillez renseigner votre propre clé API Gemini dans les réglages pour démarrer.'
+            'La variable GEMINI_API_KEY n’est pas encore configurée dans Supabase Secrets. Ajoutez-la dans Supabase ou renseignez votre clé dans les réglages de l’application.'
           );
           return;
         }
@@ -181,20 +177,32 @@ export async function streamAIAssistant(
             const dataStr = trimmed.slice(5).trim();
             if (!dataStr) continue;
 
+            if (dataStr === '[DONE]' || dataStr === '"[DONE]"') {
+              break;
+            }
+
             try {
               const data = JSON.parse(dataStr);
-              if (data.type === 'chunk' && typeof data.text === 'string') {
+              // Support du format Supabase Edge Function { chunk: "..." } ou { type: "chunk", text: "..." }
+              if (typeof data.chunk === 'string') {
+                callbacks.onChunk(data.chunk);
+              } else if (data.type === 'chunk' && typeof data.text === 'string') {
                 callbacks.onChunk(data.text);
+              } else if (Array.isArray(data.eventIds)) {
+                verifiedEventIds = data.eventIds;
               } else if (data.type === 'done') {
                 if (Array.isArray(data.verified_event_ids)) {
                   verifiedEventIds = data.verified_event_ids;
                 }
-              } else if (data.type === 'error') {
+              } else if (data.type === 'error' || data.error) {
                 callbacks.onError(data.error || 'Erreur inconnue dans le flux.');
                 return;
               }
             } catch {
-              // Ignorer fragments non JSON
+              // Si la ligne data: contient directement du texte brut
+              if (dataStr !== '[DONE]' && !dataStr.startsWith('{')) {
+                callbacks.onChunk(dataStr);
+              }
             }
           }
         }
