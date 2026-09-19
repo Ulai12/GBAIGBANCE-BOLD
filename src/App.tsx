@@ -19,6 +19,9 @@ import { AIAssistantModal } from '@/components/AIAssistantModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { HomeScreenSkeleton } from '@/components/Skeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { supabase, isSupabaseConfigured } from '@/services/supabase';
+import { subscribeToUserTicketsLive } from '@/services/events';
+import { getSyncCachedUserTickets } from '@/services/cache';
 import {
   EventDetailRoute,
   EditEventRoute,
@@ -51,7 +54,61 @@ function AppContent() {
   const [bookingEvent, setBookingEvent] = useState<Event | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [liveTicketCount, setLiveTicketCount] = useState<number>(() => {
+    if (!user?.id) return 0;
+    const cached = getSyncCachedUserTickets(user.id);
+    return cached.filter((t) => t.status === 'valid').length;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Synchronisation en temps réel du nombre de billets actifs pour le badge BottomNav
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured) {
+      setLiveTicketCount(0);
+      return;
+    }
+
+    const fetchActiveCount = () => {
+      supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'valid')
+        .then(({ count }) => {
+          if (typeof count === 'number') {
+            setLiveTicketCount(count);
+          }
+        });
+    };
+
+    fetchActiveCount();
+
+    const unsubRealtime = subscribeToUserTicketsLive(user.id, {
+      onTicketCreated: () => fetchActiveCount(),
+      onTicketUpdated: () => fetchActiveCount(),
+      onTicketCancelled: () => fetchActiveCount(),
+    });
+
+    const handleCountChange = (e: globalThis.Event) => {
+      const custom = e as CustomEvent<{ count?: number }>;
+      if (typeof custom.detail?.count === 'number') {
+        setLiveTicketCount(custom.detail.count);
+      } else {
+        fetchActiveCount();
+      }
+    };
+
+    window.addEventListener('gba-ticket-booked', fetchActiveCount);
+    window.addEventListener('gba-ticket-cancelled', fetchActiveCount);
+    window.addEventListener('gba-tickets-count-changed', handleCountChange);
+
+    return () => {
+      unsubRealtime();
+      window.removeEventListener('gba-ticket-booked', fetchActiveCount);
+      window.removeEventListener('gba-ticket-cancelled', fetchActiveCount);
+      window.removeEventListener('gba-tickets-count-changed', handleCountChange);
+    };
+  }, [user?.id]);
 
   const canCreate = !!(user && (user.role === 'organizer' || user.role === 'artist'));
 
@@ -374,6 +431,7 @@ function AppContent() {
         <BottomNav
           active={activeTab}
           onNavigate={handleTabChange}
+          ticketCount={liveTicketCount}
           onCreate={() => {
             if (!session) {
               addToast({ message: 'Connectez-vous pour créer un événement', type: 'info' });

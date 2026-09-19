@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Share2, ArrowUpRight } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
-import { fetchUserTickets, cancelTicket, subscribeToUserTicketsLive } from '@/services/events';
+import {
+  fetchUserTickets,
+  cancelTicket,
+  subscribeToUserTicketsLive,
+  subscribeToGlobalEventsLive,
+} from '@/services/events';
 import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
@@ -55,6 +60,13 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           setTickets(list);
           cachedTickets = { userId: user.id, tickets: list };
           saveCachedUserTickets(user.id, list).catch(() => {});
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-tickets-count-changed', {
+                detail: { count: list.filter((t) => t.status === 'valid').length },
+              })
+            );
+          }
         })
         .catch(() => {});
     };
@@ -67,6 +79,13 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
         setTickets(list);
         cachedTickets = { userId: user.id, tickets: list };
         saveCachedUserTickets(user.id, list).catch(() => {});
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('gba-tickets-count-changed', {
+              detail: { count: list.filter((t) => t.status === 'valid').length },
+            })
+          );
+        }
       })
       .catch(() => {
         // Keep private offline tickets loaded from IndexedDB
@@ -91,15 +110,32 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       },
     });
 
-    // 4. Listen to optimistic ticket events from BookingModal
-    const handleTicketBooked = (e: Event) => {
+    // 4. Realtime subscription to events linked to tickets (e.g. status changes, date modifications)
+    const unsubGlobalEvents = subscribeToGlobalEventsLive(({ eventType, new: newEvt }) => {
+      if (eventType === 'UPDATE' && newEvt?.id) {
+        setTickets((prev) =>
+          prev.map((t) => (t.event?.id === newEvt.id ? { ...t, event: { ...t.event, ...(newEvt as Partial<Event>) } } : t))
+        );
+      }
+    });
+
+    // 5. Listen to optimistic ticket events from BookingModal
+    const handleTicketBooked = (e: globalThis.Event) => {
       const custom = e as CustomEvent<{ ticket: Ticket & { event?: Event } }>;
       if (custom.detail?.ticket) {
-        setTickets((prev) => [custom.detail.ticket, ...prev.filter((t) => t.id !== custom.detail.ticket.id)]);
+        setTickets((prev) => {
+          const next = [custom.detail.ticket, ...prev.filter((t) => t.id !== custom.detail.ticket.id)];
+          window.dispatchEvent(
+            new CustomEvent('gba-tickets-count-changed', {
+              detail: { count: next.filter((t) => t.status === 'valid').length },
+            })
+          );
+          return next;
+        });
       }
     };
 
-    const handleTicketSynced = (e: Event) => {
+    const handleTicketSynced = (e: globalThis.Event) => {
       const custom = e as CustomEvent<{ oldId: string; ticket: Ticket & { event?: Event } }>;
       if (custom.detail?.ticket && custom.detail?.oldId) {
         setTickets((prev) =>
@@ -108,10 +144,18 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       }
     };
 
-    const handleTicketCancelledEvent = (e: Event) => {
+    const handleTicketCancelledEvent = (e: globalThis.Event) => {
       const custom = e as CustomEvent<{ ticketId: string }>;
       if (custom.detail?.ticketId) {
-        setTickets((prev) => prev.filter((t) => t.id !== custom.detail.ticketId));
+        setTickets((prev) => {
+          const next = prev.filter((t) => t.id !== custom.detail.ticketId);
+          window.dispatchEvent(
+            new CustomEvent('gba-tickets-count-changed', {
+              detail: { count: next.filter((t) => t.status === 'valid').length },
+            })
+          );
+          return next;
+        });
       }
     };
 
@@ -122,6 +166,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     return () => {
       isMounted = false;
       unsubRealtime();
+      if (unsubGlobalEvents) unsubGlobalEvents();
       window.removeEventListener('gba-ticket-booked', handleTicketBooked);
       window.removeEventListener('gba-ticket-synced', handleTicketSynced);
       window.removeEventListener('gba-ticket-cancelled', handleTicketCancelledEvent);
@@ -354,13 +399,21 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
                       <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500 dark:text-gray-400">
                         <Calendar className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA] shrink-0" />
                         <span>
-                          {ticket.event
-                            ? new Date(ticket.event.starts_at).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
+                          {ticket.event?.starts_at
+                            ? (() => {
+                                const d = new Date(ticket.event.starts_at);
+                                if (Number.isNaN(d.getTime())) return '';
+                                try {
+                                  return d.toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  });
+                                } catch {
+                                  return '';
+                                }
+                              })()
                             : ''}
                         </span>
                       </div>

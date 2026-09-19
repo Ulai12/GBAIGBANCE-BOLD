@@ -11,37 +11,57 @@ export function formatPrice(price: number, currency: string = 'XOF'): string {
   return `${formatted} ${symbols[currency] || currency}`;
 }
 
-export function formatDate(dateString: string, lang: string = 'fr'): string {
+export function formatDate(dateString?: string | null, lang: string = 'fr'): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
   const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
-  return date.toLocaleDateString(locale, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  try {
+    return date.toLocaleDateString(locale, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  } catch {
+    return '';
+  }
 }
 
-export function formatFullDate(dateString: string, lang: string = 'fr'): string {
+export function formatFullDate(dateString?: string | null, lang: string = 'fr'): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
   const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
-  return date.toLocaleDateString(locale, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  try {
+    return date.toLocaleDateString(locale, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
 }
 
-export function formatTime(dateString: string): string {
+export function formatTime(dateString?: string | null): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
 }
 
-export function formatRelativeDate(dateString: string, lang: string = 'fr'): string {
+export function formatRelativeDate(dateString?: string | null, lang: string = 'fr'): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));

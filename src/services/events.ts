@@ -70,6 +70,7 @@ export {
   subscribeToEventAttendees,
   subscribeToEventLive,
   subscribeToGlobalEventsLive,
+  subscribeToUserFavoritesLive,
   subscribeToTicketInventory,
   subscribeToUserTicketsLive,
   useRealtimeEvent,

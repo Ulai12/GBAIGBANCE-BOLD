@@ -6,6 +6,7 @@ import {
   toggleEventLike as apiToggleEventLike,
   toggleArtistFollow as apiToggleArtistFollow,
   toggleOrganizationFollow as apiToggleOrgFollow,
+  subscribeToUserFavoritesLive,
 } from '@/services/events';
 
 export interface OptimisticRollbackDetail {
@@ -125,6 +126,59 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           });
         }
       });
+
+    // Supabase Realtime live sync for favorites and subscriptions
+    const unsubscribe = subscribeToUserFavoritesLive(user.id, {
+      onLikeChange: ({ eventType, eventId }) => {
+        setLikedEventIds((prev) => {
+          const next = new Set(prev);
+          if (eventType === 'DELETE') {
+            next.delete(eventId);
+          } else {
+            next.add(eventId);
+          }
+          writeStoredSet(STORAGE_LIKES_KEY, next);
+          return next;
+        });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-favorites-updated', { detail: { eventId, eventType } }));
+        }
+      },
+      onArtistFollowChange: ({ eventType, artistId }) => {
+        setFollowedArtistIds((prev) => {
+          const next = new Set(prev);
+          if (eventType === 'DELETE') {
+            next.delete(artistId);
+          } else {
+            next.add(artistId);
+          }
+          writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, next);
+          return next;
+        });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { artistId, eventType, type: 'artist' } }));
+        }
+      },
+      onOrgFollowChange: ({ eventType, orgId }) => {
+        setFollowedOrgIds((prev) => {
+          const next = new Set(prev);
+          if (eventType === 'DELETE') {
+            next.delete(orgId);
+          } else {
+            next.add(orgId);
+          }
+          writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, next);
+          return next;
+        });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { orgId, eventType, type: 'org' } }));
+        }
+      },
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user?.id]);
 
   const isLiked = useCallback(

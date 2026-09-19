@@ -20,12 +20,19 @@ interface NearbyEventTileProps {
   onBook?: () => void;
 }
 
-function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(dateString));
+function formatDate(dateString?: string | null) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }).format(date);
+  } catch {
+    return '';
+  }
 }
 
 export function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {

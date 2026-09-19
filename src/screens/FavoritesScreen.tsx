@@ -13,7 +13,7 @@ import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
 import { getCachedHomeData } from '@/services/cache';
-import { isEventTerminated } from '@/services/events';
+import { isEventTerminated, subscribeToGlobalEventsLive } from '@/services/events';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import type { Event, Artist, Organization, Profile } from '@/types';
@@ -148,6 +148,32 @@ export function FavoritesScreen({
       isCancelled = true;
     };
   }, [likedEventIds]);
+
+  // Écoute temps réel Supabase sur les modifications ou suppressions d'événements favoris
+  useEffect(() => {
+    const unsub = subscribeToGlobalEventsLive(({ eventType, new: newEvt, old: oldEvt }) => {
+      if (eventType === 'DELETE' && oldEvt?.id) {
+        setEvents((prev) => prev.filter((e) => e.id !== oldEvt.id));
+      } else if (eventType === 'UPDATE' && newEvt?.id) {
+        setEvents((prev) =>
+          prev.map((e) => (e.id === newEvt.id ? { ...e, ...(newEvt as Partial<Event>) } : e))
+        );
+      }
+    });
+
+    const handleCustomEventUpdate = (customEvt: globalThis.Event) => {
+      const evt = (customEvt as CustomEvent<{ event?: Event }>).detail?.event;
+      if (evt?.id) {
+        setEvents((prev) => prev.map((e) => (e.id === evt.id ? { ...e, ...evt } : e)));
+      }
+    };
+
+    window.addEventListener('gba-event-updated', handleCustomEventUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('gba-event-updated', handleCustomEventUpdate);
+    };
+  }, []);
 
   // Charger les artistes et organisations suivis avec leurs vrais comptes
   useEffect(() => {

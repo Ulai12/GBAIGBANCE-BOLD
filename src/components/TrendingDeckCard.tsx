@@ -4,6 +4,7 @@ import { forwardRef, useRef } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { formatDate } from '@/utils/format';
 
 interface TrendingDeckCardProps {
   event: Event;
@@ -13,14 +14,6 @@ interface TrendingDeckCardProps {
   onOpen: () => void;
   onBook: () => void;
   onAdvance: () => void;
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(date));
 }
 
 export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(function TrendingDeckCard(

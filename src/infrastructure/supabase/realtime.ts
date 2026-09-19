@@ -30,22 +30,31 @@ export function subscribeToEventLive(
     onStatusChange?: (status: string, event: Partial<Event>) => void;
     onAttendeesChange?: (attendeesCount: number) => void;
     onViewsChange?: (viewsCount: number) => void;
+    onLikesChange?: (likesCount: number) => void;
     onEventUpdate?: (event: Partial<Event>) => void;
+    onEventDelete?: () => void;
   }
 ) {
   if (!isSupabaseConfigured || !eventId) return () => {};
 
+  const channelId = `realtime:event:${eventId}:${Math.random().toString(36).substring(2, 8)}`;
   const channel = supabase
-    .channel(`realtime:event:${eventId}`)
+    .channel(channelId)
     .on(
       'postgres_changes',
       {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'events',
         filter: `id=eq.${eventId}`,
       },
       (payload) => {
+        if (payload.eventType === 'DELETE') {
+          if (callbacks.onEventDelete) callbacks.onEventDelete();
+          if (callbacks.onStatusChange) callbacks.onStatusChange('deleted', { id: eventId } as Partial<Event>);
+          return;
+        }
+
         const updated = payload.new as EventRealtimePayload;
         if (!updated) return;
 
@@ -66,7 +75,11 @@ export function subscribeToEventLive(
     .subscribe();
 
   return () => {
-    supabase.removeChannel(channel);
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
   };
 }
 
@@ -79,8 +92,9 @@ export function subscribeToTicketInventory(
 ) {
   if (!isSupabaseConfigured || !eventId) return () => {};
 
+  const channelId = `realtime:inventory:${eventId}:${Math.random().toString(36).substring(2, 8)}`;
   const channel = supabase
-    .channel(`realtime:inventory:${eventId}`)
+    .channel(channelId)
     .on(
       'postgres_changes',
       {
@@ -98,7 +112,11 @@ export function subscribeToTicketInventory(
     .subscribe();
 
   return () => {
-    supabase.removeChannel(channel);
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
   };
 }
 
@@ -116,7 +134,7 @@ export function subscribeToUserTicketsLive(
   if (!isSupabaseConfigured || !userId) return () => {};
 
   const channel = supabase
-    .channel(`realtime:user_tickets:${userId}`)
+    .channel(`realtime:user_tickets:${userId}:${Math.random().toString(36).substring(2, 8)}`)
     .on(
       'postgres_changes',
       {
@@ -213,14 +231,99 @@ export function useRealtimeUserTickets(
 }
 
 /**
+ * Subscribes to live changes on user favorites (event_likes) and followings (artist_follows, organization_follows).
+ * Synchronizes likes and subscriptions instantaneously across components and devices without manual refresh.
+ */
+export function subscribeToUserFavoritesLive(
+  userId: string,
+  callbacks: {
+    onLikeChange?: (payload: { eventType: string; eventId: string }) => void;
+    onArtistFollowChange?: (payload: { eventType: string; artistId: string }) => void;
+    onOrgFollowChange?: (payload: { eventType: string; orgId: string }) => void;
+  }
+) {
+  if (!isSupabaseConfigured || !userId) return () => {};
+
+  const channelId = `realtime:favorites:${userId}:${Math.random().toString(36).substring(2, 8)}`;
+  const channel = supabase
+    .channel(channelId)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'event_likes',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const record = (payload.new || payload.old) as { event_id?: string } | undefined;
+        if (record?.event_id && callbacks.onLikeChange) {
+          callbacks.onLikeChange({
+            eventType: payload.eventType,
+            eventId: record.event_id,
+          });
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'artist_follows',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const record = (payload.new || payload.old) as { artist_id?: string } | undefined;
+        if (record?.artist_id && callbacks.onArtistFollowChange) {
+          callbacks.onArtistFollowChange({
+            eventType: payload.eventType,
+            artistId: record.artist_id,
+          });
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'organization_follows',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const record = (payload.new || payload.old) as { organization_id?: string } | undefined;
+        if (record?.organization_id && callbacks.onOrgFollowChange) {
+          callbacks.onOrgFollowChange({
+            eventType: payload.eventType,
+            orgId: record.organization_id,
+          });
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
+  };
+}
+
+/**
  * Subscribes to live changes on the entire public.events table (INSERT, UPDATE, DELETE).
  * Provides instantaneous real-time sync across clients without requiring manual page refresh.
  */
-export function subscribeToGlobalEventsLive(onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void) {
+export function subscribeToGlobalEventsLive(
+  onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void
+) {
   if (!isSupabaseConfigured) return () => {};
 
+  const channelId = `realtime:global_events_feed:${Math.random().toString(36).substring(2, 8)}`;
   const channel = supabase
-    .channel('realtime:global_events_feed')
+    .channel(channelId)
     .on(
       'postgres_changes',
       {
@@ -231,15 +334,19 @@ export function subscribeToGlobalEventsLive(onEventChange: (payload: { eventType
       (payload) => {
         onEventChange({
           eventType: payload.eventType,
-          new: payload.new,
-          old: payload.old,
+          new: payload.new as Record<string, unknown> | undefined,
+          old: payload.old as Record<string, unknown> | undefined,
         });
       }
     )
     .subscribe();
 
   return () => {
-    supabase.removeChannel(channel);
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
   };
 }
 
