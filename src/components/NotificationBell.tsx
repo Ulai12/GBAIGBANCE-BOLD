@@ -13,7 +13,16 @@ export function NotificationBell({ onOpen }: NotificationBellProps) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    const handleSignedOut = () => setUnreadCount(0);
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
     fetchUnreadNotificationCount(user.id).then(setUnreadCount).catch(() => {});
     const interval = setInterval(() => {
       fetchUnreadNotificationCount(user.id).then(setUnreadCount).catch(() => {});

@@ -130,6 +130,19 @@ export function saveGeminiConfig(config: Partial<GeminiConfig>): GeminiConfig {
   return updated;
 }
 
+export function clearGeminiLocalConfig(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(API_KEY_KEY);
+      sessionStorage.removeItem(API_KEY_KEY);
+      window.dispatchEvent(new CustomEvent('gbaigbance_gemini_config_updated', { detail: DEFAULT_CONFIG }));
+    }
+  } catch {
+    // Ignore
+  }
+}
+
 /**
  * Persists the user's Gemini preferences (model, maps grounding, temperature) to their Supabase account.
  * SECURITY: Under Bring-Your-Own-Key (BYOK) architecture, the personal API key is strictly kept 

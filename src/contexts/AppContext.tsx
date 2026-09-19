@@ -1,11 +1,54 @@
 import { useState, useEffect, useCallback, useRef, createContext, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
-import { syncGeminiConfigFromAccount } from '@/services/gemini';
+import { syncGeminiConfigFromAccount, clearGeminiLocalConfig } from '@/services/gemini';
 import { saveCachedProfile, clearCachedUserTickets } from '@/services/cache';
 import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
+import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
+import { clearLocalUserTickets } from '@/services/events';
+import { clearCachedTicketsMemory } from '@/screens/TicketsScreen';
+import { clearCachedSubscriptions } from '@/screens/SubscriptionsScreen';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
+
+export function performSignOutCleanup(userId?: string | null): void {
+  try {
+    if (userId) {
+      clearCachedUserTickets(userId).catch(() => {});
+      clearLocalUserTickets(userId);
+    } else {
+      clearLocalUserTickets();
+    }
+    clearCachedTicketsMemory();
+    clearCachedSubscriptions();
+    clearUserFavoritesStorage(userId);
+    clearLocalProfile();
+    saveCachedProfile(null).catch(() => {});
+    clearGeminiLocalConfig();
+
+    if (typeof window !== 'undefined') {
+      // Remove any user-specific storage keys
+      if (userId) {
+        localStorage.removeItem(`gba_my_events_${userId}`);
+        localStorage.removeItem(`gba_tickets_digest_${userId}`);
+      }
+      localStorage.removeItem('gba_user_tickets');
+      localStorage.removeItem('gba_fav_events_cache');
+      localStorage.removeItem('gba_liked_event_ids_v1');
+      localStorage.removeItem('gba_followed_artists_v1');
+      localStorage.removeItem('gba_followed_orgs_v1');
+      localStorage.removeItem('gba_guest_id');
+
+      // Dispatch global events so all components clear state immediately
+      window.dispatchEvent(new CustomEvent('gba-user-signed-out'));
+      window.dispatchEvent(new CustomEvent('gba-favorites-updated', { detail: { eventType: 'RESET' } }));
+      window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { eventType: 'RESET' } }));
+      window.dispatchEvent(new CustomEvent('gba-tickets-count-changed', { detail: { count: 0 } }));
+    }
+  } catch {
+    // Ignore cleanup error
+  }
+}
 
 export interface AppContextValue {
   user: Profile | null;
@@ -117,9 +160,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (initialSession?.user) {
         loadProfileForUser(initialSession.user);
       } else {
+        const prevId = activeUserIdRef.current;
         activeUserIdRef.current = null;
-        saveCachedProfile(null).catch(() => {});
-        clearLocalProfile();
+        performSignOutCleanup(prevId);
         setUser(null);
         setLoading(false);
         setIsSessionResolving(false);
@@ -136,8 +179,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // If already resolved during initial getSession, avoid redundant network cascade
         loadProfileForUser(currentSession.user, true);
       } else {
+        const prevUserId = activeUserIdRef.current;
         activeUserIdRef.current = null;
-        saveCachedProfile(null).catch(() => {});
+        performSignOutCleanup(prevUserId);
         setUser(null);
       }
     });
@@ -171,13 +215,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
-    const currentUserId = user?.id;
-    try { await authSignOut(); } catch { setSession(null); }
-    if (currentUserId) {
-      clearCachedUserTickets(currentUserId).catch(() => {});
+    const currentUserId = user?.id || activeUserIdRef.current;
+    try {
+      await authSignOut();
+    } catch {
+      // Continue cleanup
     }
-    clearLocalProfile();
-    saveCachedProfile(null).catch(() => {});
+    performSignOutCleanup(currentUserId);
+    activeUserIdRef.current = null;
     setUser(null);
     setSession(null);
   }, [user?.id]);

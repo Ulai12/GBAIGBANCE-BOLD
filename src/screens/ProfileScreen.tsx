@@ -84,7 +84,28 @@ export function ProfileScreen({
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => (isCreator ? 'events' : 'tickets'));
 
   useEffect(() => {
-    if (!user) return;
+    const handleSignedOut = () => {
+      setMyEvents([]);
+      setTicketsCount(0);
+      setFollowingCount(0);
+      setFollowersCount(0);
+      setInvitations([]);
+      setLoading(false);
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setMyEvents([]);
+      setTicketsCount(0);
+      setFollowingCount(0);
+      setFollowersCount(0);
+      setInvitations([]);
+      setLoading(false);
+      return;
+    }
     const cached = getInitialMyEvents(user.id);
     if (cached.length === 0 && (user.role === 'organizer' || user.role === 'artist')) {
       setLoading(true);

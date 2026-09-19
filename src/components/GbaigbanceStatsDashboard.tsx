@@ -457,6 +457,23 @@ export function GbaigbanceStatsDashboard({
     <div className="w-full overflow-hidden rounded-[2.2rem] border border-black/[0.06] bg-white shadow-[0_12px_36px_rgba(102,0,255,0.06)] transition-all dark:border-white/[0.08] dark:bg-[#14121E] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+              Direct • {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer"
+            aria-label="Actualiser les statistiques"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#6600FF]' : ''}`} />
+          </button>
+        </div>
         <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/10">
 
           <button

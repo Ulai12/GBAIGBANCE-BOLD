@@ -23,6 +23,10 @@ interface TicketsScreenProps {
 
 let cachedTickets: { userId: string; tickets: (Ticket & { event?: Event })[] } | null = null;
 
+export function clearCachedTicketsMemory(): void {
+  cachedTickets = null;
+}
+
 export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenProps) {
   const { session, user, isSessionResolving } = useApp();
   const initialTickets = user
@@ -36,8 +40,22 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
   const [cancelling, setCancelling] = useState(false);
   const [viewingTicket, setViewingTicket] = useState<(Ticket & { event?: Event }) | null>(null);
 
+  // Clear memory and local state when signing out
+  useEffect(() => {
+    const handleSignedOut = () => {
+      cachedTickets = null;
+      setTickets([]);
+      setLoading(false);
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => {
+      window.removeEventListener('gba-user-signed-out', handleSignedOut);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) {
+      setTickets([]);
       setLoading(false);
       return;
     }

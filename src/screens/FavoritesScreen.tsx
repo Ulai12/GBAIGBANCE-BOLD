@@ -94,6 +94,20 @@ export function FavoritesScreen({
   const [organizations, setOrganizations] = useState<Organization[]>(() => getInitialFavOrgs(followedOrgIds));
   const [loading, setLoading] = useState(() => likedEventIds.size > 0 && getInitialFavEvents(likedEventIds).length === 0);
 
+  // Clear data immediately on user sign out
+  useEffect(() => {
+    const handleSignedOut = () => {
+      setEvents([]);
+      setArtists([]);
+      setOrganizations([]);
+      setLoading(false);
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => {
+      window.removeEventListener('gba-user-signed-out', handleSignedOut);
+    };
+  }, []);
+
   // Charger les événements favoris avec découpage en lots sécurisé (support des passés et actifs)
   useEffect(() => {
     let isCancelled = false;
@@ -430,6 +444,25 @@ export function FavoritesScreen({
           Retrouvez vos sorties préférées, artistes et organisateurs abonnés
         </p>
       </div>
+
+      {/* Bannière Mode Invité */}
+      {!session && (
+        <div className="mx-5 mb-2 p-3.5 rounded-2xl bg-gradient-to-r from-[#6600FF]/10 to-pink-500/10 dark:from-[#6600FF]/20 dark:to-pink-500/20 border border-[#6600FF]/20 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black text-[#17131D] dark:text-white">Mode Invité</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+              Connectez-vous pour synchroniser vos favoris sur tous vos appareils
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogin}
+            className="px-3.5 py-1.5 rounded-full bg-[#6600FF] text-white text-xs font-black shrink-0 shadow-xs hover:bg-[#5200cc] transition-colors"
+          >
+            Connexion
+          </button>
+        </div>
+      )}
 
       {/* Barre de recherche iOS */}
       <div className="px-5 mt-2">

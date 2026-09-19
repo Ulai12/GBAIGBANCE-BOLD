@@ -45,6 +45,36 @@ const STORAGE_LIKES_KEY = 'gba_liked_event_ids_v1';
 const STORAGE_ARTIST_FOLLOWS_KEY = 'gba_followed_artists_v1';
 const STORAGE_ORG_FOLLOWS_KEY = 'gba_followed_orgs_v1';
 
+export function getFavoritesStorageKey(type: 'likes' | 'artists' | 'orgs', userId?: string | null): string {
+  if (userId && !userId.startsWith('guest-')) {
+    return `gba_user_${type}_${userId}_v1`;
+  }
+  return `gba_guest_${type}_v1`;
+}
+
+export function clearUserFavoritesStorage(userId?: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    // Purge legacy shared keys
+    localStorage.removeItem(STORAGE_LIKES_KEY);
+    localStorage.removeItem(STORAGE_ARTIST_FOLLOWS_KEY);
+    localStorage.removeItem(STORAGE_ORG_FOLLOWS_KEY);
+    localStorage.removeItem('gba_fav_events_cache');
+    // Purge guest keys
+    localStorage.removeItem('gba_guest_likes_v1');
+    localStorage.removeItem('gba_guest_artists_v1');
+    localStorage.removeItem('gba_guest_orgs_v1');
+    // Purge user-specific keys if userId given
+    if (userId) {
+      localStorage.removeItem(getFavoritesStorageKey('likes', userId));
+      localStorage.removeItem(getFavoritesStorageKey('artists', userId));
+      localStorage.removeItem(getFavoritesStorageKey('orgs', userId));
+    }
+  } catch {
+    // Ignore
+  }
+}
+
 function readStoredSet(key: string): Set<string> {
   try {
     if (typeof window === 'undefined') return new Set();
@@ -71,64 +101,102 @@ function writeStoredSet(key: string, set: Set<string>): void {
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user } = useApp();
-  const [likedEventIds, setLikedEventIds] = useState<Set<string>>(() => readStoredSet(STORAGE_LIKES_KEY));
-  const [followedArtistIds, setFollowedArtistIds] = useState<Set<string>>(() => readStoredSet(STORAGE_ARTIST_FOLLOWS_KEY));
-  const [followedOrgIds, setFollowedOrgIds] = useState<Set<string>>(() => readStoredSet(STORAGE_ORG_FOLLOWS_KEY));
+  const userId = user?.id || null;
 
-  // Sync with Supabase on user mount or change
+  const [likedEventIds, setLikedEventIds] = useState<Set<string>>(() =>
+    readStoredSet(getFavoritesStorageKey('likes', userId))
+  );
+  const [followedArtistIds, setFollowedArtistIds] = useState<Set<string>>(() =>
+    readStoredSet(getFavoritesStorageKey('artists', userId))
+  );
+  const [followedOrgIds, setFollowedOrgIds] = useState<Set<string>>(() =>
+    readStoredSet(getFavoritesStorageKey('orgs', userId))
+  );
+
+  // Clear immediately when signed out
   useEffect(() => {
-    if (!isSupabaseConfigured || !user?.id) return;
+    const handleSignedOut = () => {
+      setLikedEventIds(new Set());
+      setFollowedArtistIds(new Set());
+      setFollowedOrgIds(new Set());
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => {
+      window.removeEventListener('gba-user-signed-out', handleSignedOut);
+    };
+  }, []);
 
-    // Fetch user event likes
+  // Update in-memory state when switching between guest and authenticated users
+  useEffect(() => {
+    const likesKey = getFavoritesStorageKey('likes', userId);
+    const artistsKey = getFavoritesStorageKey('artists', userId);
+    const orgsKey = getFavoritesStorageKey('orgs', userId);
+
+    if (!userId) {
+      // Guest mode - load guest state
+      setLikedEventIds(readStoredSet(likesKey));
+      setFollowedArtistIds(readStoredSet(artistsKey));
+      setFollowedOrgIds(readStoredSet(orgsKey));
+      return;
+    }
+
+    // Authenticated user - populate local user cache first
+    setLikedEventIds(readStoredSet(likesKey));
+    setFollowedArtistIds(readStoredSet(artistsKey));
+    setFollowedOrgIds(readStoredSet(orgsKey));
+
+    if (!isSupabaseConfigured) return;
+
+    // Fetch user event likes from Supabase
     supabase
       .from('event_likes')
       .select('event_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .then(({ data }) => {
         if (data) {
           const dbLikes = new Set(data.map((r) => r.event_id as string));
           setLikedEventIds((prev) => {
             const merged = new Set([...prev, ...dbLikes]);
-            writeStoredSet(STORAGE_LIKES_KEY, merged);
+            writeStoredSet(likesKey, merged);
             return merged;
           });
         }
       });
 
-    // Fetch user followed artists
+    // Fetch user followed artists from Supabase
     supabase
       .from('artist_follows')
       .select('artist_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .then(({ data }) => {
         if (data) {
           const dbArtists = new Set(data.map((r) => r.artist_id as string));
           setFollowedArtistIds((prev) => {
             const merged = new Set([...prev, ...dbArtists]);
-            writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, merged);
+            writeStoredSet(artistsKey, merged);
             return merged;
           });
         }
       });
 
-    // Fetch user followed organizations
+    // Fetch user followed organizations from Supabase
     supabase
       .from('organization_follows')
       .select('organization_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .then(({ data }) => {
         if (data) {
           const dbOrgs = new Set(data.map((r) => r.organization_id as string));
           setFollowedOrgIds((prev) => {
             const merged = new Set([...prev, ...dbOrgs]);
-            writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, merged);
+            writeStoredSet(orgsKey, merged);
             return merged;
           });
         }
       });
 
     // Supabase Realtime live sync for favorites and subscriptions
-    const unsubscribe = subscribeToUserFavoritesLive(user.id, {
+    const unsubscribe = subscribeToUserFavoritesLive(userId, {
       onLikeChange: ({ eventType, eventId }) => {
         setLikedEventIds((prev) => {
           const next = new Set(prev);
@@ -137,7 +205,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           } else {
             next.add(eventId);
           }
-          writeStoredSet(STORAGE_LIKES_KEY, next);
+          writeStoredSet(likesKey, next);
           return next;
         });
         if (typeof window !== 'undefined') {
@@ -152,7 +220,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           } else {
             next.add(artistId);
           }
-          writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, next);
+          writeStoredSet(artistsKey, next);
           return next;
         });
         if (typeof window !== 'undefined') {
@@ -167,7 +235,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           } else {
             next.add(orgId);
           }
-          writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, next);
+          writeStoredSet(orgsKey, next);
           return next;
         });
         if (typeof window !== 'undefined') {
@@ -179,7 +247,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user?.id]);
+  }, [userId]);
 
   const isLiked = useCallback(
     (eventId: string) => likedEventIds.has(eventId),
@@ -189,6 +257,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const toggleLike = useCallback(
     (eventId: string): Promise<boolean> => {
       const willBeLiked = !likedEventIds.has(eventId);
+      const likesKey = getFavoritesStorageKey('likes', userId);
 
       // 1. Immediate haptic feedback (Taptic pulse)
       haptic.medium();
@@ -198,19 +267,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         const next = new Set(prev);
         if (willBeLiked) next.add(eventId);
         else next.delete(eventId);
-        writeStoredSet(STORAGE_LIKES_KEY, next);
+        writeStoredSet(likesKey, next);
         return next;
       });
 
       // 3. Asynchronous background network sync
-      if (isSupabaseConfigured && user?.id) {
-        apiToggleEventLike(eventId, user.id).catch(() => {
+      if (isSupabaseConfigured && userId) {
+        apiToggleEventLike(eventId, userId).catch(() => {
           // Transparent rollback on failure
           setLikedEventIds((prev) => {
             const next = new Set(prev);
             if (willBeLiked) next.delete(eventId);
             else next.add(eventId);
-            writeStoredSet(STORAGE_LIKES_KEY, next);
+            writeStoredSet(likesKey, next);
             return next;
           });
           haptic.error();
@@ -233,7 +302,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       // Resolves immediately so callers can animate and display toasts without waiting
       return Promise.resolve(willBeLiked);
     },
-    [likedEventIds, user?.id]
+    [likedEventIds, userId]
   );
 
   const isFollowingArtist = useCallback(
@@ -244,6 +313,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const toggleFollowArtist = useCallback(
     (artistId: string): Promise<boolean> => {
       const willFollow = !followedArtistIds.has(artistId);
+      const artistsKey = getFavoritesStorageKey('artists', userId);
 
       // 1. Immediate tactile confirmation
       haptic.selection();
@@ -253,19 +323,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         const next = new Set(prev);
         if (willFollow) next.add(artistId);
         else next.delete(artistId);
-        writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, next);
+        writeStoredSet(artistsKey, next);
         return next;
       });
 
       // 3. Background network sync
-      if (isSupabaseConfigured && user?.id) {
-        apiToggleArtistFollow(artistId, user.id).catch(() => {
+      if (isSupabaseConfigured && userId) {
+        apiToggleArtistFollow(artistId, userId).catch(() => {
           // Transparent rollback on network error
           setFollowedArtistIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(artistId);
             else next.add(artistId);
-            writeStoredSet(STORAGE_ARTIST_FOLLOWS_KEY, next);
+            writeStoredSet(artistsKey, next);
             return next;
           });
           haptic.error();
@@ -287,7 +357,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
       return Promise.resolve(willFollow);
     },
-    [followedArtistIds, user?.id]
+    [followedArtistIds, userId]
   );
 
   const isFollowingOrg = useCallback(
@@ -298,6 +368,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const toggleFollowOrg = useCallback(
     (orgId: string): Promise<boolean> => {
       const willFollow = !followedOrgIds.has(orgId);
+      const orgsKey = getFavoritesStorageKey('orgs', userId);
 
       // 1. Immediate tactile confirmation
       haptic.selection();
@@ -307,19 +378,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         const next = new Set(prev);
         if (willFollow) next.add(orgId);
         else next.delete(orgId);
-        writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, next);
+        writeStoredSet(orgsKey, next);
         return next;
       });
 
       // 3. Background network sync
-      if (isSupabaseConfigured && user?.id) {
-        apiToggleOrgFollow(orgId, user.id).catch(() => {
+      if (isSupabaseConfigured && userId) {
+        apiToggleOrgFollow(orgId, userId).catch(() => {
           // Transparent rollback on network error
           setFollowedOrgIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(orgId);
             else next.add(orgId);
-            writeStoredSet(STORAGE_ORG_FOLLOWS_KEY, next);
+            writeStoredSet(orgsKey, next);
             return next;
           });
           haptic.error();
@@ -341,7 +412,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
       return Promise.resolve(willFollow);
     },
-    [followedOrgIds, user?.id]
+    [followedOrgIds, userId]
   );
 
   return (

@@ -89,6 +89,7 @@ export {
   setEventStatus,
   fetchUserTickets,
   validateTicketQr,
+  clearLocalUserTickets,
 } from '@/features/tickets';
 
 // ==================== ARTISTS DOMAIN ====================

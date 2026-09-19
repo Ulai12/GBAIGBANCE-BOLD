@@ -52,6 +52,26 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   });
 
   useEffect(() => {
+    const handleSignedOut = () => {
+      setEvents([]);
+      setPerfData({
+        viewsByEvent: [],
+        salesByEvent: [],
+        dailyTrends: [],
+        categoryBreakdown: [],
+        summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
+      });
+      onBack();
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
+  }, [onBack]);
+
+  useEffect(() => {
+    if (!user) {
+      setEvents([]);
+      return;
+    }
     loadEvents();
     loadMetrics();
   }, [user, timeRange]);

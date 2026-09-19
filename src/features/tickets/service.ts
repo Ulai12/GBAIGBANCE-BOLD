@@ -4,6 +4,25 @@ import { fetchEventById } from '@/services/events';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
 
+export function getLocalTicketsKey(userId?: string | null): string {
+  if (userId && !userId.startsWith('guest-')) {
+    return `gba_user_tickets_${userId}`;
+  }
+  return 'gba_user_tickets_guest';
+}
+
+export function clearLocalUserTickets(userId?: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(LOCAL_TICKETS_KEY);
+    if (userId) {
+      localStorage.removeItem(getLocalTicketsKey(userId));
+    }
+  } catch {
+    // Ignore
+  }
+}
+
 export function generateFallbackTicketOptions(eventId: string, priceMin: number = 5000): TicketOption[] {
   const isFree = priceMin === 0;
   return [
@@ -87,40 +106,51 @@ export async function createTicketOption(
   return data as TicketOption | null;
 }
 
-export function getLocalStoredTickets(): Array<Record<string, unknown>> {
+export function getLocalStoredTickets(userId?: string | null): Array<Record<string, unknown>> {
   try {
-    const raw = localStorage.getItem(LOCAL_TICKETS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const key = getLocalTicketsKey(userId);
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    if (userId) {
+      return parsed.filter((t) => t && t.user_id === userId);
+    }
+    return parsed;
   } catch {
     return [];
   }
 }
 
-export function saveLocalStoredTicket(ticket: Record<string, unknown>) {
+export function saveLocalStoredTicket(ticket: Record<string, unknown>, userId?: string | null) {
   try {
-    const current = getLocalStoredTickets();
+    const targetUserId = userId || (ticket.user_id as string) || null;
+    const key = getLocalTicketsKey(targetUserId);
+    const current = getLocalStoredTickets(targetUserId);
     const updated = [ticket, ...current.filter((t) => t.id !== ticket.id)];
-    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch {
     // Ignore localStorage errors
   }
 }
 
-export function removeLocalStoredTicket(ticketId: string) {
+export function removeLocalStoredTicket(ticketId: string, userId?: string | null) {
   try {
-    const current = getLocalStoredTickets();
+    const key = getLocalTicketsKey(userId);
+    const current = getLocalStoredTickets(userId);
     const updated = current.filter((t) => t.id !== ticketId);
-    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch {
     // Ignore localStorage errors
   }
 }
 
-export function updateLocalStoredTicket(ticketId: string, updates: Record<string, unknown>) {
+export function updateLocalStoredTicket(ticketId: string, updates: Record<string, unknown>, userId?: string | null) {
   try {
-    const current = getLocalStoredTickets();
+    const key = getLocalTicketsKey(userId);
+    const current = getLocalStoredTickets(userId);
     const updated = current.map((t) => (t.id === ticketId ? { ...t, ...updates } : t));
-    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch {
     // Ignore localStorage errors
   }
@@ -230,12 +260,13 @@ export async function bookTicket(
   return { success: true, ticket: localTicket };
 }
 
-export async function cancelTicket(ticketId: string): Promise<{ success: boolean; error?: string }> {
+export async function cancelTicket(ticketId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
   // Update local storage
   try {
-    const local = getLocalStoredTickets();
+    const key = getLocalTicketsKey(userId);
+    const local = getLocalStoredTickets(userId);
     const updated = local.map((t) => (t.id === ticketId ? { ...t, status: 'cancelled' } : t));
-    localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch {
     // Ignore
   }
@@ -271,7 +302,7 @@ export async function setEventStatus(
 }
 
 export async function fetchUserTickets(userId: string) {
-  const localTickets = getLocalStoredTickets();
+  const localTickets = getLocalStoredTickets(userId);
   let dbTickets: Array<Record<string, unknown>> = [];
 
   if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {

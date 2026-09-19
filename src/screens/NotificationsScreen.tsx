@@ -87,7 +87,17 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   useEffect(() => {
+    const handleSignedOut = () => {
+      setNotifications([]);
+      setLoading(false);
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
+  }, []);
+
+  useEffect(() => {
     if (!user) {
+      setNotifications([]);
       setLoading(false);
       return;
     }

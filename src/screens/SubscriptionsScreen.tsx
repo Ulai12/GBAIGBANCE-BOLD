@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart } from 'lucide-react';
+import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart, LogIn } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers } from '@/services/events';
 import { ArtistCard } from '@/components/ArtistCard';
@@ -13,6 +13,7 @@ interface SubscriptionsScreenProps {
   onArtistClick: (artist: Artist) => void;
   onOrganizationClick: (org: Organization) => void;
   onUserClick: (profile: Profile) => void;
+  onLogin?: () => void;
 }
 type Tab = 'artists' | 'organizers' | 'users';
 
@@ -23,11 +24,16 @@ let cachedSubscriptions: {
   users: Profile[];
 } | null = null;
 
+export function clearCachedSubscriptions(): void {
+  cachedSubscriptions = null;
+}
+
 export function SubscriptionsScreen({
   onBack,
   onArtistClick,
   onOrganizationClick,
   onUserClick,
+  onLogin,
 }: SubscriptionsScreenProps) {
   const { user, t } = useApp();
   const [tab, setTab] = useState<Tab>('artists');
@@ -39,7 +45,27 @@ export function SubscriptionsScreen({
   const [loading, setLoading] = useState(!hasCache);
 
   useEffect(() => {
-    if (!user) return;
+    const handleSignedOut = () => {
+      cachedSubscriptions = null;
+      setArtists([]);
+      setOrgs([]);
+      setUsers([]);
+      setLoading(false);
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => {
+      window.removeEventListener('gba-user-signed-out', handleSignedOut);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setArtists([]);
+      setOrgs([]);
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
     Promise.all([
       fetchFollowedArtists(user.id),
       fetchFollowedOrganizations(user.id),
@@ -58,6 +84,45 @@ export function SubscriptionsScreen({
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pb-32">
+        <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
+          <div className="max-w-md mx-auto px-5 py-4 flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <ChevronLeft className="w-5 h-5 text-[#1A1A2E] dark:text-white" />
+            </button>
+            <h1 className="text-base font-black text-[#17131D] dark:text-white">Abonnements</h1>
+          </div>
+        </div>
+
+        <div className="max-w-md mx-auto px-6 py-20 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] flex items-center justify-center mx-auto mb-4">
+            <Heart className="w-10 h-10" />
+          </div>
+          <h2 className="text-xl font-black text-[#17131D] dark:text-white mb-2">
+            Vos abonnements & artistes suivis
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto leading-relaxed">
+            Connectez-vous pour retrouver et gérer tous vos artistes, organisateurs et profils suivis.
+          </p>
+          {onLogin && (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="px-6 py-3.5 rounded-full bg-[#6600FF] text-white font-black text-xs inline-flex items-center gap-2 shadow-md hover:bg-[#5200cc] transition-all"
+            >
+              <LogIn className="w-4 h-4" /> Se connecter à mon compte
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !hasCache) {
     return <SubscriptionsScreenSkeleton />;
