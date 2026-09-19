@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, createContext, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
 import { syncGeminiConfigFromAccount } from '@/services/gemini';
@@ -75,6 +75,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return 'light';
   });
 
+  const activeUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') root.classList.add('dark');
@@ -90,23 +92,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id)
-          .then((profile) => {
-            setUser(profile);
-            saveCachedProfile(profile).catch(() => {});
-            syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
-          })
-          .catch(() => {
-            // Keep cached profile if offline
-          })
-          .finally(() => {
-            setLoading(false);
-            setIsSessionResolving(false);
-          });
+    const loadProfileForUser = async (userObj: { id: string; user_metadata?: Record<string, unknown> }, isSilent = false) => {
+      if (activeUserIdRef.current === userObj.id && isSilent) {
+        return;
+      }
+      activeUserIdRef.current = userObj.id;
+
+      try {
+        const profile = await fetchProfile(userObj.id);
+        setUser(profile);
+        saveCachedProfile(profile).catch(() => {});
+        syncGeminiConfigFromAccount(userObj.user_metadata, profile?.gemini_config);
+      } catch {
+        // Keep cached profile if offline
+      } finally {
+        setLoading(false);
+        setIsSessionResolving(false);
+      }
+    };
+
+    // 1. Initial session check
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      if (initialSession?.user) {
+        loadProfileForUser(initialSession.user);
       } else {
+        activeUserIdRef.current = null;
         saveCachedProfile(null).catch(() => {});
         clearLocalProfile();
         setUser(null);
@@ -118,20 +129,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setIsSessionResolving(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        (async () => {
-          try {
-            const profile = await fetchProfile(session.user.id);
-            setUser(profile);
-            saveCachedProfile(profile).catch(() => {});
-            syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
-          } catch {
-            // keep existing state
-          }
-        })();
+    // 2. Event listener for subsequent changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession?.user) {
+        // If already resolved during initial getSession, avoid redundant network cascade
+        loadProfileForUser(currentSession.user, true);
       } else {
+        activeUserIdRef.current = null;
         saveCachedProfile(null).catch(() => {});
         setUser(null);
       }

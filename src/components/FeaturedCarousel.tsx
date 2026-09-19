@@ -159,6 +159,8 @@ export function FeaturedCarousel({
             <SmartImage
               src={coverUrl}
               alt={currentEvent.title}
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1200px"
+              widths={[480, 768, 1080, 1440]}
               className="w-full h-full object-cover pointer-events-none"
               loading="eager"
               fetchPriority="high"

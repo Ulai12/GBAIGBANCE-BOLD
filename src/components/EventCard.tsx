@@ -75,6 +75,14 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
         whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
+        role="button"
+        tabIndex={0}
         onMouseEnter={prefetchEventDetail}
         onTouchStart={prefetchEventDetail}
         className="
@@ -83,6 +91,7 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
           overflow-hidden rounded-[1.5rem]
           bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
           shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+          focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2
         "
         aria-label={`Découvrir ${event.title}`}
       >
@@ -95,6 +104,8 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
           <SmartImage
             src={event.cover_url || event.images?.[0]}
             alt={event.title}
+            sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 280px"
+            widths={[280, 380, 560, 720]}
             className="h-full w-full object-cover"
           />
         </motion.div>
@@ -165,41 +176,41 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
               </div>
             </div>
 
-          {/* FUNCTIONAL HOT / STATUS BADGE */}
-          {isCancelled ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-red-400/50 bg-red-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-red-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping mr-0.5" />
-              Annulé
-            </div>
-          ) : isPostponed ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-amber-100">
-              Reporté
-            </div>
-          ) : terminated ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/50 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/70">
-              Terminé
-            </div>
-          ) : isHot ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-orange-400/60 bg-gradient-to-r from-orange-500/40 to-red-500/40 px-2 backdrop-blur-md self-start text-[10px] font-black text-orange-200 shadow-xs">
-              <Flame className="h-3 w-3 text-orange-300 fill-orange-400 animate-bounce" />
-              HOT
-            </div>
-          ) : event.is_featured ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-[#8B5CF6]/50 bg-[#6600FF]/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-purple-100">
-              <Sparkles className="h-2.5 w-2.5 text-yellow-300" />
-              Tendance
-            </div>
-          ) : event.price_min === 0 ? (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100">
-              Gratuit
-            </div>
-          ) : (
-            <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/25 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/90">
-              <Zap className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
-              Populaire
-            </div>
-          )}
-        </div>
+            {/* FUNCTIONAL HOT / STATUS BADGE */}
+            {isCancelled ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-red-400/50 bg-red-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-red-100">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping mr-0.5" />
+                Annulé
+              </div>
+            ) : isPostponed ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-amber-100">
+                Reporté
+              </div>
+            ) : terminated ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/50 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/70">
+                Terminé
+              </div>
+            ) : isHot ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-orange-400/60 bg-gradient-to-r from-orange-500/40 to-red-500/40 px-2 backdrop-blur-md self-start text-[10px] font-black text-orange-200 shadow-xs">
+                <Flame className="h-3 w-3 text-orange-300 fill-orange-400" />
+                HOT
+              </div>
+            ) : event.is_featured ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-[#8B5CF6]/50 bg-[#6600FF]/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-purple-100">
+                <Sparkles className="h-2.5 w-2.5 text-yellow-300" />
+                Tendance
+              </div>
+            ) : event.price_min === 0 ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100">
+                Gratuit
+              </div>
+            ) : (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/25 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/90">
+                <Zap className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
+                Populaire
+              </div>
+            )}
+          </div>
 
         {/* BOTTOM LAYER */}
         <div className="flex w-full flex-col min-w-0 gap-1 mt-auto">

@@ -38,7 +38,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "profiles_select_public" ON profiles;
-CREATE POLICY "profiles_select_public" ON profiles FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT TO authenticated USING (
+  auth.uid() = id OR
+  EXISTS (SELECT 1 FROM profiles admin_p WHERE admin_p.id = auth.uid() AND admin_p.role = 'admin')
+);
 DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "profiles_update_own" ON profiles;

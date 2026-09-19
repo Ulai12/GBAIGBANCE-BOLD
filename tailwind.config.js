@@ -32,8 +32,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        display: ['Inter', '-apple-system', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        display: ['Manrope', '-apple-system', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         '4xl': '2rem',

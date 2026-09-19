@@ -49,6 +49,15 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
       whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.015 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Événement à proximité : ${event.title}`}
       onMouseEnter={prefetchEventDetail}
       onTouchStart={prefetchEventDetail}
       className="
@@ -58,6 +67,7 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
         border border-black/[0.06] dark:border-white/[0.08]
         shadow-xs hover:shadow-md
         cursor-pointer select-none transition-all flex flex-col justify-between
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2
       "
     >
       {/* Visual Cover Header - Compact & Enclosed */}
@@ -65,6 +75,8 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
         <SmartImage
           src={event.cover_url || event.images?.[0]}
           alt={event.title}
+          sizes="(max-width: 640px) 240px, 260px"
+          widths={[240, 320, 480]}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 

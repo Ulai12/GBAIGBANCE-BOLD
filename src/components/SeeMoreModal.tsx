@@ -3,6 +3,7 @@ import {
   ChevronLeft, Search, Navigation, Sparkles, Gift, Flame, Music, Building2, X
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
+import { NearbySeeMoreCard } from '@/components/NearbySeeMoreCard';
 import { OrganizerCard } from '@/components/OrganizerCard';
 import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -102,10 +103,11 @@ export function SeeMoreModal({
     let list = events;
 
     if (type === 'nearby') {
-      const hasRealDistance = events.some((e) => typeof e.distanceKm === 'number');
-      if (hasRealDistance && distanceFilter !== 'all') {
+      if (distanceFilter !== 'all') {
         list = list.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= distanceFilter);
       }
+      // Sort by closest distance first
+      list = [...list].sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
     } else if (type === 'free') {
       list = list.filter((e) => e.price_min === 0);
     }
@@ -344,16 +346,27 @@ export function SeeMoreModal({
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {filteredEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => {
-                  onClose();
-                  onEventClick(event);
-                }}
-              />
-            ))}
+            {filteredEvents.map((event) =>
+              type === 'nearby' ? (
+                <NearbySeeMoreCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => {
+                    onClose();
+                    onEventClick(event);
+                  }}
+                />
+              ) : (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => {
+                    onClose();
+                    onEventClick(event);
+                  }}
+                />
+              )
+            )}
           </div>
         )}
       </main>

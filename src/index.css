@@ -24,8 +24,8 @@
     --border: rgba(102, 0, 255, 0.12);
 
     --glass-intensity: 1;
-    --glass-blur: calc(20px * var(--glass-intensity));
-    --glass-saturate: calc(100% + 80% * var(--glass-intensity));
+    --glass-blur: calc(14px * var(--glass-intensity));
+    --glass-saturate: calc(100% + 60% * var(--glass-intensity));
 
     --glass-tint: rgba(255, 255, 255, 0.42);
     --glass-border: rgba(255, 255, 255, 0.55);
@@ -113,9 +113,32 @@
     color: var(--text);
   }
 
-  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
-  * { -ms-overflow-style: none; scrollbar-width: none; }
-  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  /* Refined, accessible scrollbars for desktop & tablet viewports */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(102, 0, 255, 0.22);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 0, 255, 0.45);
+  }
+
+  /* Scoped utility for explicitly non-scrolled badge rails and mobile carousels */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   @media (prefers-reduced-transparency: reduce) {
     :root {

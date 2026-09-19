@@ -131,8 +131,9 @@ export function saveGeminiConfig(config: Partial<GeminiConfig>): GeminiConfig {
 }
 
 /**
- * Persists the user's Gemini config both to device storage AND to their authenticated Supabase user account.
- * This guarantees the user's API key is preserved across sign-ins, page refreshes, and device switches.
+ * Persists the user's Gemini preferences (model, maps grounding, temperature) to their Supabase account.
+ * SECURITY: Under Bring-Your-Own-Key (BYOK) architecture, the personal API key is strictly kept 
+ * on the user's local device storage and is NEVER transmitted or stored in Supabase profiles or auth metadata.
  */
 export async function saveGeminiConfigToAccount(config: Partial<GeminiConfig>): Promise<GeminiConfig> {
   const localSaved = saveGeminiConfig(config);
@@ -146,23 +147,32 @@ export async function saveGeminiConfigToAccount(config: Partial<GeminiConfig>): 
     const user = session?.user;
     if (!user) return localSaved;
 
-    // 1. Update Auth User Metadata
+    // SECURITY: Strip API key before writing anything to cloud storage
+    const sanitizedAccountConfig: Omit<GeminiConfig, 'apiKey'> & { apiKey: string } = {
+      model: localSaved.model,
+      enableMapsGrounding: localSaved.enableMapsGrounding,
+      temperature: localSaved.temperature,
+      enabled: localSaved.enabled,
+      apiKey: '', // Never persist API keys in the database
+    };
+
+    // 1. Update Auth User Metadata with sanitized preferences
     try {
       await supabase.auth.updateUser({
         data: {
-          gemini_config: localSaved,
+          gemini_config: sanitizedAccountConfig,
         },
       });
     } catch (err) {
       console.debug('Failed to update auth metadata for Gemini config:', err);
     }
 
-    // 2. Also update profiles table
+    // 2. Also update profiles table with sanitized preferences
     try {
       await supabase
         .from('profiles')
         .update({
-          gemini_config: localSaved,
+          gemini_config: sanitizedAccountConfig,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -177,8 +187,8 @@ export async function saveGeminiConfigToAccount(config: Partial<GeminiConfig>): 
 }
 
 /**
- * Synchronizes Gemini configuration from the user's Supabase account down to device storage.
- * Called on user sign-in or session restoration.
+ * Synchronizes Gemini configuration preferences from the user's Supabase account down to device storage.
+ * Retains the device's local API key (never overwritten by remote null/empty value).
  */
 export function syncGeminiConfigFromAccount(
   userMetadata?: Record<string, unknown> | null,
@@ -188,18 +198,15 @@ export function syncGeminiConfigFromAccount(
   const current = getGeminiConfig();
 
   if (accountConfig && typeof accountConfig === 'object') {
-    const hasAccountKey = Boolean(accountConfig.apiKey && accountConfig.apiKey.trim().length > 5);
-    const hasCurrentKey = Boolean(current.apiKey && current.apiKey.trim().length > 5);
+    const remoteKey = accountConfig.apiKey?.trim();
+    const resolvedKey = current.apiKey || (remoteKey && remoteKey.length > 5 ? remoteKey : '');
 
-    // If account has key or if current device has no key, restore account config
-    if (hasAccountKey || (!hasCurrentKey && accountConfig.model)) {
-      return saveGeminiConfig({
-        ...current,
-        ...accountConfig,
-        apiKey: accountConfig.apiKey?.trim() || current.apiKey,
-        enabled: accountConfig.enabled ?? hasAccountKey,
-      });
-    }
+    return saveGeminiConfig({
+      ...current,
+      ...accountConfig,
+      apiKey: resolvedKey,
+      enabled: Boolean(resolvedKey && resolvedKey.length > 5 && (accountConfig.enabled ?? true)),
+    });
   }
 
   return current;

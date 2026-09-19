@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MotionConfig } from 'motion/react';
 import * as Sentry from '@sentry/react';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
-import '@/utils/prefetchRoutes';
 
 // Register Service Worker for PWA with prompt update
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
@@ -60,6 +60,8 @@ const container = document.getElementById('root')!;
 const root = createRoot(container);
 root.render(
   <StrictMode>
-    <App />
+    <MotionConfig reducedMotion="user">
+      <App />
+    </MotionConfig>
   </StrictMode>
 );

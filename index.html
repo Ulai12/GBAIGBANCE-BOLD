@@ -35,34 +35,14 @@
     <link rel="modulepreload" href="/src/main.tsx" />
     <link rel="modulepreload" href="/src/App.tsx" />
 
-    <!-- Performance: Preload Font Stylesheet -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+    <!-- Performance: Preload Primary Font Stylesheet (Manrope) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
 
     <title>Gbaigbance — L'événementiel africain</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-
-    <!-- Navigation Acceleration: Browser Idle Prefetch for Lazy-loaded Routes -->
-    <script>
-      (function() {
-        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (conn && (conn.saveData || /2g/.test(conn.effectiveType))) {
-          return;
-        }
-        function triggerIdlePrefetch() {
-          if (typeof window.__gba_prefetch_critical_routes === 'function') {
-            window.__gba_prefetch_critical_routes();
-          }
-        }
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(triggerIdlePrefetch, { timeout: 3000 });
-        } else {
-          setTimeout(triggerIdlePrefetch, 2000);
-        }
-      })();
-    </script>
   </body>
 </html>
