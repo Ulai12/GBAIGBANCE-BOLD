@@ -86,7 +86,6 @@ export function HomeScreen({
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [allEventsFilter, setAllEventsFilter] = useState<'all' | 'concert' | 'festival' | 'exposition' | 'conference'>('all');
   const [loading, setLoading] = useState(!initialCache.hasCache);
-  const [isScrolled, setIsScrolled] = useState(false);
   const onToastRef = useRef(onToast);
 
   useEffect(() => {
@@ -244,19 +243,6 @@ export function HomeScreen({
       if (unsubscribeStats) unsubscribeStats();
     };
   }, [refreshHomeData]);
-
-  // Scroll listener for sticky header styling & compaction
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrolled = window.scrollY > 24;
-      setIsScrolled(scrolled);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   // Proactive automatic foreground / event-based auto-refresh
   useEffect(() => {
@@ -435,111 +421,101 @@ export function HomeScreen({
 
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête iOS 27 fixé et collé au sommet de l'écran avec intégration Safe-Area */}
-      <header
-        className={`sticky top-0 z-40 w-full pt-[max(0.65rem,env(safe-area-inset-top))] px-5 pb-3 transition-all duration-200 ${
-          isScrolled
-            ? 'bg-[#F8F9FE]/95 dark:bg-[#0E0C15]/95 backdrop-blur-2xl border-b border-black/[0.06] dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
-            : 'bg-[#F8F9FE] dark:bg-[#0E0C15] border-b border-black/[0.03] dark:border-white/[0.04]'
-        }`}
+      {/* En-tête modernisée style iOS */}
+{/* ✅ RESTAURÉ : plus de sticky, plus de fond conditionnel ni de safe-area.
+    Il défile avec la page, comme dans l'ancienne version. */}
+<header className="px-5 pt-7 pb-3">
+  {/* Ligne Logo & Identité */}
+  {/* ✅ Retour au logo w-9 h-9 et aux textes 15px / 9px d'origine */}
+  <div className="flex items-center gap-2.5 mb-3.5">
+    <img
+      src="/icon.svg"
+      alt="Gbaigbance"
+      className="w-9 h-9 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
+    />
+    <div className="leading-tight">
+      <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
+      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
+    </div>
+  </div>
+
+  {/* Dynamic greeting et boutons harmonisés */}
+  {/* ✅ Le salut redevient un vrai titre h1 sur sa propre ligne (avant, il était dans la ligne du logo) */}
+  <div className="flex items-center justify-between mb-4">
+    <div>
+      <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
+        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}</span>
+        <span className="text-xl">👋</span>
+      </h1>
+      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
+    </div>
+
+    {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
+    {/* ✅ gap-2 et boutons w-10 h-10 d'origine (avant : gap-1.5 et w-9 h-9) */}
+    <div className="flex items-center gap-2">
+      {/* ✅ Appel direct, sans le wrapper haptic */}
+      <NotificationBell onOpen={onOpenNotifications} />
+
+      {onOpenSettings && (
+        <button
+          id="home-strategic-settings-btn"
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="Paramètres de l'application"
+          title="Paramètres"
+          className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
+        >
+          <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
+        </button>
+      )}
+
+      <button
+        onClick={onProfileClick}
+        className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+        aria-label="Profil"
       >
-        {/* Ligne Logo, Greeting et Actions */}
-        <div className="flex items-center justify-between gap-3 mb-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src="/icon.svg"
-              alt="Gbaigbance"
-              className="w-8 h-8 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10 shrink-0"
-            />
-            <div className="leading-tight min-w-0">
-              <p className="text-[13px] font-black text-[#171726] dark:text-white tracking-tight truncate">
-                GBAIGBANCE
-              </p>
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">
-                {getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'} 👋
-              </p>
-            </div>
-          </div>
+        <UserAvatar
+          src={user?.avatar_url}
+          name={user?.name || 'Invité'}
+          role={user?.role || 'attendee'}
+          size="sm"
+          className="w-full h-full"
+        />
+      </button>
+    </div>
+  </div>
 
-          {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <NotificationBell
-              onOpen={() => {
-                haptic.light();
-                onOpenNotifications();
-              }}
-            />
+  {/* Recherche et bouton IA assistant */}
+  <div className="flex items-center gap-2.5">
+    <button
+      type="button"
+      onClick={onSearchClick}
+      className="flex-1 text-left cursor-pointer"
+    >
+      {/* ✅ px-4 py-3, gap-3 et texte responsive d'origine */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
+        <Search className="w-4 h-4 text-gray-400" />
+        <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
+      </div>
+    </button>
 
-            {onOpenSettings && (
-              <button
-                id="home-strategic-settings-btn"
-                type="button"
-                onClick={() => {
-                  haptic.light();
-                  onOpenSettings();
-                }}
-                aria-label="Paramètres de l'application"
-                title="Paramètres"
-                className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
-              >
-                <Settings className="w-4 h-4 transition-transform hover:rotate-45" />
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                haptic.selection();
-                onProfileClick();
-              }}
-              className="w-9 h-9 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-              aria-label="Profil"
-            >
-              <UserAvatar
-                src={user?.avatar_url}
-                name={user?.name || 'Invité'}
-                role={user?.role || 'attendee'}
-                size="sm"
-                className="w-full h-full"
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Recherche et bouton IA assistant */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              haptic.selection();
-              onSearchClick();
-            }}
-            className="flex-1 text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
-              <span className="text-xs text-gray-400 font-medium truncate">
-                Concerts, soirées, festivals...
-              </span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              haptic.light();
-              onOpenAIAssistant();
-            }}
-            className="w-10 h-10 shrink-0 rounded-2xl bg-white dark:bg-[#1A1829] shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-gray-50 dark:hover:bg-white/10 active:scale-90 transition-all relative group cursor-pointer"
-            aria-label="Assistant IA Gbaigbance"
-            title="Assistant IA Gbaigbance"
-          >
-            <div className="relative flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-[#6600FF] transition-transform group-hover:scale-110" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-[#1A1829] animate-pulse" />
-            </div>
-          </button>
-        </div>
-      </header>
+    {/* ✅ w-12 h-12 d'origine et onClick direct.
+        Ça corrige aussi l'ancien onOpenAIAssistant() appelé sans vérification,
+        alors que la prop est optionnelle. */}
+    <button
+      type="button"
+      onClick={onOpenAIAssistant}
+      className="w-12 h-12 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
+      aria-label="Assistant IA Gbaigbance"
+      title="Assistant IA Gbaigbance"
+    >
+      <div className="relative flex items-center justify-center">
+        <Sparkles className="w-5 h-5 text-[#6600FF] transition-transform group-hover:scale-110" />
+        <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-[#1A1829] animate-pulse" />
+      </div>
+    </button>
+  </div>
+</header>
 
       {/* SECTION 1: Événements à la une */}
       <section className="mt-3 px-5" aria-label="Événements à la une">

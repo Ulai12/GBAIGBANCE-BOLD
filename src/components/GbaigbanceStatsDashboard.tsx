@@ -455,39 +455,6 @@ export function GbaigbanceStatsDashboard({
 
   return (
     <div className="w-full overflow-hidden rounded-[2.2rem] border border-black/[0.06] bg-white shadow-[0_12px_36px_rgba(102,0,255,0.06)] transition-all dark:border-white/[0.08] dark:bg-[#14121E] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
-      {/* En-tête Live Stats Supabase Realtime */}
-      <div className="px-5 pt-4 pb-1 flex items-center justify-between border-b border-black/[0.04] dark:border-white/[0.04]">
-        <div className="flex items-center gap-2">
-          <div className="relative flex items-center justify-center w-5 h-5">
-            <span className="absolute w-3 h-3 bg-emerald-500 rounded-full animate-ping opacity-60" />
-            <span className="relative w-2 h-2 bg-emerald-500 rounded-full" />
-          </div>
-          <div>
-            <span className="text-[12px] font-extrabold text-[#17131D] dark:text-white tracking-tight flex items-center gap-1.5">
-              En direct
-              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                Supabase Live
-              </span>
-              <span className="text-[10px] font-medium text-gray-400 hidden sm:inline">
-                · {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleManualRefresh}
-          disabled={isRefreshing}
-          aria-label="Actualiser les statistiques"
-          title="Actualiser les statistiques en direct"
-          className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 hover:text-[#6600FF] dark:text-gray-400 dark:hover:text-[#a78dfa] transition-all cursor-pointer px-2 py-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-        >
-          <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-[#6600FF]' : ''}`} />
-          <span className="text-[10px]">Actualiser</span>
-        </button>
-      </div>
-
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
         <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/10">
