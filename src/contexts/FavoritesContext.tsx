@@ -7,7 +7,7 @@ import {
   toggleOrganizationFollow as apiToggleOrgFollow,
 } from '@/services/events';
 
-interface FavoritesContextValue {
+export interface FavoritesContextValue {
   likedEventIds: Set<string>;
   isLiked: (eventId: string) => boolean;
   toggleLike: (eventId: string) => Promise<boolean>;
@@ -19,7 +19,19 @@ interface FavoritesContextValue {
   toggleFollowOrg: (orgId: string) => Promise<boolean>;
 }
 
-const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+const defaultFavoritesContextFallback: FavoritesContextValue = {
+  likedEventIds: new Set<string>(),
+  isLiked: () => false,
+  toggleLike: async () => false,
+  followedArtistIds: new Set<string>(),
+  isFollowingArtist: () => false,
+  toggleFollowArtist: async () => false,
+  followedOrgIds: new Set<string>(),
+  isFollowingOrg: () => false,
+  toggleFollowOrg: async () => false,
+};
+
+const FavoritesContext = createContext<FavoritesContextValue>(defaultFavoritesContextFallback);
 
 const STORAGE_LIKES_KEY = 'gba_liked_event_ids_v1';
 const STORAGE_ARTIST_FOLLOWS_KEY = 'gba_followed_artists_v1';
@@ -240,26 +252,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const defaultFavoritesContextFallback: FavoritesContextType = {
-  likedEventIds: new Set<string>(),
-  isLiked: () => false,
-  toggleLike: () => {},
-  followedArtistIds: new Set<string>(),
-  isFollowingArtist: () => false,
-  toggleFollowArtist: () => {},
-  followedOrgIds: new Set<string>(),
-  isFollowingOrg: () => false,
-  toggleFollowOrg: () => {},
-};
-
 // eslint-disable-next-line react-refresh/only-export-components
 export function useFavorites() {
   const context = useContext(FavoritesContext);
-  if (!context) {
-    if (import.meta.env.DEV) {
-      console.warn('[useFavorites] FavoritesContext is temporarily unavailable (HMR or mounting outside FavoritesProvider). Using fallback.');
-    }
-    return defaultFavoritesContextFallback;
-  }
-  return context;
+  return context || defaultFavoritesContextFallback;
 }

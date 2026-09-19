@@ -1,5 +1,7 @@
 import type { EventCategory } from '@/types';
 
+export * from './categories';
+
 export const EVENT_CATEGORIES: { value: EventCategory; label: string; icon: string; color: string }[] = [
   { value: 'concert', label: 'Concert', icon: 'Music', color: 'from-[#6600FF] to-[#9333EA]' },
   { value: 'festival', label: 'Festival', icon: 'PartyPopper', color: 'from-[#8B5CF6] to-[#A855F7]' },

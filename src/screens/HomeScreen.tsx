@@ -21,12 +21,12 @@ import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard'
 import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
-import { EVENT_CATEGORIES } from '@/constants';
+import { EVENT_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
   fetchEventsByCategory, fetchFeaturedArtists, fetchVerifiedOrganizations,
-  fetchPlatformStats, isEventTerminated,
+  fetchPlatformStats, isEventTerminated, isEventActive,
   type PlatformStats,
 } from '@/services/events';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
@@ -140,68 +140,48 @@ export function HomeScreen({
     }
   }, [initialCache.hasCache]);
 
-  // Prioritized phased data fetching:
-  // Phase 1 (Critical): Featured & Upcoming events for instant hero & nearby render
-  // Phase 2 (Secondary): Trending, Artists, Organizations
-  // Phase 3 (Non-critical): Platform stats
+  // Background silent fetch to hydrate & refresh data without UI flashing
   useEffect(() => {
-    let isMounted = true;
     const isValidDate = (dateStr?: string) => Boolean(dateStr && !isNaN(new Date(dateStr).getTime()));
-    const filterValid = (list: Event[]) =>
-      list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
 
-    // Phase 1: Critical Content
     Promise.all([
       fetchFeaturedEvents(),
       fetchUpcomingEvents(),
+      fetchTrendingEvents(),
+      fetchFeaturedArtists(),
+      fetchVerifiedOrganizations(),
+      fetchPlatformStats(),
     ])
-      .then(([feat, up]) => {
-        if (!isMounted) return;
+      .then(([feat, up, trend, art, orgs, stats]) => {
+        const filterValid = (list: Event[]) =>
+          list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
+
         const validFeat = filterValid(feat);
+        const validTrend = filterValid(trend);
         const validUp = filterValid(up);
 
-        const newFeat = validFeat.length > 0 ? validFeat : feat.filter((e) => e.status === 'published');
-        const newNearby = validUp.length > 0 ? validUp : up.filter((e) => e.status === 'published');
-        const finalFeat = newFeat.length > 0 ? newFeat : newNearby.slice(0, 5);
+        const newFeat = validFeat.length > 0 ? validFeat : feat.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        const newTrend = validTrend.length > 0 ? validTrend : trend.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        const newNearby = validUp.length > 0 ? validUp : up.filter((e) => e.status === 'published' && !isEventTerminated(e));
 
-        setFeatured(finalFeat);
+        setFeatured(newFeat);
+        setTrending(newTrend);
         setNearby(newNearby);
-        setLoading(false);
+        setArtists(art);
+        setOrganizations(orgs);
+        setPlatformStats(stats);
 
-        // Phase 2: Secondary Content (Deferred to keep network pipe open for hero assets)
-        return Promise.all([
-          fetchTrendingEvents(),
-          fetchFeaturedArtists(),
-          fetchVerifiedOrganizations(),
-        ]).then(([trend, art, orgs]) => {
-          if (!isMounted) return;
-          const validTrend = filterValid(trend);
-          const newTrend = validTrend.length > 0 ? validTrend : trend.filter((e) => e.status === 'published');
-          const finalTrend = newTrend.length > 0 ? newTrend : newNearby.slice(0, 6);
-
-          setTrending(finalTrend);
-          setArtists(art);
-          setOrganizations(orgs);
-
-          // Phase 3: Platform Stats (Non-critical background metric)
-          fetchPlatformStats()
-            .then((stats) => {
-              if (!isMounted) return;
-              setPlatformStats(stats);
-              saveCachedHomeData({
-                featured: finalFeat,
-                trending: finalTrend,
-                nearby: newNearby,
-                artists: art,
-                organizations: orgs,
-                stats,
-              });
-            })
-            .catch(() => {});
+        // Save fresh data into the 0ms synchronous cache
+        saveCachedHomeData({
+          featured: newFeat,
+          trending: newTrend,
+          nearby: newNearby,
+          artists: art,
+          organizations: orgs,
+          stats,
         });
       })
       .catch(() => {
-        if (!isMounted) return;
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           onToastRef.current({
             message: 'Mode hors-ligne : données sauvegardées affichées',
@@ -209,14 +189,19 @@ export function HomeScreen({
           });
         }
       })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+      .finally(() => setLoading(false));
   }, []);
+
+  // Unified list of all unique active published events
+  const allActiveEvents = useMemo(() => {
+    const map = new Map<string, Event>();
+    [...featured, ...trending, ...nearby].forEach((e) => {
+      if (e && e.id && isEventActive(e) && !isEventTerminated(e)) {
+        map.set(e.id, e);
+      }
+    });
+    return Array.from(map.values());
+  }, [featured, trending, nearby]);
 
   // Category events fetch
   useEffect(() => {
@@ -224,34 +209,35 @@ export function HomeScreen({
       setCategoryEvents([]);
       return;
     }
-    setCategoryLoading(true);
+    const immediateMatches = allActiveEvents.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
+    if (immediateMatches.length > 0) {
+      setCategoryEvents(immediateMatches);
+    } else {
+      setCategoryLoading(true);
+    }
     fetchEventsByCategory(selectedCategory)
-      .then((res) => setCategoryEvents(res.filter((e) => e.status === 'published' && !isEventTerminated(e))))
-      .catch(() => setCategoryEvents([]))
+      .then((res) => {
+        const active = res.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        if (active.length > 0 || immediateMatches.length === 0) {
+          setCategoryEvents(active);
+        }
+      })
+      .catch(() => {
+        if (immediateMatches.length === 0) setCategoryEvents([]);
+      })
       .finally(() => setCategoryLoading(false));
-  }, [selectedCategory]);
+  }, [selectedCategory, allActiveEvents]);
 
-  // Unified list of all unique active published events
-  const allActiveEvents = useMemo(() => {
-    const map = new Map<string, Event>();
-    [...featured, ...trending, ...nearby].forEach((e) => {
-      if (e && e.id && e.status === 'published' && !isEventTerminated(e)) {
-        map.set(e.id, e);
-      }
-    });
-    return Array.from(map.values());
-  }, [featured, trending, nearby]);
-
-  // Spatial enrichment: compute exact distance from user location or Lomé center
+  // Spatial enrichment: compute exact distance from user ONLY when GPS is real/actual!
   const allEventsWithDistance = useMemo(() => {
-    const baseLat = userLocation.isActual ? userLocation.latitude : LOME_CENTER.latitude;
-    const baseLng = userLocation.isActual ? userLocation.longitude : LOME_CENTER.longitude;
-
     return allActiveEvents.map((event) => {
+      if (!userLocation.isActual) {
+        return { ...event, distanceKm: undefined };
+      }
       const coords = getEventCoordinates(event);
       const distanceKm = calculateDistanceKm(
-        baseLat,
-        baseLng,
+        userLocation.latitude,
+        userLocation.longitude,
         coords.latitude,
         coords.longitude
       );
@@ -261,11 +247,11 @@ export function HomeScreen({
 
   // Section: Proximité / Sorties locales adaptées (GPS réel vs sélection Lomé)
   const nearbySectionData = useMemo(() => {
-    const sorted = [...allEventsWithDistance]
-      .filter((e) => typeof e.distanceKm === 'number')
-      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-
     if (userLocation.isActual) {
+      const sorted = [...allEventsWithDistance]
+        .filter((e) => typeof e.distanceKm === 'number')
+        .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+
       const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
       if (strictlyUnder10.length > 0) {
         const maxDist = Math.max(...strictlyUnder10.map((e) => e.distanceKm || 0));
@@ -280,19 +266,19 @@ export function HomeScreen({
       return {
         title: 'Sorties populaires à Lomé',
         subtitle: 'Position GPS hors Lomé · Sélection Togo',
-        events: sorted.slice(0, 8),
-        isActual: true,
+        events: allActiveEvents.slice(0, 6),
+        isActual: false,
       };
     }
 
-    // Default when GPS is not enabled / denied (referenced from Lomé center)
+    // Default when GPS is not enabled / denied
     return {
       title: 'Sorties populaires à Lomé',
-      subtitle: 'Lieu : Lomé · Trié par distance et temps de trajet',
-      events: sorted.slice(0, 8),
+      subtitle: 'Lieu : Lomé · Activez le GPS pour vos sorties proches',
+      events: allActiveEvents.slice(0, 6),
       isActual: false,
     };
-  }, [allEventsWithDistance, userLocation]);
+  }, [allActiveEvents, allEventsWithDistance, userLocation]);
 
   // Section: Selon vos préférences (matches user profile preferred categories or vibrant defaults)
   const userPreferencesEvents = useMemo(() => {

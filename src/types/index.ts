@@ -10,6 +10,26 @@ export type EventCategory =
   | 'cultural'
   | 'private';
 
+export type MainCategoryId =
+  | 'cultural_artistic'
+  | 'commercial_professional'
+  | 'festive_nightlife'
+  | 'sports'
+  | 'private_family';
+
+export type SubCategoryId =
+  | 'concerts_spectacles'
+  | 'festivals'
+  | 'expositions_vernissages'
+  | 'foires_salons'
+  | 'conferences_seminaires'
+  | 'lancements_galas'
+  | 'clubbing_soirees'
+  | 'fetes_carnavals'
+  | 'competitions_matchs'
+  | 'fan_zones'
+  | 'celebrations_personnelles';
+
 export type EventStatus = 'draft' | 'pending' | 'published' | 'paused' | 'suspended' | 'cancelled' | 'postponed' | 'completed';
 export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | 'unavailable';
 
@@ -83,7 +103,8 @@ export interface Event {
   title: string;
   description: string | null;
   category: EventCategory;
-  subcategory?: string | null;
+  main_category?: MainCategoryId | string | null;
+  subcategory?: SubCategoryId | string | null;
   cover_url: string | null;
   images: string[];
   video_url?: string | null;
@@ -94,7 +115,6 @@ export interface Event {
   country: string;
   latitude: number | null;
   longitude: number | null;
-  distanceKm?: number;
   starts_at: string;
   ends_at: string | null;
   price_min: number;

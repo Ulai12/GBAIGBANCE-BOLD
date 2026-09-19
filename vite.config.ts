@@ -143,10 +143,15 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  esbuild: {
+    sourcemap: true,
+    sourcesContent: true,
+  },
   build: {
     sourcemap: process.env.NODE_ENV === 'development' ? true : 'hidden',
     rollupOptions: {
       output: {
+        sourcemapExcludeSources: false,
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (id.includes('@supabase')) return 'supabase-vendor';

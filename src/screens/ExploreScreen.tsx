@@ -23,7 +23,7 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { useApp } from '@/hooks/useApp';
 import { searchEvents, fetchUpcomingEvents } from '@/services/events';
 import { getCachedHomeData } from '@/services/cache';
-import { EVENT_CATEGORIES, CITIES } from '@/constants';
+import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories } from '@/constants';
 import type { Event, EventCategory } from '@/types';
 
 interface ExploreScreenProps {
@@ -49,7 +49,7 @@ function getWarmExploreEvents(): Event[] {
   if (home) {
     const map = new Map<string, Event>();
     [...(home.featured || []), ...(home.trending || []), ...(home.nearby || [])].forEach((e) => {
-      if (e && e.id) map.set(e.id, e);
+      if (e && e.id) map.set(e.id, hydrateEventCategories(e));
     });
     const list = Array.from(map.values());
     if (list.length > 0) {
@@ -83,8 +83,9 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
       setLoading(true);
     }
     try {
-      let result = query ? await searchEvents(query) : await fetchUpcomingEvents();
-      if (selectedCategory) result = result.filter((e) => e.category === selectedCategory);
+      const rawResult = query ? await searchEvents(query) : await fetchUpcomingEvents();
+      let result = rawResult.map(hydrateEventCategories);
+      if (selectedCategory) result = result.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
       if (selectedCity) result = result.filter((e) => e.city === selectedCity);
       if (priceFilter === 'free') result = result.filter((e) => e.price_min === 0);
       if (priceFilter === 'paid') result = result.filter((e) => e.price_min > 0);

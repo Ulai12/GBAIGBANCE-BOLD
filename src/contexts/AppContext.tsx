@@ -37,7 +37,7 @@ export const defaultAppContextFallback: AppContextValue = {
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const AppContext = createContext<AppContextValue | null>(null);
+export const AppContext = createContext<AppContextValue>(defaultAppContextFallback);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(() => {

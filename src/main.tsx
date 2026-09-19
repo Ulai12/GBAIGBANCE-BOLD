@@ -20,18 +20,20 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 }
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN || 'https://c2234e7544eb3870989a6695d76cb0fb@o4511833867091968.ingest.de.sentry.io/4511838676451408';
+const isDev = import.meta.env.DEV;
 const isDevEnabled = import.meta.env.VITE_SENTRY_ENABLE_DEV === 'true';
 
 Sentry.init({
   dsn: sentryDsn,
-  // Only capture exceptions in production or if explicitly enabled for dev debugging
-  enabled: import.meta.env.PROD || isDevEnabled,
+  environment: import.meta.env.MODE || (isDev ? 'development' : 'production'),
+  // Captured in production or if explicitly enabled for dev debugging / DSN specified
+  enabled: import.meta.env.PROD || isDevEnabled || Boolean(import.meta.env.VITE_SENTRY_DSN),
+  debug: isDev && isDevEnabled,
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.breadcrumbsIntegration(),
   ],
-  tracesSampleRate: import.meta.env.PROD ? 0.2 : 1.0,
-  environment: import.meta.env.MODE,
+  tracesSampleRate: isDev ? 1.0 : 0.2,
   release: 'gbaigbance-bold@1.0.0',
   initialScope: {
     tags: {
@@ -47,7 +49,7 @@ Sentry.init({
       if (
         message.includes('AbortError') ||
         message.includes('ResizeObserver loop') ||
-        message.includes('Failed to fetch') && !navigator.onLine
+        (message.includes('Failed to fetch') && !navigator.onLine)
       ) {
         return null;
       }
