@@ -461,6 +461,14 @@ function AppContent() {
           setAiAssistantOpen(false);
           navigate('/ai-settings');
         }}
+        onEventClick={(event) => {
+          setAiAssistantOpen(false);
+          handleEventClick(event);
+        }}
+        onAuthRequired={() => {
+          setAiAssistantOpen(false);
+          navigate('/auth');
+        }}
       />
 
       <SettingsModal

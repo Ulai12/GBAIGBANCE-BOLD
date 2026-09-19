@@ -4,143 +4,104 @@ import {
   X,
   Send,
   Loader2,
-  Key,
   MapPin,
   Bot,
   User as UserIcon,
   RotateCcw,
-  Settings,
+  Calendar,
+  ChevronRight,
+  LogIn,
+  AlertCircle,
 } from 'lucide-react';
-import { isGeminiActive, askGeminiAssistant } from '@/services/gemini';
+import { useAIAssistant, type ChatMessage } from '@/hooks/useAIAssistant';
+import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
+
+// ====================================================================
+// GBAIGBANCE — COMPOSANT AIAssistantModal (SÉCURISÉ & CONTEXTUEL)
+// ====================================================================
 
 interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
   events?: Event[];
   onEventClick?: (event: Event) => void;
-}
-
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'assistant';
-  text: string;
-  time: string;
+  onAuthRequired?: () => void;
 }
 
 const QUICK_SUGGESTIONS = [
-  'Quoi faire ce week-end à Lomé ?',
-  'Meilleurs concerts & festivals en cours',
-  'Événements gratuits ou abordables',
-  'Où faire la fête à Cotonou ?',
+  'Qu’est-ce qui se passe ce week-end près de moi ?',
+  'Des concerts gratuits ou abordables ?',
+  'Rappelle-moi mes billets actifs',
+  'Quels sont mes événements favoris ?',
 ];
 
 export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   isOpen,
   onClose,
-  onOpenSettings,
-  events = [],
+  onEventClick,
+  onAuthRequired,
 }) => {
-  const [active, setActive] = useState(isGeminiActive);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      text: "Bonjour ! Je suis l'assistant intelligent de Gbaigbance, propulsé par Google Gemini avec Maps Grounding. Comment puis-je vous aider à trouver votre prochaine sortie ?",
-      time: 'Maintenant',
-    },
-  ]);
+  const { userLocation } = useApp();
+  const {
+    messages,
+    sendMessage,
+    clearHistory,
+    isLoading,
+    isStreaming,
+    error,
+    quotaExceeded,
+    verifiedEvents,
+    isGuest,
+  } = useAIAssistant();
+
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setActive(isGeminiActive());
-
-    const handleConfigChange = () => {
-      setActive(isGeminiActive());
-    };
-
-    window.addEventListener('gbaigbance_gemini_config_updated', handleConfigChange);
-    return () => {
-      window.removeEventListener('gbaigbance_gemini_config_updated', handleConfigChange);
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isOpen]);
+  }, [messages, isStreaming, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSend = async (userText?: string) => {
-    const textToSend = userText || input.trim();
-    if (!textToSend || loading) return;
-
-    const userMsg: ChatMessage = {
-      id: Math.random().toString(36).slice(2),
-      sender: 'user',
-      text: textToSend,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
+  const handleSend = (text?: string) => {
+    const toSend = text || input;
+    if (!toSend.trim() || isLoading || isStreaming) return;
+    sendMessage(toSend);
     setInput('');
-    setLoading(true);
+  };
 
-    try {
-      const res = await askGeminiAssistant({
-        prompt: textToSend,
-        contextEvents: events,
-      });
-
-      const assistantMsg: ChatMessage = {
-        id: Math.random().toString(36).slice(2),
-        sender: 'assistant',
-        text: res.text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: unknown) {
-      const errorObj = err as { message?: string };
-      const errorMsg: ChatMessage = {
-        id: Math.random().toString(36).slice(2),
-        sender: 'assistant',
-        text: `Désolé, une erreur est survenue : ${errorObj?.message || 'Erreur inconnue'}. Vérifiez vos paramètres d'API Gemini.`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setLoading(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
-  const handleClearChat = () => {
-    setMessages([
-      {
-        id: 'welcome',
-        sender: 'assistant',
-        text: "Conversation réinitialisée. Quelle est votre prochaine envie de sortie ?",
-        time: 'Maintenant',
-      },
-    ]);
+  // Rendu sécurisé en texte brut (pas d'injection de liens externes ni d'images pirates)
+  const renderPlainText = (content: string) => {
+    return content.split('\n').map((line, idx) => (
+      <span key={idx} className="block leading-relaxed min-h-[1.25rem]">
+        {line || '\u00A0'}
+      </span>
+    ));
   };
 
   return (
     <div
       id="ai-assistant-modal"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg h-[85vh] sm:h-[650px] rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#14141A] text-[#17131D] dark:text-white border border-black/10 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-lg h-[90vh] sm:h-[680px] rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#14141A] text-[#17131D] dark:text-white border border-black/10 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-5 py-4 bg-gray-50 dark:bg-[#1C1C24] border-b border-black/[0.06] dark:border-white/5 flex items-center justify-between">
+        {/* En-tête */}
+        <div className="px-5 py-3.5 bg-gray-50 dark:bg-[#1C1C24] border-b border-black/[0.06] dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#9333EA] flex items-center justify-center shadow-md shadow-[#6600FF]/30">
               <Sparkles className="w-5 h-5 text-white" />
@@ -148,15 +109,19 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-sm font-extrabold text-[#17131D] dark:text-white tracking-tight">
-                  Assistant Gbaigbance IA
+                  Concierge Gbaigbance IA
                 </h2>
                 <span className="px-1.5 py-0.5 rounded-full bg-[#6600FF]/15 border border-[#6600FF]/30 text-[9px] font-bold text-[#6600FF] dark:text-[#A855F7]">
-                  Gemini
+                  Cloud
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-zinc-400 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                <span>Maps Grounding actif</span>
+                <span>
+                  {userLocation?.isActual
+                    ? 'Position GPS active (~1 km)'
+                    : 'Lomé & Togo par défaut'}
+                </span>
               </p>
             </div>
           </div>
@@ -164,22 +129,11 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={handleClearChat}
-              title="Effacer la conversation"
+              onClick={clearHistory}
+              title="Réinitialiser la conversation"
               className="p-2 rounded-full text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenSettings();
-              }}
-              title="Paramètres Gemini"
-              className="p-2 rounded-full text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
             </button>
             <button
               type="button"
@@ -191,142 +145,187 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
         </div>
 
-        {/* Body */}
-        {!active ? (
-          // Inactive / No Key state
-          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-[#6600FF]/15 border border-[#6600FF]/30 flex items-center justify-center text-[#6600FF] dark:text-[#A855F7] shadow-xl shadow-[#6600FF]/20">
-              <Key className="w-8 h-8" />
-            </div>
-
-            <div className="max-w-xs space-y-1.5">
-              <h3 className="text-base font-extrabold text-[#17131D] dark:text-white tracking-tight">
-                Activez votre clé API Gemini
-              </h3>
-              <p className="text-xs text-gray-600 dark:text-zinc-400 leading-relaxed">
-                Pour profiter de l'Assistant IA et des recommandations cartographiées,
-                veuillez ajouter votre propre clé API Google Gemini dans vos paramètres.
-              </p>
-            </div>
-
-            <div className="pt-2 w-full max-w-xs space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenSettings();
-                }}
-                className="w-full py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5500D4] text-white font-bold text-xs shadow-md shadow-[#6600FF]/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+        {/* Fil des messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((msg: ChatMessage) => {
+            const isUser = msg.role === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                <Settings className="w-4 h-4" />
-                <span>Configurer l'IA (Paramètres)</span>
-              </button>
+                {!isUser && (
+                  <div className="w-8 h-8 rounded-xl bg-[#6600FF]/15 text-[#6600FF] dark:text-[#A855F7] flex items-center justify-center shrink-0 mt-0.5 border border-[#6600FF]/25">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                )}
 
-              <p className="text-[10px] text-gray-400 dark:text-zinc-500">
-                La clé est 100% gratuite sur Google AI Studio.
-              </p>
-            </div>
-          </div>
-        ) : (
-          // Active Chat view
-          <>
-            {/* Messages list */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs bg-white dark:bg-[#14141A]">
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex items-start gap-2.5 ${
-                    m.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
-                >
+                <div className={`max-w-[85%] space-y-2.5`}>
                   <div
-                    className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] ${
-                      m.sender === 'user'
-                        ? 'bg-[#6600FF] text-white'
-                        : 'bg-gray-100 text-[#6600FF] dark:bg-[#23232D] dark:text-[#A855F7] border border-black/[0.04] dark:border-white/5'
+                    className={`rounded-2xl px-4 py-3 text-sm shadow-xs ${
+                      isUser
+                        ? 'bg-[#6600FF] text-white rounded-br-xs font-medium'
+                        : 'bg-gray-100 dark:bg-[#1E1E26] text-[#17131D] dark:text-zinc-100 rounded-bl-xs border border-black/5 dark:border-white/5'
                     }`}
                   >
-                    {m.sender === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                    {renderPlainText(msg.text)}
                   </div>
 
-                  <div
-                    className={`max-w-[80%] rounded-2xl p-3 leading-relaxed whitespace-pre-wrap ${
-                      m.sender === 'user'
-                        ? 'bg-[#6600FF] text-white rounded-tr-xs shadow-sm'
-                        : 'bg-gray-100 text-gray-800 dark:bg-[#1F1F28] dark:text-zinc-200 border border-black/[0.04] dark:border-white/5 rounded-tl-xs'
-                    }`}
-                  >
-                    {m.text}
-                    <div
-                      className={`text-[9px] mt-1 ${
-                        m.sender === 'user' ? 'text-white/70 text-right' : 'text-gray-400 dark:text-zinc-500'
-                      }`}
-                    >
-                      {m.time}
+                  {/* Cartes d'événements certifiées retournées par les outils pendant ce tour */}
+                  {!isUser && msg.eventIds && msg.eventIds.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      <p className="text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider px-1">
+                        Événements recommandés
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {msg.eventIds.map((eventId) => {
+                          const ev = verifiedEvents[eventId];
+                          if (!ev) return null;
+                          return (
+                            <div
+                              key={eventId}
+                              onClick={() => {
+                                onClose();
+                                onEventClick?.(ev);
+                              }}
+                              className="group p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-[#1A1A22] dark:hover:bg-[#23232E] border border-black/5 dark:border-white/10 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-xs"
+                            >
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                {ev.cover_url ? (
+                                  <img
+                                    src={ev.cover_url}
+                                    alt={ev.title}
+                                    className="w-12 h-12 rounded-lg object-cover shrink-0 border border-black/5 dark:border-white/10"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-lg bg-[#6600FF]/20 flex items-center justify-center text-[#6600FF] shrink-0 font-bold text-xs">
+                                    {ev.category?.slice(0, 3).toUpperCase() || 'EVT'}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-[#6600FF] transition-colors">
+                                    {ev.title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500 dark:text-zinc-400">
+                                    <span className="flex items-center gap-0.5 truncate">
+                                      <Calendar className="w-3 h-3 text-[#6600FF]" />
+                                      {ev.starts_at
+                                        ? new Date(ev.starts_at).toLocaleDateString('fr-FR', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                          })
+                                        : 'Bientôt'}
+                                    </span>
+                                    <span>•</span>
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                                      {ev.price_min === 0
+                                        ? 'Gratuit'
+                                        : `${ev.price_min} ${ev.currency || 'FCFA'}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-1.5 rounded-lg bg-black/5 dark:bg-white/5 text-gray-400 group-hover:text-[#6600FF] shrink-0">
+                                <ChevronRight className="w-4 h-4" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              ))}
 
-              {loading && (
-                <div className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-gray-100 text-[#6600FF] dark:bg-[#23232D] dark:text-[#A855F7] border border-black/[0.04] dark:border-white/5 shrink-0 flex items-center justify-center">
-                    <Bot className="w-3.5 h-3.5" />
+                {isUser && (
+                  <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-zinc-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <UserIcon className="w-4 h-4" />
                   </div>
-                  <div className="p-3 rounded-2xl bg-gray-100 dark:bg-[#1F1F28] border border-black/[0.04] dark:border-white/5 text-gray-600 dark:text-zinc-400 flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#6600FF]" />
-                    <span>Gemini réfléchit avec Maps...</span>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+            );
+          })}
 
-              <div ref={messagesEndRef} />
+          {/* Indicateur de chargement / streaming */}
+          {(isLoading || isStreaming) && (
+            <div className="flex gap-2.5 items-center text-xs text-gray-400 dark:text-zinc-400 py-1">
+              <div className="w-8 h-8 rounded-xl bg-[#6600FF]/15 text-[#6600FF] flex items-center justify-center shrink-0 border border-[#6600FF]/25">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+              <span className="animate-pulse">
+                {isLoading ? 'Recherche en cours dans la base...' : 'Génération de la réponse...'}
+              </span>
             </div>
+          )}
 
-            {/* Quick Suggestions Chips */}
-            <div className="px-4 py-2 bg-gray-50 dark:bg-[#181820] border-t border-black/[0.04] dark:border-white/5 flex items-center gap-2 overflow-x-auto no-scrollbar">
-              {QUICK_SUGGESTIONS.map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  onClick={() => handleSend(sug)}
-                  disabled={loading}
-                  className="whitespace-nowrap px-3 py-1.5 rounded-full bg-white dark:bg-[#23232E] hover:bg-gray-100 dark:hover:bg-[#2F2F3D] active:scale-95 text-[11px] font-medium text-gray-700 dark:text-zinc-300 border border-black/[0.08] dark:border-white/5 shadow-xs transition-colors disabled:opacity-50 shrink-0"
-                >
-                  {sug}
-                </button>
-              ))}
+          {/* Message d'erreur ou d'alerte de quota */}
+          {error && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5 shadow-xs">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+              <div className="flex-1 space-y-1">
+                <p className="font-semibold">{error}</p>
+                {quotaExceeded && isGuest && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onAuthRequired?.();
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#6600FF] text-white text-[11px] font-bold hover:bg-[#5500dd] transition-colors"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Se connecter gratuitement</span>
+                  </button>
+                )}
+              </div>
             </div>
+          )}
 
-            {/* Input Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="p-3 bg-gray-50 dark:bg-[#1C1C24] border-t border-black/[0.06] dark:border-white/5 flex items-center gap-2"
-            >
-              <input
-                id="ai-assistant-chat-input"
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Posez une question sur les événements, lieux..."
-                disabled={loading}
-                className="flex-1 py-2.5 px-4 rounded-2xl bg-white dark:bg-[#14141A] border border-gray-200 dark:border-zinc-700 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-hidden focus:border-[#6600FF] focus:ring-1 focus:ring-[#6600FF] transition-all disabled:opacity-50"
-              />
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Suggestions rapides */}
+        {messages.length <= 2 && !isLoading && !isStreaming && (
+          <div className="px-4 py-2 border-t border-black/5 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 flex gap-2 overflow-x-auto no-scrollbar">
+            {QUICK_SUGGESTIONS.map((sug, i) => (
               <button
-                id="ai-assistant-send-button"
-                type="submit"
-                disabled={!input.trim() || loading}
-                className="w-10 h-10 rounded-2xl bg-[#6600FF] hover:bg-[#5200CC] active:scale-95 text-white flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-[#6600FF]/25"
-                aria-label="Envoyer"
+                key={i}
+                type="button"
+                onClick={() => handleSend(sug)}
+                className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-white dark:bg-[#1E1E26] border border-black/10 dark:border-white/10 hover:border-[#6600FF]/50 dark:hover:border-[#6600FF]/50 text-gray-700 dark:text-zinc-300 hover:text-[#6600FF] transition-all shadow-2xs"
               >
-                <Send className="w-4 h-4" />
+                {sug}
               </button>
-            </form>
-          </>
+            ))}
+          </div>
         )}
+
+        {/* Barre de saisie */}
+        <div className="p-3.5 bg-gray-50 dark:bg-[#181820] border-t border-black/[0.06] dark:border-white/5">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#121218] border border-black/10 dark:border-white/10 rounded-2xl px-3.5 py-1.5 focus-within:border-[#6600FF] dark:focus-within:border-[#6600FF] transition-all shadow-xs">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Posez une question sur les sorties, concerts, billets..."
+              disabled={isLoading || isStreaming}
+              className="flex-1 bg-transparent text-sm text-[#17131D] dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-hidden py-1"
+            />
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={!input.trim() || isLoading || isStreaming}
+              className={`p-2 rounded-xl transition-all ${
+                input.trim() && !isLoading && !isStreaming
+                  ? 'bg-[#6600FF] text-white hover:bg-[#5500DD] shadow-md shadow-[#6600FF]/30'
+                  : 'bg-gray-200 dark:bg-white/10 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
