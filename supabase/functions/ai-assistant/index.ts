@@ -16,6 +16,46 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
+async function resolveGeminiModel(apiKey: string): Promise<string> {
+  const candidateModels = [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+  ];
+
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    if (listRes.ok) {
+      const data = await listRes.json();
+      const models = data.models || [];
+      const supported = models
+        .filter((m: { supportedGenerationMethods?: string[] }) =>
+          Array.isArray(m.supportedGenerationMethods) &&
+          m.supportedGenerationMethods.includes('generateContent')
+        )
+        .map((m: { name: string }) => m.name.replace(/^models\//, ''));
+
+      for (const cand of candidateModels) {
+        if (supported.includes(cand)) {
+          return cand;
+        }
+      }
+
+      const anyFlash = supported.find((n: string) => n.includes('flash'));
+      if (anyFlash) return anyFlash;
+
+      if (supported.length > 0) return supported[0];
+    }
+  } catch {
+    // fallback
+  }
+
+  return 'gemini-1.5-flash';
+}
+
 function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
   let matchedOrigin = 'https://gbaigbance-event.vercel.app';
   if (requestOrigin) {
@@ -32,7 +72,7 @@ function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': matchedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-gemini-api-key',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -425,14 +465,24 @@ serve(async (req: Request) => {
     });
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: 'Clé serveur GEMINI_API_KEY non configurée.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
+    // 0. Body et Clé API (priorité à la clé personnelle de l'utilisateur, sinon clé serveur)
+    const userApiKey = req.headers.get('x-gemini-api-key')?.trim();
+    const body = await req.json().catch(() => ({}));
+    const activeGeminiKey = userApiKey || body.apiKey?.trim() || GEMINI_API_KEY;
+
+    if (!activeGeminiKey) {
+      return new Response(
+        JSON.stringify({
+          error: 'Aucune clé API Gemini fournie (ni sur le serveur, ni transmise par l’utilisateur).',
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // 1. Détection de l'IP cliente
     const clientIp = (
       req.headers.get('x-forwarded-for')?.split(',')[0] ||
@@ -480,7 +530,6 @@ serve(async (req: Request) => {
     }
 
     // 4. Validation et nettoyage du body
-    const body = await req.json().catch(() => ({}));
     const rawMessages = Array.isArray(body.messages) ? body.messages : [];
     const rawLocation = body.userLocation;
 
@@ -542,7 +591,8 @@ serve(async (req: Request) => {
       }
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const model = await resolveGeminiModel(activeGeminiKey);
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeGeminiKey}`;
     let maxRounds = 3;
 
     while (maxRounds > 0) {
@@ -608,7 +658,7 @@ serve(async (req: Request) => {
     }
 
     // 7. Streaming final vers le client (SSE stream)
-    const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+    const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${activeGeminiKey}`;
     const streamPayload = {
       contents,
       systemInstruction: {

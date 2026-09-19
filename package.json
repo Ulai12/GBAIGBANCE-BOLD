@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sentry/react": "^10.69.0",
+    "@supabase/server": "^1.7.0",
     "@supabase/supabase-js": "^2.57.4",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

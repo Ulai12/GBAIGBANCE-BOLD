@@ -1,7 +1,9 @@
 import { supabase } from '@/infrastructure/supabase';
+import { getUserGeminiApiKey } from '@/services/gemini';
+import { streamGeminiDirect } from '@/services/aiAssistantDirect';
 
 // ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA EDGE FUNCTION
+// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA EDGE FUNCTION & HYBRIDE
 // ====================================================================
 
 export interface AIAssistantMessage {
@@ -21,7 +23,8 @@ export interface SendMessageOptions {
 }
 
 /**
- * Envoie la conversation à l'Edge Function Supabase `ai-assistant` et lit le flux SSE.
+ * Envoie la conversation à l'Edge Function Supabase `ai-assistant` ou bascule
+ * de manière transparente sur le client direct si la fonction n'est pas encore déployée (404).
  */
 export async function streamAIAssistant(
   options: SendMessageOptions,
@@ -35,12 +38,28 @@ export async function streamAIAssistant(
   }
 
   (async () => {
+    // 0. Clé API utilisateur si fournie (BYOK)
+    const userApiKey = getUserGeminiApiKey();
+
+    // Arrondi GPS à ~1 km pour préserver la vie privée
+    let sanitizedLocation = null;
+    if (
+      options.userLocation &&
+      typeof options.userLocation.lat === 'number' &&
+      typeof options.userLocation.lng === 'number'
+    ) {
+      sanitizedLocation = {
+        lat: Number(options.userLocation.lat.toFixed(2)),
+        lng: Number(options.userLocation.lng.toFixed(2)),
+      };
+    }
+
     try {
       // 1. Récupération du JWT de session active s'il existe
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      // 2. URL de l'Edge Function
+      // 2. URL de l'Edge Function Supabase
       const supabaseUrl =
         import.meta.env.VITE_SUPABASE_URL ||
         import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -62,37 +81,75 @@ export async function streamAIAssistant(
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
-      // 3. Préparation du payload (arrondi GPS à ~1 km)
-      let sanitizedLocation = null;
-      if (
-        options.userLocation &&
-        typeof options.userLocation.lat === 'number' &&
-        typeof options.userLocation.lng === 'number'
-      ) {
-        sanitizedLocation = {
-          lat: Number(options.userLocation.lat.toFixed(2)),
-          lng: Number(options.userLocation.lng.toFixed(2)),
-        };
+      if (userApiKey) {
+        headers['x-gemini-api-key'] = userApiKey;
       }
 
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          messages: options.messages.map((m) => ({
-            role: m.role,
-            text: m.text.slice(0, 1000),
-          })),
-          userLocation: sanitizedLocation,
-        }),
-        signal: controller.signal,
-      });
+      let response: Response;
+      try {
+        response = await fetch(functionUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            apiKey: userApiKey || undefined,
+            messages: options.messages.map((m) => ({
+              role: m.role,
+              text: m.text.slice(0, 1000),
+            })),
+            userLocation: sanitizedLocation,
+          }),
+          signal: controller.signal,
+        });
+      } catch {
+        // En cas d'échec réseau (fonction introuvable / non déployée)
+        if (userApiKey) {
+          await streamGeminiDirect(
+            userApiKey,
+            options.messages,
+            sanitizedLocation,
+            callbacks,
+            controller.signal
+          );
+          return;
+        }
+        throw new Error(
+          'L’Edge Function Supabase est inaccessible. Renseignez votre propre clé API Gemini dans les réglages pour activer l’assistant immédiatement.'
+        );
+      }
 
-      // 4. Gestion des erreurs HTTP
+      // 4. Gestion spécifique du 404 (fonction non déployée sur Supabase)
+      if (response.status === 404) {
+        if (userApiKey) {
+          await streamGeminiDirect(
+            userApiKey,
+            options.messages,
+            sanitizedLocation,
+            callbacks,
+            controller.signal
+          );
+          return;
+        }
+
+        callbacks.onError(
+          'L’Edge Function Supabase n’est pas encore déployée (HTTP 404). Entrez votre propre clé API Google Gemini pour utiliser l’assistant tout de suite !'
+        );
+        return;
+      }
+
+      // Autres erreurs HTTP
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || `Erreur serveur (${response.status})`;
         const isQuota = response.status === 429 || errorData.reason === 'window_limit' || errorData.reason === 'daily_limit';
+        
+        // Si l'erreur est un manque de clé sur le serveur et qu'on n'en a pas
+        if (response.status === 400 && !userApiKey) {
+          callbacks.onError(
+            'Aucune clé Gemini configurée sur le serveur. Veuillez renseigner votre propre clé API Gemini dans les réglages pour démarrer.'
+          );
+          return;
+        }
+
         callbacks.onError(errorMessage, isQuota);
         return;
       }
@@ -118,37 +175,36 @@ export async function streamAIAssistant(
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const jsonStr = trimmed.replace(/^data:\s*/, '');
-          if (!jsonStr) continue;
+          if (!trimmed) continue;
 
-          try {
-            const data = JSON.parse(jsonStr);
-            if (data.error) {
-              callbacks.onError(data.error);
-              return;
-            }
-            if (data.text) {
-              callbacks.onChunk(data.text);
-            }
-            if (data.done) {
-              if (Array.isArray(data.event_ids)) {
-                verifiedEventIds = data.event_ids;
+          if (trimmed.startsWith('data:')) {
+            const dataStr = trimmed.slice(5).trim();
+            if (!dataStr) continue;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.type === 'chunk' && typeof data.text === 'string') {
+                callbacks.onChunk(data.text);
+              } else if (data.type === 'done') {
+                if (Array.isArray(data.verified_event_ids)) {
+                  verifiedEventIds = data.verified_event_ids;
+                }
+              } else if (data.type === 'error') {
+                callbacks.onError(data.error || 'Erreur inconnue dans le flux.');
+                return;
               }
+            } catch {
+              // Ignorer fragments non JSON
             }
-          } catch {
-            // Ignorer les fragments incomplets
           }
         }
       }
 
       callbacks.onDone(verifiedEventIds);
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      const msg = err instanceof Error ? err.message : 'Erreur lors de la communication avec l’assistant.';
-      callbacks.onError(msg);
+      if (controller.signal.aborted) return;
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inattendue';
+      callbacks.onError(errorMsg);
     }
   })();
 
