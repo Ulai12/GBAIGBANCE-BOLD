@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Ticket, Minus, Plus, Check, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { Modal } from '@/components/Modal';
-import { fetchTicketOptions, bookTicket, isEventTerminated } from '@/services/events';
+import { fetchTicketOptions, bookTicket, isEventTerminated, subscribeToTicketInventory } from '@/services/events';
 import type { Event, TicketOption } from '@/types';
 
 interface BookingModalProps {
@@ -52,6 +52,28 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     setQuantity(1);
     setError(null);
     loadOptions();
+
+    const unsub = subscribeToTicketInventory(event.id, (updatedOption) => {
+      setOptions((prev) => {
+        const idx = prev.findIndex((o) => o.id === updatedOption.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...updatedOption };
+          return next;
+        }
+        return [...prev, updatedOption];
+      });
+      setSelectedOption((current) => {
+        if (current && current.id === updatedOption.id) {
+          return { ...current, ...updatedOption };
+        }
+        return current;
+      });
+    });
+
+    return () => {
+      unsub();
+    };
   }, [open, event, loadOptions]);
 
   const totalPrice = selectedOption ? selectedOption.price * quantity : 0;

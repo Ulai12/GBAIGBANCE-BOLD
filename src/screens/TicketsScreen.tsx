@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, QrCode, Calendar, MapPin, X, Share2, ArrowUpRight } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
-import { fetchUserTickets, cancelTicket } from '@/services/events';
+import { fetchUserTickets, cancelTicket, subscribeToUserTicketsLive } from '@/services/events';
 import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
@@ -46,6 +46,18 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       }
     });
 
+    const refreshTickets = () => {
+      fetchUserTickets(user.id)
+        .then((data) => {
+          if (!isMounted) return;
+          const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
+          setTickets(list);
+          cachedTickets = { userId: user.id, tickets: list };
+          saveCachedUserTickets(user.id, list).catch(() => {});
+        })
+        .catch(() => {});
+    };
+
     // 2. Background revalidation from network
     fetchUserTickets(user.id)
       .then((data) => {
@@ -62,10 +74,27 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
         if (isMounted) setLoading(false);
       });
 
+    // 3. Realtime subscription to live ticket state changes (e.g. gate check-in)
+    const unsubRealtime = subscribeToUserTicketsLive(user.id, {
+      onTicketCreated: () => {
+        refreshTickets();
+      },
+      onTicketUpdated: (updatedTicket) => {
+        refreshTickets();
+        if (updatedTicket.status === 'used') {
+          onToast({ message: 'Billet validé à l’entrée avec succès ! 🎉', type: 'success' });
+        }
+      },
+      onTicketCancelled: () => {
+        refreshTickets();
+      },
+    });
+
     return () => {
       isMounted = false;
+      unsubRealtime();
     };
-  }, [user]);
+  }, [user, onToast]);
 
   const handleCancel = async () => {
     if (!cancelTarget || !user) return;

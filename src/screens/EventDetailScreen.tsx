@@ -10,8 +10,8 @@ import {
   fetchCollaborators,
   fetchTicketOptions,
   incrementEventViews,
-  subscribeToEventViews,
-  subscribeToEventAttendees,
+  subscribeToEventLive,
+  subscribeToTicketInventory,
   isEventTerminated
 } from '@/services/events';
 import { getPublicEventCache, setPublicEventCache } from '@/services/cache';
@@ -30,6 +30,8 @@ import { Lightbox } from '@/components/Lightbox';
 import { ShareModal } from '@/components/ShareModal';
 import { shareEventNative } from '@/utils/share';
 import { UserAvatar } from '@/components/UserAvatar';
+import { haptic } from '@/hooks/useHaptics';
+import { useScrollGlass } from '@/hooks/useScrollGlass';
 import type { Event, EventWithRelations, Artist, EventCollaborator, TicketOption } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -137,16 +139,49 @@ export function EventDetailScreen({
     fetchTicketOptions(event.id).then(setTicketOptions).catch(() => {});
     incrementEventViews(event.id).catch(() => {});
 
-    const unsubViews = subscribeToEventViews(event.id, setLiveViews);
-    const unsubAttendees = subscribeToEventAttendees(event.id, setLiveAttendees);
+    // Real-time Supabase subscriptions: status, attendance, views, and live inventory
+    const unsubEvent = subscribeToEventLive(event.id, {
+      onStatusChange: (newStatus) => {
+        setFullEvent((prev) => (prev ? { ...prev, status: newStatus as Event['status'] } : null));
+        if (newStatus === 'cancelled') {
+          onToast({ message: 'Cet événement vient d’être annulé.', type: 'info' });
+        }
+      },
+      onAttendeesChange: (count) => setLiveAttendees(count),
+      onViewsChange: (count) => setLiveViews(count),
+      onEventUpdate: (updated) => {
+        setFullEvent((prev) => {
+          if (!prev) return null;
+          const merged = { ...prev, ...updated };
+          setPublicEventCache(event.id, merged);
+          return merged;
+        });
+      },
+    });
+
+    const unsubInventory = subscribeToTicketInventory(event.id, (updatedOption) => {
+      setTicketOptions((prev) => {
+        const idx = prev.findIndex((o) => o.id === updatedOption.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...updatedOption };
+          return next;
+        }
+        return [...prev, updatedOption];
+      });
+    });
+
     return () => {
-      unsubViews();
-      unsubAttendees();
+      unsubEvent();
+      unsubInventory();
     };
-  }, [event.id]);
+  }, [event.id, onToast]);
+
+  const { isScrolled } = useScrollGlass(220);
 
   const handleLike = async () => {
     try {
+      haptic.medium();
       const willBeLiked = !liked;
       await toggleLike(event.id);
       onToast({
@@ -154,6 +189,7 @@ export function EventDetailScreen({
         type: 'success',
       });
     } catch {
+      haptic.error();
       onToast({ message: 'Erreur lors de la mise à jour', type: 'error' });
     }
   };
@@ -203,12 +239,60 @@ export function EventDetailScreen({
   const videoInfo = getVideoEmbedUrl(displayEvent.video_url);
 
   const handleSelectPass = (optionId: string) => {
+    haptic.selection();
     setSelectedTicketOptionId(optionId);
     setShowBooking(true);
   };
 
   return (
     <div className="min-h-screen pb-36 bg-gray-50 dark:bg-[#0C0A13]">
+      {/* Sticky Adaptive Liquid Glass Header (appears on scroll) */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-30 px-5 py-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
+          isScrolled
+            ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.06] dark:border-white/[0.08] shadow-sm translate-y-0 opacity-100 pointer-events-auto'
+            : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+          <button
+            type="button"
+            onClick={() => {
+              haptic.light();
+              onBack();
+            }}
+            aria-label="Retour"
+            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform shrink-0"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <p className="font-extrabold text-sm sm:text-base text-[#1A1A2E] dark:text-white truncate">
+            {displayEvent.title}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              haptic.light();
+              handleShare();
+            }}
+            aria-label="Partager"
+            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleLike}
+            aria-label="Favoris"
+            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <Heart className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'text-[#1A1A2E] dark:text-white'}`} />
+          </button>
+        </div>
+      </div>
       {/* Hero Header with full cover backdrop */}
       <div className="relative h-[24rem] sm:h-[28rem] overflow-hidden bg-black">
         <button

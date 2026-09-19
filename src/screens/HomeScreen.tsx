@@ -23,10 +23,12 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { EVENT_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
 import type { ToastData } from '@/components/Toast';
+import { haptic } from '@/hooks/useHaptics';
+import { useScrollGlass } from '@/hooks/useScrollGlass';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
   fetchEventsByCategory, fetchFeaturedArtists, fetchVerifiedOrganizations,
-  fetchPlatformStats, isEventTerminated, isEventActive,
+  fetchPlatformStats, isEventTerminated, isEventActive, isRealEvent,
   type PlatformStats,
 } from '@/services/events';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
@@ -81,6 +83,8 @@ export function HomeScreen({
   const [artists, setArtists] = useState<Artist[]>(initialCache.data?.artists || []);
   const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [allEventsFilter, setAllEventsFilter] = useState<'all' | 'concert' | 'festival' | 'exposition' | 'conference'>('all');
   const [loading, setLoading] = useState(!initialCache.hasCache);
   const onToastRef = useRef(onToast);
 
@@ -156,13 +160,28 @@ export function HomeScreen({
         const filterValid = (list: Event[]) =>
           list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
 
+        // Master pool of all unique active published events from any of the queries
+        const allRaw = [...feat, ...up, ...trend];
+        const masterMap = new Map<string, Event>();
+        allRaw.forEach((ev) => {
+          if (ev && ev.id && isRealEvent(ev) && ev.status === 'published' && !isEventTerminated(ev)) {
+            masterMap.set(ev.id, ev);
+          }
+        });
+        const masterEvents = Array.from(masterMap.values());
+        setAllEvents(masterEvents);
+
         const validFeat = filterValid(feat);
         const validTrend = filterValid(trend);
         const validUp = filterValid(up);
 
-        const newFeat = validFeat.length > 0 ? validFeat : feat.filter((e) => e.status === 'published' && !isEventTerminated(e));
-        const newTrend = validTrend.length > 0 ? validTrend : trend.filter((e) => e.status === 'published' && !isEventTerminated(e));
-        const newNearby = validUp.length > 0 ? validUp : up.filter((e) => e.status === 'published' && !isEventTerminated(e));
+        const newFeat = validFeat.length > 0
+          ? validFeat
+          : masterEvents.filter((e) => e.is_featured).length > 0
+            ? masterEvents.filter((e) => e.is_featured)
+            : masterEvents.slice(0, 3);
+        const newTrend = validTrend.length > 0 ? validTrend : masterEvents.slice(0, 4);
+        const newNearby = validUp.length > 0 ? validUp : masterEvents;
 
         setFeatured(newFeat);
         setTrending(newTrend);
@@ -195,13 +214,21 @@ export function HomeScreen({
   // Unified list of all unique active published events
   const allActiveEvents = useMemo(() => {
     const map = new Map<string, Event>();
-    [...featured, ...trending, ...nearby].forEach((e) => {
+    [...allEvents, ...featured, ...trending, ...nearby].forEach((e) => {
       if (e && e.id && isEventActive(e) && !isEventTerminated(e)) {
         map.set(e.id, e);
       }
     });
     return Array.from(map.values());
-  }, [featured, trending, nearby]);
+  }, [allEvents, featured, trending, nearby]);
+
+  const filteredAllEvents = useMemo(() => {
+    if (allEventsFilter === 'all') return allActiveEvents;
+    return allActiveEvents.filter((e) => {
+      const cat = (e.category || '').toLowerCase();
+      return cat.includes(allEventsFilter);
+    });
+  }, [allActiveEvents, allEventsFilter]);
 
   // Category events fetch
   useEffect(() => {
@@ -313,25 +340,33 @@ export function HomeScreen({
     return 'Douce nuit';
   };
 
+  const { isScrolled } = useScrollGlass(12);
+
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête modernisée style iOS */}
-      <header className="px-5 pt-7 pb-3">
+      {/* En-tête modernisée style iOS 27 Liquid Glass */}
+      <header
+        className={`sticky top-0 z-30 px-5 pt-4 pb-3 liquid-glass-header transition-all duration-300 ${
+          isScrolled
+            ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.05] dark:border-white/[0.08] shadow-sm'
+            : 'bg-transparent border-b border-transparent'
+        }`}
+      >
         {/* Ligne Logo & Identité */}
-        <div className="flex items-center gap-2.5 mb-3.5">
+        <div className="flex items-center gap-2.5 mb-2.5">
           <img
             src="/icon.svg"
             alt="Gbaigbance"
-            className="w-9 h-9 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
+            className="w-8 h-8 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
           />
           <div className="leading-tight">
-            <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
-            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
+            <p className="text-[14px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
+            <p className="text-[8.5px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
           </div>
         </div>
 
         {/* Dynamic greeting et boutons harmonisés */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
               <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}</span>
@@ -342,13 +377,19 @@ export function HomeScreen({
 
           {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
           <div className="flex items-center gap-2">
-            <NotificationBell onOpen={onOpenNotifications} />
+            <NotificationBell onOpen={() => {
+              haptic.light();
+              onOpenNotifications();
+            }} />
 
             {onOpenSettings && (
               <button
                 id="home-strategic-settings-btn"
                 type="button"
-                onClick={onOpenSettings}
+                onClick={() => {
+                  haptic.light();
+                  onOpenSettings();
+                }}
                 aria-label="Paramètres de l'application"
                 title="Paramètres"
                 className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
@@ -358,7 +399,10 @@ export function HomeScreen({
             )}
 
             <button
-              onClick={onProfileClick}
+              onClick={() => {
+                haptic.selection();
+                onProfileClick();
+              }}
               className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
               aria-label="Profil"
             >
@@ -377,10 +421,13 @@ export function HomeScreen({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={onSearchClick}
+            onClick={() => {
+              haptic.selection();
+              onSearchClick();
+            }}
             className="flex-1 text-left cursor-pointer"
           >
-            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
               <Search className="w-4 h-4 text-gray-400" />
               <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
             </div>
@@ -388,8 +435,11 @@ export function HomeScreen({
 
           <button
             type="button"
-            onClick={onOpenAIAssistant}
-            className="w-12 h-12 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
+            onClick={() => {
+              haptic.light();
+              onOpenAIAssistant();
+            }}
+            className="w-11 h-11 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
             aria-label="Assistant IA Gbaigbance"
             title="Assistant IA Gbaigbance"
           >
@@ -429,7 +479,10 @@ export function HomeScreen({
               <button
                 key={cat.value}
                 type="button"
-                onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+                onClick={() => {
+                  haptic.selection();
+                  setSelectedCategory(isActive ? null : cat.value);
+                }}
                 className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] shadow-purple text-white'
@@ -675,6 +728,68 @@ export function HomeScreen({
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {unmissableEvents.slice(0, 4).map((event) => (
+              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 7.5: Tous les événements actifs */}
+      {allActiveEvents.length > 0 && (
+        <section className="mt-9 px-5" aria-label="Tous les événements actifs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#6600FF]/15 text-[#6600FF] dark:text-[#A78BFA] flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                    Tous les événements
+                  </h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA]">
+                    {allActiveEvents.length}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Découvrez l'ensemble des sorties actives
+                </p>
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {[
+                { id: 'all', label: 'Tous' },
+                { id: 'concert', label: 'Concerts' },
+                { id: 'festival', label: 'Festivals' },
+                { id: 'exposition', label: 'Expos' },
+                { id: 'conference', label: 'Conférences' },
+              ].map((pill) => {
+                const isActive = allEventsFilter === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    onClick={() => setAllEventsFilter(pill.id as typeof allEventsFilter)}
+                    className={`
+                      px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95
+                      ${
+                        isActive
+                          ? 'bg-[#6600FF] text-white shadow-xs shadow-[#6600FF]/30'
+                          : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/15'
+                      }
+                    `}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {filteredAllEvents.map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
             ))}
           </div>

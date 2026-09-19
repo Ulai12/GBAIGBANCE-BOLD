@@ -3,7 +3,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
-import { isRealArtist, isRealEvent } from '@/features/events/status';
+import { isRealArtist, isRealEvent, isEventTerminated } from '@/features/events/status';
 import type { Artist, Event } from '@/types';
 
 export async function fetchFeaturedArtists(): Promise<Artist[]> {
@@ -120,4 +120,101 @@ export async function fetchEventsByArtist(artistId: string): Promise<Event[]> {
   } catch {
     return [];
   }
+}
+
+function sanitizeSearchInput(input: string): string {
+  if (!input) return '';
+  return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+
+export async function fetchArtistStats(artistId: string): Promise<{ totalEvents: number; totalFollowers: number; upcomingEvents: number; totalViews: number }> {
+  const defaultStats = { totalEvents: 0, totalFollowers: 0, upcomingEvents: 0, totalViews: 0 };
+  if (!isSupabaseConfigured || !artistId) return defaultStats;
+  try {
+    const { data: artistEvents } = await supabase.from('event_artists').select('event_id').eq('artist_id', artistId);
+    const eventIds = (artistEvents || []).map((r: { event_id: string }) => r.event_id);
+    const { count: followersCount } = await supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('artist_id', artistId);
+    if (eventIds.length === 0) {
+      return { totalEvents: 0, totalFollowers: followersCount || 0, upcomingEvents: 0, totalViews: 0 };
+    }
+    const { data: rawEvents } = await supabase.from('events').select('views_count, starts_at, status, id, title').in('id', eventIds);
+    const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
+    return {
+      totalEvents: events.length,
+      totalFollowers: followersCount || 0,
+      upcomingEvents: events.filter((e) => e.status === 'published' && !isEventTerminated(e)).length,
+      totalViews: events.reduce((s, e) => s + (e.views_count || 0), 0),
+    };
+  } catch {
+    return defaultStats;
+  }
+}
+
+export async function searchArtists(query: string): Promise<Artist[]> {
+  const sanitized = sanitizeSearchInput(query);
+  if (!sanitized) return [];
+  const { data: seedArtists, error: err1 } = await supabase
+    .from('artists')
+    .select('*')
+    .or(`name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
+    .limit(20);
+  if (err1) throw err1;
+  const { data: profileArtists, error: err2 } = await supabase
+    .from('profiles')
+    .select('id, name, bio, avatar_url, city, country, created_at')
+    .eq('role', 'artist')
+    .ilike('name', `%${sanitized}%`)
+    .limit(20);
+  if (err2) throw err2;
+  const fromProfiles = (profileArtists || []).map((p: { id: string; name: string; bio?: string | null; avatar_url?: string | null; city?: string | null; country?: string | null; created_at?: string }) => ({
+    id: p.id || '', user_id: p.id, name: p.name || '', bio: p.bio || null, photo_url: p.avatar_url || null, cover_url: null,
+    genres: [], city: p.city || 'Lomé', country: p.country || 'TG', instagram_url: null, twitter_url: null,
+    youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0, is_verified: false, created_at: p.created_at || new Date().toISOString(),
+  })) as Artist[];
+  const seen = new Set<string>();
+  const merged = [...(seedArtists || []), ...fromProfiles].filter((a) => {
+    const key = a.user_id || a.id;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+  return merged as Artist[];
+}
+
+export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from('artist_follows')
+    .select('id')
+    .eq('artist_id', artistId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('artist_follows').delete().eq('id', existing.id);
+    return false;
+  } else {
+    await supabase.from('artist_follows').insert({ artist_id: artistId, user_id: userId });
+    return true;
+  }
+}
+
+export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('artist_follows')
+    .select('id')
+    .eq('artist_id', artistId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function fetchFollowedArtists(userId: string): Promise<Artist[]> {
+  const { data, error } = await supabase
+    .from('artist_follows')
+    .select('artist_id')
+    .eq('user_id', userId);
+  if (error) return [];
+  const ids = (data || []).map((r: { artist_id: string }) => r.artist_id);
+  if (ids.length === 0) return [];
+  const { data: artists } = await supabase.from('artists').select('*').in('id', ids);
+  return (artists as Artist[]) || [];
 }

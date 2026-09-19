@@ -293,3 +293,165 @@ export async function fetchOrganizerPerformanceMetrics(
     return emptyResult;
   }
 }
+
+function sanitizeSearchInput(input: string): string {
+  if (!input) return '';
+  return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+
+export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const [orgsRes, profilesRes, eventsRes, followsRes] = await Promise.all([
+      supabase.from('organizations').select('*').limit(30),
+      supabase.from('profiles').select('*').eq('role', 'organizer').limit(30),
+      supabase.from('events').select('id, organizer_id, organizer_user_id, status').eq('status', 'published'),
+      supabase.from('organization_follows').select('organization_id'),
+    ]);
+
+    const eventsList = (eventsRes.data || []) as { organizer_id?: string; organizer_user_id?: string }[];
+    const eventCountByOrg: Record<string, number> = {};
+    const eventCountByUser: Record<string, number> = {};
+    eventsList.forEach((e) => {
+      if (e.organizer_id) {
+        eventCountByOrg[e.organizer_id] = (eventCountByOrg[e.organizer_id] || 0) + 1;
+      }
+      if (e.organizer_user_id) {
+        eventCountByUser[e.organizer_user_id] = (eventCountByUser[e.organizer_user_id] || 0) + 1;
+      }
+    });
+
+    const followList = (followsRes.data || []) as { organization_id: string }[];
+    const followersMap: Record<string, number> = {};
+    followList.forEach((f) => {
+      if (f.organization_id) {
+        followersMap[f.organization_id] = (followersMap[f.organization_id] || 0) + 1;
+      }
+    });
+
+    const orgs = ((orgsRes.data || []) as Organization[])
+      .filter(isRealOrganization)
+      .map((o) => ({
+        ...o,
+        followers_count: followersMap[o.id] || (o.owner_id ? followersMap[o.owner_id] : 0) || (o.followers_count || 0),
+        events_count: eventCountByOrg[o.id] || (o.owner_id ? eventCountByUser[o.owner_id] : 0) || 0,
+      }));
+
+    const knownIds = new Set(orgs.map((o) => o.id).concat(orgs.map((o) => o.owner_id || '').filter(Boolean)));
+    const knownNames = new Set(orgs.map((o) => (o.name || '').toLowerCase().trim()));
+
+    const profileOrgs: Organization[] = ((profilesRes.data || []) as Array<{ id: string; name: string; bio?: string | null; avatar_url?: string | null; city?: string | null; country?: string | null; created_at?: string }>)
+      .filter((p) => p.name && !knownIds.has(p.id) && !knownNames.has(p.name.toLowerCase().trim()))
+      .map((p) => ({
+        id: p.id,
+        owner_id: p.id,
+        name: p.name,
+        description: p.bio || 'Organisateur et créateur d’expériences sur Gbaigbance',
+        logo_url: p.avatar_url || null,
+        cover_url: '',
+        city: p.city || 'Lomé',
+        country: p.country || 'TG',
+        verification_status: 'verified' as const,
+        followers_count: followersMap[p.id] || 0,
+        events_count: eventCountByUser[p.id] || 0,
+        created_at: p.created_at || new Date().toISOString(),
+      }));
+
+    return [...orgs, ...profileOrgs];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents: number; totalAttendees: number; totalViews: number; totalLikes: number; totalTickets: number; totalRevenue: number; activeEvents: number }> {
+  const defaultStats = {
+    totalEvents: 0,
+    totalAttendees: 0,
+    totalViews: 0,
+    totalLikes: 0,
+    totalTickets: 0,
+    totalRevenue: 0,
+    activeEvents: 0,
+  };
+  if (!isSupabaseConfigured || !userId) return defaultStats;
+  try {
+    const { data: rawEvents } = await supabase.from('events').select('*').eq('organizer_user_id', userId);
+    const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
+    const eventIds = events.map((e) => e.id);
+    const baseStats = {
+      totalEvents: events.length,
+      totalAttendees: events.reduce((s, e) => s + (e.attendees_count || 0), 0),
+      totalViews: events.reduce((s, e) => s + (e.views_count || 0), 0),
+      totalLikes: events.reduce((s, e) => s + (e.likes_count || 0), 0),
+      activeEvents: events.filter((e) => e.status === 'published' && isEventActive(e)).length,
+      totalTickets: 0,
+      totalRevenue: 0,
+    };
+    if (eventIds.length === 0) return baseStats;
+    const { data: tickets } = await supabase.from('tickets').select('price_paid, status').in('event_id', eventIds).neq('status', 'cancelled');
+    baseStats.totalTickets = tickets?.length || 0;
+    baseStats.totalRevenue = tickets?.reduce((s, t) => s + (t.price_paid || 0), 0) || 0;
+    return baseStats;
+  } catch {
+    return defaultStats;
+  }
+}
+
+export async function searchOrganizations(query: string): Promise<Organization[]> {
+  const sanitized = sanitizeSearchInput(query);
+  if (!sanitized) return [];
+  const { data: seedOrgs, error: err1 } = await supabase
+    .from('organizations')
+    .select('*')
+    .or(`name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
+    .limit(20);
+  if (err1) throw err1;
+  const { data: profileOrgs, error: err2 } = await supabase
+    .from('profiles')
+    .select('id, name, bio, avatar_url, city, country, created_at')
+    .eq('role', 'organizer')
+    .ilike('name', `%${sanitized}%`)
+    .limit(20);
+  if (err2) throw err2;
+  const fromProfiles = (profileOrgs || []).map((p: { id: string; name: string; bio?: string | null; avatar_url?: string | null; city?: string | null; country?: string | null; created_at?: string }) => ({
+    id: p.id || '', owner_id: p.id || '', name: p.name || '', description: p.bio || null, logo_url: p.avatar_url || null, cover_url: null,
+    website: null, phone: null, email: null, city: p.city || 'Lomé', country: p.country || 'TG',
+    verification_status: 'pending' as const, followers_count: 0, events_count: 0, created_at: p.created_at || new Date().toISOString(),
+  })) as Organization[];
+  const seen = new Set<string>();
+  const merged = [...(seedOrgs || []), ...fromProfiles].filter((o) => {
+    const key = o.owner_id || o.id;
+    if (key && seen.has(key)) return false;
+    if (key) seen.add(key); return true;
+  });
+  return merged as Organization[];
+}
+
+export async function toggleOrganizationFollow(organizationId: string, userId: string): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from('organization_follows')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('organization_follows').delete().eq('id', existing.id);
+    return false;
+  } else {
+    await supabase.from('organization_follows').insert({ organization_id: organizationId, user_id: userId });
+    return true;
+  }
+}
+
+export async function fetchFollowedOrganizations(userId: string): Promise<Organization[]> {
+  const { data, error } = await supabase
+    .from('organization_follows')
+    .select('organization_id')
+    .eq('user_id', userId);
+  if (error) return [];
+  const ids = (data || []).map((r: { organization_id: string }) => r.organization_id);
+  if (ids.length === 0) return [];
+  const { data: orgs } = await supabase.from('organizations').select('*').in('id', ids);
+  return (orgs as Organization[]) || [];
+}

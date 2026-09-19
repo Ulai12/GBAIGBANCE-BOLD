@@ -1,15 +1,29 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { haptic } from '@/hooks/useHaptics';
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   title?: string;
+  /** Allow overriding max width (e.g. max-w-lg) */
+  maxWidthClass?: string;
 }
 
-export function Modal({ open, onClose, children, title }: ModalProps) {
+/**
+ * GBAIGBANCE — iOS Action Sheet & Modal Component
+ * 
+ * Features:
+ * - Native iOS Action Sheet ergonomics on mobile (attached to bottom) with drag-to-dismiss handle
+ * - Centered elevated glass card on desktop / tablet
+ * - Elastic spring physics (stiffness: 360, damping: 32)
+ * - Drag "y" with downward threshold to dismiss with light haptic click
+ * - Full accessibility: focus trapping, escape key, ARIA dialog attributes
+ */
+export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-md' }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
@@ -39,6 +53,7 @@ export function Modal({ open, onClose, children, title }: ModalProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        haptic.light();
         onClose();
         return;
       }
@@ -94,53 +109,89 @@ export function Modal({ open, onClose, children, title }: ModalProps) {
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  const handleDismiss = () => {
+    haptic.light();
+    onClose();
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={title ? titleId : undefined}
-    >
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        ref={modalRef}
-        tabIndex={-1}
-        className="relative w-full max-w-md glass-surface rounded-3xl p-6 animate-bounce-in max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none"
-      >
-        {title ? (
-          <div className="flex items-center justify-between mb-4">
-            <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white">
-              {title}
-            </h2>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={onClose}
-              aria-label="Fermer la boîte de dialogue"
-              className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
-            >
-              <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-            </button>
-          </div>
-        ) : (
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer la boîte de dialogue"
-            className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-white/20 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
+    <AnimatePresence>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
+        >
+          {/* Backdrop with progressive blur */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-md"
+            onClick={handleDismiss}
+            aria-hidden="true"
+          />
+
+          {/* Action Sheet / Modal Surface */}
+          <motion.div
+            ref={modalRef}
+            tabIndex={-1}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0.05, bottom: 0.6 }}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y > 90 || info.velocity.y > 350) {
+                handleDismiss();
+              }
+            }}
+            initial={{ y: '100%', opacity: 0.8 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{
+              type: 'spring',
+              damping: 32,
+              stiffness: 380,
+              mass: 0.85,
+            }}
+            className={`relative w-full ${maxWidthClass} rounded-t-[32px] sm:rounded-3xl p-6 pt-3 sm:pt-6 bg-white/95 dark:bg-[#151221]/95 backdrop-blur-2xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none z-10`}
           >
-            <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-          </button>
-        )}
-        {children}
-      </div>
-    </div>
+            {/* iOS Action Sheet Pull-to-Dismiss Grabber Bar */}
+            <div className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing">
+              <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
+            </div>
+
+            {title ? (
+              <div className="flex items-center justify-between mb-4">
+                <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white tracking-tight">
+                  {title}
+                </h2>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={handleDismiss}
+                  aria-label="Fermer la boîte de dialogue"
+                  className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
+                >
+                  <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+                </button>
+              </div>
+            ) : (
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={handleDismiss}
+                aria-label="Fermer la boîte de dialogue"
+                className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
+              >
+                <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+              </button>
+            )}
+            {children}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

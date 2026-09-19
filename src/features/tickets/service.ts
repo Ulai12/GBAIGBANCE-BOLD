@@ -292,3 +292,15 @@ export async function fetchUserTickets(userId: string) {
 
   return merged;
 }
+
+export async function validateTicketQr(
+  qrCode: string,
+  eventId: string
+): Promise<{ success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string }> {
+  const { data, error } = await supabase.rpc('validate_ticket_qr', {
+    p_qr_code: qrCode,
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  return data as { success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string };
+}

@@ -172,3 +172,52 @@ export async function isFollowingArtist(artistId: string, userId: string): Promi
     .maybeSingle();
   return !!data;
 }
+
+export async function incrementEventViews(eventId: string): Promise<void> {
+  if (!isSupabaseConfigured || !eventId) return;
+  try {
+    await supabase.rpc('increment_event_views', { p_event_id: eventId });
+  } catch {
+    // Ignore error
+  }
+}
+
+export function subscribeToEventViews(eventId: string, callback: (views: number) => void) {
+  if (!isSupabaseConfigured || !eventId) return () => {};
+  const channel = supabase
+    .channel(`event-views-${eventId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
+      (payload) => {
+        if (payload.new && typeof (payload.new as { views_count?: number }).views_count === 'number') {
+          callback((payload.new as { views_count: number }).views_count);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToEventAttendees(eventId: string, callback: (count: number) => void) {
+  if (!isSupabaseConfigured || !eventId) return () => {};
+  const channel = supabase
+    .channel(`event-attendees-${eventId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'events', filter: `id=eq.${eventId}` },
+      (payload) => {
+        if (payload.new && typeof (payload.new as { attendees_count?: number }).attendees_count === 'number') {
+          callback((payload.new as { attendees_count: number }).attendees_count);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

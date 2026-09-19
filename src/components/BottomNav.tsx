@@ -8,6 +8,7 @@ import {
 import { useState } from 'react';
 import { prefetchCreateEvent } from '@/utils/prefetchRoutes';
 import { useApp } from '@/hooks/useApp';
+import { haptic } from '@/hooks/useHaptics';
 
 /**
  * GBAIGBANCE — Navigation Dock (iOS 27 Fluid Architecture)
@@ -103,7 +104,10 @@ export function BottomNav({
       <button
         key={item.id}
         type="button"
-        onClick={() => onNavigate(item.id)}
+        onClick={() => {
+          haptic.selection();
+          onNavigate(item.id);
+        }}
         onPointerDown={() => setPressed(item.id)}
         onPointerUp={() => setPressed(null)}
         onPointerCancel={() => setPressed(null)}
@@ -231,7 +235,10 @@ export function BottomNav({
             <div className="flex flex-col items-center justify-center h-full px-0.5">
               <button
                 type="button"
-                onClick={onCreate}
+                onClick={() => {
+                  haptic.light();
+                  onCreate();
+                }}
                 onMouseEnter={prefetchCreateEvent}
                 onTouchStart={prefetchCreateEvent}
                 onPointerDown={() => setPressed('create')}

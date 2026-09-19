@@ -9,6 +9,7 @@ import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
+import { EdgeSwipeBack } from '@/components/EdgeSwipeBack';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { ExploreScreen } from '@/screens/ExploreScreen';
 import { TicketsScreen } from '@/screens/TicketsScreen';
@@ -411,6 +412,7 @@ function AppContent() {
       />
 
       <ToastContainer toasts={toasts} onClose={closeToast} />
+      <EdgeSwipeBack />
     </>
   );
 }

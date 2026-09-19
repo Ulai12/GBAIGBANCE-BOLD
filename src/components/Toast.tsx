@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { DynamicIsland } from '@/components/DynamicIsland';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -78,11 +79,5 @@ interface ToastContainerProps {
 }
 
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
-  return (
-    <div className="fixed top-4 left-0 right-0 z-[60] px-4 flex flex-col items-center gap-2 pointer-events-none">
-      <div className="w-full max-w-md flex flex-col gap-2 pointer-events-auto">
-        {toasts.map((toast) => <Toast key={toast.id} toast={toast} onClose={onClose} />)}
-      </div>
-    </div>
-  );
+  return <DynamicIsland toasts={toasts} onClose={onClose} />;
 }

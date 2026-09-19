@@ -1,5 +1,6 @@
 /**
- * GBAIGBANCE Infrastructure - Supabase Client
+ * GBAIGBANCE Infrastructure - Supabase Client & Realtime Manager
  */
 
-export { supabase, isSupabaseConfigured } from '@/services/supabase';
+export * from './client';
+export * from './realtime';
