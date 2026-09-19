@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Event, EventWithRelations, Artist, Organization, Profile, Ticket } from '@/types';
 import type { PlatformStats } from '@/features/events/queries';
 import { sanitizeProfileSnapshot } from '@/hooks/useLocalProfile';
+import { isEventTerminated } from '@/features/events/status';
 
 /**
  * CACHE PHILOSOPHY (Stale-While-Revalidate):
@@ -55,7 +56,13 @@ export const PROFILE_CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes
 function isValidEvent(e: unknown): e is Event {
   if (!e || typeof e !== 'object') return false;
   const evt = e as Partial<Event>;
-  return Boolean(evt.id && evt.title && evt.starts_at && evt.status === 'published');
+  return Boolean(
+    evt.id &&
+    evt.title &&
+    evt.starts_at &&
+    evt.status === 'published' &&
+    !isEventTerminated(evt as { status?: string; starts_at?: string; ends_at?: string | null })
+  );
 }
 
 function stripEventForDigest(e: Event): Event {
@@ -86,8 +93,14 @@ if (typeof window !== 'undefined') {
   get<HomeCacheData>(HOME_CACHE_KEY)
     .then((idbData) => {
       if (idbData && Array.isArray(idbData.featured)) {
-        if (!MEMORY_CACHE.home || (idbData.timestamp || 0) > (MEMORY_CACHE.home.timestamp || 0)) {
-          MEMORY_CACHE.home = idbData;
+        const cleaned: HomeCacheData = {
+          ...idbData,
+          featured: (idbData.featured || []).filter(isValidEvent),
+          trending: (idbData.trending || []).filter(isValidEvent),
+          nearby: (idbData.nearby || []).filter(isValidEvent),
+        };
+        if (!MEMORY_CACHE.home || (cleaned.timestamp || 0) > (MEMORY_CACHE.home.timestamp || 0)) {
+          MEMORY_CACHE.home = cleaned;
         }
       }
     })
@@ -105,6 +118,9 @@ export function getCachedHomeData(): { data: HomeCacheData | null; hasCache: boo
     MEMORY_CACHE.home &&
     (MEMORY_CACHE.home.featured.length > 0 || MEMORY_CACHE.home.nearby.length > 0)
   ) {
+    MEMORY_CACHE.home.featured = MEMORY_CACHE.home.featured.filter(isValidEvent);
+    MEMORY_CACHE.home.trending = MEMORY_CACHE.home.trending.filter(isValidEvent);
+    MEMORY_CACHE.home.nearby = MEMORY_CACHE.home.nearby.filter(isValidEvent);
     const isStale = now - (MEMORY_CACHE.home.timestamp || 0) > HOME_CACHE_TTL_MS;
     return { data: MEMORY_CACHE.home, hasCache: true, isStale };
   }

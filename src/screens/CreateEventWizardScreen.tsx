@@ -348,6 +348,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           : 'Événement créé et publié avec succès.',
         type: 'success',
       });
+      window.dispatchEvent(new CustomEvent('gba-refresh-events'));
+      window.dispatchEvent(new CustomEvent('gba-event-created', { detail: { event } }));
       onCreated(event);
     } catch (caught) {
       const message = getErrorMessage(caught);

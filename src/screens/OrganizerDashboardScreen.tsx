@@ -94,7 +94,28 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
 
   const isArtist = user?.role === 'artist';
   const openDeleteModal = async (event: Event) => { setDeleteTarget(event); setDeleteInfo(null); setDeleteMode('cancel'); const info = await fetchEventDeletionInfo(event.id); setDeleteInfo(info); };
-  const confirmDelete = async () => { if (!deleteTarget) return; setDeleteLoading(true); try { if (deleteMode === 'cancel') { await cancelEvent(deleteTarget.id); onToast({ message: 'Événement annulé.', type: 'success' }); } else { await deleteEvent(deleteTarget.id); onToast({ message: 'Événement supprimé.', type: 'success' }); } setDeleteTarget(null); loadEvents(); loadMetrics(); } catch (err) { const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur'; onToast({ message: msg, type: 'error' }); } finally { setDeleteLoading(false); } };
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      if (deleteMode === 'cancel') {
+        await cancelEvent(deleteTarget.id);
+        onToast({ message: 'Événement annulé.', type: 'success' });
+      } else {
+        await deleteEvent(deleteTarget.id);
+        onToast({ message: 'Événement supprimé.', type: 'success' });
+      }
+      window.dispatchEvent(new CustomEvent('gba-refresh-events'));
+      setDeleteTarget(null);
+      loadEvents();
+      loadMetrics();
+    } catch (err) {
+      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur';
+      onToast({ message: msg, type: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen pb-32">

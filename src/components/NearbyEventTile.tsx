@@ -2,7 +2,6 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   Navigation,
   Calendar,
-  Heart,
   MapPin,
   ArrowUpRight,
   Footprints,
@@ -11,7 +10,6 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { formatDistanceKm, getAccurateTravelEstimate } from '@/utils/geo';
-import { useFavorites } from '@/contexts/FavoritesContext';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
@@ -31,8 +29,6 @@ function formatDate(dateString: string) {
 }
 
 export function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {
-  const { isLiked, toggleLike } = useFavorites();
-  const liked = isLiked(event.id);
   const prefersReducedMotion = useReducedMotion();
 
   const formattedPrice =

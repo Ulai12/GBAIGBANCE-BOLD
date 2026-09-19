@@ -3,16 +3,38 @@ import type { Event, Artist, Organization } from '@/types';
 /**
  * Validates if an event has concluded based on status.
  */
-export function isEventTerminated(event: { status?: string; starts_at?: string; ends_at?: string | null }): boolean {
+export function isEventTerminated(event: { status?: string; starts_at?: string; ends_at?: string | null } | null | undefined): boolean {
+  if (!event) return true;
   if (event.status === 'completed' || event.status === 'cancelled') return true;
+
+  const now = Date.now();
+
+  // If ends_at is defined, use it to accurately determine if event has concluded
+  if (event.ends_at) {
+    const endMs = new Date(event.ends_at).getTime();
+    if (!Number.isNaN(endMs)) {
+      return endMs < now;
+    }
+  }
+
+  // If ends_at is not provided, check starts_at with a standard 6h duration window
+  if (event.starts_at) {
+    const startMs = new Date(event.starts_at).getTime();
+    if (!Number.isNaN(startMs)) {
+      const defaultDurationMs = 6 * 60 * 60 * 1000;
+      return (startMs + defaultDurationMs) < now;
+    }
+  }
+
   return false;
 }
 
 /**
- * Validates if an event is currently active and published.
+ * Validates if an event is currently active, published, and not terminated.
  */
-export function isEventActive(event: Event): boolean {
-  return event.status === 'published';
+export function isEventActive(event: Event | null | undefined): boolean {
+  if (!event) return false;
+  return event.status === 'published' && !isEventTerminated(event);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
@@ -24,11 +24,11 @@ import { useApp } from '@/hooks/useApp';
 import { EVENT_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
-import { useScrollGlass } from '@/hooks/useScrollGlass';
 import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
   fetchEventsByCategory, fetchFeaturedArtists, fetchVerifiedOrganizations,
   fetchPlatformStats, isEventTerminated, isEventActive, isRealEvent,
+  subscribeToGlobalEventsLive,
   type PlatformStats,
 } from '@/services/events';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
@@ -144,72 +144,144 @@ export function HomeScreen({
     }
   }, [initialCache.hasCache]);
 
-  // Background silent fetch to hydrate & refresh data without UI flashing
-  useEffect(() => {
+  // Stable background and foreground data refresher
+  const refreshHomeData = useCallback(async (silent = true) => {
+    if (!silent && !initialCache.hasCache) {
+      setLoading(true);
+    }
     const isValidDate = (dateStr?: string) => Boolean(dateStr && !isNaN(new Date(dateStr).getTime()));
 
-    Promise.all([
-      fetchFeaturedEvents(),
-      fetchUpcomingEvents(),
-      fetchTrendingEvents(),
-      fetchFeaturedArtists(),
-      fetchVerifiedOrganizations(),
-      fetchPlatformStats(),
-    ])
-      .then(([feat, up, trend, art, orgs, stats]) => {
-        const filterValid = (list: Event[]) =>
-          list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
+    try {
+      const [feat, up, trend, art, orgs, stats] = await Promise.all([
+        fetchFeaturedEvents(),
+        fetchUpcomingEvents(),
+        fetchTrendingEvents(),
+        fetchFeaturedArtists(),
+        fetchVerifiedOrganizations(),
+        fetchPlatformStats(),
+      ]);
 
-        // Master pool of all unique active published events from any of the queries
-        const allRaw = [...feat, ...up, ...trend];
-        const masterMap = new Map<string, Event>();
-        allRaw.forEach((ev) => {
-          if (ev && ev.id && isRealEvent(ev) && ev.status === 'published' && !isEventTerminated(ev)) {
-            masterMap.set(ev.id, ev);
-          }
-        });
-        const masterEvents = Array.from(masterMap.values());
-        setAllEvents(masterEvents);
+      const filterValid = (list: Event[]) =>
+        list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
 
-        const validFeat = filterValid(feat);
-        const validTrend = filterValid(trend);
-        const validUp = filterValid(up);
-
-        const newFeat = validFeat.length > 0
-          ? validFeat
-          : masterEvents.filter((e) => e.is_featured).length > 0
-            ? masterEvents.filter((e) => e.is_featured)
-            : masterEvents.slice(0, 3);
-        const newTrend = validTrend.length > 0 ? validTrend : masterEvents.slice(0, 4);
-        const newNearby = validUp.length > 0 ? validUp : masterEvents;
-
-        setFeatured(newFeat);
-        setTrending(newTrend);
-        setNearby(newNearby);
-        setArtists(art);
-        setOrganizations(orgs);
-        setPlatformStats(stats);
-
-        // Save fresh data into the 0ms synchronous cache
-        saveCachedHomeData({
-          featured: newFeat,
-          trending: newTrend,
-          nearby: newNearby,
-          artists: art,
-          organizations: orgs,
-          stats,
-        });
-      })
-      .catch(() => {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          onToastRef.current({
-            message: 'Mode hors-ligne : données sauvegardées affichées',
-            type: 'info',
-          });
+      // Master pool of all unique active published events from any of the queries
+      const allRaw = [...feat, ...up, ...trend];
+      const masterMap = new Map<string, Event>();
+      allRaw.forEach((ev) => {
+        if (ev && ev.id && isRealEvent(ev) && ev.status === 'published' && !isEventTerminated(ev)) {
+          masterMap.set(ev.id, ev);
         }
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      });
+      const masterEvents = Array.from(masterMap.values());
+      setAllEvents(masterEvents);
+
+      const validFeat = filterValid(feat);
+      const validTrend = filterValid(trend);
+      const validUp = filterValid(up);
+
+      const newFeat = validFeat.length > 0
+        ? validFeat
+        : masterEvents.filter((e) => e.is_featured).length > 0
+          ? masterEvents.filter((e) => e.is_featured)
+          : masterEvents.slice(0, 3);
+      const newTrend = validTrend.length > 0 ? validTrend : masterEvents.slice(0, 4);
+      const newNearby = validUp.length > 0 ? validUp : masterEvents;
+
+      setFeatured(newFeat);
+      setTrending(newTrend);
+      setNearby(newNearby);
+      setArtists(art);
+      setOrganizations(orgs);
+      setPlatformStats(stats);
+
+      // Save fresh data into the 0ms synchronous cache
+      saveCachedHomeData({
+        featured: newFeat,
+        trending: newTrend,
+        nearby: newNearby,
+        artists: art,
+        organizations: orgs,
+        stats,
+      });
+    } catch {
+      if (typeof navigator !== 'undefined' && !navigator.onLine && !silent) {
+        onToastRef.current({
+          message: 'Mode hors-ligne : données sauvegardées affichées',
+          type: 'info',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [initialCache.hasCache]);
+
+  // Initial load
+  useEffect(() => {
+    refreshHomeData(false);
+  }, [refreshHomeData]);
+
+  // Real-time synchronization on database changes (INSERT, UPDATE, DELETE)
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleDbChange = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refreshHomeData(true);
+      }, 500);
+    };
+
+    const unsubscribe = subscribeToGlobalEventsLive(handleDbChange);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [refreshHomeData]);
+
+  // Proactive automatic foreground / event-based auto-refresh
+  useEffect(() => {
+    const handleSyncTrigger = () => {
+      refreshHomeData(true);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshHomeData(true);
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleSyncTrigger);
+    window.addEventListener('online', handleSyncTrigger);
+    window.addEventListener('gba-refresh-events', handleSyncTrigger);
+    window.addEventListener('gba-event-created', handleSyncTrigger);
+    window.addEventListener('gba-event-updated', handleSyncTrigger);
+    window.addEventListener('gba-ticket-booked', handleSyncTrigger);
+
+    // Auto-polling interval every 45 seconds for fresh data
+    const periodicSync = setInterval(() => {
+      refreshHomeData(true);
+    }, 45000);
+
+    // Immediate 10-second ticker to purge any terminated events from in-memory lists without waiting for network
+    const pruneTicker = setInterval(() => {
+      setFeatured((prev) => prev.filter((e) => !isEventTerminated(e)));
+      setTrending((prev) => prev.filter((e) => !isEventTerminated(e)));
+      setNearby((prev) => prev.filter((e) => !isEventTerminated(e)));
+      setAllEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleSyncTrigger);
+      window.removeEventListener('online', handleSyncTrigger);
+      window.removeEventListener('gba-refresh-events', handleSyncTrigger);
+      window.removeEventListener('gba-event-created', handleSyncTrigger);
+      window.removeEventListener('gba-event-updated', handleSyncTrigger);
+      window.removeEventListener('gba-ticket-booked', handleSyncTrigger);
+      clearInterval(periodicSync);
+      clearInterval(pruneTicker);
+    };
+  }, [refreshHomeData]);
 
   // Unified list of all unique active published events
   const allActiveEvents = useMemo(() => {
@@ -340,18 +412,10 @@ export function HomeScreen({
     return 'Douce nuit';
   };
 
-  const { isScrolled } = useScrollGlass(12);
-
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête modernisée style iOS 27 Liquid Glass */}
-      <header
-        className={`sticky top-0 z-30 px-5 pt-4 pb-3 liquid-glass-header transition-all duration-300 ${
-          isScrolled
-            ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.05] dark:border-white/[0.08] shadow-sm'
-            : 'bg-transparent border-b border-transparent'
-        }`}
-      >
+      {/* En-tête classique épurée sans flou glassmorphism */}
+      <header className="sticky top-0 z-30 px-5 pt-4 pb-3 bg-[#F8F9FE] dark:bg-[#0E0C15] border-b border-black/[0.04] dark:border-white/[0.05]">
         {/* Ligne Logo & Identité */}
         <div className="flex items-center gap-2.5 mb-2.5">
           <img
@@ -392,7 +456,7 @@ export function HomeScreen({
                 }}
                 aria-label="Paramètres de l'application"
                 title="Paramètres"
-                className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
+                className="w-10 h-10 rounded-full bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
               >
                 <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
               </button>
@@ -427,7 +491,7 @@ export function HomeScreen({
             }}
             className="flex-1 text-left cursor-pointer"
           >
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
               <Search className="w-4 h-4 text-gray-400" />
               <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
             </div>
@@ -439,7 +503,7 @@ export function HomeScreen({
               haptic.light();
               onOpenAIAssistant();
             }}
-            className="w-11 h-11 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
+            className="w-11 h-11 shrink-0 rounded-2xl bg-white dark:bg-[#1A1829] shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-gray-50 dark:hover:bg-white/10 active:scale-90 transition-all relative group cursor-pointer"
             aria-label="Assistant IA Gbaigbance"
             title="Assistant IA Gbaigbance"
           >

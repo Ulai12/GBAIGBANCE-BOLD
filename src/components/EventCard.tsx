@@ -3,7 +3,6 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
   Flame,
-  Heart,
   MapPin,
   Share2,
   Sparkles,
@@ -13,7 +12,6 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { isEventTerminated } from '@/services/events';
-import { useFavorites } from '@/contexts/FavoritesContext';
 import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
@@ -41,8 +39,6 @@ function formatAttendees(count: number) {
 }
 
 export function EventCard({ event, onClick, onShare }: EventCardProps) {
-  const { isLiked, toggleLike } = useFavorites();
-  const liked = isLiked(event.id);
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 

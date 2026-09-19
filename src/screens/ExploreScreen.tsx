@@ -21,7 +21,7 @@ import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { BottomSheet } from '@/components/BottomSheet';
 import { useApp } from '@/hooks/useApp';
-import { searchEvents, fetchUpcomingEvents } from '@/services/events';
+import { searchEvents, fetchUpcomingEvents, isEventTerminated, isRealEvent, subscribeToGlobalEventsLive } from '@/services/events';
 import { getCachedHomeData } from '@/services/cache';
 import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories } from '@/constants';
 import type { Event, EventCategory } from '@/types';
@@ -44,12 +44,14 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 let exploreCache: Event[] | null = null;
 
 function getWarmExploreEvents(): Event[] {
-  if (exploreCache && exploreCache.length > 0) return exploreCache;
+  if (exploreCache && exploreCache.length > 0) {
+    return exploreCache.filter((e) => !isEventTerminated(e));
+  }
   const home = getCachedHomeData().data;
   if (home) {
     const map = new Map<string, Event>();
     [...(home.featured || []), ...(home.trending || []), ...(home.nearby || [])].forEach((e) => {
-      if (e && e.id) map.set(e.id, hydrateEventCategories(e));
+      if (e && e.id && !isEventTerminated(e)) map.set(e.id, hydrateEventCategories(e));
     });
     const list = Array.from(map.values());
     if (list.length > 0) {
@@ -78,13 +80,51 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
     return () => clearTimeout(timer);
   }, [query, selectedCategory, selectedCity, priceFilter]);
 
+  // Real-time automatic synchronization and pruning for Explore
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const triggerRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
+        loadEvents(isDefault);
+      }, 500);
+    };
+
+    const unsubscribe = subscribeToGlobalEventsLive(triggerRefresh);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') triggerRefresh();
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', triggerRefresh);
+    window.addEventListener('online', triggerRefresh);
+    window.addEventListener('gba-refresh-events', triggerRefresh);
+
+    const pruneTicker = setInterval(() => {
+      setEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
+    }, 10000);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (unsubscribe) unsubscribe();
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', triggerRefresh);
+      window.removeEventListener('online', triggerRefresh);
+      window.removeEventListener('gba-refresh-events', triggerRefresh);
+      clearInterval(pruneTicker);
+    };
+  }, [query, selectedCategory, selectedCity, priceFilter]);
+
   const loadEvents = async (isDefault = false) => {
     if (events.length === 0) {
       setLoading(true);
     }
     try {
       const rawResult = query ? await searchEvents(query) : await fetchUpcomingEvents();
-      let result = rawResult.map(hydrateEventCategories);
+      let result = rawResult
+        .map(hydrateEventCategories)
+        .filter((e) => isRealEvent(e) && !isEventTerminated(e));
       if (selectedCategory) result = result.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
       if (selectedCity) result = result.filter((e) => e.city === selectedCity);
       if (priceFilter === 'free') result = result.filter((e) => e.price_min === 0);

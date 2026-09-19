@@ -348,9 +348,12 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
       );
 
       if (updated) {
+        window.dispatchEvent(new CustomEvent('gba-refresh-events'));
+        window.dispatchEvent(new CustomEvent('gba-event-updated', { detail: { event: updated } }));
         onToast({ message: 'Événement mis à jour avec succès !', type: 'success' });
         onSaved(updated);
       } else {
+        window.dispatchEvent(new CustomEvent('gba-refresh-events'));
         onToast({ message: 'Événement mis à jour !', type: 'success' });
         onBack();
       }

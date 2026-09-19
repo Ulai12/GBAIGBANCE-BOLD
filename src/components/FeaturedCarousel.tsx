@@ -7,11 +7,9 @@ import {
   Ticket,
   Flame,
   ArrowRight,
-  Heart,
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
-import { useFavorites } from '@/contexts/FavoritesContext';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 
 interface FeaturedCarouselProps {
@@ -39,7 +37,6 @@ export function FeaturedCarousel({
   const [isPaused, setIsPaused] = useState(false);
   const [direction, setDirection] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const { isLiked, toggleLike } = useFavorites();
   const prefersReducedMotion = useReducedMotion();
 
   const featuredList = useMemo(() => (events.length > 0 ? events.slice(0, 6) : []), [events]);
@@ -85,7 +82,6 @@ export function FeaturedCarousel({
   if (featuredList.length === 0) return null;
 
   const currentEvent = featuredList[currentIndex];
-  const liked = isLiked(currentEvent.id);
 
   const formattedPrice =
     currentEvent.price_min === 0

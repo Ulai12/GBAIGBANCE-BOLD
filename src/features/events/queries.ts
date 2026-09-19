@@ -116,10 +116,10 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
       .select('*')
       .eq('status', 'published')
       .order('starts_at', { ascending: true })
-      .limit(30);
+      .limit(40);
 
     if (!error && data && data.length > 0) {
-      const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e));
+      const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
 
       const sorted = [...activeList].sort((a, b) => {
         const scoreA =
@@ -155,7 +155,7 @@ export async function fetchEventsByCategory(category: EventCategory | string): P
     if (!error && data && data.length > 0) {
       const hydrated = (data as Event[])
         .map(hydrateEventCategories)
-        .filter((e) => isRealEvent(e) && isEventActive(e));
+        .filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
       return hydrated.filter((e) => eventMatchesCategoryFilter(e, category));
     }
     return [];
@@ -173,9 +173,9 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
       .eq('status', 'published')
       .order('views_count', { ascending: false })
       .order('starts_at', { ascending: true })
-      .limit(20);
+      .limit(30);
     if (!error && data && data.length > 0) {
-      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e)).slice(0, 8);
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e)).slice(0, 8);
     }
     return [];
   } catch {
@@ -191,9 +191,9 @@ export async function fetchUpcomingEvents(): Promise<Event[]> {
       .select('*')
       .eq('status', 'published')
       .order('starts_at', { ascending: true })
-      .limit(30);
+      .limit(50);
     if (!error && data && data.length > 0) {
-      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e)).slice(0, 15);
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e)).slice(0, 20);
     }
     return [];
   } catch {
@@ -245,9 +245,9 @@ export async function searchEvents(query: string): Promise<Event[]> {
       .eq('status', 'published')
       .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%,location_name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
       .order('starts_at', { ascending: true })
-      .limit(30);
+      .limit(40);
     if (error || !data) return [];
-    return (data as Event[]).filter((e) => isRealEvent(e));
+    return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
   } catch {
     return [];
   }

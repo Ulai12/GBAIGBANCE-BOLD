@@ -211,3 +211,35 @@ export function useRealtimeUserTickets(
     };
   }, [userId, onTicketsChanged]);
 }
+
+/**
+ * Subscribes to live changes on the entire public.events table (INSERT, UPDATE, DELETE).
+ * Provides instantaneous real-time sync across clients without requiring manual page refresh.
+ */
+export function subscribeToGlobalEventsLive(onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void) {
+  if (!isSupabaseConfigured) return () => {};
+
+  const channel = supabase
+    .channel('realtime:global_events_feed')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'events',
+      },
+      (payload) => {
+        onEventChange({
+          eventType: payload.eventType,
+          new: payload.new,
+          old: payload.old,
+        });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+

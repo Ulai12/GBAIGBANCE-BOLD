@@ -69,6 +69,7 @@ export {
   subscribeToEventViews,
   subscribeToEventAttendees,
   subscribeToEventLive,
+  subscribeToGlobalEventsLive,
   subscribeToTicketInventory,
   subscribeToUserTicketsLive,
   useRealtimeEvent,

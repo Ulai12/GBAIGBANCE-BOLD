@@ -132,6 +132,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     if (!cancelTarget || !user) return;
     const targetId = cancelTarget;
     haptic.medium();
+    setCancelling(true);
     setCancelTarget(null); // Close modal with 0ms delay
 
     // 1. Instant optimistic state update
@@ -157,6 +158,8 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       cachedTickets = { userId: user.id, tickets: previousTickets };
       saveCachedUserTickets(user.id, previousTickets).catch(() => {});
       onToast({ message: "Échec de l'annulation sur le serveur. Billet rétabli.", type: 'error' });
+    } finally {
+      setCancelling(false);
     }
   };
 
