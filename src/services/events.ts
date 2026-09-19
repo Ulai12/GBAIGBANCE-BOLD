@@ -70,6 +70,8 @@ export {
   subscribeToEventAttendees,
   subscribeToEventLive,
   subscribeToGlobalEventsLive,
+  subscribeToPlatformStatsLive,
+  subscribeToOrganizerMetricsLive,
   subscribeToUserFavoritesLive,
   subscribeToTicketInventory,
   subscribeToUserTicketsLive,

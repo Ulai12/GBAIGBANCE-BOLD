@@ -350,3 +350,95 @@ export function subscribeToGlobalEventsLive(
   };
 }
 
+/**
+ * Subscribes to live multi-table changes influencing platform-wide statistics:
+ * - Tickets (purchases, reservations, cancellations)
+ * - Events (creation, status change, views, attendees)
+ * - Profiles (new members registration)
+ */
+export function subscribeToPlatformStatsLive(onStatsChange: () => void) {
+  if (!isSupabaseConfigured) return () => {};
+
+  const channelId = `realtime:platform_stats:${Math.random().toString(36).substring(2, 8)}`;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const notifyDebounced = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      onStatsChange();
+    }, 400);
+  };
+
+  const channel = supabase
+    .channel(channelId)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tickets' },
+      () => notifyDebounced()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'events' },
+      () => notifyDebounced()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'profiles' },
+      () => notifyDebounced()
+    )
+    .subscribe();
+
+  return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
+  };
+}
+
+/**
+ * Subscribes to live ticket and sales changes for an organizer's dashboard.
+ */
+export function subscribeToOrganizerMetricsLive(
+  _organizerUserId: string,
+  onMetricsChange: () => void
+) {
+  if (!isSupabaseConfigured) return () => {};
+
+  const channelId = `realtime:org_metrics:${Math.random().toString(36).substring(2, 8)}`;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const trigger = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      onMetricsChange();
+    }, 300);
+  };
+
+  const channel = supabase
+    .channel(channelId)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tickets' },
+      () => trigger()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'events' },
+      () => trigger()
+    )
+    .subscribe();
+
+  return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // Safe cleanup
+    }
+  };
+}
+
+

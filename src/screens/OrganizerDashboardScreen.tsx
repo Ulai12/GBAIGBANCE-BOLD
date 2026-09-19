@@ -10,7 +10,7 @@ import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { EVENT_CATEGORIES } from '@/constants';
 import { formatNumber } from '@/utils/format';
-import { createEventWithCollaborators, searchArtists, searchOrganizations, fetchEventDeletionInfo, cancelEvent, deleteEvent, fetchOrganizerPerformanceMetrics } from '@/services/events';
+import { createEventWithCollaborators, searchArtists, searchOrganizations, fetchEventDeletionInfo, cancelEvent, deleteEvent, fetchOrganizerPerformanceMetrics, subscribeToOrganizerMetricsLive } from '@/services/events';
 import { EventManagementModal } from '@/components/EventManagementModal';
 import type { Event, EventCategory, Artist, Organization } from '@/types';
 import type { ToastData } from '@/components/Toast';
@@ -51,7 +51,22 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
   });
 
-  useEffect(() => { loadEvents(); loadMetrics(); }, [user, timeRange]);
+  useEffect(() => {
+    loadEvents();
+    loadMetrics();
+  }, [user, timeRange]);
+
+  // Real-time live synchronization for organizer metrics and sales
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToOrganizerMetricsLive(user.id, () => {
+      loadMetrics();
+      loadEvents();
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, timeRange]);
   useEffect(() => { if (!collabSearch.trim()) { setSearchResults({ artists: [], orgs: [] }); return; } setSearching(true); Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)]).then(([artists, orgs]) => setSearchResults({ artists, orgs })).catch(() => setSearchResults({ artists: [], orgs: [] })).finally(() => setSearching(false)); }, [collabSearch]);
 
   const loadEvents = async () => {

@@ -28,7 +28,7 @@ import {
   fetchFeaturedEvents, fetchTrendingEvents, fetchUpcomingEvents,
   fetchEventsByCategory, fetchFeaturedArtists, fetchVerifiedOrganizations,
   fetchPlatformStats, isEventTerminated, isEventActive, isRealEvent,
-  subscribeToGlobalEventsLive,
+  subscribeToGlobalEventsLive, subscribeToPlatformStatsLive,
   type PlatformStats,
 } from '@/services/events';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
@@ -86,6 +86,7 @@ export function HomeScreen({
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [allEventsFilter, setAllEventsFilter] = useState<'all' | 'concert' | 'festival' | 'exposition' | 'conference'>('all');
   const [loading, setLoading] = useState(!initialCache.hasCache);
+  const [isScrolled, setIsScrolled] = useState(false);
   const onToastRef = useRef(onToast);
 
   useEffect(() => {
@@ -230,12 +231,32 @@ export function HomeScreen({
       }, 500);
     };
 
-    const unsubscribe = subscribeToGlobalEventsLive(handleDbChange);
+    const unsubscribeEvents = subscribeToGlobalEventsLive(handleDbChange);
+    const unsubscribeStats = subscribeToPlatformStatsLive(() => {
+      fetchPlatformStats().then((newStats) => {
+        if (newStats) setPlatformStats(newStats);
+      }).catch(() => {});
+    });
+
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeEvents) unsubscribeEvents();
+      if (unsubscribeStats) unsubscribeStats();
     };
   }, [refreshHomeData]);
+
+  // Scroll listener for sticky header styling & compaction
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 24;
+      setIsScrolled(scrolled);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Proactive automatic foreground / event-based auto-refresh
   useEffect(() => {
@@ -414,37 +435,40 @@ export function HomeScreen({
 
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête classique épurée sans flou glassmorphism */}
-      <header className="sticky top-0 z-30 px-5 pt-4 pb-3 bg-[#F8F9FE] dark:bg-[#0E0C15] border-b border-black/[0.04] dark:border-white/[0.05]">
-        {/* Ligne Logo & Identité */}
-        <div className="flex items-center gap-2.5 mb-2.5">
-          <img
-            src="/icon.svg"
-            alt="Gbaigbance"
-            className="w-8 h-8 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
-          />
-          <div className="leading-tight">
-            <p className="text-[14px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
-            <p className="text-[8.5px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
-          </div>
-        </div>
-
-        {/* Dynamic greeting et boutons harmonisés */}
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-              <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}</span>
-              <span className="text-xl">👋</span>
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
+      {/* En-tête iOS 27 fixé et collé au sommet de l'écran avec intégration Safe-Area */}
+      <header
+        className={`sticky top-0 z-40 w-full pt-[max(0.65rem,env(safe-area-inset-top))] px-5 pb-3 transition-all duration-200 ${
+          isScrolled
+            ? 'bg-[#F8F9FE]/95 dark:bg-[#0E0C15]/95 backdrop-blur-2xl border-b border-black/[0.06] dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
+            : 'bg-[#F8F9FE] dark:bg-[#0E0C15] border-b border-black/[0.03] dark:border-white/[0.04]'
+        }`}
+      >
+        {/* Ligne Logo, Greeting et Actions */}
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src="/icon.svg"
+              alt="Gbaigbance"
+              className="w-8 h-8 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10 shrink-0"
+            />
+            <div className="leading-tight min-w-0">
+              <p className="text-[13px] font-black text-[#171726] dark:text-white tracking-tight truncate">
+                GBAIGBANCE
+              </p>
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">
+                {getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'} 👋
+              </p>
+            </div>
           </div>
 
           {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
-          <div className="flex items-center gap-2">
-            <NotificationBell onOpen={() => {
-              haptic.light();
-              onOpenNotifications();
-            }} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <NotificationBell
+              onOpen={() => {
+                haptic.light();
+                onOpenNotifications();
+              }}
+            />
 
             {onOpenSettings && (
               <button
@@ -456,9 +480,9 @@ export function HomeScreen({
                 }}
                 aria-label="Paramètres de l'application"
                 title="Paramètres"
-                className="w-10 h-10 rounded-full bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
               >
-                <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
+                <Settings className="w-4 h-4 transition-transform hover:rotate-45" />
               </button>
             )}
 
@@ -467,7 +491,7 @@ export function HomeScreen({
                 haptic.selection();
                 onProfileClick();
               }}
-              className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+              className="w-9 h-9 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
               aria-label="Profil"
             >
               <UserAvatar
@@ -482,7 +506,7 @@ export function HomeScreen({
         </div>
 
         {/* Recherche et bouton IA assistant */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -491,9 +515,11 @@ export function HomeScreen({
             }}
             className="flex-1 text-left cursor-pointer"
           >
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
-              <Search className="w-4 h-4 text-gray-400" />
-              <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-xs text-gray-400 font-medium truncate">
+                Concerts, soirées, festivals...
+              </span>
             </div>
           </button>
 
@@ -503,12 +529,12 @@ export function HomeScreen({
               haptic.light();
               onOpenAIAssistant();
             }}
-            className="w-11 h-11 shrink-0 rounded-2xl bg-white dark:bg-[#1A1829] shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-gray-50 dark:hover:bg-white/10 active:scale-90 transition-all relative group cursor-pointer"
+            className="w-10 h-10 shrink-0 rounded-2xl bg-white dark:bg-[#1A1829] shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-gray-50 dark:hover:bg-white/10 active:scale-90 transition-all relative group cursor-pointer"
             aria-label="Assistant IA Gbaigbance"
             title="Assistant IA Gbaigbance"
           >
             <div className="relative flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-[#6600FF] transition-transform group-hover:scale-110" />
+              <Sparkles className="w-4 h-4 text-[#6600FF] transition-transform group-hover:scale-110" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-[#1A1829] animate-pulse" />
             </div>
           </button>
