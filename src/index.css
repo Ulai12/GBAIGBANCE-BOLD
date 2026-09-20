@@ -340,7 +340,7 @@
 @layer utilities {
   /* iOS Safe Area & PWA Standalone Adaptations */
   .pt-safe-header {
-    padding-top: max(1.75rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
+    padding-top: max(1.75rem, calc(env(safe-area-inset-top, 0px) + 1rem));
   }
   .pt-safe-subpage {
     padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));

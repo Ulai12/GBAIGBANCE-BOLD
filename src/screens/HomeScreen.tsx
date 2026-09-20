@@ -425,7 +425,7 @@ export function HomeScreen({
       <header className="px-5 pt-safe-header pb-3">
         {/* Ligne Logo & Identité */}
   {/* ✅ Retour au logo w-9 h-9 et aux textes 15px / 9px d'origine */}
-  <div className="flex items-center gap-2.5 mt-0.5 mb-3.5">
+  <div className="flex items-center gap-2.5 mb-3.5">
     <img
       src="/icon.svg"
       alt="Gbaigbance"
