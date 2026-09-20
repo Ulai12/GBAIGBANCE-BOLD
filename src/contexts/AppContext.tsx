@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, createContext, type ReactNode
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
 import { syncGeminiConfigFromAccount, clearGeminiLocalConfig } from '@/services/gemini';
-import { saveCachedProfile, clearCachedUserTickets } from '@/services/cache';
+import { saveCachedProfile, clearCachedUserTickets, clearAllPrivateUserData } from '@/services/cache';
 import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
 import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
 import { clearLocalUserTickets } from '@/services/events';
@@ -17,8 +17,10 @@ export function performSignOutCleanup(userId?: string | null): void {
       clearCachedUserTickets(userId).catch(() => {});
       clearLocalUserTickets(userId);
     } else {
+      clearCachedUserTickets().catch(() => {});
       clearLocalUserTickets();
     }
+    clearAllPrivateUserData(userId || undefined).catch(() => {});
     clearCachedTicketsMemory();
     clearCachedSubscriptions();
     clearUserFavoritesStorage(userId);
@@ -27,17 +29,33 @@ export function performSignOutCleanup(userId?: string | null): void {
     clearGeminiLocalConfig();
 
     if (typeof window !== 'undefined') {
-      // Remove any user-specific storage keys
+      // 1. Specifically purge targeted user keys if userId provided
       if (userId) {
         localStorage.removeItem(`gba_my_events_${userId}`);
         localStorage.removeItem(`gba_tickets_digest_${userId}`);
+        localStorage.removeItem(`gba_user_tickets_${userId}`);
       }
-      localStorage.removeItem('gba_user_tickets');
-      localStorage.removeItem('gba_fav_events_cache');
-      localStorage.removeItem('gba_liked_event_ids_v1');
-      localStorage.removeItem('gba_followed_artists_v1');
-      localStorage.removeItem('gba_followed_orgs_v1');
-      localStorage.removeItem('gba_guest_id');
+
+      // 2. Comprehensive wildcard purge of all user/session data in localStorage
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (
+          k.startsWith('gba_user_') ||
+          k.startsWith('gba_guest_') ||
+          k.startsWith('gba_liked_') ||
+          k.startsWith('gba_followed_') ||
+          k.startsWith('gba_my_events_') ||
+          k.startsWith('gba_tickets_') ||
+          k === 'gba_fav_events_cache' ||
+          k === 'gba_profile' ||
+          k === 'gba_user_tickets' ||
+          k === 'gba_user_tickets_guest' ||
+          k === 'gba_guest_id'
+        ) {
+          localStorage.removeItem(k);
+        }
+      }
 
       // Dispatch global events so all components clear state immediately
       window.dispatchEvent(new CustomEvent('gba-user-signed-out'));
@@ -118,7 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return 'light';
   });
 
-  const activeUserIdRef = useRef<string | null>(null);
+  const activeUserIdRef = useRef<string | null>(getLocalProfile()?.id || null);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -216,15 +234,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     const currentUserId = user?.id || activeUserIdRef.current;
+    // 1. Immediate sync purge of memory and storage (0ms UI reset)
+    performSignOutCleanup(currentUserId);
+    activeUserIdRef.current = null;
+    setUser(null);
+    setSession(null);
+
+    // 2. Perform backend Supabase sign out
     try {
       await authSignOut();
     } catch {
       // Continue cleanup
     }
+
+    // 3. Re-verify storage purge
     performSignOutCleanup(currentUserId);
-    activeUserIdRef.current = null;
-    setUser(null);
-    setSession(null);
   }, [user?.id]);
 
   const t = useCallback((domain: string, key: string) => translate(language, domain, key), [language]);

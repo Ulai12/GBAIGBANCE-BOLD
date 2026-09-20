@@ -478,6 +478,52 @@ export async function clearCachedUserTickets(userId?: string): Promise<void> {
           await del(k);
         }
       }
+      if (typeof window !== 'undefined') {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('gba_tickets_digest_')) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore error
+  }
+}
+
+/**
+ * Purges all private user state (profile snapshots, tickets cache, private keys)
+ * from both IndexedDB and memory. Called on logout / switch to guest.
+ */
+export async function clearAllPrivateUserData(userId?: string): Promise<void> {
+  try {
+    MEMORY_CACHE.profiles?.clear();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('gba_profile');
+      if (userId) {
+        localStorage.removeItem(`gba_tickets_digest_${userId}`);
+      }
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('gba_tickets_digest_') || k === 'gba_profile')) {
+          localStorage.removeItem(k);
+        }
+      }
+    }
+    await del('gba_profile_idb');
+    if (userId) {
+      await del(`${TICKETS_CACHE_PREFIX}${userId}`);
+      await del(`${PROFILE_CACHE_PREFIX}${userId}`);
+    }
+    const allKeys = await keys();
+    for (const k of allKeys) {
+      if (
+        typeof k === 'string' &&
+        (k.startsWith(TICKETS_CACHE_PREFIX) || k.startsWith(PROFILE_CACHE_PREFIX) || k === 'gba_profile_idb')
+      ) {
+        await del(k);
+      }
     }
   } catch {
     // Ignore error

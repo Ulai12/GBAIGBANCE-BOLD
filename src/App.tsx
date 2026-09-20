@@ -98,15 +98,21 @@ function AppContent() {
       }
     };
 
+    const handleUserSignedOut = () => {
+      setLiveTicketCount(0);
+    };
+
     window.addEventListener('gba-ticket-booked', fetchActiveCount);
     window.addEventListener('gba-ticket-cancelled', fetchActiveCount);
     window.addEventListener('gba-tickets-count-changed', handleCountChange);
+    window.addEventListener('gba-user-signed-out', handleUserSignedOut);
 
     return () => {
       unsubRealtime();
       window.removeEventListener('gba-ticket-booked', fetchActiveCount);
       window.removeEventListener('gba-ticket-cancelled', fetchActiveCount);
       window.removeEventListener('gba-tickets-count-changed', handleCountChange);
+      window.removeEventListener('gba-user-signed-out', handleUserSignedOut);
     };
   }, [user?.id]);
 

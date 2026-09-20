@@ -94,17 +94,34 @@ export function FavoritesScreen({
   const [organizations, setOrganizations] = useState<Organization[]>(() => getInitialFavOrgs(followedOrgIds));
   const [loading, setLoading] = useState(() => likedEventIds.size > 0 && getInitialFavEvents(likedEventIds).length === 0);
 
-  // Clear data immediately on user sign out
+  // Clear data immediately on user sign out or reset
   useEffect(() => {
     const handleSignedOut = () => {
       setEvents([]);
       setArtists([]);
       setOrganizations([]);
       setLoading(false);
+      try {
+        localStorage.removeItem('gba_fav_events_cache');
+      } catch {
+        // Storage error
+      }
     };
+
+    const handleReset = (e: globalThis.Event) => {
+      const custom = e as CustomEvent<{ eventType?: string }>;
+      if (custom.detail?.eventType === 'RESET') {
+        handleSignedOut();
+      }
+    };
+
     window.addEventListener('gba-user-signed-out', handleSignedOut);
+    window.addEventListener('gba-favorites-updated', handleReset);
+    window.addEventListener('gba-follows-updated', handleReset);
     return () => {
       window.removeEventListener('gba-user-signed-out', handleSignedOut);
+      window.removeEventListener('gba-favorites-updated', handleReset);
+      window.removeEventListener('gba-follows-updated', handleReset);
     };
   }, []);
 

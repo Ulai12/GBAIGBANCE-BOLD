@@ -15,8 +15,15 @@ export function clearLocalUserTickets(userId?: string | null): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(LOCAL_TICKETS_KEY);
+    localStorage.removeItem('gba_user_tickets_guest');
     if (userId) {
       localStorage.removeItem(getLocalTicketsKey(userId));
+    }
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('gba_user_tickets') || k.startsWith('gba_tickets_digest_'))) {
+        localStorage.removeItem(k);
+      }
     }
   } catch {
     // Ignore

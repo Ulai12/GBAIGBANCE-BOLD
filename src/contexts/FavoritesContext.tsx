@@ -70,6 +70,24 @@ export function clearUserFavoritesStorage(userId?: string | null): void {
       localStorage.removeItem(getFavoritesStorageKey('artists', userId));
       localStorage.removeItem(getFavoritesStorageKey('orgs', userId));
     }
+    // Wildcard purge all favorite & follow keys to prevent any cross-session leakage
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (
+        k &&
+        (k.startsWith('gba_user_likes_') ||
+          k.startsWith('gba_user_artists_') ||
+          k.startsWith('gba_user_orgs_') ||
+          k.startsWith('gba_guest_likes_') ||
+          k.startsWith('gba_guest_artists_') ||
+          k.startsWith('gba_guest_orgs_') ||
+          k.startsWith('gba_liked_') ||
+          k.startsWith('gba_followed_') ||
+          k === 'gba_fav_events_cache')
+      ) {
+        localStorage.removeItem(k);
+      }
+    }
   } catch {
     // Ignore
   }
