@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, Trash2, HelpCircle, Reply, BadgeCheck, Flame, CheckCircle2 } from 'lucide-react';
+import { MessageCircle, Send, Trash2, HelpCircle, Reply, BadgeCheck, Flame, CheckCircle2, Lock } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -8,6 +8,16 @@ import {
   fetchEventQuestions, addEventQuestion, answerEventQuestion,
 } from '@/services/events';
 import type { Event, EventComment, EventReaction, EventQuestion, PublicProfile } from '@/types';
+
+/**
+ * GBAIGBANCE — EventInteractionPanel (Onglets Liquid Glass iOS)
+ * 
+ * Panneau d'interaction communautaire :
+ * - Contrôle segmenté iOS en verre avec role="tablist" et aria-selected
+ * - Onglets : Commentaires (avec compteur), Réactions (emojis), Q & R (organisateur)
+ * - Champs de saisie ergonomiques avec boutons d'envoi 44px
+ * - État invité lisible et aéré
+ */
 
 const REACTION_EMOJIS = ['🔥', '❤️', '👏', '🎉', '😮', '🎵'];
 
@@ -92,13 +102,16 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
   };
 
   const handleReaction = async (emoji: string) => {
-    if (!user) { onToast({ message: 'Connectez-vous pour réagir', type: 'info' }); return; }
+    if (!user) {
+      onToast({ message: 'Connectez-vous pour réagir', type: 'info' });
+      return;
+    }
     try {
       await toggleEventReaction(event.id, user.id, emoji);
       loadReactions();
     } catch (err) {
       console.error('toggleEventReaction error:', err);
-      onToast({ message: 'Erreur', type: 'error' });
+      onToast({ message: 'Erreur lors de la réaction', type: 'error' });
     }
   };
 
@@ -122,7 +135,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
     try {
       await addEventQuestion(event.id, user.id, text);
       loadQuestions();
-      onToast({ message: 'Question posée !', type: 'success' });
+      onToast({ message: 'Question posée à l\'organisateur !', type: 'success' });
     } catch (err) {
       console.error('addEventQuestion error:', err);
       setQuestions((prev) => prev.filter((q) => q.id !== optimistic.id));
@@ -141,7 +154,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       setAnsweringId(null);
       setAnswerDraft('');
       loadQuestions();
-      onToast({ message: 'Réponse publiée !', type: 'success' });
+      onToast({ message: 'Réponse officielle publiée !', type: 'success' });
     } catch (err) {
       console.error('answerEventQuestion error:', err);
       onToast({ message: 'Impossible de publier la réponse', type: 'error' });
@@ -159,11 +172,15 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
   const totalReactions = reactions.length;
 
   return (
-    <div className="mt-6">
-      {/* Segmented Tab Bar iOS */}
-      <div className="flex gap-1 p-1 bg-black/[0.05] dark:bg-white/[0.08] backdrop-blur-md rounded-2xl mb-4 border border-black/[0.04] dark:border-white/[0.06]">
+    <div className="pt-2 space-y-4">
+      {/* Contrôle segmenté en verre iOS */}
+      <div
+        role="tablist"
+        aria-label="Interactions de l'événement"
+        className="grid grid-cols-3 p-1.5 rounded-2xl glass-ios shadow-xs gap-1"
+      >
         {[
-          { id: 'comments' as Tab, label: 'Commentaires', icon: MessageCircle, count: comments.length },
+          { id: 'comments' as Tab, label: 'Avis', icon: MessageCircle, count: comments.length },
           { id: 'reactions' as Tab, label: 'Réactions', icon: Flame, count: totalReactions },
           { id: 'qa' as Tab, label: 'Q & R', icon: HelpCircle, count: questions.length },
         ].map((t) => {
@@ -172,19 +189,26 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
           return (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`panel-${t.id}`}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none active:scale-[0.98] ${
                 isActive
-                  ? 'bg-white dark:bg-[#6600FF] shadow-sm text-[#17131D] dark:text-white'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  ? 'bg-[#6600FF] text-white shadow-sm shadow-[#6600FF]/30'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-[#1A1A2E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{t.label}</span>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate">{t.label}</span>
               {t.count > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                  isActive ? 'bg-[#6600FF]/10 dark:bg-white/20' : 'bg-black/5 dark:bg-white/10'
-                }`}>
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums ${
+                    isActive
+                      ? 'bg-white/25 text-white'
+                      : 'bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
                   {t.count}
                 </span>
               )}
@@ -193,68 +217,75 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
         })}
       </div>
 
+      {/* Onglet 1 : Commentaires & Discussions */}
       {tab === 'comments' && (
-        <div className="animate-fade-in">
+        <div id="panel-comments" role="tabpanel" className="space-y-3.5">
           {comments.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageCircle className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Soyez le premier à commenter !</p>
+            <div className="text-center py-7 px-4 rounded-[22px] glass-ios space-y-1.5">
+              <MessageCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
+              <p className="text-sm font-bold text-[#1A1A2E] dark:text-white">
+                Soyez le premier à commenter !
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Partagez votre enthousiasme ou posez vos questions à la communauté.
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08] mb-4 overflow-hidden rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04]">
+            <div className="space-y-2.5">
               {comments.map((c) => (
                 <div
                   key={c.id}
-                  className={`flex gap-3 p-4 transition-opacity ${
-                    c.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'
-                  } ${c.is_organizer_reply ? 'bg-[#6600FF]/[0.05] dark:bg-[#6600FF]/15' : ''}`}
+                  className={`p-3.5 sm:p-4 rounded-[22px] border transition-all ${
+                    c.is_organizer_reply
+                      ? 'bg-[#6600FF]/[0.08] dark:bg-[#6600FF]/20 border-[#6600FF]/30'
+                      : 'glass-ios'
+                  } ${c.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'}`}
                 >
-                  <UserAvatar
-                    src={c.profile?.avatar_url}
-                    name={c.profile?.name || 'Anonyme'}
-                    role={c.is_organizer_reply ? 'organizer' : 'attendee'}
-                    size="sm"
-                    className="shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-[#17131D] dark:text-white">
-                        {c.profile?.name || 'Anonyme'}
-                      </span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        · {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                      </span>
-                      {c.is_organizer_reply && (
-                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/10 dark:bg-purple-900/30 px-1.5 py-0.5 rounded-full">
-                          <BadgeCheck className="w-3 h-3" /> Organisateur
+                  <div className="flex items-start gap-3">
+                    <UserAvatar
+                      src={c.profile?.avatar_url}
+                      name={c.profile?.name || 'Anonyme'}
+                      role={c.is_organizer_reply ? 'organizer' : 'attendee'}
+                      size="sm"
+                      className="shrink-0 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-extrabold text-[#1A1A2E] dark:text-white">
+                          {c.profile?.name || 'Anonyme'}
                         </span>
-                      )}
-                      {!c.id.startsWith('temp-') && (c.user_id === user?.id || isOrganizer) && (
-                        <button
-                          onClick={() => handleDeleteComment(c.id)}
-                          className="ml-auto text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
-                          aria-label="Supprimer le commentaire"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 mt-1 break-words">
-                      {c.body}
-                    </p>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
-                      <span>Discussion</span>
-                      {c.is_organizer_reply && (
-                        <span className="text-[#6600FF] dark:text-purple-300 font-medium">Réponse officielle</span>
-                      )}
+                        <span className="text-[11px] text-gray-400">
+                          · {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {c.is_organizer_reply && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/15 px-2 py-0.5 rounded-full">
+                            <BadgeCheck className="w-3 h-3" /> Organisateur
+                          </span>
+                        )}
+                        {!c.id.startsWith('temp-') && (c.user_id === user?.id || isOrganizer) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="ml-auto text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+                            aria-label="Supprimer le commentaire"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-200 mt-1 leading-relaxed break-words">
+                        {c.body}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          {/* Formulaire d'ajout de commentaire ou message invité */}
           {user ? (
-            <div className="flex gap-2 items-end rounded-2xl border border-black/[0.07] dark:border-white/10 bg-white/80 dark:bg-white/[0.05] p-2.5 shadow-xs">
+            <div className="p-2.5 rounded-[22px] glass-ios flex items-end gap-2 shadow-xs">
               <UserAvatar
                 src={user.avatar_url}
                 name={user.name}
@@ -271,75 +302,89 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     handleAddComment();
                   }
                 }}
-                placeholder="Ajouter un commentaire..."
-                className="flex-1 px-3.5 py-2.5 bg-gray-100 dark:bg-white/[0.07] rounded-xl text-sm text-[#17131D] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 resize-none min-h-[42px] max-h-24"
+                placeholder="Ajouter un commentaire sur l'événement..."
+                className="flex-1 px-3.5 py-2.5 bg-white/70 dark:bg-white/[0.08] rounded-xl text-xs sm:text-sm text-[#1A1A2E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 resize-none min-h-[44px] max-h-24 border border-black/5 dark:border-white/10"
                 rows={1}
               />
               <button
+                type="button"
                 onClick={handleAddComment}
                 disabled={!commentText.trim() || submittingComment}
-                className="w-10 h-10 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
-                aria-label="Envoyer"
+                className="w-11 h-11 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
+                aria-label="Envoyer le commentaire"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-3 font-medium">
-              Connectez-vous pour commenter
-            </p>
+            <div className="p-4 rounded-[22px] glass-ios text-center space-y-1">
+              <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center mx-auto text-gray-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                Connectez-vous pour participer à la discussion
+              </p>
+            </div>
           )}
         </div>
       )}
 
+      {/* Onglet 2 : Réactions Emoji */}
       {tab === 'reactions' && (
-        <div className="animate-fade-in">
-          <div className="grid grid-cols-3 gap-3">
+        <div id="panel-reactions" role="tabpanel" className="space-y-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
             {reactionCounts.map(({ emoji, count, mine }) => (
               <button
                 key={emoji}
+                type="button"
                 onClick={() => handleReaction(emoji)}
-                className={`flex flex-col items-center gap-1.5 p-4 rounded-2xl border-2 transition-all active:scale-95 cursor-pointer ${
+                className={`flex flex-col items-center justify-center gap-1 p-3.5 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
                   mine
-                    ? 'border-[#6600FF] bg-[#6600FF]/10 dark:bg-[#6600FF]/20 shadow-xs'
-                    : 'border-black/5 dark:border-white/10 bg-white dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
+                    ? 'border-[#6600FF] bg-[#6600FF]/15 dark:bg-[#6600FF]/25 shadow-xs'
+                    : 'glass-ios hover:border-black/20 dark:hover:border-white/20'
                 }`}
               >
-                <span className={`text-3xl transition-transform ${mine ? 'scale-110' : ''}`}>{emoji}</span>
-                <span className="text-sm font-black text-[#17131D] dark:text-white">{count}</span>
+                <span className={`text-2xl transition-transform ${mine ? 'scale-115' : ''}`}>
+                  {emoji}
+                </span>
+                <span className="text-xs font-black text-[#1A1A2E] dark:text-white tabular-nums">
+                  {count}
+                </span>
               </button>
             ))}
           </div>
+
           {!user && (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-4 font-medium">
-              Connectez-vous pour réagir
+            <p className="text-center text-xs text-gray-500 dark:text-gray-400 pt-1 font-medium">
+              Connectez-vous pour ajouter votre réaction en direct.
             </p>
           )}
         </div>
       )}
 
+      {/* Onglet 3 : Questions & Réponses (Q & R) */}
       {tab === 'qa' && (
-        <div className="animate-fade-in">
+        <div id="panel-qa" role="tabpanel" className="space-y-3.5">
           {questions.length === 0 ? (
-            <div className="text-center py-8">
-              <HelpCircle className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Aucune question pour le moment</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Posez la première question à l'organisateur</p>
+            <div className="text-center py-7 px-4 rounded-[22px] glass-ios space-y-1.5">
+              <HelpCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
+              <p className="text-sm font-bold text-[#1A1A2E] dark:text-white">
+                Aucune question pour le moment
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Posez la première question directement à l'organisateur.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 mb-4">
+            <div className="space-y-3">
               {questions.map((q) => (
                 <div
                   key={q.id}
-                  className={`rounded-2xl overflow-hidden border transition-opacity ${
-                    q.id.startsWith('temp-') ? 'opacity-60' : 'opacity-100'
-                  } ${
-                    q.answer
-                      ? 'bg-white dark:bg-white/[0.04] border-black/5 dark:border-white/10'
-                      : 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-500/20'
+                  className={`p-4 rounded-[22px] border transition-all ${
+                    q.answer ? 'glass-ios' : 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-500/30'
                   }`}
                 >
-                  <div className="flex gap-3 p-4">
+                  <div className="flex items-start gap-3">
                     <UserAvatar
                       src={q.profile?.avatar_url}
                       name={q.profile?.name || 'Anonyme'}
@@ -349,48 +394,53 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-bold text-[#17131D] dark:text-white">
+                        <span className="text-xs font-extrabold text-[#1A1A2E] dark:text-white">
                           {q.profile?.name || 'Anonyme'}
                         </span>
                         {q.answer ? (
-                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/40 px-2 py-0.5 rounded-full">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
                             <CheckCircle2 className="w-3 h-3" /> Répondu
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">
-                            En attente
+                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-full">
+                            En attente de réponse
                           </span>
                         )}
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
+                        <span className="text-[10px] text-gray-400 ml-auto">
                           {new Date(q.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 mt-1.5 font-medium">
+
+                      <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mt-1 font-medium leading-relaxed">
                         {q.question}
                       </p>
                     </div>
                   </div>
+
+                  {/* Réponse officielle */}
                   {q.answer && (
-                    <div className="mx-4 mb-4 pl-3.5 border-l-2 border-[#6600FF] dark:border-purple-400 bg-[#6600FF]/5 dark:bg-[#6600FF]/15 rounded-r-xl p-3">
+                    <div className="mt-3 pl-3.5 border-l-2 border-[#6600FF] bg-[#6600FF]/5 dark:bg-[#6600FF]/15 rounded-r-xl p-3">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Reply className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-300" />
                         <span className="text-xs font-bold text-[#6600FF] dark:text-purple-300">
                           {q.answerer?.name || 'Organisateur'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                         {q.answer}
                       </p>
                     </div>
                   )}
+
+                  {/* Possibilité pour l'organisateur de répondre */}
                   {isOrganizer && !q.answer && !q.id.startsWith('temp-') && (
-                    <div className="px-4 pb-4">
+                    <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5">
                       {answeringId === q.id ? (
                         <div className="flex gap-2 items-center">
                           <input
                             type="text"
                             autoFocus
-                            placeholder="Votre réponse..."
+                            placeholder="Votre réponse officielle..."
                             value={answerDraft}
                             onChange={(e) => setAnswerDraft(e.target.value)}
                             onKeyDown={(e) => {
@@ -400,27 +450,30 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                                 setAnswerDraft('');
                               }
                             }}
-                            className="flex-1 px-3 py-2 bg-white dark:bg-white/[0.08] text-[#17131D] dark:text-white rounded-xl text-sm border border-[#6600FF]/30 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40"
+                            className="flex-1 min-h-[40px] px-3.5 py-1.5 bg-white dark:bg-white/[0.08] text-[#1A1A2E] dark:text-white rounded-xl text-xs border border-[#6600FF]/40 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/50"
                           />
                           <button
+                            type="button"
                             onClick={() => handleAnswer(q.id)}
                             disabled={submittingAnswer || !answerDraft.trim()}
-                            className="px-3.5 py-2 bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold rounded-xl disabled:opacity-40 active:scale-90 transition-transform shrink-0 cursor-pointer"
+                            className="min-h-[40px] px-3.5 py-1.5 bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold rounded-xl disabled:opacity-40 transition-transform active:scale-95 shrink-0 cursor-pointer"
                           >
                             Publier
                           </button>
                           <button
+                            type="button"
                             onClick={() => {
                               setAnsweringId(null);
                               setAnswerDraft('');
                             }}
-                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                           >
                             ✕
                           </button>
                         </div>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => {
                             setAnsweringId(q.id);
                             setAnswerDraft('');
@@ -436,8 +489,10 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
               ))}
             </div>
           )}
+
+          {/* Formulaire de question */}
           {user ? (
-            <div className="flex gap-2 items-center rounded-2xl border border-black/[0.07] dark:border-white/10 bg-white/80 dark:bg-white/[0.05] p-2.5 shadow-xs">
+            <div className="p-2.5 rounded-[22px] glass-ios flex items-center gap-2 shadow-xs">
               <UserAvatar
                 src={user.avatar_url}
                 name={user.name}
@@ -452,22 +507,28 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAskQuestion();
                 }}
-                placeholder="Posez une question à l'organisateur..."
-                className="flex-1 px-3.5 py-2.5 bg-gray-100 dark:bg-white/[0.07] rounded-xl text-sm text-[#17131D] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40"
+                placeholder="Poser une question à l'organisateur..."
+                className="flex-1 min-h-[44px] px-3.5 py-2 bg-white/70 dark:bg-white/[0.08] rounded-xl text-xs sm:text-sm text-[#1A1A2E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 border border-black/5 dark:border-white/10"
               />
               <button
+                type="button"
                 onClick={handleAskQuestion}
                 disabled={!questionText.trim() || submittingQuestion}
-                className="w-10 h-10 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-90 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
-                aria-label="Envoyer"
+                className="w-11 h-11 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
+                aria-label="Envoyer la question"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-3 font-medium">
-              Connectez-vous pour poser une question
-            </p>
+            <div className="p-4 rounded-[22px] glass-ios text-center space-y-1">
+              <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center mx-auto text-gray-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                Connectez-vous pour poser une question à l'organisateur
+              </p>
+            </div>
           )}
         </div>
       )}

@@ -1,10 +1,24 @@
 import { useState, useEffect } from 'react';
 import {
-  ChevronLeft, Share2, Heart, MapPin, Calendar, Clock,
-  BadgeCheck, Ticket, Settings, Eye, Film, Edit3,
-  CheckCircle2, AlertTriangle, Users
+  ChevronLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  Share2,
+  Heart,
+  Eye,
+  Users,
+  Ticket,
+  BadgeCheck,
+  Film,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { useScrollGlass } from '@/hooks/useScrollGlass';
+import { formatNumber } from '@/utils/format';
+import { COUNTRY_FLAGS } from '@/constants';
+import type { Event, EventWithRelations, Artist, EventCollaborator, TicketOption } from '@/types';
 import {
   fetchEventById,
   fetchCollaborators,
@@ -12,28 +26,27 @@ import {
   incrementEventViews,
   subscribeToEventLive,
   subscribeToTicketInventory,
-  isEventTerminated
+  isEventTerminated,
 } from '@/services/events';
-import { getPublicEventCache, setPublicEventCache } from '@/services/cache';
-import { useFavorites } from '@/contexts/FavoritesContext';
-import { formatFullDate, formatTime, formatNumber } from '@/utils/format';
-import { COUNTRY_FLAGS } from '@/constants';
-import { BookingModal } from '@/components/BookingModal';
-import { EventMapPreview } from '@/components/EventMapPreview';
+import { getPublicEventCache, setPublicEventCache } from '@/infrastructure/cache/storage';
+import { shareEventNative } from '@/utils/share';
+import { haptic } from '@/hooks/useHaptics';
+
+// Subcomponents
+import { ProgressiveBlurHero } from '@/components/event-detail/ProgressiveBlurHero';
+import { EventCountdown } from '@/components/event-detail/EventCountdown';
+import { EventTicketsList } from '@/components/event-detail/EventTicketsList';
 import { EventAIInsights } from '@/components/EventAIInsights';
+import { EventMapPreview } from '@/components/EventMapPreview';
 import { EventInteractionPanel } from '@/components/EventInteractionPanel';
 import { EventSchedule } from '@/components/EventSchedule';
 import { EventLiveLinks } from '@/components/EventLiveLinks';
 import { EventSponsors } from '@/components/EventSponsors';
+import { BookingModal } from '@/components/BookingModal';
 import { EventManagementModal } from '@/components/EventManagementModal';
 import { Lightbox } from '@/components/Lightbox';
 import { ShareModal } from '@/components/ShareModal';
-import { shareEventNative } from '@/utils/share';
 import { UserAvatar } from '@/components/UserAvatar';
-import { haptic } from '@/hooks/useHaptics';
-import { useScrollGlass } from '@/hooks/useScrollGlass';
-import type { Event, EventWithRelations, Artist, EventCollaborator, TicketOption } from '@/types';
-import type { ToastData } from '@/components/Toast';
 
 interface EventDetailScreenProps {
   event: Event;
@@ -42,11 +55,26 @@ interface EventDetailScreenProps {
   onBook: (event: Event) => void;
   onEditEvent?: (event: Event) => void;
   onOpenAISettings?: () => void;
-  onToast: (toast: Omit<ToastData, 'id'>) => void;
+  onToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void;
 }
 
 function useCountdown(targetDate: string) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  }>(() => {
+    const diff = new Date(targetDate).getTime() - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((diff % (1000 * 60)) / 1000),
+    };
+  });
+
   useEffect(() => {
     const timer = setInterval(() => {
       const diff = new Date(targetDate).getTime() - Date.now();
@@ -63,6 +91,7 @@ function useCountdown(targetDate: string) {
     }, 1000);
     return () => clearInterval(timer);
   }, [targetDate]);
+
   return timeLeft;
 }
 
@@ -89,115 +118,126 @@ export function EventDetailScreen({
   event,
   onBack,
   onArtistClick,
+  onBook,
   onEditEvent,
   onOpenAISettings,
   onToast,
 }: EventDetailScreenProps) {
-  const { t, language, user, theme } = useApp();
+  const { user, theme, language } = useApp();
   const { isLiked, toggleLike } = useFavorites();
   const liked = isLiked(event.id);
+  const { scrollY } = useScrollGlass(12);
+
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
   const [showBooking, setShowBooking] = useState(false);
   const [selectedTicketOptionId, setSelectedTicketOptionId] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
   const [collaborators, setCollaborators] = useState<EventCollaborator[]>([]);
   const [ticketOptions, setTicketOptions] = useState<TicketOption[]>([]);
-  const [liveViews, setLiveViews] = useState<number>(event.views_count || 0);
-  const [liveAttendees, setLiveAttendees] = useState<number>(event.attendees_count || 0);
+  const [liveViews, setLiveViews] = useState(event.views_count);
+  const [liveAttendees, setLiveAttendees] = useState(event.attendees_count);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
-  const countdown = useCountdown(event.starts_at);
 
-  const handleShare = async () => {
-    const status = await shareEventNative(displayEvent, onToast);
-    if (status !== 'shared' && status !== 'cancelled') {
-      setShowShareModal(true);
-    }
-  };
+  const countdown = useCountdown(event.date);
 
+  // Synchronisation des variables CSS de parallaxe sans à-coups (rAF passif)
   useEffect(() => {
-    // 1. Instant paint from IndexedDB cache if available
-    getPublicEventCache(event.id).then(({ data: cached }) => {
-      if (cached && cached.id === event.id) {
-        setFullEvent((curr) => curr || cached);
-      }
-    });
+    let animationFrameId: number;
+    const handleScroll = () => {
+      animationFrameId = window.requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const progress = Math.min(1, Math.max(0, y / 360));
+        document.documentElement.style.setProperty('--scroll-y', `${y}px`);
+        document.documentElement.style.setProperty('--scroll-progress', `${progress}`);
+      });
+    };
 
-    // 2. Fresh network fetch
-    fetchEventById(event.id)
-      .then((data) => {
-        if (data && data.id === event.id) {
-          setFullEvent(data);
-          setLiveViews(data.views_count || 0);
-          setLiveAttendees(data.attendees_count || 0);
-          setPublicEventCache(event.id, data);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  // Chargement offline-first et Supabase de l'événement
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicEventCache(event.id)
+      .then((cached) => {
+        if (cached?.data && isMounted) {
+          setFullEvent(cached.data);
+          if (cached.data.ticket_options) setTicketOptions(cached.data.ticket_options);
         }
       })
       .catch(() => {});
 
-    fetchCollaborators(event.id).then(setCollaborators).catch(() => {});
-    fetchTicketOptions(event.id).then(setTicketOptions).catch(() => {});
-    incrementEventViews(event.id).catch(() => {});
-
-    // Real-time Supabase subscriptions: status, attendance, views, and live inventory
-    const unsubEvent = subscribeToEventLive(event.id, {
-      onStatusChange: (newStatus) => {
-        setFullEvent((prev) => (prev ? { ...prev, status: newStatus as Event['status'] } : null));
-        if (newStatus === 'cancelled') {
-          onToast({ message: 'Cet événement vient d’être annulé.', type: 'info' });
+    fetchEventById(event.id)
+      .then((data) => {
+        if (!isMounted) return;
+        if (data) {
+          setFullEvent(data);
+          setLiveViews(data.views_count);
+          setLiveAttendees(data.attendees_count);
+          setPublicEventCache(event.id, data).catch(() => {});
         }
+      })
+      .catch((err) => {
+        console.error('Error fetching event details:', err);
+      });
+
+    fetchCollaborators(event.id)
+      .then((c) => isMounted && setCollaborators(c))
+      .catch((err) => console.error('collabs err', err));
+
+    fetchTicketOptions(event.id)
+      .then((opts) => isMounted && setTicketOptions(opts))
+      .catch((err) => console.error('ticket opts err', err));
+
+    incrementEventViews(event.id)
+      .then(() => isMounted && setLiveViews((v) => v + 1))
+      .catch(() => {});
+
+    const unsubLive = subscribeToEventLive(event.id, {
+      onStatusChange: (newStatus) => {
+        if (!isMounted) return;
+        setFullEvent((prev) => (prev ? { ...prev, status: newStatus } : null));
       },
-      onAttendeesChange: (count) => setLiveAttendees(count),
-      onViewsChange: (count) => setLiveViews(count),
-      onEventUpdate: (updated) => {
-        setFullEvent((prev) => {
-          if (!prev) return null;
-          const merged = { ...prev, ...updated };
-          setPublicEventCache(event.id, merged);
-          return merged;
-        });
+      onAttendeesChange: (newCount) => {
+        if (!isMounted) return;
+        setLiveAttendees(newCount);
+      },
+      onViewsChange: (newCount) => {
+        if (!isMounted) return;
+        setLiveViews(newCount);
+      },
+      onEventUpdate: (updatedEvent) => {
+        if (!isMounted) return;
+        setFullEvent((prev) => (prev ? { ...prev, ...updatedEvent } : (updatedEvent as EventWithRelations)));
       },
     });
 
-    const unsubInventory = subscribeToTicketInventory(event.id, (updatedOption) => {
-      setTicketOptions((prev) => {
-        const idx = prev.findIndex((o) => o.id === updatedOption.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], ...updatedOption };
-          return next;
-        }
-        return [...prev, updatedOption];
-      });
+    const unsubTickets = subscribeToTicketInventory(event.id, (updatedOption) => {
+      if (!isMounted) return;
+      setTicketOptions((prev) =>
+        prev.map((opt) => (opt.id === updatedOption.id ? { ...opt, ...updatedOption } : opt))
+      );
     });
 
     return () => {
-      unsubEvent();
-      unsubInventory();
+      isMounted = false;
+      unsubLive();
+      unsubTickets();
     };
-  }, [event.id, onToast]);
-
-  const { isScrolled } = useScrollGlass(220);
-
-  const handleLike = async () => {
-    try {
-      haptic.medium();
-      const willBeLiked = !liked;
-      await toggleLike(event.id);
-      onToast({
-        message: willBeLiked ? 'Ajouté aux favoris' : 'Retiré des favoris',
-        type: 'success',
-      });
-    } catch {
-      haptic.error();
-      onToast({ message: 'Erreur lors de la mise à jour', type: 'error' });
-    }
-  };
+  }, [event.id]);
 
   const displayEvent = fullEvent && fullEvent.id === event.id ? fullEvent : event;
   const isDark = theme === 'dark';
 
-  // Safe extraction of artists
+  // Extraction propre des artistes
   const rawEventArtists = (displayEvent as EventWithRelations)?.event_artists;
   const artists: Artist[] = Array.isArray(rawEventArtists)
     ? rawEventArtists
@@ -238,20 +278,76 @@ export function EventDetailScreen({
 
   const videoInfo = getVideoEmbedUrl(displayEvent.video_url);
 
+  const handleShare = async () => {
+    haptic.selection();
+    const shared = await shareEventNative(displayEvent, onToast);
+    if (!shared) {
+      setShowShareModal(true);
+    }
+  };
+
+  const handleLike = () => {
+    toggleLike(event.id);
+    if (!liked) {
+      haptic.success();
+      onToast({ message: 'Ajouté à vos favoris', type: 'success' });
+    } else {
+      haptic.light();
+      onToast({ message: 'Retiré de vos favoris', type: 'info' });
+    }
+  };
+
   const handleSelectPass = (optionId: string) => {
     haptic.selection();
     setSelectedTicketOptionId(optionId);
     setShowBooking(true);
+    onBook?.(displayEvent as Event);
   };
 
+  // Formatage de la date en français
+  const eventDateObj = new Date(displayEvent.date);
+  const formattedDate = !isNaN(eventDateObj.getTime())
+    ? eventDateObj.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : displayEvent.date;
+
+  const timeText = displayEvent.time_end
+    ? `${displayEvent.time} - ${displayEvent.time_end}`
+    : displayEvent.time;
+
+  // L'en-tête compact n'apparaît qu'après le hero pour éviter TOUT chevauchement visuel avec le titre et le compte à rebours
+  const showCompactHeader = scrollY > 260;
+
   return (
-    <div className="min-h-screen pb-36 bg-gray-50 dark:bg-[#0C0A13]">
-      {/* Sticky Adaptive Liquid Glass Header (appears on scroll) */}
-      <div
-        className={`fixed top-0 left-0 right-0 z-30 px-5 pt-safe-header pb-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
-          isScrolled
-            ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.06] dark:border-white/[0.08] shadow-sm translate-y-0 opacity-100 pointer-events-auto'
-            : '-translate-y-full opacity-0 pointer-events-none'
+    <div className="min-h-screen relative text-[#1A1A2E] dark:text-white antialiased selection:bg-[#6600FF]/20">
+      {/* 
+        AMBIENT BACKGROUND (Statique, très flouté, optimisé mobile)
+        Fournit la radiance colorimétrique de l'affiche sans saccade matérielle.
+      */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden select-none">
+        <img
+          src={coverImage}
+          alt=""
+          decoding="async"
+          className="w-full h-full object-cover scale-140 filter blur-[42px] saturate-[1.4] opacity-45 dark:opacity-25 transform-gpu"
+        />
+        {/* Voile de thème préservant la lisibilité stricte WCAG AA */}
+        <div className="absolute inset-0 bg-[#f4f1ff]/88 dark:bg-[#0c0a14]/92" />
+      </div>
+
+      {/* 
+        EN-TÊTE COMPACT AU SCROLL (Fond de verre ultra-opaque pour zéro chevauchement)
+        N'apparaît que quand le hero défile hors champ (scrollY > 260px).
+      */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-40 px-4 sm:px-6 pt-safe-header pb-3 transition-all duration-300 flex items-center justify-between border-b ${
+          showCompactHeader
+            ? 'bg-white/95 dark:bg-[#0c0a14]/95 backdrop-blur-2xl border-black/10 dark:border-white/10 shadow-md translate-y-0 opacity-100 pointer-events-auto'
+            : '-translate-y-full opacity-0 pointer-events-none border-transparent'
         }`}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
@@ -262,222 +358,154 @@ export function EventDetailScreen({
               onBack();
             }}
             aria-label="Retour"
-            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform shrink-0"
+            className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform shrink-0 cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <p className="font-extrabold text-sm sm:text-base text-[#1A1A2E] dark:text-white truncate">
-            {displayEvent.title}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="font-black text-sm sm:text-base text-[#1A1A2E] dark:text-white truncate">
+              {displayEvent.title}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {displayEvent.city} · {displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              haptic.light();
-              handleShare();
-            }}
-            aria-label="Partager"
-            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform"
+            onClick={handleShare}
+            aria-label="Partager cet événement"
+            className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform shrink-0 cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={handleLike}
-            aria-label="Favoris"
-            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
+            aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform shrink-0 cursor-pointer"
           >
             <Heart className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'text-[#1A1A2E] dark:text-white'}`} />
           </button>
         </div>
-      </div>
-      {/* Hero Header with full cover backdrop */}
-      <div className="relative h-[24rem] sm:h-[28rem] overflow-hidden bg-black">
-        <button
-          type="button"
-          onClick={() => setLightboxSrc(coverImage)}
-          className="absolute inset-0 z-0 cursor-zoom-in block w-full h-full"
-          aria-label="Ouvrir la photo en plein écran"
-        >
-          <img
-            src={coverImage}
-            alt={displayEvent.title}
-            className="w-full h-full object-cover scale-[1.02] filter brightness-95"
-          />
-        </button>
+      </header>
 
-        {/* Ambient Top & Bottom Blurs */}
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+      {/* 
+        HERO VISUEL PROGRESSIF (Flou multi-strates & boutons circulaires 44px)
+      */}
+      <ProgressiveBlurHero
+        event={displayEvent as Event}
+        coverImage={coverImage}
+        galleryCount={galleryImages.length}
+        liked={liked}
+        isOrganizer={isOrganizer}
+        onBack={() => {
+          haptic.light();
+          onBack();
+        }}
+        onLike={handleLike}
+        onShare={handleShare}
+        onOpenLightbox={(src) => setLightboxSrc(src)}
+        onEditEvent={onEditEvent}
+        onOpenManage={() => setShowManage(true)}
+      />
 
-        {/* Top iOS Floating Navigation Bar */}
-        <div className="absolute top-0 left-0 right-0 pt-safe-header px-5 flex items-center justify-between z-20 pointer-events-auto">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Retour"
-            className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform cursor-pointer"
-          >
-            <ChevronLeft className="w-5 h-5 text-white" />
-          </button>
-
-          <div className="flex items-center gap-2">
-            {isOrganizer && onEditEvent && (
-              <button
-                type="button"
-                onClick={() => onEditEvent(displayEvent as Event)}
-                aria-label="Modifier l’événement"
-                className="h-10 px-3.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/20 flex items-center gap-1.5 text-white text-xs font-bold shadow-lg active:scale-95 transition-transform cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-white" />
-                <span className="hidden sm:inline">Modifier</span>
-              </button>
-            )}
-
-            {isOrganizer && (
-              <button
-                type="button"
-                onClick={() => setShowManage(true)}
-                aria-label="Gérer l’événement"
-                className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform cursor-pointer"
-              >
-                <Settings className="w-5 h-5 text-white" />
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleShare}
-              aria-label="Partager l’événement"
-              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform cursor-pointer"
-            >
-              <Share2 className="w-5 h-5 text-white" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleLike}
-              aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform cursor-pointer"
-            >
-              <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Frosted Glass Overlapping Card (Aesthetic Revert to blurred iOS Glass) */}
-      <div className="max-w-xl mx-auto px-4 sm:px-6 relative z-10 -mt-12 sm:-mt-16">
-        <div className="rounded-t-[32px] sm:rounded-t-[40px] bg-white/85 dark:bg-[#12101F]/85 backdrop-blur-2xl border-t border-x border-white/60 dark:border-white/10 shadow-2xl p-5 sm:p-7 space-y-5">
-          
-          {/* Top Metadata Capsule Row: Category, City, Photos count (No rating/reviews) */}
+      {/* 
+        FEUILLE DE CONTENU (Bottom Sheet en Verre Liquid Glass)
+        Monte avec une courbure 32px sur le hero flouté.
+        Padding-bottom de sécurité généreux (pb-44) pour dégager complètement la barre flottante.
+      */}
+      <main className="-mt-10 sm:-mt-14 relative z-20 max-w-xl mx-auto px-4 sm:px-6 pb-44 sm:pb-48 space-y-5">
+        {/* Carte Principale : Identité, Titre, Badges, Compte à rebours, Date/Heure */}
+        <section className="p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] glass-ios border border-white/60 dark:border-white/15 space-y-5 shadow-xl">
+          {/* Ligne des badges : Catégorie violet plein + Ville en verre + Statut éventuel */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-[#6600FF] text-white shadow-sm shadow-[#6600FF]/30 tracking-wide uppercase">
-                {t('events', `categories.${event.category}`)}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3.5 py-1 rounded-full bg-[#6600FF] text-white text-xs font-black uppercase tracking-wider shadow-sm shadow-[#6600FF]/30">
+                {displayEvent.category}
               </span>
-              <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-black/[0.05] dark:bg-white/[0.08] text-[#17131D] dark:text-gray-200 border border-black/[0.04] dark:border-white/[0.06]">
-                {flag} {displayEvent.city}
+              <span className="px-3 py-1 rounded-full glass-ios text-xs font-extrabold text-[#1A1A2E] dark:text-white flex items-center gap-1.5 shadow-2xs">
+                <span>{flag}</span>
+                <span>{displayEvent.city}</span>
               </span>
             </div>
 
-            {galleryImages.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setLightboxSrc(coverImage)}
-                className="rounded-full bg-black/[0.06] dark:bg-white/10 px-3 py-1.5 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-black/10 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Film className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
-                <span>{galleryImages.length} photos</span>
-              </button>
+            {/* Badge de statut du cycle de vie */}
+            {statusLabel && (
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>{statusLabel}</span>
+              </span>
             )}
           </div>
 
-          {/* Lifecycle Alert if not published */}
-          {statusLabel && (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-bold">
-              <AlertTriangle className="w-4 h-4" />
-              <span>{statusLabel}</span>
-            </div>
-          )}
-
-          {/* Event Title */}
-          <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white leading-tight tracking-tight">
+          {/* Titre de l'événement */}
+          <h1 className="text-2xl sm:text-3xl font-black text-[#1A1A2E] dark:text-white tracking-tight leading-tight">
             {displayEvent.title}
           </h1>
 
-          {/* Minimalist Apple Glass Countdown Bar (Without "COMPTE À REBOURS" headline) */}
-          {!eventHasEnded && (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#171328] via-[#211B38] to-[#171328] text-white shadow-md border border-white/10">
-              <div className="grid grid-cols-4 gap-2 text-center">
-                {[
-                  { label: 'Jours', value: countdown.days },
-                  { label: 'Heures', value: countdown.hours },
-                  { label: 'Min', value: countdown.minutes },
-                  { label: 'Sec', value: countdown.seconds },
-                ].map((unit) => (
-                  <div key={unit.label} className="py-2 px-1 rounded-xl bg-white/[0.06] border border-white/[0.08]">
-                    <p className="text-xl sm:text-2xl font-black text-white tabular-nums tracking-tight">
-                      {String(unit.value).padStart(2, '0')}
-                    </p>
-                    <p className="text-[10px] font-bold text-purple-200/70 uppercase mt-0.5 tracking-wider">
-                      {unit.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 
+            COMPTE À REBOURS ÉLÉGANT (4 tuiles en verre sombre)
+          */}
+          <EventCountdown
+            days={countdown.days}
+            hours={countdown.hours}
+            minutes={countdown.minutes}
+            seconds={countdown.seconds}
+            hasEnded={eventHasEnded}
+          />
 
-          {/* Date & Heure Card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5" />
+          {/* 
+            GRILLE 2 COLONNES DATE + HEURE (au lieu de deux blocs séparés)
+          */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 pt-1">
+            {/* Colonne Date */}
+            <div className="p-3.5 sm:p-4 rounded-[22px] glass-ios flex flex-col justify-between space-y-1 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-[#6600FF] dark:text-purple-400">
+                <Calendar className="w-4 h-4 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Date
+                </span>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  Date de l'événement
-                </p>
-                <p className="text-xs sm:text-sm font-bold text-[#17131D] dark:text-white capitalize truncate">
-                  {formatFullDate(displayEvent.starts_at, language)}
-                </p>
-              </div>
+              <p className="text-xs sm:text-sm font-black text-[#1A1A2E] dark:text-white capitalize leading-snug">
+                {formattedDate}
+              </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Clock className="w-5 h-5" />
+            {/* Colonne Heure */}
+            <div className="p-3.5 sm:p-4 rounded-[22px] glass-ios flex flex-col justify-between space-y-1 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-[#6600FF] dark:text-purple-400">
+                <Clock className="w-4 h-4 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Horaire
+                </span>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  Heure
-                </p>
-                <p className="text-xs sm:text-sm font-bold text-[#17131D] dark:text-white truncate">
-                  {formatTime(displayEvent.starts_at)}
-                  {displayEvent.ends_at ? ` - ${formatTime(displayEvent.ends_at)}` : ''}
-                </p>
-              </div>
+              <p className="text-xs sm:text-sm font-black text-[#1A1A2E] dark:text-white leading-snug">
+                {timeText}
+              </p>
             </div>
           </div>
 
-          {/* Location & Interactive Map Preview */}
-          <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] space-y-2">
+          {/* 
+            CARTE LIEU & MINI-CARTE LAZY INTERSECTIONOBSERVER
+          */}
+          <div className="p-4 sm:p-5 rounded-[24px] glass-ios space-y-2 shadow-2xs">
             <div className="flex items-center gap-2 text-[#6600FF] dark:text-purple-400">
-              <MapPin className="w-5 h-5" />
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                Lieu
+              <MapPin className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Lieu & Accès
               </span>
             </div>
-            <p className="text-base font-bold text-[#17131D] dark:text-white">
+            <p className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
               {displayEvent.location_name}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {flag} {displayEvent.city}
               {displayEvent.location_address ? ` · ${displayEvent.location_address}` : ''}
             </p>
+
             <EventMapPreview
               locationName={displayEvent.location_name}
               locationAddress={displayEvent.location_address}
@@ -488,116 +516,41 @@ export function EventDetailScreen({
             />
           </div>
 
-          {/* AI Insights Capsule */}
-          <div>
-            <EventAIInsights
-              event={displayEvent as Event}
-              onOpenSettings={onOpenAISettings || (() => {})}
-            />
-          </div>
+          {/* 
+            CONSEILLER IA DE L'ÉVÉNEMENT (Gemini)
+          */}
+          <EventAIInsights
+            event={displayEvent as Event}
+            onOpenSettings={onOpenAISettings || (() => {})}
+          />
 
-          {/* Pass & Billets disponibles (High Priority section) */}
-          <div className="pt-2 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[#17131D] dark:text-white">
-                <Ticket className="w-5 h-5 text-[#6600FF] dark:text-purple-400" />
-                <h2 className="text-base font-black tracking-tight">
-                  Pass & Billets disponibles
-                </h2>
-              </div>
-              <span className="text-xs font-bold text-gray-400">
-                {ticketOptions.length} formule{ticketOptions.length > 1 ? 's' : ''}
-              </span>
-            </div>
+          {/* 
+            PASS & BILLETS DISPONIBLES (Avec jauge sous 20% et moyens Flooz / T-Money / MoMo)
+          */}
+          <EventTicketsList
+            event={displayEvent as Event}
+            ticketOptions={ticketOptions}
+            canBook={canBook}
+            onSelectPass={handleSelectPass}
+          />
 
-            {ticketOptions.length === 0 ? (
-              <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-dashed border-black/10 dark:border-white/10 text-center">
-                <p className="text-xs font-bold text-gray-500">
-                  Tarif standard : {displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {ticketOptions.map((opt) => {
-                  const remaining = Math.max(0, opt.quantity_total - opt.quantity_sold);
-                  const isSoldOut = remaining <= 0;
-
-                  return (
-                    <div
-                      key={opt.id}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        isSoldOut
-                          ? 'bg-gray-100/60 dark:bg-white/[0.02] border-black/[0.05] opacity-60'
-                          : 'bg-white dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] hover:border-[#6600FF]/50 shadow-xs'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-[#17131D] dark:text-white">
-                              {opt.label}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300">
-                              {opt.ticket_type}
-                            </span>
-                          </div>
-
-                          {opt.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                              {opt.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          <p className="text-base font-black text-[#17131D] dark:text-white">
-                            {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} FCFA`}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Quota & Action Bar */}
-                      <div className="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          {isSoldOut ? (
-                            <span className="text-xs font-bold text-red-500">Épuisé</span>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{remaining} place{remaining > 1 ? 's' : ''} disponible{remaining > 1 ? 's' : ''}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={!canBook || isSoldOut}
-                          onClick={() => handleSelectPass(opt.id)}
-                          className="px-3.5 py-1.5 rounded-full bg-[#6600FF] text-white text-xs font-bold hover:bg-[#5200cc] transition-all shadow-xs disabled:opacity-40 cursor-pointer active:scale-95"
-                        >
-                          {isSoldOut ? 'Épuisé' : 'Réserver ce pass'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Pre-season Video Teaser & Media Section */}
+          {/* 
+            MÉDIAS, TEASER VIDÉO & GALERIE PHOTO
+          */}
           {(videoInfo || galleryImages.length > 1) && (
-            <div className="pt-3 space-y-3">
-              <div className="flex items-center gap-2 text-[#17131D] dark:text-white">
-                <Film className="w-5 h-5 text-[#6600FF] dark:text-purple-400" />
+            <div className="pt-2 space-y-3">
+              <div className="flex items-center gap-2 text-[#1A1A2E] dark:text-white">
+                <div className="w-8 h-8 rounded-xl bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0">
+                  <Film className="w-4 h-4" />
+                </div>
                 <h2 className="text-base font-black tracking-tight">
-                  Médias & Teaser (Pré-saison)
+                  Médias & Teaser officiel
                 </h2>
               </div>
 
-              {/* Video Teaser Embed */}
+              {/* Lecteur vidéo intégré */}
               {videoInfo && (
-                <div className="rounded-2xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] aspect-video bg-black relative shadow-lg">
+                <div className="rounded-[22px] overflow-hidden border border-black/10 dark:border-white/10 aspect-video bg-black shadow-lg">
                   {videoInfo.isEmbed ? (
                     <iframe
                       src={videoInfo.url}
@@ -617,7 +570,7 @@ export function EventDetailScreen({
                 </div>
               )}
 
-              {/* Multiple Gallery Photos Thumbnail Scroll */}
+              {/* Carrousel de vignettes de photos */}
               {galleryImages.length > 1 && (
                 <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
                   {galleryImages.map((image, index) => (
@@ -625,8 +578,8 @@ export function EventDetailScreen({
                       type="button"
                       key={image}
                       onClick={() => setLightboxSrc(image)}
-                      className="h-20 w-28 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/10 dark:ring-white/10 hover:opacity-90 active:scale-95 transition-all cursor-zoom-in relative group"
-                      aria-label={`Voir la photo ${index + 1}`}
+                      className="h-20 w-28 shrink-0 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 hover:opacity-90 active:scale-95 transition-all cursor-zoom-in relative group"
+                      aria-label={`Agrandir la photo ${index + 1}`}
                     >
                       <img src={image} alt="" className="h-full w-full object-cover" />
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
@@ -637,24 +590,33 @@ export function EventDetailScreen({
             </div>
           )}
 
-          {/* Description Section */}
+          {/* 
+            DESCRIPTION / À PROPOS
+          */}
           <div className="pt-2 space-y-2">
-            <h2 className="text-base font-black text-[#17131D] dark:text-white">À propos</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+            <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
+              À propos de cet événement
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
               {displayEvent.description}
             </p>
           </div>
 
-          {/* Artists Section */}
+          {/* 
+            ARTISTES INVITÉS / LINEUP
+          */}
           {artists.length > 0 && (
             <div className="pt-2 space-y-3">
-              <h2 className="text-base font-black text-[#17131D] dark:text-white">Artistes invités</h2>
+              <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
+                Artistes à l'affiche
+              </h2>
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
                 {artists.map((artist) => (
-                  <div
+                  <button
+                    type="button"
                     key={artist.id}
                     onClick={() => onArtistClick(artist)}
-                    className="flex flex-col items-center gap-1.5 w-20 shrink-0 cursor-pointer group"
+                    className="flex flex-col items-center gap-1.5 w-20 shrink-0 cursor-pointer group text-left focus:outline-hidden"
                   >
                     <div className="relative">
                       <img
@@ -663,25 +625,29 @@ export function EventDetailScreen({
                         className="w-16 h-16 rounded-full object-cover ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all"
                       />
                       {artist.is_verified && (
-                        <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5">
+                        <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5 shadow-sm">
                           <BadgeCheck className="w-3.5 h-3.5 text-white" />
                         </div>
                       )}
                     </div>
-                    <span className="text-xs font-semibold text-[#17131D] dark:text-white text-center line-clamp-1 w-full">
+                    <span className="text-xs font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full">
                       {artist.name}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Organizer card */}
+          {/* 
+            ORGANISATEUR
+          */}
           {fullEvent?.organizer && (
-            <div className="pt-2 space-y-3">
-              <h2 className="text-base font-black text-[#17131D] dark:text-white">Organisateur</h2>
-              <div className="p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] flex items-center gap-3">
+            <div className="pt-2 space-y-2.5">
+              <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
+                Organisateur certifié
+              </h2>
+              <div className="p-4 rounded-[22px] glass-ios flex items-center gap-3">
                 <UserAvatar
                   src={fullEvent.organizer.logo_url}
                   name={fullEvent.organizer.name}
@@ -692,31 +658,37 @@ export function EventDetailScreen({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <h3 className="font-bold text-sm text-[#17131D] dark:text-white truncate">
+                    <h3 className="font-extrabold text-sm text-[#1A1A2E] dark:text-white truncate">
                       {fullEvent.organizer.name}
                     </h3>
                     {fullEvent.organizer.verification_status === 'verified' && (
                       <BadgeCheck className="w-4 h-4 text-[#6600FF] shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{fullEvent.organizer.city}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {fullEvent.organizer.city}
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Collaborators & Partners Section */}
+          {/* 
+            COLLABORATEURS & PARTENAIRES
+          */}
           {collaborators.length > 0 && (
-            <div className="pt-2 space-y-3">
-              <div className="flex items-center gap-2 text-[#17131D] dark:text-white">
-                <Users className="w-5 h-5 text-[#6600FF] dark:text-purple-400" />
-                <h2 className="text-base font-black tracking-tight">Collaborateurs & Partenaires</h2>
+            <div className="pt-2 space-y-2.5">
+              <div className="flex items-center gap-2 text-[#1A1A2E] dark:text-white">
+                <Users className="w-4 h-4 text-[#6600FF] dark:text-purple-400" />
+                <h2 className="text-base font-black tracking-tight">
+                  Collaborateurs & Partenaires
+                </h2>
               </div>
               <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
                 {collaborators.map((c) => (
                   <div
                     key={c.id}
-                    className="p-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] flex items-center gap-2.5 shrink-0 min-w-[140px]"
+                    className="p-3 rounded-[20px] glass-ios flex items-center gap-2.5 shrink-0 min-w-[140px]"
                   >
                     <UserAvatar
                       src={c.artist?.photo_url || c.organization?.logo_url}
@@ -724,7 +696,7 @@ export function EventDetailScreen({
                       size="sm"
                     />
                     <div>
-                      <p className="text-xs font-bold text-[#17131D] dark:text-white line-clamp-1">
+                      <p className="text-xs font-bold text-[#1A1A2E] dark:text-white line-clamp-1">
                         {c.artist?.name || c.organization?.name || 'Partenaire'}
                       </p>
                       <span className="text-[10px] text-gray-500 capitalize">{c.role}</span>
@@ -735,58 +707,74 @@ export function EventDetailScreen({
             </div>
           )}
 
-          {/* Attendees & Views Stats pill */}
-          <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between text-xs">
+          {/* 
+            INDICATEURS DE PARTICIPATION & AUDIENCE
+          */}
+          <div className="p-3.5 rounded-[22px] glass-ios flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-              <Users className="w-4 h-4 text-[#6600FF]" />
+              <Users className="w-4 h-4 text-[#6600FF] dark:text-purple-400" />
               <span>
-                <strong className="text-[#17131D] dark:text-white">{formatNumber(liveAttendees, language)}</strong> participants
+                <strong className="text-[#1A1A2E] dark:text-white">
+                  {formatNumber(liveAttendees, language)}
+                </strong>{' '}
+                participants confirmés
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <Eye className="w-4 h-4 text-[#6600FF]" />
-              <strong className="text-[#17131D] dark:text-white tabular-nums">{formatNumber(liveViews, language)}</strong> vues
+            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+              <Eye className="w-4 h-4 text-[#6600FF] dark:text-purple-400" />
+              <strong className="text-[#1A1A2E] dark:text-white tabular-nums">
+                {formatNumber(liveViews, language)}
+              </strong>{' '}
+              vues
             </div>
           </div>
+        </section>
+
+        {/* 
+          SECTIONS AUXILIAIRES : Programme, Liens Live, Sponsors & Onglets Communauté
+        */}
+        <div className="space-y-4">
+          <EventSchedule event={displayEvent as Event} onArtistClick={onArtistClick} isDark={isDark} />
+          <EventLiveLinks event={displayEvent as Event} isDark={isDark} />
+          <EventSponsors event={displayEvent as Event} isDark={isDark} />
+          <EventInteractionPanel event={displayEvent as Event} isOrganizer={isOrganizer} onToast={onToast} />
         </div>
-      </div>
+      </main>
 
-      {/* Auxiliary Sections */}
-      <div className="max-w-xl mx-auto px-4 sm:px-6 space-y-4 mt-4">
-        <EventSchedule event={displayEvent as Event} onArtistClick={onArtistClick} isDark={isDark} />
-        <EventLiveLinks event={displayEvent as Event} isDark={isDark} />
-        <EventSponsors event={displayEvent as Event} isDark={isDark} />
-        <EventInteractionPanel event={displayEvent as Event} isOrganizer={isOrganizer} onToast={onToast} />
-      </div>
-
-      {/* Floating Bottom Sticky Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] pt-3 bg-white/90 dark:bg-[#12101F]/90 backdrop-blur-xl border-t border-black/[0.06] dark:border-white/[0.08]">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              À partir de
-            </p>
-            <p className="text-xl font-black text-[#17131D] dark:text-white">
-              {displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            disabled={!canBook}
-            onClick={() => {
-              setSelectedTicketOptionId(null);
-              setShowBooking(true);
-            }}
-            className="px-6 py-3.5 rounded-full bg-[#6600FF] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#5200cc] transition-all shadow-md shadow-[#6600FF]/30 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-          >
-            <Ticket className="w-4 h-4" />
-            <span>{canBook ? 'Prendre un billet' : statusLabel || 'Indisponible'}</span>
-          </button>
+      {/* 
+        CAPSULE DE VERRE FLOTTANTE D'ACHAT (Barre inférieure fixe décollée des bords)
+        Positionnée avec marge basse et safe-area. Le padding-bottom du contenu (pb-44)
+        garantit qu'aucun élément ne sera masqué derrière elle !
+      */}
+      <div className="fixed bottom-4 inset-x-4 max-w-xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            À partir de
+          </p>
+          <p className="text-lg sm:text-xl font-black text-[#1A1A2E] dark:text-white tracking-tight">
+            {displayEvent.price_min === 0
+              ? 'Gratuit'
+              : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
+          </p>
         </div>
+
+        <button
+          type="button"
+          disabled={!canBook}
+          onClick={() => {
+            haptic.selection();
+            setSelectedTicketOptionId(null);
+            setShowBooking(true);
+            onBook?.(displayEvent as Event);
+          }}
+          className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+        >
+          <Ticket className="w-4 h-4" />
+          <span>{canBook ? 'Prendre un billet' : statusLabel || 'Indisponible'}</span>
+        </button>
       </div>
 
-      {/* Modals */}
+      {/* MODALS : Réservation, Gestion, Lightbox et Partage */}
       <BookingModal
         open={showBooking}
         event={displayEvent as Event}

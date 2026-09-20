@@ -477,3 +477,110 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   GBAIGBANCE — LIQUID GLASS iOS DESIGN SYSTEM (Apple-grade)
+   ========================================================================== */
+
+/* Matériau Verre Standard iOS */
+.glass-ios {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-top-color: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 12px 36px rgba(26, 26, 46, 0.08);
+  border-radius: 24px;
+}
+
+.dark .glass-ios {
+  background: rgba(26, 22, 46, 0.68);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Boutons circulaires en verre iOS 44px */
+.glass-btn-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 16px rgba(0, 0, 0, 0.15);
+  color: #FFFFFF;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+}
+
+.glass-btn-circle:active {
+  transform: scale(0.94);
+}
+
+/* Animation pop du cœur lors du like */
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35) rotate(-6deg); }
+  65% { transform: scale(0.9) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.animate-heart-pop {
+  animation: heartPop 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Capsule de verre flottante (ex: barre d'achat fixe) */
+.glass-floating-bar {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 44px rgba(26, 26, 46, 0.16);
+  border-radius: 28px;
+}
+
+.dark .glass-floating-bar {
+  background: rgba(20, 18, 34, 0.88);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* Fallback sans support backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-ios,
+  .glass-btn-circle,
+  .glass-floating-bar {
+    background: rgba(255, 255, 255, 0.94) !important;
+  }
+  .dark .glass-ios,
+  .dark .glass-floating-bar {
+    background: rgba(26, 22, 46, 0.96) !important;
+  }
+}
+
+/* Réduction de transparence pour l'accessibilité */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-ios,
+  .glass-floating-bar {
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .dark .glass-ios,
+  .dark .glass-floating-bar {
+    background: #141022 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

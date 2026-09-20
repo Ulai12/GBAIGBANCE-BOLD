@@ -20,6 +20,7 @@ Elle permet aux utilisateurs de découvrir, réserver et payer instantanément l
 
 ## Ressources Détaillées
 
+- [API Publique Événements (JSON)](/api/events) : Endpoint public en lecture seule renvoyant les 50 prochains événements publiés (tri chronologique, Cache-Control public 300s). Idéal pour les outils IA comme `web_fetch`.
 - [Documentation Complète pour LLM](/llms-full.txt) : Schémas des tables et spécifications de l'assistant IA
 - [Sommaire Statique des Écrans (Non-JS / web_fetch)](/preview/index.html) : Cartographie HTML sémantique de tous les écrans
 - [Manifeste d'Architecture JSON](/preview/app-manifest.json) : Routes, flux utilisateurs et design system pour agents IA

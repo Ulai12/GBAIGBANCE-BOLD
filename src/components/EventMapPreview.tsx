@@ -1,5 +1,16 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, ExternalLink, Copy, Check } from 'lucide-react';
+
+/**
+ * GBAIGBANCE — EventMapPreview (Mini-Carte & Navigation iOS)
+ * 
+ * Carte interactive avec :
+ * - Chargement différé LAZY (IntersectionObserver) pour préserver les performances et la batterie
+ * - Marqueur animé pulsant sur le lieu de l'événement
+ * - Bouton « Itinéraire » principal violet (#6600FF)
+ * - Bouton secondaire « Ouvrir dans Google Maps » en verre
+ * - Bouton « Copier » avec retour visuel immédiat (coche émeraude)
+ */
 
 interface EventMapPreviewProps {
   locationName: string;
@@ -10,23 +21,47 @@ interface EventMapPreviewProps {
   longitude?: number | null;
 }
 
-export function EventMapPreview({
+export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
   locationName,
   locationAddress,
   city,
   country,
   latitude,
   longitude,
-}: EventMapPreviewProps) {
+}) => {
   const [copied, setCopied] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build full query string
+  // Lazy loading via IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '150px' }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Construction de l'adresse complète
   const fullAddress = [locationName, locationAddress, city, country]
     .filter(Boolean)
     .join(', ');
 
-  // Compute map navigation URLs
-  const hasCoords = typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude);
+  const hasCoords =
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    !isNaN(latitude) &&
+    !isNaN(longitude);
 
   const navigationUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
@@ -38,158 +73,154 @@ export function EventMapPreview({
     try {
       await navigator.clipboard.writeText(fullAddress);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2200);
     } catch {
-      // ignore
+      // Ignorer si le presse-papier n'est pas autorisé
     }
   };
 
   return (
-    <div className="mt-3 rounded-2xl overflow-hidden border border-[#6600FF]/15 bg-white shadow-sm">
-      {/* Clickable Map Graphic Area */}
+    <div ref={containerRef} className="mt-3 space-y-3">
+      {/* Zone Graphique de la Mini-Carte vectorielle stylisée */}
       <a
         id="event-map-preview-link"
         href={navigationUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`Ouvrir l'itinéraire vers ${locationName} dans Google Maps`}
-        className="relative block h-40 w-full overflow-hidden select-none group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#6600FF]"
+        className="relative block h-44 w-full overflow-hidden rounded-[22px] border border-black/10 dark:border-white/10 select-none group cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#6600FF] shadow-inner"
       >
-        {/* Stylized Static Vector Map Canvas */}
-        <svg
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-          viewBox="0 0 400 160"
-          preserveAspectRatio="xMidYMid slice"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Base terrain */}
-          <rect width="400" height="160" fill="#F4F3F9" />
+        {isVisible ? (
+          <svg
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            viewBox="0 0 400 160"
+            preserveAspectRatio="xMidYMid slice"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Terrain de fond */}
+            <rect width="400" height="160" fill="#F3F0FA" />
 
-          {/* Topography & Land zones */}
-          <path
-            d="M-20,130 Q60,110 140,135 T300,120 T420,140 L420,170 L-20,170 Z"
-            fill="#E6F2EB"
-            opacity="0.7"
-          />
-          {/* Coastal / Water curve */}
-          <path
-            d="M-10,145 Q80,138 180,148 T360,139 T420,150 L420,170 L-10,170 Z"
-            fill="#D9ECFA"
-          />
+            {/* Zones de verdure / Parcs */}
+            <rect x="20" y="16" width="75" height="46" rx="14" fill="#E2F4E9" opacity="0.85" />
+            <rect x="285" y="20" width="100" height="52" rx="16" fill="#E2F4E9" opacity="0.85" />
+            <circle cx="95" cy="115" r="26" fill="#E8F6EE" />
 
-          {/* Parks & Green zones */}
-          <rect x="25" y="18" width="70" height="42" rx="12" fill="#E2F4E9" />
-          <rect x="280" y="22" width="95" height="50" rx="14" fill="#E2F4E9" />
-          <circle cx="90" cy="110" r="24" fill="#E8F6EE" />
+            {/* Réseau routier secondaire */}
+            <g stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95">
+              <line x1="20" y1="40" x2="380" y2="40" />
+              <line x1="10" y1="80" x2="390" y2="80" />
+              <line x1="15" y1="115" x2="385" y2="115" />
+              <line x1="70" y1="5" x2="70" y2="155" />
+              <line x1="150" y1="5" x2="150" y2="155" />
+              <line x1="250" y1="5" x2="250" y2="155" />
+              <line x1="330" y1="5" x2="330" y2="155" />
+            </g>
 
-          {/* Secondary road network */}
-          <g stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95">
-            {/* Grid streets */}
-            <line x1="20" y1="40" x2="380" y2="40" />
-            <line x1="10" y1="80" x2="390" y2="80" />
-            <line x1="15" y1="115" x2="385" y2="115" />
-            <line x1="70" y1="5" x2="70" y2="155" />
-            <line x1="150" y1="5" x2="150" y2="155" />
-            <line x1="250" y1="5" x2="250" y2="155" />
-            <line x1="330" y1="5" x2="330" y2="155" />
-            {/* Diagonal avenues */}
-            <line x1="0" y1="140" x2="180" y2="20" />
-            <line x1="210" y1="150" x2="390" y2="30" />
-          </g>
+            {/* Voie rapide principale */}
+            <g stroke="#DFD7F5" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
+              <path d="M195,-10 C198,40 200,80 202,170" />
+            </g>
+            <g stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
+              <path d="M195,-10 C198,40 200,80 202,170" />
+            </g>
 
-          {/* Primary Arterial Road Highway */}
-          <g stroke="#E0D7F5" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
-            <path d="M195,-10 C198,40 200,80 202,170" />
-          </g>
-          <g stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
-            <path d="M195,-10 C198,40 200,80 202,170" />
-          </g>
+            {/* Rond-point central */}
+            <circle cx="200" cy="80" r="16" fill="#F4F3F9" stroke="#FFFFFF" strokeWidth="5" />
+            <circle cx="200" cy="80" r="16" fill="none" stroke="#6600FF" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
 
-          {/* Central Roundabout near the venue marker */}
-          <circle cx="200" cy="80" r="16" fill="#F4F3F9" stroke="#FFFFFF" strokeWidth="5" />
-          <circle cx="200" cy="80" r="16" fill="none" stroke="#6600FF" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.4" />
+            {/* Bâtiments urbains */}
+            <g fill="#D8D3E8" opacity="0.6">
+              <rect x="110" y="24" width="24" height="14" rx="3" />
+              <rect x="165" y="48" width="22" height="18" rx="3" />
+              <rect x="220" y="48" width="24" height="18" rx="3" />
+              <rect x="115" y="96" width="24" height="20" rx="3" />
+              <rect x="265" y="96" width="34" height="18" rx="3" />
+            </g>
+          </svg>
+        ) : (
+          /* Placeholder statique le temps du chargement IntersectionObserver */
+          <div className="w-full h-full bg-gray-100 dark:bg-white/[0.04] flex items-center justify-center animate-pulse">
+            <MapPin className="w-6 h-6 text-gray-300 dark:text-gray-600" />
+          </div>
+        )}
 
-          {/* Subtle building footprints */}
-          <g fill="#D8D5E5" opacity="0.55">
-            <rect x="110" y="24" width="22" height="12" rx="2" />
-            <rect x="110" y="48" width="26" height="18" rx="2" />
-            <rect x="165" y="48" width="20" height="16" rx="2" />
-            <rect x="220" y="48" width="22" height="18" rx="2" />
-            <rect x="225" y="24" width="28" height="12" rx="2" />
-            <rect x="165" y="96" width="20" height="16" rx="2" />
-            <rect x="220" y="96" width="24" height="18" rx="2" />
-            <rect x="115" y="96" width="22" height="20" rx="2" />
-            <rect x="265" y="96" width="34" height="18" rx="2" />
-          </g>
-        </svg>
+        {/* Dégradé d'ambiance */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10 pointer-events-none" />
 
-        {/* Ambient Gradient Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 pointer-events-none" />
-
-        {/* Central Pulse Beacon Marker */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none">
-          {/* Radar ripple rings */}
+        {/* Marqueur central avec radar pulsant */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10">
           <div className="relative flex items-center justify-center">
-            <span className="absolute w-12 h-12 rounded-full bg-[#6600FF]/25 animate-ping" />
-            <span className="absolute w-8 h-8 rounded-full bg-[#6600FF]/30 animate-pulse" />
+            <span className="absolute w-12 h-12 rounded-full bg-[#6600FF]/30 animate-ping" />
+            <span className="absolute w-8 h-8 rounded-full bg-[#6600FF]/40 animate-pulse" />
             
-            {/* Pin pinhead */}
-            <div className="relative z-10 w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6600FF] p-0.5 shadow-lg shadow-[#6600FF]/40 flex items-center justify-center text-white ring-2 ring-white">
-              <MapPin className="w-5 h-5 fill-white text-white drop-shadow-sm" />
+            <div className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6600FF] p-0.5 shadow-xl shadow-[#6600FF]/50 flex items-center justify-center text-white ring-2 ring-white">
+              <MapPin className="w-5 h-5 fill-white text-white" />
             </div>
           </div>
 
-          {/* Floating Venue Name Tag */}
-          <div className="mt-1 px-2.5 py-1 rounded-full bg-[#171726]/90 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-tight shadow-md max-w-[180px] truncate text-center">
+          <div className="mt-1 px-3 py-1 rounded-full bg-[#1A1A2E]/90 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-tight shadow-lg max-w-[200px] truncate text-center">
             {locationName}
           </div>
         </div>
 
-        {/* Top-right: Discreet navigation hint badge */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 group-hover:bg-[#6600FF] transition-colors">
+        {/* Badge supérieur droit : Itinéraire rapide */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 hover:bg-[#6600FF] backdrop-blur-md text-white text-xs font-bold border border-white/20 transition-colors shadow-sm">
           <Navigation className="w-3 h-3 fill-white" />
           <span>Itinéraire</span>
-          <ExternalLink className="w-2.5 h-2.5 opacity-80 ml-0.5" />
+          <ExternalLink className="w-2.5 h-2.5 opacity-80" />
         </div>
       </a>
 
-      {/* Action Footer with direct navigation link and copy button */}
-      <div className="p-3 bg-[#FBFBFF] dark:bg-[#1A1828] flex items-center justify-between gap-2 border-t border-[#6600FF]/10 dark:border-white/10">
+      {/* Boutons d'action regroupés avec cibles tactiles ≥ 44px */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+        {/* Bouton Principal : Itinéraire (Violet #6600FF) */}
         <a
           id="event-map-nav-action"
           href={navigationUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#6600FF] hover:bg-[#5500D4] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm shadow-[#6600FF]/20"
+          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-md shadow-[#6600FF]/25 cursor-pointer"
         >
-          <Navigation className="w-3.5 h-3.5 fill-white" />
-          <span>Ouvrir dans Google Maps</span>
-          <ExternalLink className="w-3 h-3 text-white/80" />
+          <Navigation className="w-4 h-4 fill-white" />
+          <span>Itinéraire direct</span>
         </a>
 
+        {/* Bouton Secondaire : Ouvrir dans Google Maps (Verre iOS) */}
+        <a
+          id="event-map-open-maps"
+          href={navigationUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-[#1A1A2E] dark:text-gray-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+        >
+          <ExternalLink className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
+          <span>Google Maps</span>
+        </a>
+
+        {/* Bouton Copier avec feedback coche émeraude */}
         <button
           id="event-map-copy-address"
           type="button"
           onClick={handleCopyAddress}
-          title="Copier l'adresse"
+          title="Copier l'adresse complète"
           aria-label="Copier l'adresse du lieu"
-          className="shrink-0 inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/15 active:scale-95 border border-gray-200 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
+          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all shadow-2xs cursor-pointer"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-700 dark:text-emerald-400 font-bold">Copié</span>
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">Adresse copiée !</span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-              <span>Copier</span>
+              <span className="text-gray-700 dark:text-gray-200">Copier l'adresse</span>
             </>
           )}
         </button>
       </div>
     </div>
   );
-}
+};

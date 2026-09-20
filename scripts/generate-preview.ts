@@ -1035,6 +1035,28 @@ function generateAppManifestJson(): string {
       staticHtmlFile: `/preview/${s.filename}`,
       description: s.description,
     })),
+    publicApis: [
+      {
+        path: '/api/events',
+        method: 'GET',
+        format: 'application/json',
+        cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+        description: 'Flux public en lecture seule des 50 prochains événements publiés sur Gbaigbance, triés par date chronologique.',
+        allowedFields: [
+          'id',
+          'titre',
+          'description',
+          'categorie',
+          'date',
+          'heure',
+          'ville',
+          'lieu',
+          'prix',
+          'image',
+          'nom_organisateur',
+        ],
+      },
+    ],
     userFlows: [
       {
         flowName: 'Réservation de billet',
