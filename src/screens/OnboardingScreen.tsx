@@ -160,7 +160,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       />
 
       {/* Barre supérieure : Bouton Précédent & Passer */}
-      <header className="relative z-20 px-6 pt-6 pb-2 flex items-center justify-between">
+      <header className="relative z-20 px-6 pt-safe-header pb-2 flex items-center justify-between">
         {currentStep > 0 ? (
           <button
             type="button"

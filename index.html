@@ -40,6 +40,32 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
 
+    <!-- AI & LLM Discovery (llmstxt.org standard) -->
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM Structured Information" />
+
+    <!-- Schema.org JSON-LD for AI Search & Agent Indexing -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Gbaigbance",
+      "url": "https://gbaigbance-event.vercel.app",
+      "applicationCategory": "EventTicketingApplication",
+      "operatingSystem": "All",
+      "description": "Plateforme événementielle et billetterie digitale en Afrique de l'Ouest (Togo, Bénin, Côte d'Ivoire). Découverte d'événements, concerts, festivals et paiement Mobile Money.",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "XOF",
+        "lowPrice": "0"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://gbaigbance-event.vercel.app/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
     <title>Gbaigbance — L'événementiel africain</title>
   </head>
   <body>

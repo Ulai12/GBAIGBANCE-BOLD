@@ -399,7 +399,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 px-5 py-4 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
+      <header className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <button
             type="button"

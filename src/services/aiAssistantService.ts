@@ -1,6 +1,7 @@
 import { supabase } from '@/infrastructure/supabase';
 import { getUserGeminiApiKey } from '@/services/gemini';
 import { streamGeminiDirect } from '@/services/aiAssistantDirect';
+import { safeFetch } from '@/utils/safeFetch';
 
 // ====================================================================
 // GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA EDGE FUNCTION & HYBRIDE
@@ -54,32 +55,18 @@ export async function streamAIAssistant(
       };
     }
 
-    // Si l'utilisateur ou le projet dispose d'une clé Gemini (BYOK ou VITE_GEMINI_API_KEY/GEMINI_API_KEY),
-    // nous exécutons directement en mode haute performance sans dépendre du déploiement de l'Edge Function Supabase.
-    if (userApiKey) {
-      try {
-        await streamGeminiDirect(
-          userApiKey,
-          options.messages,
-          sanitizedLocation,
-          callbacks,
-          controller.signal
-        );
-        return;
-      } catch (directErr: unknown) {
-        if (controller.signal.aborted) return;
-        const msg = directErr instanceof Error ? directErr.message : 'Erreur de connexion avec l’API Gemini';
-        callbacks.onError(msg);
-        return;
-      }
-    }
-
     try {
-      // 1. Mode Cloud Edge Function (si aucune clé locale/BYOK n'est fournie)
+      // 1. Récupération de la session utilisateur Supabase pour propager le JWT
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
+      const userId = session?.user?.id;
+      const isUserAuthenticated = Boolean(accessToken && userId);
 
-      // 2. URL de l'Edge Function Supabase
+      console.log(
+        `[AIAssistantService] 🚀 Preparing AI turn: authenticated=${isUserAuthenticated}, userId=${userId || 'guest'}, token=${accessToken ? `${accessToken.slice(0, 8)}... (len ${accessToken.length})` : '(none)'}`
+      );
+
+      // 2. Détermination des endpoints et credentials Supabase
       const supabaseUrl =
         import.meta.env.VITE_SUPABASE_URL ||
         import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -102,9 +89,11 @@ export async function streamAIAssistant(
         headers['x-gemini-api-key'] = userApiKey;
       }
 
+      console.log(`[AIAssistantService] Calling Edge Function: ${functionUrl}`);
+
       let response: Response;
       try {
-        response = await fetch(functionUrl, {
+        response = await safeFetch(functionUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -116,16 +105,43 @@ export async function streamAIAssistant(
             userLocation: sanitizedLocation,
           }),
           signal: controller.signal,
+          timeoutMs: 35_000,
+          retries: 1,
         });
-      } catch {
+      } catch (fetchErr) {
+        // En cas d'erreur de connexion réseau vers l'Edge Function, si l'utilisateur a une clé BYOK, basculer sur le direct
+        if (userApiKey) {
+          console.warn('[AIAssistantService] Edge Function unreachable. Falling back to direct client execution with BYOK.', fetchErr);
+          await streamGeminiDirect(
+            userApiKey,
+            options.messages,
+            sanitizedLocation,
+            callbacks,
+            controller.signal
+          );
+          return;
+        }
+
         callbacks.onError(
           'L’Edge Function Supabase n’est pas joignable. Renseignez votre clé API Google Gemini dans les réglages (icône clé en haut) pour activer l’assistant immédiatement.'
         );
         return;
       }
 
-      // 4. Gestion spécifique du 404 (fonction non déployée sur Supabase)
+      // 3. Gestion spécifique du 404 (Edge Function non déployée sur Supabase)
       if (response.status === 404) {
+        if (userApiKey) {
+          console.info('[AIAssistantService] Edge Function returned HTTP 404 (not deployed). Seamlessly falling back to direct client execution with BYOK...');
+          await streamGeminiDirect(
+            userApiKey,
+            options.messages,
+            sanitizedLocation,
+            callbacks,
+            controller.signal
+          );
+          return;
+        }
+
         callbacks.onError(
           'L’Edge Function Supabase n’est pas trouvée (HTTP 404). Renseignez votre clé API Google Gemini via l’icône clé en haut à droite pour utiliser l’assistant tout de suite !'
         );
@@ -161,51 +177,55 @@ export async function streamAIAssistant(
       let buffer = '';
       let verifiedEventIds: string[] = [];
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
 
-          if (trimmed.startsWith('data:')) {
-            const dataStr = trimmed.slice(5).trim();
-            if (!dataStr) continue;
+            if (trimmed.startsWith('data:')) {
+              const dataStr = trimmed.slice(5).trim();
+              if (!dataStr) continue;
 
-            if (dataStr === '[DONE]' || dataStr === '"[DONE]"') {
-              break;
-            }
-
-            try {
-              const data = JSON.parse(dataStr);
-              // Support du format Supabase Edge Function { chunk: "..." } ou { type: "chunk", text: "..." }
-              if (typeof data.chunk === 'string') {
-                callbacks.onChunk(data.chunk);
-              } else if (data.type === 'chunk' && typeof data.text === 'string') {
-                callbacks.onChunk(data.text);
-              } else if (Array.isArray(data.eventIds)) {
-                verifiedEventIds = data.eventIds;
-              } else if (data.type === 'done') {
-                if (Array.isArray(data.verified_event_ids)) {
-                  verifiedEventIds = data.verified_event_ids;
-                }
-              } else if (data.type === 'error' || data.error) {
-                callbacks.onError(data.error || 'Erreur inconnue dans le flux.');
-                return;
+              if (dataStr === '[DONE]' || dataStr === '"[DONE]"') {
+                break;
               }
-            } catch {
-              // Si la ligne data: contient directement du texte brut
-              if (dataStr !== '[DONE]' && !dataStr.startsWith('{')) {
-                callbacks.onChunk(dataStr);
+
+              try {
+                const data = JSON.parse(dataStr);
+                // Support du format Supabase Edge Function { chunk: "..." } ou { type: "chunk", text: "..." }
+                if (typeof data.chunk === 'string') {
+                  callbacks.onChunk(data.chunk);
+                } else if (data.type === 'chunk' && typeof data.text === 'string') {
+                  callbacks.onChunk(data.text);
+                } else if (Array.isArray(data.eventIds)) {
+                  verifiedEventIds = data.eventIds;
+                } else if (data.type === 'done') {
+                  if (Array.isArray(data.verified_event_ids)) {
+                    verifiedEventIds = data.verified_event_ids;
+                  }
+                } else if (data.type === 'error' || data.error) {
+                  callbacks.onError(data.error || 'Erreur inconnue dans le flux.');
+                  return;
+                }
+              } catch {
+                // Si la ligne data: contient directement du texte brut
+                if (dataStr !== '[DONE]' && !dataStr.startsWith('{')) {
+                  callbacks.onChunk(dataStr);
+                }
               }
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
 
       callbacks.onDone(verifiedEventIds);

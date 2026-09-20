@@ -13,6 +13,7 @@
 
 import { streamAIAssistant } from '@/services/aiAssistantService';
 import type { Event } from '@/types';
+import { safeFetch } from '@/utils/safeFetch';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -226,7 +227,7 @@ export async function testGeminiApiKey(key?: string): Promise<{ success: boolean
     resolvedModelsMap.delete(activeKey);
     const model = await resolveAvailableGeminiModel(activeKey);
 
-    const res = await fetch(
+    const res = await safeFetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`,
       {
         method: 'POST',
@@ -235,6 +236,8 @@ export async function testGeminiApiKey(key?: string): Promise<{ success: boolean
           contents: [{ parts: [{ text: 'Bonjour' }] }],
           generationConfig: { maxOutputTokens: 5 },
         }),
+        timeoutMs: 8000,
+        retries: 0,
       }
     );
 

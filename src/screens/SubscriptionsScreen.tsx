@@ -89,7 +89,7 @@ export function SubscriptionsScreen({
     return (
       <div className="min-h-screen pb-32">
         <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-          <div className="max-w-md mx-auto px-5 py-4 flex items-center gap-3">
+          <div className="max-w-md mx-auto px-5 pt-safe-header pb-4 flex items-center gap-3">
             <button
               onClick={onBack}
               className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
@@ -137,7 +137,7 @@ export function SubscriptionsScreen({
   return (
     <div className="min-h-screen bg-transparent">
       <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="max-w-md mx-auto px-5 py-4 flex items-center gap-3">
+        <div className="max-w-md mx-auto px-5 pt-safe-header pb-4 flex items-center gap-3">
           <button
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"

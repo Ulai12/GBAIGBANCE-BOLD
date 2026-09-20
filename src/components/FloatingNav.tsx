@@ -10,7 +10,7 @@ interface FloatingNavProps {
 
 export function FloatingNav({ title, onBack, right, transparent = false }: FloatingNavProps) {
   return (
-    <div className={`sticky top-0 z-30 px-4 py-3 ${transparent ? '' : 'glass'}`}>
+    <div className={`sticky top-0 z-30 px-4 pt-safe-header pb-3 ${transparent ? '' : 'glass'}`}>
       <div className="max-w-md mx-auto flex items-center justify-between">
         {onBack && (
           <button

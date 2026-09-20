@@ -1,0 +1,48 @@
+# Robots.txt for Gbaigbance
+# Directives d'indexation pour les moteurs de recherche et les agents IA
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/private/
+
+# Autorisation explicite pour les robots et agents d'Intelligence Artificielle
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: MistralBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Fichiers de contexte structurés pour LLMs & Agents IA (Standard llmstxt.org)
+llms.txt: /llms.txt
+llms-full.txt: /llms-full.txt

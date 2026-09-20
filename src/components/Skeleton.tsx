@@ -121,7 +121,7 @@ export function HomeScreenSkeleton() {
   return (
     <div className="min-h-screen pb-32 animate-fade-in" aria-busy="true" aria-label="Chargement de l'accueil">
       {/* Header Skeleton */}
-      <header className="px-5 pt-7 pb-3">
+      <header className="px-5 pt-safe-header pb-3">
         <div className="flex items-center gap-2.5 mb-3.5">
           <Skeleton className="w-9 h-9 rounded-2xl" />
           <div className="space-y-1">
@@ -214,7 +214,7 @@ export function ExploreScreenSkeleton() {
   return (
     <div className="min-h-screen pb-32 animate-fade-in" aria-busy="true" aria-label="Chargement de la recherche">
       {/* Sticky Header Skeleton */}
-      <div className="sticky top-0 z-30 px-5 pt-7 pb-4 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-2xl border-b border-black/[0.05] dark:border-white/[0.08]">
+      <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-2xl border-b border-black/[0.05] dark:border-white/[0.08]">
         <div className="max-w-md mx-auto space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -368,7 +368,7 @@ export function SubscriptionsScreenSkeleton() {
   return (
     <div className="min-h-screen animate-fade-in" aria-busy="true">
       <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-gray-100 dark:border-white/10">
-        <div className="max-w-md mx-auto px-5 py-4 flex items-center gap-3">
+        <div className="max-w-md mx-auto px-5 pt-safe-header pb-4 flex items-center gap-3">
           <Skeleton className="w-10 h-10 rounded-full" />
           <Skeleton className="h-6 w-36 rounded-xl" />
         </div>

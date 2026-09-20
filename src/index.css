@@ -340,13 +340,13 @@
 @layer utilities {
   /* iOS Safe Area & PWA Standalone Adaptations */
   .pt-safe-header {
-    padding-top: max(1.75rem, calc(env(safe-area-inset-top, 0px) + 1rem));
+    padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 1.25rem));
   }
   .pt-safe-subpage {
-    padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+    padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 1rem));
   }
   .pb-safe-nav {
-    padding-bottom: max(0.625rem, calc(env(safe-area-inset-bottom, 0px) * 0.5 + 4px));
+    padding-bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.4));
   }
   .text-purple { color: #6600FF; }
   .bg-purple-brand { background: #6600FF; }

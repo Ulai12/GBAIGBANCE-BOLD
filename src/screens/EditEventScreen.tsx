@@ -588,7 +588,7 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
   return (
     <div className="min-h-screen pb-36 bg-[#F8F9FE] dark:bg-[#0D0B14] text-[#17131D] dark:text-white">
       {/* Top Bar iOS Apple Navigation */}
-      <header className="sticky top-0 z-40 px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3.5 bg-white/90 dark:bg-[#12101F]/90 backdrop-blur-2xl border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between shadow-xs">
+      <header className="sticky top-0 z-40 px-5 pt-safe-header pb-3.5 bg-white/90 dark:bg-[#12101F]/90 backdrop-blur-2xl border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"

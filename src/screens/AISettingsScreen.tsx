@@ -79,7 +79,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({
   return (
     <div className="min-h-screen bg-[#F5F3FB] dark:bg-[#111116] text-[#17131D] dark:text-white flex flex-col antialiased transition-colors duration-200">
       {/* En-tête */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-4 bg-white/85 dark:bg-[#111116]/90 backdrop-blur-md border-b border-black/[0.06] dark:border-white/5">
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 pt-safe-header pb-4 bg-white/85 dark:bg-[#111116]/90 backdrop-blur-md border-b border-black/[0.06] dark:border-white/5">
         <button
           id="ai-settings-back-button"
           type="button"

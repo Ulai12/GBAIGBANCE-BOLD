@@ -154,7 +154,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
 
   return (
     <div className="min-h-screen pb-32">
-      <div className="sticky top-0 z-30 px-5 py-4 bg-[#EDE8FF]/80 dark:bg-[#0D0B14]/80 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
+      <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-[#EDE8FF]/80 dark:bg-[#0D0B14]/80 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
           <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>

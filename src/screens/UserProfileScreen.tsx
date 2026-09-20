@@ -41,7 +41,7 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
   const RoleIcon = roleIcon;
   return (
     <div className="min-h-screen pb-32">
-      <div className="relative h-48 bg-gradient-to-br from-[#6600FF]/20 via-[#9D4EDD]/15 to-[#EDE8FF] dark:to-[#141022]"><div className="absolute top-4 left-0 right-0 px-5"><button onClick={onBack} className="w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 backdrop-blur flex items-center justify-center shadow-md active:scale-90 transition-transform"><ChevronLeft className="w-5 h-5 text-[#1A1A2E] dark:text-white" /></button></div></div>
+      <div className="relative h-48 bg-gradient-to-br from-[#6600FF]/20 via-[#9D4EDD]/15 to-[#EDE8FF] dark:to-[#141022]"><div className="absolute top-0 left-0 right-0 pt-safe-header px-5"><button onClick={onBack} className="w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 backdrop-blur flex items-center justify-center shadow-md active:scale-90 transition-transform"><ChevronLeft className="w-5 h-5 text-[#1A1A2E] dark:text-white" /></button></div></div>
       <div className="max-w-md mx-auto px-5 -mt-16 relative">
         <div className="flex flex-col items-center text-center">
           <div className="relative">

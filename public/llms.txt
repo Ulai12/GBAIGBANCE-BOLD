@@ -1,0 +1,23 @@
+# Gbaigbance
+
+> Gbaigbance est la plateforme web et mobile de billetterie événementielle de référence en Afrique de l'Ouest (Togo, Bénin, Côte d'Ivoire).
+
+Elle permet aux utilisateurs de découvrir, réserver et payer instantanément leurs places pour des concerts, festivals, spectacles, formations et conférences via les moyens de paiement locaux (T-Money, Moov Flooz, Wave, MTN Mobile Money, Orange Money) et cartes bancaires.
+
+## Fonctionnalités Principales
+
+- **Billetterie Événementielle** : Découverte d'événements géolocalisés, filtrage par date, catégorie (Concert, Festival, Formation, Conférence, Exposition, Spectacle), gratuité et prix en FCFA (XOF).
+- **Paiements Locaux Mobile Money** : Intégration directe des passerelles ouest-africaines sans friction.
+- **Concierge IA Intégré** : Assistant virtuel intelligent pour aider les utilisateurs à trouver leurs sorties, vérifier leurs billets et recommander des événements en temps réel via la base officielle vérifiée `public.events`.
+- **Espace Organisateur & Artiste** : Création d'événements, suivi des ventes, scan de billets QR Code et statistiques en direct.
+
+## Spécifications Techniques
+
+- **Devise** : Franc CFA (XOF / FCFA)
+- **Villes Principales** : Lomé (Togo), Cotonou (Bénin), Abidjan (Côte d'Ivoire)
+- **Architecture** : Frontend React 18 + Vite + Tailwind CSS + PWA ; Backend Supabase PostgreSQL avec Row-Level Security (RLS) & Edge Functions Deno.
+- **Accès Données Événements** : Table `public.events` (champs : `id`, `title`, `description`, `category`, `starts_at`, `ends_at`, `location_name`, `city`, `price_min`, `price_max`, `currency`, `cover_url`, `status`).
+
+## Ressources Détaillées
+
+- [Documentation Complète pour LLM](/llms-full.txt) : Schémas des tables et spécifications de l'assistant IA

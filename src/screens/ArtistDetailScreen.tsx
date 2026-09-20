@@ -97,7 +97,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/25 to-black/50" />
 
         {/* Action buttons */}
-        <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+        <div className="absolute top-0 inset-x-4 pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
           <button
             type="button"
             onClick={onBack}

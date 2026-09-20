@@ -1,0 +1,57 @@
+# Gbaigbance — Documentation Complète pour Agents & Modèles IA
+
+Ce document décrit l'architecture des données, les schémas Supabase, les endpoints de l'assistant et les règles d'intégrité de la plateforme Gbaigbance.
+
+---
+
+## 1. Schéma de Données (Supabase PostgreSQL)
+
+### Table `public.events`
+Table publique contenant le catalogue des événements publiés :
+- `id` (uuid, clé primaire) : Identifiant unique de l'événement
+- `title` (text) : Titre de l'événement
+- `description` (text) : Description détaillée
+- `category` (text) : Catégorie ('concert', 'festival', 'conference', 'formation', 'exposition', 'spectacle', 'cultural', 'private')
+- `starts_at` (timestamptz) : Date et heure de début
+- `ends_at` (timestamptz, optionnel) : Date et heure de fin
+- `location_name` (text) : Nom de la salle, du lieu ou de l'établissement
+- `location_address` (text, optionnel) : Adresse postale ou repère de quartier
+- `city` (text) : Ville (ex: Lomé, Cotonou)
+- `country` (text) : Pays (ex: Togo, Bénin, Côte d'Ivoire)
+- `price_min` (numeric) : Prix d'accès le plus bas en FCFA (0 si gratuit)
+- `price_max` (numeric) : Prix VIP ou plafond en FCFA
+- `currency` (text) : Devise ('FCFA' / 'XOF')
+- `cover_url` (text) : URL de l'image de couverture
+- `status` (text) : Statut de publication ('published', 'draft', 'cancelled')
+- `capacity` (integer, optionnel) : Jauge maximale
+
+### Table `public.tickets` (Sous RLS `user_id = auth.uid()`)
+- `id` (uuid) : Identifiant unique du billet
+- `user_id` (uuid) : Utilisateur détenteur
+- `event_id` (uuid, clé étrangère vers `public.events`)
+- `ticket_type` (text) : Type de place ('Standard', 'VIP', 'Early Bird')
+- `quantity` (integer) : Nombre de places
+- `price_paid` (numeric) : Montant payé
+- `currency` (text) : Devise
+
+### Table `public.event_likes` / `public.favorites`
+- `user_id` (uuid)
+- `event_id` (uuid)
+- `created_at` (timestamptz)
+
+---
+
+## 2. API de l'Assistant IA Concierge (`ai-assistant`)
+
+- **Protocole** : HTTP POST avec flux Server-Sent Events (SSE) `text/event-stream`
+- **Authentification** : En-tête `Authorization: Bearer <supabase_jwt_ou_anon_key>` et `apikey: <supabase_anon_key>`
+- **En-têtes CORS** : Permissifs pour autoriser les requêtes légitimes d'applications et d'agents
+- **Protection Anti-SSRF** : Validation stricte des URLs et isolation des métadonnées
+
+### Outils Disponibles pour l'IA
+1. `search_events({ query, category, free_only, date_range, limit })`
+2. `get_event_details({ event_id })`
+3. `get_nearby_events({ lat, lng, radius_km, limit })`
+4. `get_my_profile_lite()` (RLS)
+5. `get_my_favorites({ limit })` (RLS)
+6. `get_my_tickets({ limit })` (RLS)

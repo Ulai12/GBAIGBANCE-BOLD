@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapPin, Globe, Loader2, Navigation, Wifi } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { COUNTRY_FLAGS } from '@/constants';
+import { safeFetchJson } from '@/utils/safeFetch';
 
 interface LocationInfo {
   ip: string;
@@ -40,19 +41,26 @@ export function LocationModal({ open, onClose }: LocationModalProps) {
     setLoadingIp(true);
     setErrorIp('');
     try {
-      const res = await fetch('https://ipapi.co/json/');
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
+      const result = await safeFetchJson<Record<string, unknown>>('https://ipapi.co/json/', {
+        timeoutMs: 6_000,
+        retries: 1,
+      });
+
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || 'Erreur réseau');
+      }
+
+      const data = result.data;
       setIpLocation({
-        ip: data.ip,
-        city: data.city || 'Inconnue',
-        country: data.country_name || 'Inconnu',
-        countryCode: data.country_code || '',
-        region: data.region || '',
-        timezone: data.timezone || '',
-        lat: data.latitude,
-        lon: data.longitude,
-        isp: data.org || 'Inconnu',
+        ip: String(data.ip || ''),
+        city: String(data.city || 'Inconnue'),
+        country: String(data.country_name || 'Inconnu'),
+        countryCode: String(data.country_code || ''),
+        region: String(data.region || ''),
+        timezone: String(data.timezone || ''),
+        lat: Number(data.latitude) || 0,
+        lon: Number(data.longitude) || 0,
+        isp: String(data.org || 'Inconnu'),
       });
     } catch {
       setErrorIp('Impossible de récupérer la localisation IP');

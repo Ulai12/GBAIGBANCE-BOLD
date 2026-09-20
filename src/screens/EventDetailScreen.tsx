@@ -248,7 +248,7 @@ export function EventDetailScreen({
     <div className="min-h-screen pb-36 bg-gray-50 dark:bg-[#0C0A13]">
       {/* Sticky Adaptive Liquid Glass Header (appears on scroll) */}
       <div
-        className={`fixed top-0 left-0 right-0 z-30 px-5 pt-safe-subpage pb-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
+        className={`fixed top-0 left-0 right-0 z-30 px-5 pt-safe-header pb-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
           isScrolled
             ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.06] dark:border-white/[0.08] shadow-sm translate-y-0 opacity-100 pointer-events-auto'
             : '-translate-y-full opacity-0 pointer-events-none'
@@ -313,7 +313,7 @@ export function EventDetailScreen({
         <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
 
         {/* Top iOS Floating Navigation Bar */}
-        <div className="absolute top-4 left-0 right-0 px-5 flex items-center justify-between z-20">
+        <div className="absolute top-0 left-0 right-0 pt-safe-header px-5 flex items-center justify-between z-20 pointer-events-auto">
           <button
             type="button"
             onClick={onBack}

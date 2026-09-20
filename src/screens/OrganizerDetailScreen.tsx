@@ -116,7 +116,7 @@ export function OrganizerDetailScreen({
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/20 to-black/40" />
 
         {/* Buttons */}
-        <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+        <div className="absolute top-0 inset-x-4 pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
           <button
             type="button"
             onClick={onBack}

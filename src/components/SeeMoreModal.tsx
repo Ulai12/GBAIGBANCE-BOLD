@@ -174,7 +174,7 @@ export function SeeMoreModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#FAFAFC] dark:bg-[#0D0B12] animate-slide-up">
       {/* Top sticky iOS bar */}
-      <header className="sticky top-0 z-20 px-5 pt-5 pb-4 bg-white/85 dark:bg-[#0D0B12]/85 backdrop-blur-xl border-b border-black/[0.04] dark:border-white/[0.06]">
+      <header className="sticky top-0 z-20 px-5 pt-safe-header pb-4 bg-white/85 dark:bg-[#0D0B12]/85 backdrop-blur-xl border-b border-black/[0.04] dark:border-white/[0.06]">
         <div className="flex items-center justify-between gap-3 mb-3">
           <button
             type="button"
