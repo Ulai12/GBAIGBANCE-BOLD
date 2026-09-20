@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explorer & Recherche — Aperçu Statique Gbaigbance</title>
+  <meta name="description" content="Snapshot HTML statique sémantique de l'écran Explorer & Recherche pour Gbaigbance." />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+  :root {
+    --primary: #6600FF;
+    --primary-hover: #5500D9;
+    --primary-light: #F2ECFF;
+    --success: #10B981;
+    --bg-light: #F8F7FC;
+    --surface-light: #FFFFFF;
+    --text-dark: #14121F;
+    --text-muted: #645E73;
+    --border-light: rgba(20, 18, 31, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-light: #0D0B14;
+      --surface-light: #161322;
+      --text-dark: #F5F3FC;
+      --text-muted: #9E97B0;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --primary-light: rgba(102, 0, 255, 0.15);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 24px 16px 64px 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 32px;
+  }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 6px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .nav-back {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-back:hover { color: var(--primary); }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; color: var(--text-dark); }
+  h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 16px; color: var(--text-dark); }
+  h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-dark); }
+  p { color: var(--text-muted); font-size: 15px; margin-bottom: 16px; }
+  .card {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+  .pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .pill-green { background: rgba(16, 185, 129, 0.12); color: #059669; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 999px;
+    border: none;
+    text-decoration: none;
+    cursor: default;
+    gap: 8px;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--border-light);
+  }
+  .stat-val { font-size: 24px; font-weight: 800; color: var(--text-dark); }
+  .stat-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-dark); }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    background: var(--surface-light);
+    color: var(--text-dark);
+    font-size: 14px;
+    outline: none;
+  }
+  ul.feature-list { list-style: none; }
+  ul.feature-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+  }
+  ul.feature-list li:last-child { border-bottom: none; }
+  footer.site-footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="brand-badge">⚡ GBAIGBANCE PREVIEW</span>
+        <span class="pill" style="font-size: 11px;">Route : /explore</span>
+      </div>
+      <nav>
+        <a href="index.html" class="nav-back">← Sommaire des Écrans</a>
+      </nav>
+    </header>
+
+    <main>
+      
+    <h1>Rechercher une sortie</h1>
+    <p>Trouve des concerts, festivals et conférences en Afrique de l'Ouest selon tes critères.</p>
+
+    <div class="card">
+      <form action="#" method="get">
+        <div class="form-group">
+          <label for="search-input">Mots-clés, artiste, lieu ou événement</label>
+          <input type="text" id="search-input" name="q" placeholder="Ex: Concert live, Palais des Congrès..." value="Concert Lomé" />
+        </div>
+
+        <div class="grid-3">
+          <div class="form-group">
+            <label for="city-select">Ville</label>
+            <select id="city-select" name="city">
+              <option value="lome" selected>Lomé (Togo)</option>
+              <option value="cotonou">Cotonou (Bénin)</option>
+              <option value="abidjan">Abidjan (Côte d'Ivoire)</option>
+              <option value="all">Toutes les villes</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="category-select">Catégorie</label>
+            <select id="category-select" name="category">
+              <option value="all" selected>Toutes catégories</option>
+              <option value="concert">Concert & Musique</option>
+              <option value="festival">Festival & Culture</option>
+              <option value="nightlife">Soirée & Nightlife</option>
+              <option value="conference">Conférence & Formation</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="price-select">Tarif</label>
+            <select id="price-select" name="price">
+              <option value="all" selected>Tous les prix</option>
+              <option value="free">Gratuit</option>
+              <option value="under_5000">Moins de 5 000 FCFA</option>
+              <option value="vip">Pass VIP</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top: 8px;">Filtrer les événements</button>
+      </form>
+    </div>
+
+    <h2>Résultats de Recherche (4 Événements Trouvés)</h2>
+    <div class="grid-2">
+      <article class="card">
+        <span class="pill pill-green">5 000 FCFA</span>
+        <h3 style="margin-top: 10px;">Afro Fusion Festival 2026</h3>
+        <p style="font-size: 14px;">Grande scène extérieure avec les meilleurs DJs togolais et béninois.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Vendredi 18 Septembre 2026 · Plage de Lomé (Face Hôtel de la Paix)</p>
+      </article>
+
+      <article class="card">
+        <span class="pill">Gratuit</span>
+        <h3 style="margin-top: 10px;">Exposition d’Art Contemporain Vodoun & Modernité</h3>
+        <p style="font-size: 14px;">Vernissage et visite guidée au Centre Culturel Français de Cotonou.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Du 10 au 15 Octobre 2026 · Cotonou, Bénin</p>
+      </article>
+    </div>
+  
+    </main>
+
+    <footer class="site-footer">
+      <p>Gbaigbance — Aperçu HTML Statique Sémantique généré pour agents IA & moteurs d’indexation sans JavaScript.</p>
+      <p>Devise : Franc CFA (XOF) · Villes couvertes : Lomé (Togo), Cotonou (Bénin), Abidjan (Côte d’Ivoire).</p>
+    </footer>
+  </div>
+</body>
+</html>

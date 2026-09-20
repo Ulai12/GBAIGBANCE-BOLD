@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmation & Billet QR Code — Aperçu Statique Gbaigbance</title>
+  <meta name="description" content="Snapshot HTML statique sémantique de l'écran Confirmation & Billet QR Code pour Gbaigbance." />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+  :root {
+    --primary: #6600FF;
+    --primary-hover: #5500D9;
+    --primary-light: #F2ECFF;
+    --success: #10B981;
+    --bg-light: #F8F7FC;
+    --surface-light: #FFFFFF;
+    --text-dark: #14121F;
+    --text-muted: #645E73;
+    --border-light: rgba(20, 18, 31, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-light: #0D0B14;
+      --surface-light: #161322;
+      --text-dark: #F5F3FC;
+      --text-muted: #9E97B0;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --primary-light: rgba(102, 0, 255, 0.15);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 24px 16px 64px 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 32px;
+  }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 6px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .nav-back {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-back:hover { color: var(--primary); }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; color: var(--text-dark); }
+  h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 16px; color: var(--text-dark); }
+  h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-dark); }
+  p { color: var(--text-muted); font-size: 15px; margin-bottom: 16px; }
+  .card {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+  .pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .pill-green { background: rgba(16, 185, 129, 0.12); color: #059669; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 999px;
+    border: none;
+    text-decoration: none;
+    cursor: default;
+    gap: 8px;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--border-light);
+  }
+  .stat-val { font-size: 24px; font-weight: 800; color: var(--text-dark); }
+  .stat-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-dark); }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    background: var(--surface-light);
+    color: var(--text-dark);
+    font-size: 14px;
+    outline: none;
+  }
+  ul.feature-list { list-style: none; }
+  ul.feature-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+  }
+  ul.feature-list li:last-child { border-bottom: none; }
+  footer.site-footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="brand-badge">⚡ GBAIGBANCE PREVIEW</span>
+        <span class="pill" style="font-size: 11px;">Route : /confirmation</span>
+      </div>
+      <nav>
+        <a href="index.html" class="nav-back">← Sommaire des Écrans</a>
+      </nav>
+    </header>
+
+    <main>
+      
+    <div class="card" style="text-align: center; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.02);">
+      <div style="font-size: 48px; margin-bottom: 8px;">🎉</div>
+      <span class="pill pill-green">Paiement Validé avec Succès</span>
+      <h1 style="margin-top: 12px;">Votre réservation est confirmée !</h1>
+      <p>Un email de confirmation avec votre billet électronique a été envoyé à <strong>koffi.mensah@example.com</strong>.</p>
+      <div style="font-family: monospace; font-size: 16px; font-weight: 700; color: var(--primary); margin: 12px 0;">
+        RÉFÉRENCE BILLET : GBA-DEMO-2026-001
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Votre Billet d'Entrée Sécurisé</h2>
+      <div class="grid-2" style="align-items: center;">
+        <div style="text-align: center; padding: 24px; border: 2px dashed var(--border-light); border-radius: 16px;">
+          <div style="font-size: 72px;">📱</div>
+          <div style="font-weight: 800; font-size: 14px; margin-top: 8px;">PASS D'ACCÈS NUMÉRIQUE</div>
+          <div style="font-size: 12px; color: var(--text-muted);">QR Code crypté valide pour 2 entrées</div>
+        </div>
+
+        <div>
+          <h3>Concert Live Démo</h3>
+          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Date :</strong> Samedi 24 Octobre 2026 à 18h00</p>
+          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Lieu :</strong> Palais des Congrès de Lomé, Togo</p>
+          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Titulaire :</strong> Koffi Mensah (2 places Pass Standard)</p>
+          <p style="font-size: 14px; margin-bottom: 16px;"><strong>Statut :</strong> <span class="pill pill-green">VALIDE</span></p>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="mes-billets.html" class="btn">Accéder à mes billets</a>
+            <button type="button" class="btn btn-outline">Télécharger le PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    </main>
+
+    <footer class="site-footer">
+      <p>Gbaigbance — Aperçu HTML Statique Sémantique généré pour agents IA & moteurs d’indexation sans JavaScript.</p>
+      <p>Devise : Franc CFA (XOF) · Villes couvertes : Lomé (Togo), Cotonou (Bénin), Abidjan (Côte d’Ivoire).</p>
+    </footer>
+  </div>
+</body>
+</html>

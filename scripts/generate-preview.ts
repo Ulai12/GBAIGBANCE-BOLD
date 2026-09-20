@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIST_PREVIEW_DIR = path.resolve(__dirname, '../dist/preview');
+const PUBLIC_PREVIEW_DIR = path.resolve(__dirname, '../public/preview');
 
 interface ScreenMeta {
   filename: string;
@@ -20,7 +21,7 @@ const SCREENS: ScreenMeta[] = [
     filename: 'accueil.html',
     title: 'Accueil & Découverte',
     category: 'Principal',
-    description: 'Flux principal d’événements en vedette, sorties tendances à Lomé et Cotonou, catégories dynamiques, artistes et chiffres clés.',
+    description: 'Flux principal d’événements en vedette, sorties populaires, catégories dynamiques, artistes et organisateurs vérifiés.',
     route: '/',
     badge: 'Essentiel',
   },
@@ -44,7 +45,7 @@ const SCREENS: ScreenMeta[] = [
     filename: 'paiement.html',
     title: 'Paiement Mobile Money',
     category: 'Transaction',
-    description: 'Tunnel de réservation et de paiement sécurisé adapté à l’Afrique de l’Ouest : T-Money, Moov Flooz, MTN MoMo, Wave et Carte Bancaire.',
+    description: 'Tunnel de réservation et de paiement sécurisé adapté à l’Afrique de l’Ouest : T-Money, Moov Flooz et MTN MoMo.',
     route: '/checkout',
     badge: 'Fintech XOF',
   },
@@ -62,7 +63,7 @@ const SCREENS: ScreenMeta[] = [
     category: 'Utilisateur',
     description: 'Portefeuille de billets actifs et passés, statut de validation aux portes, détails des concerts et contrôle d’accès sans connexion.',
     route: '/tickets',
-    badge: 'Pass 0ms',
+    badge: 'Portefeuille',
   },
   {
     filename: 'favoris.html',
@@ -261,8 +262,8 @@ function wrapHtml(title: string, bodyContent: string, currentRoute?: string): st
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title} — Aperçu Statique Gbaigbance</title>
-  <meta name="description" content="Snapshot HTML statique sémantique de l'écran ${title} pour Gbaigbance, la billetterie événementielle en Afrique de l'Ouest." />
-  <meta name="robots" content="index, follow" />
+  <meta name="description" content="Snapshot HTML statique sémantique de l'écran ${title} pour Gbaigbance." />
+  <meta name="robots" content="noindex, nofollow" />
   <style>${CSS_STYLES}</style>
 </head>
 <body>
@@ -293,76 +294,108 @@ function wrapHtml(title: string, bodyContent: string, currentRoute?: string): st
 // 1. Écran Accueil
 function generateAccueilHtml(): string {
   return wrapHtml('Accueil & Découverte', `
+    <!-- En-tête officiel de l'application -->
+    <header class="card" style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong style="font-size: 16px; letter-spacing: -0.01em;">GBAIGBANCE</strong>
+            <span class="pill" style="font-size: 10px;">Billetterie & Événements</span>
+          </div>
+          <h1 style="margin-top: 10px; font-size: 22px;">Bonjour Invité 👋</h1>
+          <p style="font-size: 13px; margin-bottom: 0; color: var(--text-muted);">Trouve ta prochaine sortie</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="profil.html" class="btn btn-outline" style="font-size: 12px; padding: 6px 14px;">Profil</a>
+        </div>
+      </div>
+
+      <!-- Barre de recherche -->
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <input type="search" placeholder="Concerts, soirées, festivals..." value="" style="flex: 1;" readonly />
+        <a href="explorer.html" class="btn" style="padding: 10px 18px; font-size: 13px;">Rechercher</a>
+      </div>
+    </header>
+
+    <!-- Section En Vedette -->
+    <h2>En Vedette</h2>
     <section class="card" style="background: linear-gradient(135deg, rgba(102,0,255,0.08) 0%, rgba(16,185,129,0.05) 100%);">
-      <span class="pill">Concert Vedette du Moment</span>
-      <h1 style="margin-top: 12px;">Festival de Musiques Urbaines d'Afrique — Édition Lomé 2026</h1>
-      <p>Le plus grand rassemblement musical d'Afrique de l'Ouest au Stade Omnisports de Lomé avec Santrinos Raphaël, Toofan, Zeynab et King Mensah.</p>
-      <div style="display: flex; gap: 16px; align-items: center; margin-top: 16px; flex-wrap: wrap;">
+      <span class="pill pill-green">Concert Officiel Vérifié</span>
+      <h2 style="margin-top: 12px; font-size: 20px;">Concert Live Démo</h2>
+      <p>Grande soirée musicale live au Palais des Congrès de Lomé avec des prestations d'artistes en direct.</p>
+      <div style="display: flex; gap: 16px; align-items: center; margin-top: 12px; flex-wrap: wrap; font-size: 14px;">
         <div><strong>Date :</strong> Samedi 24 Octobre 2026 à 18h00</div>
-        <div><strong>Lieu :</strong> Stade Omnisports de Lomé, Togo</div>
+        <div><strong>Lieu :</strong> Palais des Congrès de Lomé, Togo</div>
         <div><strong>Tarif :</strong> À partir de 5 000 FCFA</div>
       </div>
-      <div style="margin-top: 20px;">
-        <a href="detail-evenement.html" class="btn">Réserver une place →</a>
+      <div style="margin-top: 18px;">
+        <a href="detail-evenement.html" class="btn">Prendre un billet →</a>
       </div>
     </section>
 
+    <!-- Catégories d'Événements -->
     <h2>Catégories d'Événements</h2>
     <div class="grid-3">
       <div class="card" style="text-align: center;">
-        <div style="font-size: 28px; margin-bottom: 8px;">🎵</div>
+        <div style="font-size: 24px; margin-bottom: 6px;">🎵</div>
         <h3>Concerts & Live</h3>
-        <p style="font-size: 13px;">Afrobeats, Hip-hop, Agbadja, Gospel</p>
-        <span class="pill">14 sorties actives</span>
+        <p style="font-size: 13px; margin-bottom: 0;">Performances live & scènes ouvertes</p>
       </div>
       <div class="card" style="text-align: center;">
-        <div style="font-size: 28px; margin-bottom: 8px;">🎪</div>
-        <h3>Festivals & Fêtes</h3>
-        <p style="font-size: 13px;">Festivals culturels, gastronomie, danse</p>
-        <span class="pill">8 sorties actives</span>
+        <div style="font-size: 24px; margin-bottom: 6px;">🎪</div>
+        <h3>Festivals</h3>
+        <p style="font-size: 13px; margin-bottom: 0;">Festivals artistiques et culturels</p>
       </div>
       <div class="card" style="text-align: center;">
-        <div style="font-size: 28px; margin-bottom: 8px;">💼</div>
+        <div style="font-size: 24px; margin-bottom: 6px;">💼</div>
         <h3>Conférences & Tech</h3>
-        <p style="font-size: 13px;">Sommets d’affaires, Tech Lomé, Ateliers</p>
-        <span class="pill">6 sorties actives</span>
+        <p style="font-size: 13px; margin-bottom: 0;">Rencontres professionnelles & ateliers</p>
       </div>
     </div>
 
-    <h2>Événements Tendances à Lomé & Cotonou</h2>
+    <!-- Sorties populaires à Lomé -->
+    <h2>Sorties populaires à Lomé</h2>
     <div class="grid-2">
       <article class="card">
-        <span class="pill pill-green">Billet Standard : 2 000 FCFA</span>
-        <h3 style="margin-top: 10px;">Lomé Afro Night Party — Rooftop Marina</h3>
-        <p style="font-size: 14px;">Une soirée exceptionnelle sous les étoiles face à l'Océan Atlantique. DJ sets en direct et dégustation culinaire togolaise.</p>
-        <p style="font-size: 13px;">📍 Hôtel 2 Février & Marina, Boulevard Circulaire, Lomé</p>
-        <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px;">Voir l'événement</a>
+        <span class="pill pill-green">5 000 FCFA</span>
+        <h3 style="margin-top: 10px;">Concert Live Démo</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">📍 Palais des Congrès de Lomé · Samedi 24 Octobre 2026 à 18h00</p>
+        <p style="font-size: 13px;">Soirée musicale en direct réunissant Artiste Démo 1 et Artiste Démo 2.</p>
+        <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px; justify-content: center;">Voir l'événement</a>
       </article>
 
       <article class="card">
-        <span class="pill">Gratuit (Sur Réservation)</span>
-        <h3 style="margin-top: 10px;">Forum Tech & Entrepreneuriat Togo-Bénin</h3>
-        <p style="font-size: 14px;">Rencontre de l’écosystème numérique : conférences, stands de startups locales et ateliers pratiques pour créateurs de projets.</p>
-        <p style="font-size: 13px;">📍 Palais des Congrès de Cotonou, Bénin</p>
-        <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px;">Voir l'événement</a>
+        <span class="pill">Gratuit</span>
+        <h3 style="margin-top: 10px;">Forum Démo Culture & Innovation</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">📍 Centre Culturel de Lomé · Vendredi 23 Octobre 2026</p>
+        <p style="font-size: 13px;">Tables rondes et expositions interactives ouvertes au grand public.</p>
+        <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px; justify-content: center;">Voir l'événement</a>
       </article>
     </div>
 
-    <h2>Chiffres Clés de la Plateforme</h2>
-    <div class="grid-3">
+    <!-- Artistes en vogue -->
+    <h2>Artistes en vogue</h2>
+    <div class="grid-2">
       <div class="card">
-        <div class="stat-val">+45 000</div>
-        <div class="stat-lbl">Billets Émis en Afrique</div>
+        <h3>Artiste Démo 1</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 0;">Musique Live · Lomé, Togo</p>
       </div>
       <div class="card">
-        <div class="stat-val">100%</div>
-        <div class="stat-lbl">Mobile Money (T-Money, Flooz, MoMo)</div>
-      </div>
-      <div class="card">
-        <div class="stat-val">0 ms</div>
-        <div class="stat-lbl">Affichage Rapide Hors-Ligne</div>
+        <h3>Artiste Démo 2</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 0;">Afro Fusion · Cotonou, Bénin</p>
       </div>
     </div>
+
+    <!-- Barre de Navigation Inférieure (BottomNav) -->
+    <nav class="card" style="margin-top: 32px; background: var(--surface-light); border-top: 2px solid var(--primary-light);">
+      <div style="display: flex; justify-content: space-around; text-align: center; font-size: 12px; font-weight: 700;">
+        <a href="accueil.html" style="color: var(--primary); text-decoration: none;">🏠 Accueil</a>
+        <a href="explorer.html" style="color: var(--text-muted); text-decoration: none;">🔍 Explorer</a>
+        <a href="mes-billets.html" style="color: var(--text-muted); text-decoration: none;">🎟️ Billets</a>
+        <a href="favoris.html" style="color: var(--text-muted); text-decoration: none;">❤️ Favoris</a>
+        <a href="profil.html" style="color: var(--text-muted); text-decoration: none;">👤 Profil</a>
+      </div>
+    </nav>
   `, '/');
 }
 
@@ -376,7 +409,7 @@ function generateExplorerHtml(): string {
       <form action="#" method="get">
         <div class="form-group">
           <label for="search-input">Mots-clés, artiste, lieu ou événement</label>
-          <input type="text" id="search-input" name="q" placeholder="Ex: Santrinos, Concert live, Palais des Congrès..." value="Concert Lomé" />
+          <input type="text" id="search-input" name="q" placeholder="Ex: Concert live, Palais des Congrès..." value="Concert Lomé" />
         </div>
 
         <div class="grid-3">
@@ -440,9 +473,9 @@ function generateDetailEvenementHtml(): string {
   return wrapHtml('Détail d’Événement', `
     <article class="card">
       <span class="pill pill-green">Concert Officiel Vérifié</span>
-      <h1 style="margin-top: 12px;">Concert Géant de Clôture — Afro Rhythm Lomé</h1>
+      <h1 style="margin-top: 12px;">Concert Live Démo</h1>
       <p style="font-size: 16px; color: var(--text-dark); font-weight: 500;">
-        Un show immersif de 4 heures avec les têtes d'affiche de la musique togolais et béninoise, feux d'artifice et scène son & lumière internationale.
+        Grande soirée musicale live au Palais des Congrès de Lomé avec des prestations d'artistes en direct, son immersif et scénographie soignée.
       </p>
 
       <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 20px 0;" />
@@ -450,17 +483,17 @@ function generateDetailEvenementHtml(): string {
       <div class="grid-3">
         <div>
           <div class="stat-lbl">📅 Date & Heure</div>
-          <div style="font-weight: 700; margin-top: 4px;">Samedi 14 Novembre 2026</div>
-          <div style="font-size: 13px; color: var(--text-muted);">Ouverture des portes : 17h00</div>
+          <div style="font-weight: 700; margin-top: 4px;">Samedi 24 Octobre 2026</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Ouverture des portes : 18h00</div>
         </div>
         <div>
           <div class="stat-lbl">📍 Lieu & Ville</div>
           <div style="font-weight: 700; margin-top: 4px;">Palais des Congrès de Lomé</div>
-          <div style="font-size: 13px; color: var(--text-muted);">Avenue de la Libération, Togo</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Avenue de la Libération, Lomé, Togo</div>
         </div>
         <div>
           <div class="stat-lbl">🎟️ Organisateur</div>
-          <div style="font-weight: 700; margin-top: 4px;">Gbaï Productions Lomé</div>
+          <div style="font-weight: 700; margin-top: 4px;">Organisateur Démo</div>
           <div style="font-size: 13px; color: var(--success);">✓ Organisateur Vérifié</div>
         </div>
       </div>
@@ -469,7 +502,7 @@ function generateDetailEvenementHtml(): string {
       <ul class="feature-list">
         <li>
           <div>
-            <strong>Pass Accès Standard</strong>
+            <strong>Pass Standard</strong>
             <div style="font-size: 13px; color: var(--text-muted);">Accès fosse générale, écran géant et zone bar</div>
           </div>
           <div style="text-align: right;">
@@ -479,7 +512,7 @@ function generateDetailEvenementHtml(): string {
         </li>
         <li>
           <div>
-            <strong>Pass VIP Golden Circle</strong>
+            <strong>Pass VIP</strong>
             <div style="font-size: 13px; color: var(--text-muted);">Place assise réservée au premier rang, coupe-file & boisson offerte</div>
           </div>
           <div style="text-align: right;">
@@ -492,13 +525,22 @@ function generateDetailEvenementHtml(): string {
       <h2 style="margin-top: 28px;">Artistes Confirmés</h2>
       <div class="grid-2">
         <div style="padding: 12px; border: 1px solid var(--border-light); border-radius: 12px;">
-          <strong>Santrinos Raphaël</strong>
-          <p style="font-size: 13px; margin-bottom: 0;">Artiste Chanteur Afrobeat (Togo) · 140K abonnés</p>
+          <strong>Artiste Démo 1</strong>
+          <p style="font-size: 13px; margin-bottom: 0;">Performeur Live · Lomé, Togo</p>
         </div>
         <div style="padding: 12px; border: 1px solid var(--border-light); border-radius: 12px;">
-          <strong>Zeynab Habib</strong>
-          <p style="font-size: 13px; margin-bottom: 0;">Chanteuse & Ambassadrice de musique live (Bénin)</p>
+          <strong>Artiste Démo 2</strong>
+          <p style="font-size: 13px; margin-bottom: 0;">Afro Fusion · Cotonou, Bénin</p>
         </div>
+      </div>
+
+      <!-- Barre d'action sticky en bas d'écran conforme au vrai EventDetailScreen -->
+      <div style="margin-top: 32px; padding: 16px; border-radius: 16px; background: var(--surface-light); border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">À partir de</div>
+          <div style="font-size: 20px; font-weight: 800; color: var(--text-dark);">5 000 FCFA</div>
+        </div>
+        <a href="paiement.html" class="btn">Prendre un billet</a>
       </div>
     </article>
   `, '/events/:id');
@@ -507,18 +549,22 @@ function generateDetailEvenementHtml(): string {
 // 4. Écran Tunnel de Paiement & Mobile Money
 function generatePaiementHtml(): string {
   return wrapHtml('Paiement Mobile Money', `
-    <h1>Finaliser la réservation</h1>
-    <p>Paiement sécurisé et instantané via votre compte Mobile Money habituel ou carte bancaire.</p>
+    <h1>Réserver votre place</h1>
+    <p>Sélectionnez votre billet et réglez instantanément via votre compte Mobile Money habituel.</p>
 
     <div class="card">
       <h2>Récapitulatif de la commande</h2>
       <ul class="feature-list">
         <li>
-          <span>Événement : Concert Géant de Clôture</span>
+          <span>Événement : Concert Live Démo</span>
           <strong>Palais des Congrès de Lomé</strong>
         </li>
         <li>
-          <span>Catégorie de Billet : Pass Accès Standard (x2)</span>
+          <span>Date : Samedi 24 Octobre 2026 à 18h00</span>
+          <strong>Lomé, Togo</strong>
+        </li>
+        <li>
+          <span>Catégorie sélectionnée : Pass Standard (x2)</span>
           <strong>10 000 FCFA</strong>
         </li>
         <li>
@@ -539,39 +585,39 @@ function generatePaiementHtml(): string {
             <input type="text" id="buyer-name" name="name" value="Koffi Mensah" required />
           </div>
           <div class="form-group">
-            <label for="buyer-email">Adresse Email (pour recevoir le pass)</label>
-            <input type="email" id="buyer-email" name="email" value="koffi.mensah@example.tg" required />
+            <label for="buyer-email">Adresse Email (pour recevoir le billet)</label>
+            <input type="email" id="buyer-email" name="email" value="koffi.mensah@example.com" required />
           </div>
         </div>
 
-        <h2 style="margin-top: 16px;">Choisissez votre moyen de paiement</h2>
+        <h2 style="margin-top: 16px;">Choisissez votre moyen de paiement Mobile Money</h2>
         <div class="grid-3" style="margin-bottom: 24px;">
           <label style="border: 2px solid var(--primary); border-radius: 12px; padding: 14px; display: block; cursor: pointer; background: var(--primary-light);">
             <input type="radio" name="payment_method" value="tmoney" checked style="width: auto; margin-right: 6px;" />
-            <strong>T-Money (Togo)</strong>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Paiement direct Togocom</div>
+            <strong>T-Money</strong>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Togocom (Togo)</div>
           </label>
 
           <label style="border: 1px solid var(--border-light); border-radius: 12px; padding: 14px; display: block; cursor: pointer;">
             <input type="radio" name="payment_method" value="flooz" style="width: auto; margin-right: 6px;" />
             <strong>Moov Flooz</strong>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Togo, Bénin & CI</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Moov (Togo, Bénin & CI)</div>
           </label>
 
           <label style="border: 1px solid var(--border-light); border-radius: 12px; padding: 14px; display: block; cursor: pointer;">
-            <input type="radio" name="payment_method" value="card" style="width: auto; margin-right: 6px;" />
-            <strong>Carte Visa / Mastercard</strong>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Paiement international 3D-Secure</div>
+            <input type="radio" name="payment_method" value="momo" style="width: auto; margin-right: 6px;" />
+            <strong>MTN MoMo</strong>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">MTN Mobile Money (Bénin)</div>
           </label>
         </div>
 
         <div class="form-group">
-          <label for="phone-number">Numéro de téléphone de facturation</label>
-          <input type="tel" id="phone-number" name="phone" value="+228 90 12 34 56" />
+          <label for="phone-number">Numéro de téléphone Mobile Money</label>
+          <input type="tel" id="phone-number" name="phone" value="+228 90 00 00 00" />
         </div>
 
         <div style="display: flex; gap: 12px; align-items: center; margin-top: 24px;">
-          <a href="confirmation.html" class="btn" style="flex: 1; text-align: center;">Confirmer et Payer 10 000 FCFA</a>
+          <a href="confirmation.html" class="btn" style="flex: 1; text-align: center;">Confirmer la réservation (10 000 FCFA)</a>
         </div>
       </form>
     </div>
@@ -585,9 +631,9 @@ function generateConfirmationHtml(): string {
       <div style="font-size: 48px; margin-bottom: 8px;">🎉</div>
       <span class="pill pill-green">Paiement Validé avec Succès</span>
       <h1 style="margin-top: 12px;">Votre réservation est confirmée !</h1>
-      <p>Un email de confirmation avec votre billet électronique a été envoyé à <strong>koffi.mensah@example.tg</strong>.</p>
+      <p>Un email de confirmation avec votre billet électronique a été envoyé à <strong>koffi.mensah@example.com</strong>.</p>
       <div style="font-family: monospace; font-size: 16px; font-weight: 700; color: var(--primary); margin: 12px 0;">
-        RÉFÉRENCE BILLET : GBA-TKT-2026-9F8A
+        RÉFÉRENCE BILLET : GBA-DEMO-2026-001
       </div>
     </div>
 
@@ -601,11 +647,11 @@ function generateConfirmationHtml(): string {
         </div>
 
         <div>
-          <h3>Concert Géant de Clôture — Afro Rhythm</h3>
-          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Date :</strong> Samedi 14 Novembre 2026 à 18h00</p>
+          <h3>Concert Live Démo</h3>
+          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Date :</strong> Samedi 24 Octobre 2026 à 18h00</p>
           <p style="font-size: 14px; margin-bottom: 8px;"><strong>Lieu :</strong> Palais des Congrès de Lomé, Togo</p>
-          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Titulaire :</strong> Koffi Mensah (2 places Standard)</p>
-          <p style="font-size: 14px; margin-bottom: 16px;"><strong>Statut :</strong> <span class="pill pill-green">Billet Actif & Valide</span></p>
+          <p style="font-size: 14px; margin-bottom: 8px;"><strong>Titulaire :</strong> Koffi Mensah (2 places Pass Standard)</p>
+          <p style="font-size: 14px; margin-bottom: 16px;"><strong>Statut :</strong> <span class="pill pill-green">VALIDE</span></p>
 
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="mes-billets.html" class="btn">Accéder à mes billets</a>
@@ -625,11 +671,11 @@ function generateMesBilletsHtml(): string {
 
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
-        <span class="pill pill-green">Billet Actif</span>
-        <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">REF: GBA-2026-9F8A</span>
+        <span class="pill pill-green">VALIDE</span>
+        <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">REF: GBA-DEMO-2026-001</span>
       </div>
-      <h2>Concert Géant de Clôture — Afro Rhythm</h2>
-      <p style="font-size: 14px; margin-bottom: 8px;">📍 Palais des Congrès de Lomé · Samedi 14 Novembre 2026 à 18h00</p>
+      <h2>Concert Live Démo</h2>
+      <p style="font-size: 14px; margin-bottom: 8px;">📍 Palais des Congrès de Lomé · Samedi 24 Octobre 2026 à 18h00</p>
       <p style="font-size: 14px; margin-bottom: 16px;">Tarif : 2 x Pass Standard (10 000 FCFA)</p>
       <div style="display: flex; gap: 12px;">
         <a href="confirmation.html" class="btn" style="font-size: 13px; padding: 8px 16px;">Afficher le QR Code</a>
@@ -643,8 +689,8 @@ function generateMesBilletsHtml(): string {
         <span class="pill" style="background: rgba(100,94,115,0.12); color: var(--text-muted);">Terminé</span>
         <span style="font-size: 12px; color: var(--text-muted);">12 Juillet 2026</span>
       </div>
-      <h3>Festival Jazz & Vins de Lomé</h3>
-      <p style="font-size: 13px; margin-bottom: 0;">Hôtel Sarakawa, Lomé · Billet utilisé</p>
+      <h3>Festival Démo Culturel</h3>
+      <p style="font-size: 13px; margin-bottom: 0;">Centre Culturel de Lomé · Billet utilisé</p>
     </div>
   `, '/tickets');
 }
@@ -656,7 +702,7 @@ function generateFavorisHtml(): string {
     <p>Toutes vos sorties coup de cœur, artistes et organisateurs suivis au même endroit.</p>
 
     <div style="display: flex; gap: 8px; margin-bottom: 24px;">
-      <span class="pill" style="padding: 8px 16px; font-size: 14px; background: var(--primary); color: white;">Événements (3)</span>
+      <span class="pill" style="padding: 8px 16px; font-size: 14px; background: var(--primary); color: white;">Événements (2)</span>
       <span class="pill" style="padding: 8px 16px; font-size: 14px; background: var(--primary-light); color: var(--primary);">Artistes (2)</span>
       <span class="pill" style="padding: 8px 16px; font-size: 14px; background: var(--primary-light); color: var(--primary);">Organisateurs (1)</span>
     </div>
@@ -664,16 +710,16 @@ function generateFavorisHtml(): string {
     <h2>Événements Enregistrés</h2>
     <div class="grid-2">
       <article class="card">
-        <span class="pill">Samedi 24 Octobre 2026</span>
-        <h3 style="margin-top: 10px;">Festival de Musiques Urbaines d'Afrique</h3>
-        <p style="font-size: 13px;">Stade Omnisports de Lomé · À partir de 5 000 FCFA</p>
+        <span class="pill">Samedi 24 Octobre 2026 à 18h00</span>
+        <h3 style="margin-top: 10px;">Concert Live Démo</h3>
+        <p style="font-size: 13px;">Palais des Congrès de Lomé · À partir de 5 000 FCFA</p>
         <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px;">Voir la billetterie</a>
       </article>
 
       <article class="card">
         <span class="pill pill-green">Gratuit</span>
-        <h3 style="margin-top: 10px;">Forum Tech & Entrepreneuriat Togo-Bénin</h3>
-        <p style="font-size: 13px;">Palais des Congrès de Cotonou · Entrée libre</p>
+        <h3 style="margin-top: 10px;">Forum Démo Culture & Innovation</h3>
+        <p style="font-size: 13px;">Centre Culturel de Lomé · Entrée libre</p>
         <a href="detail-evenement.html" class="btn btn-outline" style="width: 100%; margin-top: 8px;">Voir la billetterie</a>
       </article>
     </div>
@@ -682,16 +728,16 @@ function generateFavorisHtml(): string {
     <div class="grid-2">
       <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <h3>Santrinos Raphaël</h3>
-          <p style="font-size: 13px; margin-bottom: 0;">Lomé, Togo · 140 000 abonnés</p>
+          <h3>Artiste Démo 1</h3>
+          <p style="font-size: 13px; margin-bottom: 0;">Lomé, Togo</p>
         </div>
         <span class="pill pill-green">Abonné ✓</span>
       </div>
 
       <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <h3>Zeynab Habib</h3>
-          <p style="font-size: 13px; margin-bottom: 0;">Cotonou, Bénin · 85 000 abonnés</p>
+          <h3>Artiste Démo 2</h3>
+          <p style="font-size: 13px; margin-bottom: 0;">Cotonou, Bénin</p>
         </div>
         <span class="pill pill-green">Abonné ✓</span>
       </div>
@@ -709,8 +755,8 @@ function generateAbonnementsHtml(): string {
       <ul class="feature-list">
         <li>
           <div>
-            <strong>Santrinos Raphaël</strong>
-            <div style="font-size: 13px; color: var(--text-muted);">Artiste Afrobeat · Lomé, Togo</div>
+            <strong>Artiste Démo 1</strong>
+            <div style="font-size: 13px; color: var(--text-muted);">Performeur Live · Lomé, Togo</div>
           </div>
           <div>
             <span class="pill pill-green">Notifications Actives</span>
@@ -718,8 +764,8 @@ function generateAbonnementsHtml(): string {
         </li>
         <li>
           <div>
-            <strong>Gbaï Productions Lomé</strong>
-            <div style="font-size: 13px; color: var(--text-muted);">Organisateur d'Événements · 12 événements créés</div>
+            <strong>Organisateur Démo</strong>
+            <div style="font-size: 13px; color: var(--text-muted);">Organisateur d'Événements · Lomé, Togo</div>
           </div>
           <div>
             <span class="pill pill-green">Notifications Actives</span>
@@ -740,18 +786,18 @@ function generateProfilHtml(): string {
         </div>
         <div>
           <h1>Koffi Mensah</h1>
-          <p style="margin-bottom: 4px;">koffi.mensah@example.tg · Lomé, Togo</p>
+          <p style="margin-bottom: 4px;">koffi.mensah@example.com · Lomé, Togo</p>
           <span class="pill pill-green">Compte Participant Vérifié</span>
         </div>
       </div>
 
       <div class="grid-3" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
         <div style="text-align: center;">
-          <div class="stat-val">2</div>
-          <div class="stat-lbl">Billets Actifs</div>
+          <div class="stat-val">1</div>
+          <div class="stat-lbl">Billet Actif</div>
         </div>
         <div style="text-align: center;">
-          <div class="stat-val">3</div>
+          <div class="stat-val">2</div>
           <div class="stat-lbl">Sorties Favorites</div>
         </div>
         <div style="text-align: center;">
@@ -795,7 +841,7 @@ function generateConnexionHtml(): string {
       <form action="profil.html" method="get">
         <div class="form-group">
           <label for="login-email">Adresse Email</label>
-          <input type="email" id="login-email" name="email" placeholder="votre.email@domaine.com" value="koffi.mensah@example.tg" required />
+          <input type="email" id="login-email" name="email" placeholder="votre.email@domaine.com" value="koffi.mensah@example.com" required />
         </div>
 
         <div class="form-group">
@@ -904,8 +950,8 @@ function generateTableauDeBordOrganisateurHtml(): string {
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 12px;">
         <div>
-          <h3>Concert Géant de Clôture — Afro Rhythm</h3>
-          <p style="font-size: 13px; margin-bottom: 0;">14 Novembre 2026 · Palais des Congrès de Lomé</p>
+          <h3>Concert Live Démo</h3>
+          <p style="font-size: 13px; margin-bottom: 0;">24 Octobre 2026 à 18h00 · Palais des Congrès de Lomé</p>
         </div>
         <div style="text-align: right;">
           <span class="pill pill-green">Ventes Ouvertes</span>
@@ -972,8 +1018,6 @@ function generateAppManifestJson(): string {
       'T-Money (Togocom Togo)',
       'Moov Flooz (Moov Togo / Bénin / CI)',
       'MTN Mobile Money (Bénin)',
-      'Wave Mobile Money',
-      'Carte Bancaire Visa / Mastercard',
     ],
     designSystem: {
       primaryColor: '#6600FF',
@@ -1021,29 +1065,33 @@ export function buildPreview() {
   if (!fs.existsSync(DIST_PREVIEW_DIR)) {
     fs.mkdirSync(DIST_PREVIEW_DIR, { recursive: true });
   }
-
-  const filesToWrite: { path: string; content: string }[] = [
-    { path: path.join(DIST_PREVIEW_DIR, 'index.html'), content: generateIndexHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'accueil.html'), content: generateAccueilHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'explorer.html'), content: generateExplorerHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'detail-evenement.html'), content: generateDetailEvenementHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'paiement.html'), content: generatePaiementHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'confirmation.html'), content: generateConfirmationHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'mes-billets.html'), content: generateMesBilletsHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'favoris.html'), content: generateFavorisHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'abonnements.html'), content: generateAbonnementsHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'profil.html'), content: generateProfilHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'connexion.html'), content: generateConnexionHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'creer-evenement.html'), content: generateCreerEvenementHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'tableau-de-bord-organisateur.html'), content: generateTableauDeBordOrganisateurHtml() },
-    { path: path.join(DIST_PREVIEW_DIR, 'app-manifest.json'), content: generateAppManifestJson() },
-  ];
-
-  for (const file of filesToWrite) {
-    fs.writeFileSync(file.path, file.content, 'utf-8');
+  if (!fs.existsSync(PUBLIC_PREVIEW_DIR)) {
+    fs.mkdirSync(PUBLIC_PREVIEW_DIR, { recursive: true });
   }
 
-  console.log(`✅ [Gbaigbance Preview] ${filesToWrite.length} fichiers statiques générés avec succès dans dist/preview/`);
+  const screens: { name: string; content: string }[] = [
+    { name: 'index.html', content: generateIndexHtml() },
+    { name: 'accueil.html', content: generateAccueilHtml() },
+    { name: 'explorer.html', content: generateExplorerHtml() },
+    { name: 'detail-evenement.html', content: generateDetailEvenementHtml() },
+    { name: 'paiement.html', content: generatePaiementHtml() },
+    { name: 'confirmation.html', content: generateConfirmationHtml() },
+    { name: 'mes-billets.html', content: generateMesBilletsHtml() },
+    { name: 'favoris.html', content: generateFavorisHtml() },
+    { name: 'abonnements.html', content: generateAbonnementsHtml() },
+    { name: 'profil.html', content: generateProfilHtml() },
+    { name: 'connexion.html', content: generateConnexionHtml() },
+    { name: 'creer-evenement.html', content: generateCreerEvenementHtml() },
+    { name: 'tableau-de-bord-organisateur.html', content: generateTableauDeBordOrganisateurHtml() },
+    { name: 'app-manifest.json', content: generateAppManifestJson() },
+  ];
+
+  for (const s of screens) {
+    fs.writeFileSync(path.join(DIST_PREVIEW_DIR, s.name), s.content, 'utf-8');
+    fs.writeFileSync(path.join(PUBLIC_PREVIEW_DIR, s.name), s.content, 'utf-8');
+  }
+
+  console.log(`✅ [Gbaigbance Preview] ${screens.length} fichiers statiques synchronisés avec succès dans public/preview/ et dist/preview/`);
 }
 
 // Run when executed directly

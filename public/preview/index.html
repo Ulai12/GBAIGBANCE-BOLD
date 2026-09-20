@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sommaire des Écrans — Aperçu Statique Gbaigbance</title>
+  <meta name="description" content="Snapshot HTML statique sémantique de l'écran Sommaire des Écrans pour Gbaigbance." />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+  :root {
+    --primary: #6600FF;
+    --primary-hover: #5500D9;
+    --primary-light: #F2ECFF;
+    --success: #10B981;
+    --bg-light: #F8F7FC;
+    --surface-light: #FFFFFF;
+    --text-dark: #14121F;
+    --text-muted: #645E73;
+    --border-light: rgba(20, 18, 31, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-light: #0D0B14;
+      --surface-light: #161322;
+      --text-dark: #F5F3FC;
+      --text-muted: #9E97B0;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --primary-light: rgba(102, 0, 255, 0.15);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 24px 16px 64px 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 32px;
+  }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 6px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .nav-back {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-back:hover { color: var(--primary); }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; color: var(--text-dark); }
+  h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 16px; color: var(--text-dark); }
+  h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-dark); }
+  p { color: var(--text-muted); font-size: 15px; margin-bottom: 16px; }
+  .card {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+  .pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .pill-green { background: rgba(16, 185, 129, 0.12); color: #059669; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 999px;
+    border: none;
+    text-decoration: none;
+    cursor: default;
+    gap: 8px;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--border-light);
+  }
+  .stat-val { font-size: 24px; font-weight: 800; color: var(--text-dark); }
+  .stat-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-dark); }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    background: var(--surface-light);
+    color: var(--text-dark);
+    font-size: 14px;
+    outline: none;
+  }
+  ul.feature-list { list-style: none; }
+  ul.feature-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+  }
+  ul.feature-list li:last-child { border-bottom: none; }
+  footer.site-footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="brand-badge">⚡ GBAIGBANCE PREVIEW</span>
+        
+      </div>
+      <nav>
+        <a href="index.html" class="nav-back">← Sommaire des Écrans</a>
+      </nav>
+    </header>
+
+    <main>
+      
+    <div class="card" style="background: linear-gradient(135deg, rgba(102,0,255,0.06) 0%, rgba(16,185,129,0.04) 100%);">
+      <span class="brand-badge">ARCHIVES STATIQUES SÉMANTIQUES (NON-JS)</span>
+      <h1 style="margin-top: 14px;">Cartographie Complète de Gbaigbance</h1>
+      <p style="font-size: 16px; margin-bottom: 16px;">
+        Ce répertoire fournit un instantané HTML sémantique pur de l'ensemble des parcours applicatifs de <strong>Gbaigbance</strong>.
+        Conçu spécifiquement pour les assistants d'intelligence artificielle, les outils d'inspection réseau (ex: <code>web_fetch</code>)
+        et les navigateurs sans moteur JavaScript.
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="app-manifest.json" class="btn btn-outline" style="font-size: 13px; padding: 8px 16px;">📄 Consulter le Manifeste IA (app-manifest.json)</a>
+        <a href="/llms.txt" class="btn btn-outline" style="font-size: 13px; padding: 8px 16px;">🤖 Contexte LLM (llms.txt)</a>
+      </div>
+    </div>
+
+    <h2>Catalogue des 12 Écrans</h2>
+    
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Principal</span>
+        <span class="pill pill-green">Essentiel</span>
+      </div>
+      <h2><a href="accueil.html" style="color: var(--text-dark); text-decoration: none;">Accueil & Découverte</a></h2>
+      <p style="margin-bottom: 12px;">Flux principal d’événements en vedette, sorties populaires, catégories dynamiques, artistes et organisateurs vérifiés.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/</code>
+        <a href="accueil.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Découverte</span>
+        <span class="pill pill-green">Recherche</span>
+      </div>
+      <h2><a href="explorer.html" style="color: var(--text-dark); text-decoration: none;">Explorer & Recherche</a></h2>
+      <p style="margin-bottom: 12px;">Moteur de recherche multicritère : filtres par ville (Lomé, Cotonou, Abidjan), dates, gratuité, catégories et tri par popularité.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/explore</code>
+        <a href="explorer.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Événement</span>
+        <span class="pill pill-green">Fiche Complète</span>
+      </div>
+      <h2><a href="detail-evenement.html" style="color: var(--text-dark); text-decoration: none;">Détail d’Événement</a></h2>
+      <p style="margin-bottom: 12px;">Fiche descriptive détaillée : programmation, artistes, tarifs en FCFA (Accès Libre, Standard, VIP), lieu géolocalisé et réservation.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/events/:id</code>
+        <a href="detail-evenement.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Transaction</span>
+        <span class="pill pill-green">Fintech XOF</span>
+      </div>
+      <h2><a href="paiement.html" style="color: var(--text-dark); text-decoration: none;">Paiement Mobile Money</a></h2>
+      <p style="margin-bottom: 12px;">Tunnel de réservation et de paiement sécurisé adapté à l’Afrique de l’Ouest : T-Money, Moov Flooz et MTN MoMo.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/checkout</code>
+        <a href="paiement.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Transaction</span>
+        <span class="pill pill-green">Billet Digital</span>
+      </div>
+      <h2><a href="confirmation.html" style="color: var(--text-dark); text-decoration: none;">Confirmation & Billet QR Code</a></h2>
+      <p style="margin-bottom: 12px;">Écran de confirmation d’achat, pass d’accès digitalisé avec QR Code infalsifiable sécurisé, téléchargement PDF et synchronisation calendrier.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/confirmation</code>
+        <a href="confirmation.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Utilisateur</span>
+        <span class="pill pill-green">Portefeuille</span>
+      </div>
+      <h2><a href="mes-billets.html" style="color: var(--text-dark); text-decoration: none;">Mes Billets & Pass d’Accès</a></h2>
+      <p style="margin-bottom: 12px;">Portefeuille de billets actifs et passés, statut de validation aux portes, détails des concerts et contrôle d’accès sans connexion.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/tickets</code>
+        <a href="mes-billets.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Utilisateur</span>
+        <span class="pill pill-green">Interactions</span>
+      </div>
+      <h2><a href="favoris.html" style="color: var(--text-dark); text-decoration: none;">Favoris & Abonnements</a></h2>
+      <p style="margin-bottom: 12px;">Espace personnel regroupant les événements likés, les artistes préférés suivis et les organisations abonnées avec alertes billetterie.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/favorites</code>
+        <a href="favoris.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Social</span>
+        <span class="pill pill-green">Communauté</span>
+      </div>
+      <h2><a href="abonnements.html" style="color: var(--text-dark); text-decoration: none;">Abonnements & Suivis</a></h2>
+      <p style="margin-bottom: 12px;">Gestion des artistes, créateurs et organisateurs ouest-africains suivis avec options de notifications et statistiques de communauté.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/subscriptions</code>
+        <a href="abonnements.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Utilisateur</span>
+        <span class="pill pill-green">Compte</span>
+      </div>
+      <h2><a href="profil.html" style="color: var(--text-dark); text-decoration: none;">Profil & Compte</a></h2>
+      <p style="margin-bottom: 12px;">Espace utilisateur : badges d’organisateur/artiste vérifié, compteurs réels de billets et abonnements, préférences linguistiques et thème.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/profile</code>
+        <a href="profil.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Accès</span>
+        <span class="pill pill-green">Sécurité</span>
+      </div>
+      <h2><a href="connexion.html" style="color: var(--text-dark); text-decoration: none;">Authentification & Accès Invité</a></h2>
+      <p style="margin-bottom: 12px;">Formulaire de connexion et d’inscription par email, sélecteur de rôle (Participant, Organisateur, Artiste) et mode invité sans compte.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/login</code>
+        <a href="connexion.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Organisateur</span>
+        <span class="pill pill-green">Créateur</span>
+      </div>
+      <h2><a href="creer-evenement.html" style="color: var(--text-dark); text-decoration: none;">Création d’Événement</a></h2>
+      <p style="margin-bottom: 12px;">Assistant multi-étapes pour les organisateurs : informations générales, dates et horaires, lieu à Lomé/Cotonou, grille tarifaire et affiche.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/events/create</code>
+        <a href="creer-evenement.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+
+    <article class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="pill">Organisateur</span>
+        <span class="pill pill-green">Analytics</span>
+      </div>
+      <h2><a href="tableau-de-bord-organisateur.html" style="color: var(--text-dark); text-decoration: none;">Tableau de Bord Organisateur</a></h2>
+      <p style="margin-bottom: 12px;">Console d’administration pour les créateurs d’événements : chiffre d’affaires en FCFA, jauges de billets vendus et lanceur de scanner QR.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <code style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 6px;">/dashboard/organizer</code>
+        <a href="tableau-de-bord-organisateur.html" class="btn" style="padding: 8px 18px; font-size: 13px;">Ouvrir l'écran →</a>
+      </div>
+    </article>
+  
+  
+    </main>
+
+    <footer class="site-footer">
+      <p>Gbaigbance — Aperçu HTML Statique Sémantique généré pour agents IA & moteurs d’indexation sans JavaScript.</p>
+      <p>Devise : Franc CFA (XOF) · Villes couvertes : Lomé (Togo), Cotonou (Bénin), Abidjan (Côte d’Ivoire).</p>
+    </footer>
+  </div>
+</body>
+</html>

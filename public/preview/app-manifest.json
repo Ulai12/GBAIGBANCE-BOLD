@@ -1,0 +1,131 @@
+{
+  "name": "Gbaigbance",
+  "tagline": "L'événementiel africain premium",
+  "version": "1.0.0",
+  "targetRegions": [
+    "TG (Togo)",
+    "BJ (Bénin)",
+    "CI (Côte d’Ivoire)"
+  ],
+  "currency": "XOF (Franc CFA)",
+  "paymentMethods": [
+    "T-Money (Togocom Togo)",
+    "Moov Flooz (Moov Togo / Bénin / CI)",
+    "MTN Mobile Money (Bénin)"
+  ],
+  "designSystem": {
+    "primaryColor": "#6600FF",
+    "secondaryColor": "#10B981",
+    "backgroundColorLight": "#F8F7FC",
+    "backgroundColorDark": "#0D0B14",
+    "fontFamily": "Manrope, -apple-system, sans-serif",
+    "borderRadiusStandard": "12px-16px",
+    "borderRadiusPill": "999px"
+  },
+  "screens": [
+    {
+      "title": "Accueil & Découverte",
+      "route": "/",
+      "category": "Principal",
+      "staticHtmlFile": "/preview/accueil.html",
+      "description": "Flux principal d’événements en vedette, sorties populaires, catégories dynamiques, artistes et organisateurs vérifiés."
+    },
+    {
+      "title": "Explorer & Recherche",
+      "route": "/explore",
+      "category": "Découverte",
+      "staticHtmlFile": "/preview/explorer.html",
+      "description": "Moteur de recherche multicritère : filtres par ville (Lomé, Cotonou, Abidjan), dates, gratuité, catégories et tri par popularité."
+    },
+    {
+      "title": "Détail d’Événement",
+      "route": "/events/:id",
+      "category": "Événement",
+      "staticHtmlFile": "/preview/detail-evenement.html",
+      "description": "Fiche descriptive détaillée : programmation, artistes, tarifs en FCFA (Accès Libre, Standard, VIP), lieu géolocalisé et réservation."
+    },
+    {
+      "title": "Paiement Mobile Money",
+      "route": "/checkout",
+      "category": "Transaction",
+      "staticHtmlFile": "/preview/paiement.html",
+      "description": "Tunnel de réservation et de paiement sécurisé adapté à l’Afrique de l’Ouest : T-Money, Moov Flooz et MTN MoMo."
+    },
+    {
+      "title": "Confirmation & Billet QR Code",
+      "route": "/confirmation",
+      "category": "Transaction",
+      "staticHtmlFile": "/preview/confirmation.html",
+      "description": "Écran de confirmation d’achat, pass d’accès digitalisé avec QR Code infalsifiable sécurisé, téléchargement PDF et synchronisation calendrier."
+    },
+    {
+      "title": "Mes Billets & Pass d’Accès",
+      "route": "/tickets",
+      "category": "Utilisateur",
+      "staticHtmlFile": "/preview/mes-billets.html",
+      "description": "Portefeuille de billets actifs et passés, statut de validation aux portes, détails des concerts et contrôle d’accès sans connexion."
+    },
+    {
+      "title": "Favoris & Abonnements",
+      "route": "/favorites",
+      "category": "Utilisateur",
+      "staticHtmlFile": "/preview/favoris.html",
+      "description": "Espace personnel regroupant les événements likés, les artistes préférés suivis et les organisations abonnées avec alertes billetterie."
+    },
+    {
+      "title": "Abonnements & Suivis",
+      "route": "/subscriptions",
+      "category": "Social",
+      "staticHtmlFile": "/preview/abonnements.html",
+      "description": "Gestion des artistes, créateurs et organisateurs ouest-africains suivis avec options de notifications et statistiques de communauté."
+    },
+    {
+      "title": "Profil & Compte",
+      "route": "/profile",
+      "category": "Utilisateur",
+      "staticHtmlFile": "/preview/profil.html",
+      "description": "Espace utilisateur : badges d’organisateur/artiste vérifié, compteurs réels de billets et abonnements, préférences linguistiques et thème."
+    },
+    {
+      "title": "Authentification & Accès Invité",
+      "route": "/login",
+      "category": "Accès",
+      "staticHtmlFile": "/preview/connexion.html",
+      "description": "Formulaire de connexion et d’inscription par email, sélecteur de rôle (Participant, Organisateur, Artiste) et mode invité sans compte."
+    },
+    {
+      "title": "Création d’Événement",
+      "route": "/events/create",
+      "category": "Organisateur",
+      "staticHtmlFile": "/preview/creer-evenement.html",
+      "description": "Assistant multi-étapes pour les organisateurs : informations générales, dates et horaires, lieu à Lomé/Cotonou, grille tarifaire et affiche."
+    },
+    {
+      "title": "Tableau de Bord Organisateur",
+      "route": "/dashboard/organizer",
+      "category": "Organisateur",
+      "staticHtmlFile": "/preview/tableau-de-bord-organisateur.html",
+      "description": "Console d’administration pour les créateurs d’événements : chiffre d’affaires en FCFA, jauges de billets vendus et lanceur de scanner QR."
+    }
+  ],
+  "userFlows": [
+    {
+      "flowName": "Réservation de billet",
+      "steps": [
+        "Accueil (/preview/accueil.html)",
+        "Sélection événement (/preview/detail-evenement.html)",
+        "Choix tarif et moyen Mobile Money (/preview/paiement.html)",
+        "Pass QR Code émis instantanément (/preview/confirmation.html)",
+        "Consultation hors-ligne (/preview/mes-billets.html)"
+      ]
+    },
+    {
+      "flowName": "Création et gestion événement par organisateur",
+      "steps": [
+        "Connexion / Rôle Organisateur (/preview/connexion.html)",
+        "Formulaire de création d’événement (/preview/creer-evenement.html)",
+        "Console de vente et scanner QR (/preview/tableau-de-bord-organisateur.html)"
+      ]
+    }
+  ]
+}
