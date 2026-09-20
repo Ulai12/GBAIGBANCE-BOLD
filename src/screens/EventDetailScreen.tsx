@@ -248,7 +248,7 @@ export function EventDetailScreen({
     <div className="min-h-screen pb-36 bg-gray-50 dark:bg-[#0C0A13]">
       {/* Sticky Adaptive Liquid Glass Header (appears on scroll) */}
       <div
-        className={`fixed top-0 left-0 right-0 z-30 px-5 py-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
+        className={`fixed top-0 left-0 right-0 z-30 px-5 pt-safe-subpage pb-3.5 liquid-glass-header transition-all duration-300 flex items-center justify-between ${
           isScrolled
             ? 'bg-white/80 dark:bg-[#0c0a14]/85 border-b border-black/[0.06] dark:border-white/[0.08] shadow-sm translate-y-0 opacity-100 pointer-events-auto'
             : '-translate-y-full opacity-0 pointer-events-none'
@@ -760,7 +760,7 @@ export function EventDetailScreen({
       </div>
 
       {/* Floating Bottom Sticky Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-6 pt-3 bg-white/90 dark:bg-[#12101F]/90 backdrop-blur-xl border-t border-black/[0.06] dark:border-white/[0.08]">
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] pt-3 bg-white/90 dark:bg-[#12101F]/90 backdrop-blur-xl border-t border-black/[0.06] dark:border-white/[0.08]">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">

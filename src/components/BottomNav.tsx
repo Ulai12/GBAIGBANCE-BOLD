@@ -195,24 +195,23 @@ export function BottomNav({
   const createLabel = language === 'en' ? 'Create' : 'Créer';
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-2.5">
+    <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-safe-nav">
       <nav
         aria-label="Navigation principale"
         className={[
-          'relative pointer-events-auto w-full max-w-md h-[68px] px-2 py-1.5 rounded-[2.25rem]',
+          'relative pointer-events-auto w-full max-w-md h-[64px] px-2 py-1 rounded-[2rem]',
           'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
         ].join(' ')}
         style={{
           background: isDark
-            ? 'linear-gradient(180deg, rgba(24,21,36,0.88), rgba(16,14,26,0.95))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,243,255,0.85))',
+            ? 'linear-gradient(180deg, rgba(24,21,36,0.90), rgba(16,14,26,0.96))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,243,255,0.88))',
           border: isDark
-            ? '1px solid rgba(255,255,255,0.10)'
+            ? '1px solid rgba(255,255,255,0.12)'
             : '1px solid rgba(255,255,255,0.85)',
           boxShadow: isDark
-            ? '0 16px 40px rgba(0,0,0,0.45), 0 4px 12px rgba(102,0,255,0.15), inset 0 1px 0 rgba(255,255,255,0.15)'
-            : '0 16px 36px rgba(102,0,255,0.12), 0 4px 14px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)',
-          marginBottom: 'env(safe-area-inset-bottom, 0px)',
+            ? '0 12px 32px rgba(0,0,0,0.48), 0 4px 12px rgba(102,0,255,0.15), inset 0 1px 0 rgba(255,255,255,0.15)'
+            : '0 12px 30px rgba(102,0,255,0.12), 0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)',
         }}
       >
         {/* Filet de lumière supérieur */}

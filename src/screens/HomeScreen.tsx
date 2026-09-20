@@ -421,11 +421,9 @@ export function HomeScreen({
 
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête modernisée style iOS */}
-{/* ✅ RESTAURÉ : plus de sticky, plus de fond conditionnel ni de safe-area.
-    Il défile avec la page, comme dans l'ancienne version. */}
-<header className="px-5 pt-7 pb-3">
-  {/* Ligne Logo & Identité */}
+      {/* En-tête modernisée style iOS avec respect de la zone de sécurité (Dynamic Island & Encoche) */}
+      <header className="px-5 pt-safe-header pb-3">
+        {/* Ligne Logo & Identité */}
   {/* ✅ Retour au logo w-9 h-9 et aux textes 15px / 9px d'origine */}
   <div className="flex items-center gap-2.5 mb-3.5">
     <img

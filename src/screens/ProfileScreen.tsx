@@ -200,7 +200,7 @@ export function ProfileScreen({
     <div className="min-h-screen pb-40">
       <div className="max-w-md mx-auto">
         {/* Barre d'en-tête supérieure avec bouton Paramètres Stratégique */}
-        <div className="px-5 pt-5 flex items-center justify-between">
+        <div className="px-5 pt-safe-header flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-lg font-black text-[#17131D] dark:text-white tracking-tight">
               Mon Espace

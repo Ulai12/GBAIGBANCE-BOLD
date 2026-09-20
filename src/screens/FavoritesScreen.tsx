@@ -428,7 +428,7 @@ export function FavoritesScreen({
   return (
     <div className="min-h-screen pb-32">
       {/* Header */}
-      <div className="px-5 pt-8 pb-3">
+      <div className="px-5 pt-safe-header pb-3">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
           Vos Coups de Cœur
         </p>

@@ -133,7 +133,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   if (!user) {
     return (
       <div className="min-h-screen pb-32">
-        <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
+        <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08] pt-safe-subpage">
           <div className="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
             <button
               type="button"
@@ -174,7 +174,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   return (
     <div className="min-h-screen pb-32">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
+      <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08] pt-safe-subpage">
         <div className="max-w-md mx-auto px-5 py-3.5 flex items-center justify-between">
           <button
             type="button"
