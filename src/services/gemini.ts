@@ -83,6 +83,11 @@ export function hasUserGeminiApiKey(): boolean {
   return Boolean(getUserGeminiApiKey());
 }
 
+/**
+ * L'assistant IA est toujours actif grâce au fonctionnement hybride :
+ * soit via l'Edge Function Supabase (backend par défaut),
+ * soit via le mode direct client si une clé BYOK est configurée.
+ */
 export function isGeminiActive(): boolean {
   return true;
 }
@@ -110,8 +115,26 @@ export async function loadGeminiConfigFromAccount(): Promise<GeminiConfig> {
   return getGeminiConfig();
 }
 
-export async function syncGeminiConfigFromAccount(): Promise<void> {
-  // Sync
+/**
+ * Synchronise la clé API Gemini depuis le profil ou les métadonnées utilisateur
+ * si aucune clé locale n'est encore configurée sur l'appareil.
+ */
+export async function syncGeminiConfigFromAccount(
+  userMetadata?: Record<string, unknown>,
+  profileGeminiConfig?: Record<string, unknown> | null
+): Promise<void> {
+  const remoteApiKey =
+    (profileGeminiConfig?.apiKey as string) ||
+    (profileGeminiConfig?.api_key as string) ||
+    (userMetadata?.gemini_api_key as string) ||
+    (userMetadata?.geminiApiKey as string);
+
+  if (remoteApiKey && typeof remoteApiKey === 'string' && remoteApiKey.trim()) {
+    const currentKey = getUserGeminiApiKey();
+    if (!currentKey) {
+      setUserGeminiApiKey(remoteApiKey.trim());
+    }
+  }
 }
 
 export function clearGeminiLocalConfig(): void {

@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3 } from 'lucide-react';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -51,6 +50,27 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
   });
 
+  const loadEvents = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase.from('events').select('*').eq('organizer_user_id', user.id).order('created_at', { ascending: false });
+    setEvents((data as Event[]) || []);
+    setLoading(false);
+  }, [user]);
+
+  const loadMetrics = useCallback(async () => {
+    if (!user) return;
+    setMetricsLoading(true);
+    try {
+      const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
+      setPerfData(data);
+    } catch {
+      // Keep previous
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [user, timeRange]);
+
   useEffect(() => {
     const handleSignedOut = () => {
       setEvents([]);
@@ -74,7 +94,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     }
     loadEvents();
     loadMetrics();
-  }, [user, timeRange]);
+  }, [user, loadEvents, loadMetrics]);
 
   // Real-time live synchronization for organizer metrics and sales
   useEffect(() => {
@@ -86,29 +106,19 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user, timeRange]);
-  useEffect(() => { if (!collabSearch.trim()) { setSearchResults({ artists: [], orgs: [] }); return; } setSearching(true); Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)]).then(([artists, orgs]) => setSearchResults({ artists, orgs })).catch(() => setSearchResults({ artists: [], orgs: [] })).finally(() => setSearching(false)); }, [collabSearch]);
+  }, [user, loadEvents, loadMetrics]);
 
-  const loadEvents = async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data } = await supabase.from('events').select('*').eq('organizer_user_id', user.id).order('created_at', { ascending: false });
-    setEvents((data as Event[]) || []);
-    setLoading(false);
-  };
-
-  const loadMetrics = async () => {
-    if (!user) return;
-    setMetricsLoading(true);
-    try {
-      const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
-      setPerfData(data);
-    } catch {
-      // Keep previous
-    } finally {
-      setMetricsLoading(false);
+  useEffect(() => {
+    if (!collabSearch.trim()) {
+      setSearchResults({ artists: [], orgs: [] });
+      return;
     }
-  };
+    setSearching(true);
+    Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)])
+      .then(([artists, orgs]) => setSearchResults({ artists, orgs }))
+      .catch(() => setSearchResults({ artists: [], orgs: [] }))
+      .finally(() => setSearching(false));
+  }, [collabSearch]);
 
   const addCollaborator = (id: string, name: string, type: CollabType) => { if (collaborators.some((c) => c.user_id === id)) return; setCollaborators([...collaborators, { user_id: id, name, role: collabRole, type }]); setShowCollabSearch(false); setCollabSearch(''); };
   const removeCollaborator = (userId: string) => { setCollaborators(collaborators.filter((c) => c.user_id !== userId)); };

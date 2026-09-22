@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
@@ -105,7 +104,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
       .then((data) => setNotifications(data || []))
       .catch(() => onToast({ message: 'Erreur de chargement des notifications', type: 'error' }))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, onToast]);
 
   const handleMarkRead = async (id: string) => {
     try {

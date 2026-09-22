@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
-import { Ticket as TicketIcon } from 'lucide-react';
+import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { BookingModal } from '@/components/BookingModal';
@@ -43,6 +43,24 @@ const SubscriptionsScreen = lazy(() => import('@/screens/SubscriptionsScreen').t
 const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((module) => ({ default: module.AISettingsScreen })));
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
+
+function OtpRoute() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useApp();
+  const state = location.state as { email?: string; phone?: string } | undefined;
+  const email = state?.email || user?.email || undefined;
+  const phone = state?.phone || undefined;
+
+  return (
+    <OtpScreen
+      email={email}
+      phone={phone}
+      onBack={() => navigate(-1)}
+      onVerify={() => navigate('/')}
+    />
+  );
+}
 
 function AppContent() {
   const { loading, session, user } = useApp();
@@ -344,12 +362,7 @@ function AppContent() {
               path="/forgot-password"
               element={<ForgotPasswordScreen onBack={() => navigate(-1)} onToast={addToast} />}
             />
-            <Route
-              path="/otp"
-              element={
-                <OtpScreen email="user@example.com" onBack={() => navigate(-1)} onVerify={() => navigate('/')} />
-              }
-            />
+            <Route path="/otp" element={<OtpRoute />} />
             <Route
               path="/events/:id"
               element={<EventDetailRoute onToast={addToast} onBook={handleBookEvent} />}
@@ -392,24 +405,7 @@ function AppContent() {
               path="/create"
               element={
                 !canCreate ? (
-                  <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-[#6600FF] mb-4">
-                      <TicketIcon className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-xl font-bold text-[#17131D] dark:text-white mb-2">
-                      Espace Créateur Réservé
-                    </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mb-6">
-                      La publication d'événements est réservée aux comptes Organisateurs et Artistes vérifiés.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => navigate(-1)}
-                      className="btn-purple px-6 py-2.5 text-xs font-bold cursor-pointer"
-                    >
-                      Retour
-                    </button>
-                  </div>
+                  <UnauthorizedCreateGate onBack={() => navigate(-1)} />
                 ) : (
                   <CreateEventScreen
                     onBack={() => navigate(-1)}

@@ -2,12 +2,16 @@ import { useState, useEffect, useCallback, useRef, createContext, type ReactNode
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import { fetchProfile, signOut as authSignOut } from '@/services/auth';
 import { syncGeminiConfigFromAccount, clearGeminiLocalConfig } from '@/services/gemini';
-import { saveCachedProfile, clearCachedUserTickets, clearAllPrivateUserData } from '@/services/cache';
+import {
+  saveCachedProfile,
+  clearCachedUserTickets,
+  clearAllPrivateUserData,
+  clearCachedTicketsMemory,
+  clearCachedSubscriptions,
+} from '@/services/cache';
 import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
 import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
 import { clearLocalUserTickets } from '@/services/events';
-import { clearCachedTicketsMemory } from '@/screens/TicketsScreen';
-import { clearCachedSubscriptions } from '@/screens/SubscriptionsScreen';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
 

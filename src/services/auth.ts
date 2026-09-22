@@ -1,15 +1,6 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import type { Profile, UserRole } from '@/types';
 
-// Purge any legacy mock user data from localStorage immediately
-try {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('gba_mock_user');
-  }
-} catch {
-  // Ignore
-}
-
 export async function signUp(email: string, password: string, name: string, role: UserRole = 'participant') {
   if (!isSupabaseConfigured) {
     throw new Error('La connexion au serveur Supabase n’est pas configurée.');

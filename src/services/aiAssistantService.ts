@@ -59,12 +59,6 @@ export async function streamAIAssistant(
       // 1. Récupération de la session utilisateur Supabase pour propager le JWT
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
-      const userId = session?.user?.id;
-      const isUserAuthenticated = Boolean(accessToken && userId);
-
-      console.log(
-        `[AIAssistantService] 🚀 Preparing AI turn: authenticated=${isUserAuthenticated}, userId=${userId || 'guest'}, token=${accessToken ? `${accessToken.slice(0, 8)}... (len ${accessToken.length})` : '(none)'}`
-      );
 
       // 2. Détermination des endpoints et credentials Supabase
       const supabaseUrl =
@@ -89,8 +83,6 @@ export async function streamAIAssistant(
         headers['x-gemini-api-key'] = userApiKey;
       }
 
-      console.log(`[AIAssistantService] Calling Edge Function: ${functionUrl}`);
-
       let response: Response;
       try {
         response = await safeFetch(functionUrl, {
@@ -111,7 +103,9 @@ export async function streamAIAssistant(
       } catch (fetchErr) {
         // En cas d'erreur de connexion réseau vers l'Edge Function, si l'utilisateur a une clé BYOK, basculer sur le direct
         if (userApiKey) {
-          console.warn('[AIAssistantService] Edge Function unreachable. Falling back to direct client execution with BYOK.', fetchErr);
+          if (import.meta.env.DEV) {
+            console.warn('[AIAssistantService] Edge Function unreachable. Falling back to direct client execution with BYOK.', fetchErr);
+          }
           await streamGeminiDirect(
             userApiKey,
             options.messages,
@@ -131,7 +125,6 @@ export async function streamAIAssistant(
       // 3. Gestion spécifique du 404 (Edge Function non déployée sur Supabase)
       if (response.status === 404) {
         if (userApiKey) {
-          console.info('[AIAssistantService] Edge Function returned HTTP 404 (not deployed). Seamlessly falling back to direct client execution with BYOK...');
           await streamGeminiDirect(
             userApiKey,
             options.messages,

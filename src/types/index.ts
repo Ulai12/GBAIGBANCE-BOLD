@@ -57,7 +57,6 @@ export interface Profile {
   updated_at: string;
 }
 
-
 export type PublicProfile = Pick<Profile, 'id' | 'name' | 'avatar_url' | 'role'>;
 
 export interface Organization {

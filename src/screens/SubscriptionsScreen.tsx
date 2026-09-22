@@ -2,11 +2,18 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart, LogIn } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers } from '@/services/events';
+import {
+  getCachedSubscriptionsMemory,
+  setCachedSubscriptionsMemory,
+  clearCachedSubscriptions,
+} from '@/services/cache';
 import { ArtistCard } from '@/components/ArtistCard';
 import { OrganizerCard } from '@/components/OrganizerCard';
 import { SubscriptionsScreenSkeleton } from '@/components/Skeleton';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { Artist, Organization, Profile } from '@/types';
+
+export { clearCachedSubscriptions };
 
 interface SubscriptionsScreenProps {
   onBack: () => void;
@@ -16,17 +23,6 @@ interface SubscriptionsScreenProps {
   onLogin?: () => void;
 }
 type Tab = 'artists' | 'organizers' | 'users';
-
-let cachedSubscriptions: {
-  userId: string;
-  artists: Artist[];
-  orgs: Organization[];
-  users: Profile[];
-} | null = null;
-
-export function clearCachedSubscriptions(): void {
-  cachedSubscriptions = null;
-}
 
 export function SubscriptionsScreen({
   onBack,
@@ -38,15 +34,16 @@ export function SubscriptionsScreen({
   const { user, t } = useApp();
   const [tab, setTab] = useState<Tab>('artists');
 
-  const hasCache = cachedSubscriptions && cachedSubscriptions.userId === user?.id;
-  const [artists, setArtists] = useState<Artist[]>(() => hasCache ? cachedSubscriptions!.artists : []);
-  const [orgs, setOrgs] = useState<Organization[]>(() => hasCache ? cachedSubscriptions!.orgs : []);
-  const [users, setUsers] = useState<Profile[]>(() => hasCache ? cachedSubscriptions!.users : []);
+  const cachedSub = user ? getCachedSubscriptionsMemory(user.id) : null;
+  const hasCache = Boolean(cachedSub);
+  const [artists, setArtists] = useState<Artist[]>(() => (hasCache ? cachedSub!.artists : []));
+  const [orgs, setOrgs] = useState<Organization[]>(() => (hasCache ? cachedSub!.orgs : []));
+  const [users, setUsers] = useState<Profile[]>(() => (hasCache ? cachedSub!.users : []));
   const [loading, setLoading] = useState(!hasCache);
 
   useEffect(() => {
     const handleSignedOut = () => {
-      cachedSubscriptions = null;
+      clearCachedSubscriptions();
       setArtists([]);
       setOrgs([]);
       setUsers([]);
@@ -75,12 +72,11 @@ export function SubscriptionsScreen({
         setArtists(a);
         setOrgs(o);
         setUsers(u);
-        cachedSubscriptions = {
-          userId: user.id,
+        setCachedSubscriptionsMemory(user.id, {
           artists: a,
           orgs: o,
           users: u,
-        };
+        });
       })
       .finally(() => setLoading(false));
   }, [user]);

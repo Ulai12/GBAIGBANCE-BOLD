@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { EventDetailScreen } from '@/screens/EventDetailScreen';
 import { EditEventScreen } from '@/screens/EditEventScreen';
-import { ArtistDetailScreen } from '@/screens/ArtistDetailScreen';
-import { OrganizerDetailScreen } from '@/screens/OrganizerDetailScreen';
 import { UserProfileScreen } from '@/screens/UserProfileScreen';
 import { fetchEventById, fetchArtistById, fetchOrganizationById } from '@/services/events';
 import { HomeScreenSkeleton } from '@/components/Skeleton';
 import type { Event, Artist, Organization } from '@/types';
 import type { ToastData } from '@/components/Toast';
+
+const EventDetailScreen = lazy(() =>
+  import('@/screens/EventDetailScreen').then((module) => ({ default: module.EventDetailScreen })),
+);
+const ArtistDetailScreen = lazy(() =>
+  import('@/screens/ArtistDetailScreen').then((module) => ({ default: module.ArtistDetailScreen })),
+);
+const OrganizerDetailScreen = lazy(() =>
+  import('@/screens/OrganizerDetailScreen').then((module) => ({ default: module.OrganizerDetailScreen })),
+);
 
 interface RouteProps {
   onToast: (toast: Omit<ToastData, 'id'>) => void;
@@ -83,15 +90,17 @@ export function EventDetailRoute({ onToast, onBook }: RouteProps) {
   }
 
   return (
-    <EventDetailScreen
-      event={event}
-      onBack={handleBack}
-      onArtistClick={(artist) => navigate(`/artists/${artist.id}`, { state: { artist } })}
-      onEditEvent={(e) => navigate(`/events/${e.id}/edit`, { state: { event: e } })}
-      onBook={onBook}
-      onOpenAISettings={() => navigate('/ai-settings')}
-      onToast={onToast}
-    />
+    <Suspense fallback={<HomeScreenSkeleton />}>
+      <EventDetailScreen
+        event={event}
+        onBack={handleBack}
+        onArtistClick={(artist) => navigate(`/artists/${artist.id}`, { state: { artist } })}
+        onEditEvent={(e) => navigate(`/events/${e.id}/edit`, { state: { event: e } })}
+        onBook={onBook}
+        onOpenAISettings={() => navigate('/ai-settings')}
+        onToast={onToast}
+      />
+    </Suspense>
   );
 }
 
@@ -181,13 +190,15 @@ export function ArtistDetailRoute({ onToast }: { onToast: (toast: Omit<ToastData
   }
 
   return (
-    <ArtistDetailScreen
-      artist={artist}
-      onBack={handleBack}
-      onEventClick={(event) => navigate(`/events/${event.id}`, { state: { event } })}
-      onToast={onToast}
-      onLogin={() => navigate('/login')}
-    />
+    <Suspense fallback={<HomeScreenSkeleton />}>
+      <ArtistDetailScreen
+        artist={artist}
+        onBack={handleBack}
+        onEventClick={(event) => navigate(`/events/${event.id}`, { state: { event } })}
+        onToast={onToast}
+        onLogin={() => navigate('/login')}
+      />
+    </Suspense>
   );
 }
 
@@ -255,13 +266,15 @@ export function OrganizerDetailRoute({ onToast }: { onToast: (toast: Omit<ToastD
   }
 
   return (
-    <OrganizerDetailScreen
-      organization={organization}
-      onBack={handleBack}
-      onEventClick={(event) => navigate(`/events/${event.id}`, { state: { event } })}
-      onToast={onToast}
-      onLogin={() => navigate('/login')}
-    />
+    <Suspense fallback={<HomeScreenSkeleton />}>
+      <OrganizerDetailScreen
+        organization={organization}
+        onBack={handleBack}
+        onEventClick={(event) => navigate(`/events/${event.id}`, { state: { event } })}
+        onToast={onToast}
+        onLogin={() => navigate('/login')}
+      />
+    </Suspense>
   );
 }
 

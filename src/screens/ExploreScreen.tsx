@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   SlidersHorizontal,
   MapPin,
@@ -72,13 +71,35 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
 
+  const loadEvents = useCallback(async (isDefault = false) => {
+    setLoading((prev) => (events.length === 0 ? true : prev));
+    try {
+      const rawResult = query ? await searchEvents(query) : await fetchUpcomingEvents();
+      let result = rawResult
+        .map(hydrateEventCategories)
+        .filter((e) => isRealEvent(e) && !isEventTerminated(e));
+      if (selectedCategory) result = result.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
+      if (selectedCity) result = result.filter((e) => e.city === selectedCity);
+      if (priceFilter === 'free') result = result.filter((e) => e.price_min === 0);
+      if (priceFilter === 'paid') result = result.filter((e) => e.price_min > 0);
+      setEvents(result);
+      if (isDefault) {
+        exploreCache = result;
+      }
+    } catch {
+      // Retain warm cache on network failure
+    } finally {
+      setLoading(false);
+    }
+  }, [query, selectedCategory, selectedCity, priceFilter, events.length]);
+
   useEffect(() => {
     const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
     const timer = setTimeout(() => {
       loadEvents(isDefault);
     }, isDefault && exploreCache ? 100 : 250);
     return () => clearTimeout(timer);
-  }, [query, selectedCategory, selectedCity, priceFilter]);
+  }, [loadEvents, query, selectedCategory, selectedCity, priceFilter]);
 
   // Real-time automatic synchronization and pruning for Explore
   useEffect(() => {
@@ -114,31 +135,7 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
       window.removeEventListener('gba-refresh-events', triggerRefresh);
       clearInterval(pruneTicker);
     };
-  }, [query, selectedCategory, selectedCity, priceFilter]);
-
-  const loadEvents = async (isDefault = false) => {
-    if (events.length === 0) {
-      setLoading(true);
-    }
-    try {
-      const rawResult = query ? await searchEvents(query) : await fetchUpcomingEvents();
-      let result = rawResult
-        .map(hydrateEventCategories)
-        .filter((e) => isRealEvent(e) && !isEventTerminated(e));
-      if (selectedCategory) result = result.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
-      if (selectedCity) result = result.filter((e) => e.city === selectedCity);
-      if (priceFilter === 'free') result = result.filter((e) => e.price_min === 0);
-      if (priceFilter === 'paid') result = result.filter((e) => e.price_min > 0);
-      setEvents(result);
-      if (isDefault) {
-        exploreCache = result;
-      }
-    } catch {
-      // Retain warm cache on network failure
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadEvents, query, selectedCategory, selectedCity, priceFilter]);
 
   const resetFilters = () => {
     setSelectedCategory(null);

@@ -8,12 +8,21 @@ import {
   subscribeToUserTicketsLive,
   subscribeToGlobalEventsLive,
 } from '@/services/events';
-import { getCachedUserTickets, saveCachedUserTickets, getSyncCachedUserTickets } from '@/services/cache';
+import {
+  getCachedUserTickets,
+  saveCachedUserTickets,
+  getSyncCachedUserTickets,
+  getCachedTicketsMemory,
+  setCachedTicketsMemory,
+  clearCachedTicketsMemory,
+} from '@/services/cache';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { TicketsScreenSkeleton } from '@/components/Skeleton';
 import type { Event, Ticket, TicketStatus } from '@/types';
 import type { ToastData } from '@/components/Toast';
+
+export { clearCachedTicketsMemory };
 
 interface TicketsScreenProps {
   onEventClick: (event: Event) => void;
@@ -21,16 +30,11 @@ interface TicketsScreenProps {
   onToast: (toast: Omit<ToastData, 'id'>) => void;
 }
 
-let cachedTickets: { userId: string; tickets: (Ticket & { event?: Event })[] } | null = null;
-
-export function clearCachedTicketsMemory(): void {
-  cachedTickets = null;
-}
-
 export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenProps) {
   const { session, user, isSessionResolving } = useApp();
+  const cached = user ? getCachedTicketsMemory(user.id) : null;
   const initialTickets = user
-    ? (cachedTickets && cachedTickets.userId === user.id ? cachedTickets.tickets : getSyncCachedUserTickets(user.id))
+    ? (cached ?? getSyncCachedUserTickets(user.id))
     : [];
   const hasCache = initialTickets.length > 0;
   const [tickets, setTickets] = useState<(Ticket & { event?: Event })[]>(initialTickets);
@@ -43,7 +47,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
   // Clear memory and local state when signing out
   useEffect(() => {
     const handleSignedOut = () => {
-      cachedTickets = null;
+      clearCachedTicketsMemory();
       setTickets([]);
       setLoading(false);
     };
@@ -64,7 +68,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     let isMounted = true;
     getCachedUserTickets(user.id).then((storedTickets) => {
       if (isMounted && storedTickets && storedTickets.length > 0) {
-        cachedTickets = { userId: user.id, tickets: storedTickets };
+        setCachedTicketsMemory(user.id, storedTickets);
         setTickets(storedTickets);
         setLoading(false);
       }
@@ -76,7 +80,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           if (!isMounted) return;
           const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
           setTickets(list);
-          cachedTickets = { userId: user.id, tickets: list };
+          setCachedTicketsMemory(user.id, list);
           saveCachedUserTickets(user.id, list).catch(() => {});
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
@@ -95,7 +99,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
         if (!isMounted) return;
         const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
         setTickets(list);
-        cachedTickets = { userId: user.id, tickets: list };
+        setCachedTicketsMemory(user.id, list);
         saveCachedUserTickets(user.id, list).catch(() => {});
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
@@ -204,7 +208,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       t.id === targetId ? { ...t, status: 'cancelled' as TicketStatus } : t
     );
     setTickets(updated);
-    cachedTickets = { userId: user.id, tickets: updated };
+    setCachedTicketsMemory(user.id, updated);
     saveCachedUserTickets(user.id, updated).catch(() => {});
     onToast({ message: 'Billet annulé avec succès', type: 'success' });
 
@@ -218,7 +222,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       // Revert if API fails
       haptic.error();
       setTickets(previousTickets);
-      cachedTickets = { userId: user.id, tickets: previousTickets };
+      setCachedTicketsMemory(user.id, previousTickets);
       saveCachedUserTickets(user.id, previousTickets).catch(() => {});
       onToast({ message: "Échec de l'annulation sur le serveur. Billet rétabli.", type: 'error' });
     } finally {

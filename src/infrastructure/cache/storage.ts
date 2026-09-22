@@ -492,6 +492,46 @@ export async function clearCachedUserTickets(userId?: string): Promise<void> {
   }
 }
 
+export interface CachedSubscriptionsData {
+  userId: string;
+  artists: Artist[];
+  orgs: Organization[];
+  users: Profile[];
+}
+
+let cachedTicketsMemory: { userId: string; tickets: (Ticket & { event?: Event })[] } | null = null;
+let cachedSubscriptionsMemory: CachedSubscriptionsData | null = null;
+
+export function getCachedTicketsMemory(userId: string): (Ticket & { event?: Event })[] | null {
+  if (cachedTicketsMemory && cachedTicketsMemory.userId === userId) {
+    return cachedTicketsMemory.tickets;
+  }
+  return null;
+}
+
+export function setCachedTicketsMemory(userId: string, tickets: (Ticket & { event?: Event })[]): void {
+  cachedTicketsMemory = { userId, tickets };
+}
+
+export function clearCachedTicketsMemory(): void {
+  cachedTicketsMemory = null;
+}
+
+export function getCachedSubscriptionsMemory(userId: string): CachedSubscriptionsData | null {
+  if (cachedSubscriptionsMemory && cachedSubscriptionsMemory.userId === userId) {
+    return cachedSubscriptionsMemory;
+  }
+  return null;
+}
+
+export function setCachedSubscriptionsMemory(userId: string, data: Omit<CachedSubscriptionsData, 'userId'>): void {
+  cachedSubscriptionsMemory = { userId, ...data };
+}
+
+export function clearCachedSubscriptions(): void {
+  cachedSubscriptionsMemory = null;
+}
+
 /**
  * Purges all private user state (profile snapshots, tickets cache, private keys)
  * from both IndexedDB and memory. Called on logout / switch to guest.
@@ -499,6 +539,8 @@ export async function clearCachedUserTickets(userId?: string): Promise<void> {
 export async function clearAllPrivateUserData(userId?: string): Promise<void> {
   try {
     MEMORY_CACHE.profiles?.clear();
+    clearCachedTicketsMemory();
+    clearCachedSubscriptions();
     if (typeof window !== 'undefined') {
       localStorage.removeItem('gba_profile');
       if (userId) {
