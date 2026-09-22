@@ -16,6 +16,7 @@ interface CountdownProps {
   seconds: number;
   isLiveNow?: boolean;
   hasEnded?: boolean;
+  isValid?: boolean;
 }
 
 export const EventCountdown: React.FC<CountdownProps> = ({
@@ -25,6 +26,7 @@ export const EventCountdown: React.FC<CountdownProps> = ({
   seconds,
   isLiveNow = false,
   hasEnded = false,
+  isValid = true,
 }) => {
   if (hasEnded) {
     return (
@@ -54,30 +56,44 @@ export const EventCountdown: React.FC<CountdownProps> = ({
     );
   }
 
+  const safeDays = Number.isFinite(days) ? Math.max(0, days) : 0;
+  const safeHours = Number.isFinite(hours) ? Math.max(0, hours) : 0;
+  const safeMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+
   const units = [
-    { label: 'Jours', value: days, isSec: false },
-    { label: 'Heures', value: hours, isSec: false },
-    { label: 'Min', value: minutes, isSec: false },
-    { label: 'Sec', value: seconds, isSec: true },
+    { label: 'Jours', value: safeDays, isSec: false },
+    { label: 'Heures', value: safeHours, isSec: false },
+    { label: 'Min', value: safeMinutes, isSec: false },
+    { label: 'Sec', value: safeSeconds, isSec: true },
   ];
 
   return (
-    <div className="p-3.5 sm:p-4 rounded-[24px] bg-[#1A1A2E]/92 dark:bg-[#120F24]/92 backdrop-blur-2xl border border-white/15 shadow-xl">
+    <div className="p-3.5 sm:p-4 rounded-[24px] bg-white dark:bg-gradient-to-br dark:from-[#18132C] dark:via-[#110D24] dark:to-[#0B0818] text-[#1A1A2E] dark:text-white border border-black/10 dark:border-white/20 shadow-xl shadow-black/5 dark:shadow-black/20">
+      <div className="flex items-center justify-between px-1 mb-2.5">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-[#6600FF] dark:text-purple-200">
+          <Sparkles className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA] animate-pulse" />
+          <span>Début de l'événement dans</span>
+        </div>
+        <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:bg-white/10 dark:text-purple-200 border border-[#6600FF]/15 dark:border-white/10">
+          Temps réel
+        </span>
+      </div>
       <div className="grid grid-cols-4 gap-2 sm:gap-2.5 text-center">
         {units.map((unit) => (
           <div
             key={unit.label}
-            className="py-2 sm:py-2.5 px-1 rounded-2xl bg-white/[0.07] border border-white/[0.08] flex flex-col items-center justify-center transition-all"
+            className="py-2.5 sm:py-3 px-1 rounded-2xl bg-zinc-50 dark:bg-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.12] border border-black/5 dark:border-white/15 flex flex-col items-center justify-center transition-all shadow-2xs dark:shadow-inner"
           >
             <p
               key={unit.isSec ? unit.value : undefined}
-              className={`text-xl sm:text-2xl font-black text-white tabular-nums tracking-tight transition-transform duration-200 ${
+              className={`text-2xl sm:text-3xl font-black text-[#1A1A2E] dark:text-white tabular-nums tracking-tight transition-transform duration-200 ${
                 unit.isSec ? 'scale-[1.02]' : ''
               }`}
             >
-              {String(unit.value).padStart(2, '0')}
+              {isValid ? String(unit.value).padStart(2, '0') : '--'}
             </p>
-            <p className="text-[10px] font-bold text-purple-200/75 uppercase mt-0.5 tracking-wider">
+            <p className="text-[11px] font-extrabold text-[#6600FF] dark:text-[#C084FC] uppercase mt-0.5 tracking-wider">
               {unit.label}
             </p>
           </div>

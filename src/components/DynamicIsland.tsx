@@ -117,7 +117,12 @@ export function DynamicIsland({ toasts, onClose }: DynamicIslandProps) {
   const hasIslandContent = Boolean(activeToast || isOffline || justReconnected);
 
   return (
-    <div className="fixed top-2.5 sm:top-3 left-0 right-0 z-[70] flex flex-col items-center pointer-events-none px-3">
+    <div
+      className="fixed left-0 right-0 z-[70] flex flex-col items-center pointer-events-none px-3"
+      style={{
+        top: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))',
+      }}
+    >
       <AnimatePresence mode="wait">
         {hasIslandContent && (
           <motion.div

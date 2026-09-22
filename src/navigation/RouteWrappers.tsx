@@ -99,6 +99,7 @@ export function EventDetailRoute({ onToast, onBook }: RouteProps) {
         onBook={onBook}
         onOpenAISettings={() => navigate('/ai-settings')}
         onToast={onToast}
+        onUserClick={(user) => navigate(`/users/${user.id}`, { state: { profile: user } })}
       />
     </Suspense>
   );

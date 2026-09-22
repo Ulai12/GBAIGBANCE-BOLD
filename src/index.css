@@ -346,7 +346,10 @@
     padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 1rem));
   }
   .pb-safe-nav {
-    padding-bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.4));
+    padding-bottom: max(1.125rem, calc(env(safe-area-inset-bottom, 0px) + 0.625rem));
+  }
+  .top-safe-island {
+    top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
   }
   .text-purple { color: #6600FF; }
   .bg-purple-brand { background: #6600FF; }
@@ -502,7 +505,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
-/* Boutons circulaires en verre iOS 44px */
+/* Boutons circulaires en verre noir iOS / Cards 44px */
 .glass-btn-circle {
   width: 44px;
   height: 44px;
@@ -510,18 +513,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-top-color: rgba(255, 255, 255, 0.65);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 16px rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   color: #FFFFFF;
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-btn-circle:hover {
+  background: rgba(0, 0, 0, 0.65);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .glass-btn-circle:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
+  background: rgba(0, 0, 0, 0.8);
 }
 
 /* Animation pop du cœur lors du like */
@@ -559,9 +567,11 @@
 /* Fallback sans support backdrop-filter */
 @supports not (backdrop-filter: blur(1px)) {
   .glass-ios,
-  .glass-btn-circle,
   .glass-floating-bar {
     background: rgba(255, 255, 255, 0.94) !important;
+  }
+  .glass-btn-circle {
+    background: rgba(18, 16, 26, 0.92) !important;
   }
   .dark .glass-ios,
   .dark .glass-floating-bar {

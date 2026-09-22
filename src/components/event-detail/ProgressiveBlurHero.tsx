@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Share2, Heart, Edit3, Settings, Film } from 'lucide-react';
+import { ChevronLeft, Share2, Heart, Edit3, Settings, Film, Flag } from 'lucide-react';
 import type { Event } from '@/types';
 
 /**
@@ -21,6 +21,7 @@ interface ProgressiveBlurHeroProps {
   onBack: () => void;
   onLike: () => void;
   onShare: () => void;
+  onReport?: () => void;
   onOpenLightbox: (src: string) => void;
   onEditEvent?: (event: Event) => void;
   onOpenManage?: () => void;
@@ -35,6 +36,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
   onBack,
   onLike,
   onShare,
+  onReport,
   onOpenLightbox,
   onEditEvent,
   onOpenManage,
@@ -42,10 +44,10 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
-    <div className="relative h-[54vh] min-h-[380px] max-h-[520px] w-full overflow-hidden bg-[#0c0a14] select-none">
+    <div className="relative h-[56vh] min-h-[420px] max-h-[580px] w-full overflow-hidden bg-[#f4f1ff] dark:bg-[#0c0a14] select-none">
       {/* 
         Image Hero avec placeholder blur-up basse résolution
-        et transitions matérielles fluides 
+        et zoom subtil au survol
       */}
       <button
         type="button"
@@ -60,86 +62,64 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
           fetchPriority="high"
           onLoad={() => setImageLoaded(true)}
           style={{
-            transform: 'translateY(calc(var(--scroll-y, 0px) * 0.25)) scale(calc(1 + var(--scroll-progress, 0) * 0.05))',
+            transform: 'translateY(calc(var(--scroll-y, 0px) * 0.22)) scale(calc(1 + var(--scroll-progress, 0) * 0.04))',
             willChange: 'transform',
           }}
           className={`w-full h-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-105 ${
-            imageLoaded ? 'opacity-100 filter brightness-[0.92]' : 'opacity-40 filter blur-lg'
+            imageLoaded ? 'opacity-100 filter brightness-[0.96]' : 'opacity-40 filter blur-lg'
           }`}
         />
       </button>
 
-      {/* Voile supérieur sombre pour garantir la lisibilité des boutons d'action iOS */}
-      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/75 via-black/35 to-transparent pointer-events-none z-10" />
-
       {/* 
-        FLOU PROGRESSIF EN BAS (5 couches superposées de backdrop-filter)
-        Chaque couche possède une hauteur et un blur croissant, avec son propre masque linéaire.
-        Cela crée une fusion continue et organique de l'image vers le fond de la page.
+        FLOU PROGRESSIF HAUTE DÉFINITION (Zéro halo grisâtre)
+        Au lieu d'un backdrop-filter qui crée des bordures grises disgracieuses en mode clair/sombre,
+        on utilise un dédoublement de l'image filtrée avec un masque progressif naturel.
       */}
-      <div className="absolute inset-x-0 bottom-0 h-44 pointer-events-none z-10 overflow-hidden">
-        {/* Couche 1 : Premier voile subtil (blur 2px) */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backdropFilter: 'blur(2px)',
-            WebkitBackdropFilter: 'blur(2px)',
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
-          }}
+      <div
+        className="absolute inset-0 pointer-events-none z-5 overflow-hidden"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.85) 75%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.85) 75%, black 100%)',
+        }}
+      >
+        <img
+          src={coverImage}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover object-center filter blur-2xl scale-110 saturate-[1.2]"
         />
-        {/* Couche 2 : Flou doux intermédiaire (blur 4px) */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-[80%]"
-          style={{
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            maskImage: 'linear-gradient(to bottom, transparent 15%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 15%, black 100%)',
-          }}
-        />
-        {/* Couche 3 : Flou moyen (blur 8px) */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-[60%]"
-          style={{
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            maskImage: 'linear-gradient(to bottom, transparent 30%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 30%, black 100%)',
-          }}
-        />
-        {/* Couche 4 : Flou prononcé (blur 14px) */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-[40%]"
-          style={{
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            maskImage: 'linear-gradient(to bottom, transparent 45%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 45%, black 100%)',
-          }}
-        />
-        {/* Couche 5 : Flou terminal profond (blur 20px) */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-[22%]"
-          style={{
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            maskImage: 'linear-gradient(to bottom, transparent 60%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 60%, black 100%)',
-          }}
-        />
-        {/* Voile de dégradé colorimétrique vers la feuille de contenu */}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#f4f1ff] via-[#f4f1ff]/60 to-transparent dark:from-[#0c0a14] dark:via-[#0c0a14]/65 pointer-events-none" />
       </div>
 
-      {/* Barre d'outils flottante supérieure (cercles de verre iOS 44px) */}
-      <div className="absolute top-0 left-0 right-0 pt-safe-header px-4 sm:px-6 pt-3 flex items-center justify-between z-20 pointer-events-auto">
-        {/* Bouton Retour (touch target 44x44px) */}
+      {/* 
+        Voile supérieur sombre continu pour la zone d'encoche / Dynamic Island iOS
+        Garantit un contraste parfait pour les boutons d'action quel que soit le fond de l'image.
+      */}
+      <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-none z-10" />
+
+      {/* 
+        DÉGRADÉ CONTINU PROFOND VERS LA FEUILLE DE CONTENU
+        Couvre largement la moitié inférieure du hero (h-72 / h-80) pour un fondu
+        parfaitement soyeux et continu dans l'arrière-plan, éliminant tout bloc ou ligne de rupture.
+      */}
+      <div className="absolute inset-x-0 bottom-0 h-72 sm:h-80 bg-gradient-to-t from-[#f4f1ff] via-[#f4f1ff]/80 to-transparent dark:from-[#0c0a14] dark:via-[#0c0a14]/85 pointer-events-none z-10" />
+
+      {/* 
+        BARRE D'OUTILS FLOTTANTE SUPÉRIEURE iOS
+        Ancrée avec env(safe-area-inset-top) + espacement pour rester toujours sous l'encoche et l'île dynamique.
+      */}
+      <div
+        className="absolute top-0 left-0 right-0 px-4 sm:px-6 flex items-center justify-between z-20 pointer-events-auto"
+        style={{
+          paddingTop: 'max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.85rem))',
+        }}
+      >
+        {/* Bouton Retour (touch target iOS 44x44px) */}
         <button
           type="button"
           onClick={onBack}
           aria-label="Retour à la liste des événements"
-          className="glass-btn-circle cursor-pointer hover:bg-white/30 focus:outline-hidden focus:ring-2 focus:ring-white"
+          className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
         >
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
@@ -151,7 +131,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
               type="button"
               onClick={() => onEditEvent(event)}
               aria-label="Modifier cet événement"
-              className="h-[44px] px-4 rounded-full glass-btn-circle w-auto flex items-center gap-1.5 text-xs font-bold text-white cursor-pointer hover:bg-white/30"
+              className="h-11 px-4 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center gap-1.5 text-xs font-bold text-white cursor-pointer transition-all shrink-0"
             >
               <Edit3 className="w-4 h-4" />
               <span className="hidden xs:inline">Modifier</span>
@@ -163,9 +143,22 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
               type="button"
               onClick={onOpenManage}
               aria-label="Gérer l'événement et les entrées"
-              className="glass-btn-circle cursor-pointer hover:bg-white/30 focus:outline-hidden focus:ring-2 focus:ring-white"
+              className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
             >
               <Settings className="w-5 h-5 text-white" />
+            </button>
+          )}
+
+          {/* Bouton Signaler (TODO) */}
+          {onReport && (
+            <button
+              type="button"
+              onClick={onReport}
+              aria-label="Signaler cet événement"
+              title="Signaler cet événement"
+              className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
+            >
+              <Flag className="w-4 h-4 text-white" />
             </button>
           )}
 
@@ -174,7 +167,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             type="button"
             onClick={onShare}
             aria-label="Partager l'événement"
-            className="glass-btn-circle cursor-pointer hover:bg-white/30 focus:outline-hidden focus:ring-2 focus:ring-white"
+            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
           >
             <Share2 className="w-4 h-4 text-white" />
           </button>
@@ -184,7 +177,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             type="button"
             onClick={onLike}
             aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            className="glass-btn-circle cursor-pointer hover:bg-white/30 focus:outline-hidden focus:ring-2 focus:ring-white"
+            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
           >
             <Heart
               className={`w-5 h-5 transition-colors ${

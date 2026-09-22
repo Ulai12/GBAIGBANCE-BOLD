@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, ExternalLink, Copy, Check } from 'lucide-react';
+import { MapPin, Navigation, Copy, Check } from 'lucide-react';
 
 /**
  * GBAIGBANCE — EventMapPreview (Mini-Carte & Navigation iOS)
@@ -164,58 +164,43 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
             {locationName}
           </div>
         </div>
-
-        {/* Badge supérieur droit : Itinéraire rapide */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 hover:bg-[#6600FF] backdrop-blur-md text-white text-xs font-bold border border-white/20 transition-colors shadow-sm">
-          <Navigation className="w-3 h-3 fill-white" />
-          <span>Itinéraire</span>
-          <ExternalLink className="w-2.5 h-2.5 opacity-80" />
-        </div>
       </a>
 
-      {/* Boutons d'action regroupés avec cibles tactiles ≥ 44px */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-        {/* Bouton Principal : Itinéraire (Violet #6600FF) */}
+      {/* 
+        Actions épurées : 2 boutons distincts et non redondants (touch target ≥ 44px)
+        1. Itinéraire direct vers Google / Apple Maps
+        2. Copier l'adresse complète dans le presse-papier
+      */}
+      <div className="grid grid-cols-2 gap-2.5 pt-1">
+        {/* Bouton 1 : Itinéraire (Violet #6600FF) */}
         <a
           id="event-map-nav-action"
           href={navigationUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-md shadow-[#6600FF]/25 cursor-pointer"
+          className="min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-md shadow-[#6600FF]/25 cursor-pointer"
         >
           <Navigation className="w-4 h-4 fill-white" />
-          <span>Itinéraire direct</span>
+          <span>Itinéraire</span>
         </a>
 
-        {/* Bouton Secondaire : Ouvrir dans Google Maps (Verre iOS) */}
-        <a
-          id="event-map-open-maps"
-          href={navigationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-[#1A1A2E] dark:text-gray-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-        >
-          <ExternalLink className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
-          <span>Google Maps</span>
-        </a>
-
-        {/* Bouton Copier avec feedback coche émeraude */}
+        {/* Bouton 2 : Copier l'adresse (Verre iOS / feedback coche) */}
         <button
           id="event-map-copy-address"
           type="button"
           onClick={handleCopyAddress}
           title="Copier l'adresse complète"
           aria-label="Copier l'adresse du lieu"
-          className="sm:col-span-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all shadow-2xs cursor-pointer"
+          className="min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all shadow-2xs cursor-pointer border border-black/10 dark:border-white/10"
         >
           {copied ? (
             <>
               <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">Adresse copiée !</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">Adresse copiée</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+              <Copy className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
               <span className="text-gray-700 dark:text-gray-200">Copier l'adresse</span>
             </>
           )}

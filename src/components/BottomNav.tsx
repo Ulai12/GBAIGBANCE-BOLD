@@ -195,7 +195,12 @@ export function BottomNav({
   const createLabel = language === 'en' ? 'Create' : 'Créer';
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-safe-nav">
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-safe-nav"
+      style={{
+        paddingBottom: 'max(1.125rem, calc(env(safe-area-inset-bottom, 0px) + 0.625rem))',
+      }}
+    >
       <nav
         aria-label="Navigation principale"
         className={[
