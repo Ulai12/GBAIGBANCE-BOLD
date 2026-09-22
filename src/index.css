@@ -340,13 +340,13 @@
 @layer utilities {
   /* iOS Safe Area & PWA Standalone Adaptations */
   .pt-safe-header {
-    padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 1.25rem));
+    padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 1.3rem));
   }
   .pt-safe-subpage {
     padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 1rem));
   }
   .pb-safe-nav {
-    padding-bottom: max(1.125rem, calc(env(safe-area-inset-bottom, 0px) + 0.625rem));
+    padding-bottom: max(0.6rem, calc(env(safe-area-inset-bottom, 0px) + 0.4rem));
   }
   .top-safe-island {
     top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
