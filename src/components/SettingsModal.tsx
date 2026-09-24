@@ -444,9 +444,33 @@ export function SettingsModal({
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Apple Wallet Pass</span>
+                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
+                  Design Poster grand format · Extraction palette d'image dynamique (CORS Safe)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Achat Multi-Bénéficiaires</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Pass pour soi & amis · 1 QR unique par place · Liens de réclamation sécurisés
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Remboursements Mobile Money</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  Flux complet (T-Money, Flooz, MTN) · Déduction auto des motifs · Espace organisateur
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Défi de Présence Live</span>
+                <span className="font-semibold text-amber-500">
+                  Vérification serveur (graine & fenêtre horaire) · Anti-triche · Badge exclusif
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">APIs & Backend</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Supabase (RPC bookTicket) · Gemini AI · Sentry
+                  Supabase (RPC SECURITY DEFINER purchase/refund/challenge) · Gemini AI
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -467,7 +491,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaïgbancê v3.5.0 · Apple iOS 27 Fluid Experience
+              Gbaïgbancê v3.6.0 · Apple Wallet Poster & Mobile Money Live System
             </p>
           </div>
         </div>

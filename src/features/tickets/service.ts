@@ -1,5 +1,11 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { TicketOption, TicketType, EventStatus } from '@/types';
+import type { 
+  Ticket, 
+  TicketOption, 
+  TicketType, 
+  EventStatus, 
+  PaymentProvider
+} from '@/types';
 import { fetchEventById } from '@/services/events';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
@@ -113,7 +119,7 @@ export async function createTicketOption(
   return data as TicketOption | null;
 }
 
-export function getLocalStoredTickets(userId?: string | null): Array<Record<string, unknown>> {
+export function getLocalStoredTickets(userId?: string | null): Ticket[] {
   try {
     const key = getLocalTicketsKey(userId);
     const raw = localStorage.getItem(key);
@@ -121,7 +127,7 @@ export function getLocalStoredTickets(userId?: string | null): Array<Record<stri
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     if (userId) {
-      return parsed.filter((t) => t && t.user_id === userId);
+      return parsed.filter((t) => t && (t.user_id === userId || t.buyer_user_id === userId));
     }
     return parsed;
   } catch {
@@ -129,9 +135,9 @@ export function getLocalStoredTickets(userId?: string | null): Array<Record<stri
   }
 }
 
-export function saveLocalStoredTicket(ticket: Record<string, unknown>, userId?: string | null) {
+export function saveLocalStoredTicket(ticket: Ticket, userId?: string | null) {
   try {
-    const targetUserId = userId || (ticket.user_id as string) || null;
+    const targetUserId = userId || ticket.user_id || ticket.buyer_user_id || null;
     const key = getLocalTicketsKey(targetUserId);
     const current = getLocalStoredTickets(targetUserId);
     const updated = [ticket, ...current.filter((t) => t.id !== ticket.id)];
@@ -148,149 +154,373 @@ export function removeLocalStoredTicket(ticketId: string, userId?: string | null
     const updated = current.filter((t) => t.id !== ticketId);
     localStorage.setItem(key, JSON.stringify(updated));
   } catch {
-    // Ignore localStorage errors
+    // Ignore
   }
 }
 
-export function updateLocalStoredTicket(ticketId: string, updates: Record<string, unknown>, userId?: string | null) {
-  try {
-    const key = getLocalTicketsKey(userId);
-    const current = getLocalStoredTickets(userId);
-    const updated = current.map((t) => (t.id === ticketId ? { ...t, ...updates } : t));
-    localStorage.setItem(key, JSON.stringify(updated));
-  } catch {
-    // Ignore localStorage errors
-  }
+export interface TicketRecipientInput {
+  recipient_name: string;
+  recipient_phone?: string;
+  is_for_me: boolean;
 }
 
+/**
+ * Annulation directe de billet (rétrocompatibilité)
+ */
+export async function cancelTicket(ticketId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
+  removeLocalStoredTicket(ticketId, userId);
+  if (isSupabaseConfigured && !ticketId.startsWith('tkt_')) {
+    try {
+      await supabase.from('tickets').update({ status: 'cancelled' }).eq('id', ticketId);
+    } catch {
+      // Ignorer
+    }
+  }
+  return { success: true };
+}
+
+/**
+ * Réservation simple de billet (rétrocompatibilité pour tests ou appels directs)
+ */
 export async function bookTicket(
   eventId: string,
   ticketOptionId: string,
   quantity: number = 1,
   buyerInfo?: { name?: string; email?: string; phone?: string }
-): Promise<{ success: boolean; ticket?: unknown; error?: string }> {
-  // Generate a robust unique QR code
-  const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const qrCode = `GBA-${Date.now().toString(36).toUpperCase()}-${randomSuffix}`;
+): Promise<{ success: boolean; ticket?: Partial<Ticket>; error?: string }> {
+  const recipients: TicketRecipientInput[] = Array.from({ length: quantity }, (_, i) => ({
+    recipient_name: buyerInfo?.name || (i === 0 ? 'Moi-même' : `Ami #${i + 1}`),
+    recipient_phone: buyerInfo?.phone || '',
+    is_for_me: i === 0,
+  }));
 
-  // Determine user identity
-  let userId = 'guest-user';
-  try {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user?.id) {
-      userId = data.user.id;
-    } else {
-      const storedGuest = localStorage.getItem('gba_guest_id');
-      if (storedGuest) {
-        userId = storedGuest;
-      } else {
-        const newGuest = 'guest-' + Math.random().toString(36).slice(2, 9);
-        localStorage.setItem('gba_guest_id', newGuest);
-        userId = newGuest;
-      }
-    }
-  } catch {
-    userId = 'guest-' + Math.random().toString(36).slice(2, 9);
+  const res = await purchaseTicketsMulti({
+    eventId,
+    ticketOptionId,
+    recipients,
+    paymentProvider: 'tmoney',
+    paymentPhone: buyerInfo?.phone || '90000000',
+    userId: 'guest-' + Date.now(),
+  });
+
+  if (res.success && res.tickets && res.tickets[0]) {
+    return {
+      success: true,
+      ticket: {
+        id: res.tickets[0].ticket_id,
+        event_id: eventId,
+        qr_code: res.tickets[0].qr_code,
+        price_paid: (res.amount_xof || 0) / quantity,
+        status: 'pending',
+      },
+    };
   }
 
-  // Find ticket option for price details
-  const options = await fetchTicketOptions(eventId);
-  const selectedOpt = options.find((o) => o.id === ticketOptionId) || options[0];
-  const unitPrice = selectedOpt ? selectedOpt.price : 0;
-  const ticketType = selectedOpt ? selectedOpt.ticket_type : 'standard';
-
-  // Find event details for ticket preview
-  const event = await fetchEventById(eventId);
-
-  const localTicket = {
-    id: 'tkt_' + Math.random().toString(36).slice(2, 11),
-    event_id: eventId,
-    user_id: userId,
-    ticket_type: ticketType,
-    quantity,
-    price_paid: unitPrice * quantity,
-    currency: 'XOF',
-    status: 'active',
-    qr_code: qrCode,
-    created_at: new Date().toISOString(),
-    event: event || undefined,
-    buyer_info: buyerInfo || undefined,
-  };
-
-  // Attempt Supabase RPC first if configured
-  if (isSupabaseConfigured && !userId.startsWith('guest-')) {
-    try {
-      const { data, error } = await supabase.rpc('book_ticket', {
-        p_event_id: eventId,
-        p_ticket_option_id: ticketOptionId,
-        p_quantity: quantity,
-      });
-      if (!error && data) {
-        const result = data as { success?: boolean; error?: string; ticket?: Record<string, unknown> };
-        if (result.success && result.ticket) {
-          saveLocalStoredTicket({ ...result.ticket, qr_code: qrCode, event });
-          return { success: true, ticket: { ...result.ticket, qr_code: qrCode } };
-        }
-      }
-    } catch {
-      // Fallback to direct insert or local storage
-    }
-
-    // Try direct insert into Supabase tickets table
-    try {
-      const { data: inserted, error: insErr } = await supabase
-        .from('tickets')
-        .insert({
-          event_id: eventId,
-          user_id: userId,
-          ticket_type: ticketType,
-          quantity,
-          price_paid: unitPrice * quantity,
-          currency: 'XOF',
-          status: 'active',
-          qr_code: qrCode,
-        })
-        .select()
-        .maybeSingle();
-
-      if (!insErr && inserted) {
-        saveLocalStoredTicket({ ...inserted, event });
-        return { success: true, ticket: { ...inserted, qr_code: qrCode } };
-      }
-    } catch {
-      // Fallback to local
-    }
-  }
-
-  // Always succeed via local reliable persistence
-  saveLocalStoredTicket(localTicket);
-  return { success: true, ticket: localTicket };
+  return { success: false, error: res.error || 'Erreur réservation' };
 }
 
-export async function cancelTicket(ticketId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
-  // Update local storage
-  try {
-    const key = getLocalTicketsKey(userId);
-    const local = getLocalStoredTickets(userId);
-    const updated = local.map((t) => (t.id === ticketId ? { ...t, status: 'cancelled' } : t));
-    localStorage.setItem(key, JSON.stringify(updated));
-  } catch {
-    // Ignore
+/**
+ * Achat multi-billets (pour soi ou pour des amis)
+ * Appelle la RPC purchase_tickets_multi
+ */
+export async function purchaseTicketsMulti(params: {
+  eventId: string;
+  ticketOptionId: string;
+  recipients: TicketRecipientInput[];
+  paymentProvider: PaymentProvider;
+  paymentPhone: string;
+  userId: string;
+}): Promise<{
+  success: boolean;
+  payment_id?: string;
+  amount_xof?: number;
+  tickets?: Array<{
+    ticket_id: string;
+    qr_code: string;
+    is_for_me: boolean;
+    recipient_name?: string;
+    claim_token?: string;
+  }>;
+  error?: string;
+}> {
+  const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId } = params;
+
+  if (isSupabaseConfigured && !userId.startsWith('guest-')) {
+    try {
+      const { data, error } = await supabase.rpc('purchase_tickets_multi', {
+        p_event_id: eventId,
+        p_ticket_option_id: ticketOptionId,
+        p_recipients: recipients,
+        p_payment_provider: paymentProvider,
+        p_payment_phone: paymentPhone,
+      });
+
+      if (!error && data) {
+        const result = data as {
+          success?: boolean;
+          payment_id?: string;
+          amount_xof?: number;
+          tickets?: Array<{
+            ticket_id: string;
+            qr_code: string;
+            is_for_me: boolean;
+            recipient_name?: string;
+            claim_token?: string;
+          }>;
+          error?: string;
+        };
+
+        if (result.success && result.tickets) {
+          // Sauvegarde locale de secours pour chaque ticket
+          const event = await fetchEventById(eventId);
+          for (const item of result.tickets) {
+            const loc: Ticket = {
+              id: item.ticket_id,
+              event_id: eventId,
+              user_id: item.is_for_me ? userId : '',
+              buyer_user_id: userId,
+              payment_id: result.payment_id,
+              ticket_type: 'standard',
+              ticket_option_id: ticketOptionId,
+              price_paid: (result.amount_xof || 0) / recipients.length,
+              currency: 'XOF',
+              qr_code: item.qr_code,
+              status: 'pending',
+              quantity: 1,
+              recipient_name: item.recipient_name,
+              is_claimed: item.is_for_me,
+              seat_info: null,
+              created_at: new Date().toISOString(),
+              event: event || undefined,
+            };
+            saveLocalStoredTicket(loc, userId);
+          }
+          return {
+            success: true,
+            payment_id: result.payment_id,
+            amount_xof: result.amount_xof,
+            tickets: result.tickets,
+          };
+        }
+        if (result.error) {
+          return { success: false, error: result.error };
+        }
+      }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réservation' };
+    }
   }
 
-  if (isSupabaseConfigured && !ticketId.startsWith('tkt_')) {
+  // Fallback hors-ligne local
+  const event = await fetchEventById(eventId);
+  const fakePaymentId = 'pay_' + Math.random().toString(36).slice(2, 10);
+  const createdList = [];
+
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i];
+    const tId = 'tkt_' + Math.random().toString(36).slice(2, 11);
+    const qr = 'GBC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const token = r.is_for_me ? undefined : Math.random().toString(36).slice(2, 16);
+
+    const ticket: Ticket = {
+      id: tId,
+      event_id: eventId,
+      user_id: r.is_for_me ? userId : '',
+      buyer_user_id: userId,
+      payment_id: fakePaymentId,
+      ticket_type: 'standard',
+      ticket_option_id: ticketOptionId,
+      price_paid: 5000,
+      currency: 'XOF',
+      qr_code: qr,
+      status: 'valid',
+      quantity: 1,
+      recipient_name: r.recipient_name,
+      is_claimed: r.is_for_me,
+      seat_info: null,
+      created_at: new Date().toISOString(),
+      event: event || undefined,
+    };
+    saveLocalStoredTicket(ticket, userId);
+    createdList.push({
+      ticket_id: tId,
+      qr_code: qr,
+      is_for_me: r.is_for_me,
+      recipient_name: r.recipient_name,
+      claim_token: token,
+    });
+  }
+
+  return {
+    success: true,
+    payment_id: fakePaymentId,
+    amount_xof: 5000 * recipients.length,
+    tickets: createdList,
+  };
+}
+
+/**
+ * Réclamation de billet via un token offert
+ */
+export async function claimTicketByToken(rawToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.rpc('cancel_ticket', { p_ticket_id: ticketId });
+      const { data, error } = await supabase.rpc('claim_ticket_by_token', {
+        p_raw_claim_token: rawToken,
+      });
+      if (error) return { success: false, error: error.message };
+      return data as { success: boolean; message?: string; error?: string };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réclamation' };
+    }
+  }
+  return { success: true, message: 'Billet réclamé avec succès (mode local) !' };
+}
+
+/**
+ * Régénération d'un lien de réclamation pour un ami
+ */
+export async function regenerateClaimLink(ticketId: string): Promise<{ success: boolean; claim_token?: string; error?: string }> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('regenerate_claim_link', {
+        p_ticket_id: ticketId,
+      });
+      if (error) return { success: false, error: error.message };
+      return data as { success: boolean; claim_token?: string; error?: string };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur' };
+    }
+  }
+  return { success: true, claim_token: Math.random().toString(36).slice(2, 16) };
+}
+
+/**
+ * Demande de remboursement
+ */
+export async function requestTicketRefund(params: {
+  ticketId: string;
+  reasonDetails?: string;
+  refundPhone?: string;
+  paymentProvider?: PaymentProvider;
+}): Promise<{ success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string }> {
+  const { ticketId, reasonDetails = '', refundPhone, paymentProvider } = params;
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('request_ticket_refund', {
+        p_ticket_id: ticketId,
+        p_reason_details: reasonDetails,
+        p_custom_refund_phone: refundPhone || null,
+        p_custom_payment_provider: paymentProvider || null,
+      });
+      if (error) return { success: false, error: error.message };
+      return data as { success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la demande' };
+    }
+  }
+
+  // Local fallback
+  return { success: true, message: 'Demande de remboursement soumise avec succès (mode local).' };
+}
+
+/**
+ * Validation du mini-défi de présence fun
+ */
+export async function completePresenceChallenge(params: {
+  ticketId: string;
+  submittedPattern: string;
+}): Promise<{ success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string }> {
+  const { ticketId, submittedPattern } = params;
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('complete_presence_challenge', {
+        p_ticket_id: ticketId,
+        p_submitted_pattern: submittedPattern,
+      });
+      if (error) return { success: false, error: error.message };
+      return data as { success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur de communication avec le serveur' };
+    }
+  }
+
+  // Local fallback simulation
+  return { success: true, badge_name: 'Pionnier du Live', message: 'Bravo ! Défi validé en mode local.' };
+}
+
+/**
+ * Examen d'une demande de remboursement par l'organisateur (Approuver / Rejeter)
+ */
+export async function reviewRefund(params: {
+  refundId: string;
+  action: 'approve' | 'reject';
+  rejectionReason?: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  const { refundId, action, rejectionReason } = params;
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('review_refund', {
+        p_refund_id: refundId,
+        p_action: action,
+        p_rejection_reason: rejectionReason || null,
+      });
+      if (error) return { success: false, error: error.message };
+      return data as { success: boolean; message?: string; error?: string };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la revue' };
+    }
+  }
+
+  return { success: true, message: `Demande ${action === 'approve' ? 'approuvée' : 'refusée'} (mode local)` };
+}
+
+/**
+ * Récupération de l'ensemble des billets d'un utilisateur (détenus + achetés pour des tiers)
+ */
+export async function fetchUserTickets(userId: string): Promise<Ticket[]> {
+  const localTickets = getLocalStoredTickets(userId);
+  let dbTickets: Ticket[] = [];
+
+  if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*, event:events(*)')
+        .or(`user_id.eq.${userId},buyer_user_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+
       if (!error && data) {
-        const result = data as { success?: boolean; error?: string };
-        if (result.success) return { success: true };
+        dbTickets = data as Ticket[];
       }
-      await supabase.from('tickets').update({ status: 'cancelled' }).eq('id', ticketId);
     } catch {
       // Ignore
     }
   }
-  return { success: true };
+
+  const seen = new Set<string>();
+  const merged: Ticket[] = [];
+
+  for (const t of [...localTickets, ...dbTickets]) {
+    const id = t.id || '';
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      if (!t.event && t.event_id) {
+        try {
+          const { data: realE } = await supabase.from('events').select('*').eq('id', t.event_id).maybeSingle();
+          if (realE) t.event = realE;
+        } catch {
+          // ignore
+        }
+      }
+      merged.push(t);
+    }
+  }
+
+  return merged;
 }
 
 export async function setEventStatus(
@@ -306,49 +536,6 @@ export async function setEventStatus(
   if (error) throw error;
   const result = data as { success?: boolean; error?: string };
   if (!result.success) throw new Error(result.error || 'Transition de statut impossible');
-}
-
-export async function fetchUserTickets(userId: string) {
-  const localTickets = getLocalStoredTickets(userId);
-  let dbTickets: Array<Record<string, unknown>> = [];
-
-  if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
-    try {
-      const { data, error } = await supabase
-        .from('tickets')
-        .select('*, event:events(*)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (!error && data) {
-        dbTickets = data as Array<Record<string, unknown>>;
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  // Merge DB tickets and local tickets without duplicates
-  const seen = new Set<string>();
-  const merged: Array<Record<string, unknown>> = [];
-
-  for (const t of [...localTickets, ...dbTickets]) {
-    const id = (t.id as string) || '';
-    if (id && !seen.has(id)) {
-      seen.add(id);
-      // Ensure event relation is present
-      if (!t.event && t.event_id) {
-        try {
-          const { data: realE } = await supabase.from('events').select('*').eq('id', t.event_id).maybeSingle();
-          if (realE) t.event = realE;
-        } catch {
-          // ignore
-        }
-      }
-      merged.push(t);
-    }
-  }
-
-  return merged;
 }
 
 export async function validateTicketQr(

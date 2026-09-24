@@ -35,7 +35,8 @@ export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | '
 
 export type TicketType = 'free' | 'standard' | 'vip' | 'vvip';
 
-export type TicketStatus = 'active' | 'used' | 'cancelled' | 'refunded';
+// Statuts normalisés stricts du ticket
+export type TicketStatus = 'pending' | 'valid' | 'used' | 'frozen' | 'refunded' | 'expired';
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 
@@ -135,6 +136,8 @@ export interface Event {
   sales_end_at?: string | null;
   cancellation_reason?: string | null;
   suspension_reason?: string | null;
+  postponed_to?: string | null;
+  postponement_deadline?: string | null;
   is_featured: boolean;
   likes_count: number;
   views_count: number;
@@ -172,10 +175,67 @@ export interface EventCollaborator {
   artist?: Artist | null;
 }
 
+export type PaymentProvider = 'tmoney' | 'flooz' | 'mtn';
+
+export type RefundStatus = 'requested' | 'under_review' | 'approved' | 'rejected' | 'processing' | 'refunded' | 'failed';
+export type RefundReasonType = 'cancellation' | 'postponement' | 'customer_request';
+
+export interface PaymentRecord {
+  id: string;
+  event_id: string;
+  buyer_user_id: string;
+  ticket_option_id: string;
+  quantity: number;
+  amount_xof: number;
+  currency: string;
+  payment_provider: PaymentProvider;
+  payment_phone: string;
+  operator_reference?: string | null;
+  status: 'pending' | 'successful' | 'failed' | 'expired' | 'refunded' | 'partially_refunded';
+  expires_at: string;
+  created_at: string;
+}
+
+export interface TicketRefund {
+  id: string;
+  ticket_id: string;
+  payment_id: string;
+  event_id: string;
+  requester_user_id: string;
+  status: RefundStatus;
+  reason_type: RefundReasonType;
+  reason_details?: string | null;
+  rejection_reason?: string | null;
+  amount_xof: number;
+  currency: string;
+  payment_provider: PaymentProvider;
+  refund_phone: string;
+  operator_reference?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+export interface EventPresenceBadge {
+  id: string;
+  event_id: string;
+  user_id: string;
+  ticket_id: string;
+  challenge_type: string;
+  is_public_on_profile: boolean;
+  server_timestamp: string;
+  badge_name: string;
+  badge_icon: string;
+  created_at: string;
+}
+
 export interface Ticket {
   id: string;
   event_id: string;
   user_id: string;
+  buyer_user_id?: string | null;
+  payment_id?: string | null;
   ticket_type: TicketType;
   ticket_option_id: string | null;
   price_paid: number;
@@ -184,6 +244,14 @@ export interface Ticket {
   status: TicketStatus;
   quantity: number;
   seat_info: string | null;
+  recipient_name?: string | null;
+  recipient_phone?: string | null;
+  recipient_email?: string | null;
+  is_claimed?: boolean;
+  claimed_at?: string | null;
+  claim_token_expires_at?: string | null;
+  postponed_decision?: 'pending' | 'keep' | 'refund_requested';
+  challenge_attempts?: number;
   created_at: string;
   event?: Event;
 }

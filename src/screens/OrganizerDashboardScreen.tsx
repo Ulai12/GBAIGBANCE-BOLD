@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3 } from 'lucide-react';
+import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3, RotateCcw } from 'lucide-react';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { SmartImage } from '@/components/SmartImage';
 import { OrganizerMetricsChart, type OrganizerPerformanceData } from '@/components/OrganizerMetricsChart';
+import { OrganizerRefundsTab } from '@/components/OrganizerRefundsTab';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { EVENT_CATEGORIES } from '@/constants';
@@ -42,6 +43,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'cancel' | 'delete'>('cancel');
   const [manageTarget, setManageTarget] = useState<Event | null>(null);
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'events' | 'refunds'>('events');
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [perfData, setPerfData] = useState<OrganizerPerformanceData>({
@@ -182,86 +184,121 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
           onTimeRangeChange={setTimeRange}
         />
 
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
-            <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Mes événements
-          </h2>
-          <span className="text-sm text-gray-500">{events.length}</span>
+        {/* Tab switch Mes événements / Remboursements */}
+        <div className="flex bg-gray-200/70 dark:bg-white/10 p-1 rounded-2xl mb-5">
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab('events')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDashboardTab === 'events'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            Mes événements ({events.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab('refunds')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activeDashboardTab === 'refunds'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Remboursements
+          </button>
         </div>
 
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="card p-4 flex gap-3">
-                <Skeleton className="w-16 h-16 rounded-xl" />
-                <div className="flex-1 space-y-2 py-1">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : events.length === 0 ? (
-          <EmptyState
-            title="Aucun événement"
-            description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
-            action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
-          />
+        {activeDashboardTab === 'refunds' ? (
+          <OrganizerRefundsTab organizerUserId={user?.id || ''} onToast={onToast} />
         ) : (
-          <div className="space-y-3">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="card p-4 flex items-center gap-3 cursor-pointer hover:shadow-card-hover transition-all"
-                onClick={() => onEventClick(event)}
-              >
-                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
-                  <SmartImage
-                    src={event.cover_url}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                    sizes="56px"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[#1A1A2E] dark:text-white text-sm line-clamp-1">{event.title}</h3>
-                  <p className="text-xs text-gray-500">{t('events', `categories.${event.category}`)} · {event.city}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
-                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
-                    {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
-                    {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
+                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Liste des événements
+              </h2>
+              <span className="text-sm text-gray-500">{events.length}</span>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="card p-4 flex gap-3">
+                    <Skeleton className="w-16 h-16 rounded-xl" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
                   </div>
-                </div>
-                {onEditEvent && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
-                    aria-label="Modifier l'événement"
-                    title="Modifier l'événement"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setManageTarget(event); }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
-                  aria-label="Programme et Sponsors"
-                  title="Programme et Sponsors"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : events.length === 0 ? (
+              <EmptyState
+                title="Aucun événement"
+                description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
+                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
+              />
+            ) : (
+              <div className="space-y-3">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="card p-4 flex items-center gap-3 cursor-pointer hover:shadow-card-hover transition-all"
+                    onClick={() => onEventClick(event)}
+                  >
+                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
+                      <SmartImage
+                        src={event.cover_url}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                        sizes="56px"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-[#1A1A2E] dark:text-white text-sm line-clamp-1">{event.title}</h3>
+                      <p className="text-xs text-gray-500">{t('events', `categories.${event.category}`)} · {event.city}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
+                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
+                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
+                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">Suspendu</span>}
+                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">Reporté</span>}
+                      </div>
+                    </div>
+                    {onEditEvent && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                        aria-label="Modifier l'événement"
+                        title="Modifier l'événement"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setManageTarget(event); }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                      aria-label="Programme et Sponsors"
+                      title="Programme et Sponsors"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
