@@ -1,17 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
+  Calendar,
   Check,
   ChevronLeft,
+  Clock,
+  ExternalLink,
+  Eye,
   ImagePlus,
   Info,
+  Layers,
   Loader2,
   MapPin,
+  MessageCircle,
   Music2,
   Navigation,
   Plus,
   Search,
+  Smartphone,
+  Sparkles,
   Ticket as TicketIcon,
   Trash2,
   X,
@@ -34,8 +42,10 @@ import {
   addEventSponsor,
   getFaviconUrl,
 } from '@/services/events';
-import type { Artist, Event, EventCategory, Organization, MainCategoryId, SubCategoryId } from '@/types';
+import type { Artist, Event, EventCategory, EventAccessType, Organization, MainCategoryId, SubCategoryId } from '@/types';
 import type { ToastData } from '@/components/Toast';
+import { EventPreviewModal } from '@/components/EventPreviewModal';
+import { EventCard } from '@/components/EventCard';
 
 interface Props {
   onBack: () => void;
@@ -56,7 +66,27 @@ interface SelectedCollab {
 const STEPS: Step[] = ['Infos', 'Lieu & Dates', 'Photos', 'Billets', 'Collaborateurs', 'Programme', 'Live', 'Sponsors', 'Confirmation'];
 
 const fieldClass =
-  'w-full px-4 py-3.5 bg-white dark:bg-[#1A1829] border border-black/[0.07] dark:border-white/[0.08] rounded-2xl text-[#171726] dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 text-sm font-medium transition-all shadow-xs';
+  'w-full max-w-full min-w-0 box-border px-4 py-3.5 bg-white dark:bg-[#1A1829] border border-black/[0.07] dark:border-white/[0.08] rounded-2xl text-[#171726] dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 text-sm font-medium transition-all shadow-xs';
+
+function getSplitDateTime(val: string) {
+  if (!val) return { date: '', time: '' };
+  const parts = val.split('T');
+  return { date: parts[0] || '', time: parts[1] ? parts[1].slice(0, 5) : '' };
+}
+
+function formatFriendlyDateTime(val: string) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 // City GPS presets for instant coordinate fallback
 const CITY_COORDINATES: Record<string, { lat: number; lng: number; country: string }> = {
@@ -107,7 +137,18 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const [coverPreview, setCoverPreview] = useState('');
   const [galleryFiles, setGalleryFiles] = useState<{ file: File; preview: string }[]>([]);
 
-  // Tickets state
+  // Advanced Ticketing / Access modes state
+  const [accessType, setAccessType] = useState<EventAccessType>('tickets');
+  const [unlimitedCapacity, setUnlimitedCapacity] = useState(true);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [externalTicketUrl, setExternalTicketUrl] = useState('');
+
+  // Preview state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [confirmationTab, setConfirmationTab] = useState<'summary' | 'card' | 'page'>('summary');
+
+  // Tickets state (for Gbaigbance native ticketing)
   const [tickets, setTickets] = useState([
     { ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' },
   ]);
@@ -128,6 +169,56 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const stepIndex = STEPS.indexOf(step);
+
+  // Computed preview event for real-time live preview
+  const previewEvent: Event = useMemo(() => {
+    const validTickets = tickets.filter((t) => t.label.trim()).map((t) => ({ price: Number(t.price) || 0 }));
+    const priceMin = accessType === 'free'
+      ? 0
+      : accessType === 'whatsapp' || accessType === 'external'
+      ? Number(tickets[0]?.price) || 0
+      : validTickets.length > 0
+      ? Math.min(...validTickets.map((t) => t.price))
+      : 0;
+
+    return {
+      id: 'preview-current-wizard',
+      title: form.title.trim() || 'Titre de votre événement',
+      description: form.description.trim() || 'Description détaillée de votre événement...',
+      category: form.category,
+      main_category: form.main_category,
+      subcategory: form.subcategory,
+      location_name: form.location_name.trim() || 'Lieu de l’événement',
+      location_address: form.location_address.trim() || null,
+      city: form.city.trim() || 'Lomé',
+      country: form.country || 'TG',
+      latitude: form.latitude,
+      longitude: form.longitude,
+      starts_at: form.starts_at || new Date().toISOString(),
+      ends_at: form.ends_at || null,
+      price_min: priceMin,
+      price_max: null,
+      currency: 'XOF',
+      capacity: unlimitedCapacity ? null : (form.capacity ? Number(form.capacity) : null),
+      attendees_count: 0,
+      organizer_id: null,
+      organizer_user_id: user?.id || null,
+      status: 'published',
+      cover_url: coverPreview || form.cover_url || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200',
+      images: galleryFiles.map((g) => g.preview),
+      video_url: form.video_url.trim() || null,
+      access_type: accessType,
+      whatsapp_number: whatsappNumber.trim() || null,
+      whatsapp_message: whatsappMessage.trim() || null,
+      external_ticket_url: externalTicketUrl.trim() || null,
+      unlimited_capacity: unlimitedCapacity,
+      is_featured: false,
+      likes_count: 0,
+      views_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }, [form, tickets, accessType, unlimitedCapacity, whatsappNumber, whatsappMessage, externalTicketUrl, coverPreview, galleryFiles, user]);
 
   // Auto-search collaborators
   useEffect(() => {
@@ -227,6 +318,23 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         return false;
       }
     }
+    if (step === 'Billets') {
+      if (accessType === 'whatsapp' && !whatsappNumber.trim()) {
+        setError('Veuillez renseigner le numéro WhatsApp officiel pour les réservations.');
+        return false;
+      }
+      if (accessType === 'external' && !externalTicketUrl.trim()) {
+        setError('Veuillez renseigner l’URL du site dédié ou de la billetterie externe.');
+        return false;
+      }
+      if (accessType === 'tickets') {
+        const hasValidTicket = tickets.some((t) => t.label.trim());
+        if (!hasValidTicket) {
+          setError('Veuillez configurer au moins un type de billet.');
+          return false;
+        }
+      }
+    }
     setError('');
     return true;
   };
@@ -260,15 +368,23 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         }
       }
 
-      const validTickets = tickets
-        .filter((ticket) => ticket.label.trim() && ticket.quantity_total)
-        .map((ticket) => ({
-          ticket_type: ticket.ticket_type,
-          label: ticket.label.trim(),
-          price: Math.max(0, Number(ticket.price) || 0),
-          quantity_total: Math.max(1, Number(ticket.quantity_total) || 1),
-          description: ticket.description || undefined,
-        }));
+      const validTickets = accessType === 'tickets'
+        ? tickets
+            .filter((ticket) => ticket.label.trim() && ticket.quantity_total)
+            .map((ticket) => ({
+              ticket_type: ticket.ticket_type,
+              label: ticket.label.trim(),
+              price: Math.max(0, Number(ticket.price) || 0),
+              quantity_total: Math.max(1, Number(ticket.quantity_total) || 1),
+              description: ticket.description || undefined,
+            }))
+        : [];
+
+      const calculatedPriceMin = accessType === 'free'
+        ? 0
+        : accessType === 'tickets'
+        ? (validTickets.length ? Math.min(...validTickets.map((t) => t.price)) : 0)
+        : Math.max(0, Number(tickets[0]?.price) || 0);
 
       const event = await createEventWithCollaborators(
         {
@@ -285,12 +401,17 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           longitude: form.longitude,
           starts_at: form.starts_at,
           ends_at: form.ends_at || null,
-          price_min: validTickets.length ? Math.min(...validTickets.map((t) => t.price)) : 0,
+          price_min: calculatedPriceMin,
           cover_url: coverUrl,
           images: uploadedGalleryUrls,
           video_url: form.video_url.trim() || null,
-          capacity: form.capacity ? Math.max(1, Number(form.capacity)) : undefined,
+          capacity: unlimitedCapacity ? null : (form.capacity ? Math.max(1, Number(form.capacity)) : null),
           created_by_role: user.role === 'artist' ? 'artist' : 'organizer',
+          access_type: accessType,
+          whatsapp_number: whatsappNumber.trim() || null,
+          whatsapp_message: whatsappMessage.trim() || null,
+          external_ticket_url: externalTicketUrl.trim() || null,
+          unlimited_capacity: unlimitedCapacity,
         },
         collaborators.map((item) => ({ user_id: item.user_id, role: item.role })),
         validTickets,
@@ -400,26 +521,38 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
       {/* Header */}
       <header className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="max-w-md mx-auto flex items-center gap-3">
+        <div className="max-w-md mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Retour"
+              className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform shrink-0"
+            >
+              <ChevronLeft className="w-5 h-5 text-[#171726] dark:text-white" />
+            </button>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
+                Création Studio
+              </p>
+              <h1 className="text-lg font-extrabold text-[#171726] dark:text-white truncate">
+                {step}
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Étape {stepIndex + 1}/{STEPS.length}
+              </p>
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={onBack}
-            aria-label="Retour"
-            className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform"
+            onClick={() => setShowPreviewModal(true)}
+            className="px-3.5 py-2 rounded-full bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-[#6600FF] dark:text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
+            title="Aperçu de la carte et de la fiche événement"
           >
-            <ChevronLeft className="w-5 h-5 text-[#171726] dark:text-white" />
+            <Eye className="w-3.5 h-3.5" />
+            <span>Aperçu</span>
           </button>
-          <div className="flex-1">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-              Création Studio
-            </p>
-            <h1 className="text-lg font-extrabold text-[#171726] dark:text-white">
-              {step}
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Étape {stepIndex + 1}/{STEPS.length}
-            </p>
-          </div>
         </div>
 
         {/* Progress Bar */}
@@ -650,32 +783,168 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               </div>
             </div>
 
-            {/* Dates & Heures */}
-            <div className="card p-4 space-y-3">
-              <h3 className="text-sm font-bold text-[#17131D] dark:text-white">Dates & Horaires</h3>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Début de l’événement *
-                </label>
-                <input
-                  type="datetime-local"
-                  className={fieldClass}
-                  value={form.starts_at}
-                  onChange={(e) => updateForm('starts_at', e.target.value)}
-                />
+            {/* Dates & Horaires (Entièrement responsives, anti-dépassement, style Apple) */}
+            <div className="card p-4 space-y-4 w-full max-w-full min-w-0 overflow-hidden box-border">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-[#17131D] dark:text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#6600FF] dark:text-purple-300" />
+                  <span>Dates & Horaires</span>
+                </h3>
+                {form.starts_at && (
+                  <span className="text-[11px] font-semibold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 px-2 py-0.5 rounded-full">
+                    {formatFriendlyDateTime(form.starts_at)}
+                  </span>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Fin de l’événement (recommandé)
+              {/* Début de l'événement */}
+              <div className="space-y-2 w-full max-w-full min-w-0">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                  Début de l’événement *
                 </label>
-                <input
-                  type="datetime-local"
-                  className={fieldClass}
-                  value={form.ends_at}
-                  onChange={(e) => updateForm('ends_at', e.target.value)}
-                />
+
+                <div className="grid grid-cols-2 gap-2 w-full max-w-full min-w-0 box-border">
+                  <div className="relative min-w-0">
+                    <input
+                      type="date"
+                      className={`${fieldClass} text-xs py-3 px-3`}
+                      value={getSplitDateTime(form.starts_at).date}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const currTime = getSplitDateTime(form.starts_at).time || '20:00';
+                        updateForm('starts_at', newDate ? `${newDate}T${currTime}` : '');
+                      }}
+                    />
+                  </div>
+                  <div className="relative min-w-0">
+                    <input
+                      type="time"
+                      className={`${fieldClass} text-xs py-3 px-3`}
+                      value={getSplitDateTime(form.starts_at).time || '20:00'}
+                      onChange={(e) => {
+                        const newTime = e.target.value || '20:00';
+                        const currDate = getSplitDateTime(form.starts_at).date || new Date().toISOString().split('T')[0];
+                        updateForm('starts_at', `${currDate}T${newTime}`);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Raccourcis rapides */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-gray-400 font-medium mr-1">Suggestions :</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      const y = today.getFullYear();
+                      const m = String(today.getMonth() + 1).padStart(2, '0');
+                      const d = String(today.getDate()).padStart(2, '0');
+                      updateForm('starts_at', `${y}-${m}-${d}T20:00`);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                  >
+                    Ce soir 20h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const y = tomorrow.getFullYear();
+                      const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                      const d = String(tomorrow.getDate()).padStart(2, '0');
+                      updateForm('starts_at', `${y}-${m}-${d}T20:00`);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                  >
+                    Demain 20h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const day = now.getDay();
+                      const diff = (6 - day + 7) % 7 || 7;
+                      const saturday = new Date(now);
+                      saturday.setDate(now.getDate() + diff);
+                      const y = saturday.getFullYear();
+                      const m = String(saturday.getMonth() + 1).padStart(2, '0');
+                      const d = String(saturday.getDate()).padStart(2, '0');
+                      updateForm('starts_at', `${y}-${m}-${d}T21:00`);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                  >
+                    Samedi 21h
+                  </button>
+                </div>
+              </div>
+
+              {/* Fin de l'événement */}
+              <div className="space-y-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.08] w-full max-w-full min-w-0">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Fin de l’événement (recommandé)
+                  </label>
+                  {form.ends_at && (
+                    <button
+                      type="button"
+                      onClick={() => updateForm('ends_at', '')}
+                      className="text-[10px] text-red-500 hover:underline cursor-pointer"
+                    >
+                      Effacer
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 w-full max-w-full min-w-0 box-border">
+                  <div className="relative min-w-0">
+                    <input
+                      type="date"
+                      className={`${fieldClass} text-xs py-3 px-3`}
+                      value={getSplitDateTime(form.ends_at).date}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const currTime = getSplitDateTime(form.ends_at).time || '23:00';
+                        updateForm('ends_at', newDate ? `${newDate}T${currTime}` : '');
+                      }}
+                    />
+                  </div>
+                  <div className="relative min-w-0">
+                    <input
+                      type="time"
+                      className={`${fieldClass} text-xs py-3 px-3`}
+                      value={getSplitDateTime(form.ends_at).time || (form.ends_at ? '23:00' : '')}
+                      onChange={(e) => {
+                        const newTime = e.target.value;
+                        const currDate = getSplitDateTime(form.ends_at).date || getSplitDateTime(form.starts_at).date || new Date().toISOString().split('T')[0];
+                        updateForm('ends_at', newTime ? `${currDate}T${newTime}` : '');
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {form.starts_at && !form.ends_at && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const start = new Date(form.starts_at);
+                      if (!isNaN(start.getTime())) {
+                        start.setHours(start.getHours() + 4);
+                        const y = start.getFullYear();
+                        const m = String(start.getMonth() + 1).padStart(2, '0');
+                        const d = String(start.getDate()).padStart(2, '0');
+                        const h = String(start.getHours()).padStart(2, '0');
+                        const min = String(start.getMinutes()).padStart(2, '0');
+                        updateForm('ends_at', `${y}-${m}-${d}T${h}:${min}`);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 text-[10px] font-bold hover:bg-[#6600FF]/20 transition-colors cursor-pointer"
+                  >
+                    <Clock className="w-3 h-3" />
+                    <span>Même date (+4 heures)</span>
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -791,112 +1060,362 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           </section>
         )}
 
-        {/* STEP 4: BILLETS */}
+        {/* STEP 4: BILLETS & MODALITÉS D'ACCÈS */}
         {step === 'Billets' && (
           <section className="space-y-4 animate-slide-up">
-            <div className="flex items-center gap-2 p-3 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 rounded-2xl text-xs text-[#17131D] dark:text-white">
-              <Info className="w-4 h-4 text-[#6600FF] dark:text-purple-300 shrink-0" />
-              <span>
-                Pour un événement gratuit, définissez le prix à 0 FCFA. Vous pouvez créer plusieurs catégories (Standard, VIP, etc.).
-              </span>
+            {/* Choix du mode d'accès / billetterie */}
+            <div className="card p-4 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Comment le public accède-t-il à votre événement ?
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAccessType('tickets')}
+                  className={`p-3 rounded-2xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                    accessType === 'tickets'
+                      ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 ring-1 ring-[#6600FF]'
+                      : 'border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#1A1829] text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <TicketIcon className="w-5 h-5" />
+                    {accessType === 'tickets' && <Check className="w-4 h-4 text-[#6600FF] dark:text-purple-300" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Billetterie Gbaigbance</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Vente en ligne, QR pass & scanning</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccessType('whatsapp')}
+                  className={`p-3 rounded-2xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                    accessType === 'whatsapp'
+                      ? 'border-[#25D366] bg-[#25D366]/10 text-emerald-800 dark:text-emerald-300 ring-1 ring-[#25D366]'
+                      : 'border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#1A1829] text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <MessageCircle className="w-5 h-5 text-[#25D366]" />
+                    {accessType === 'whatsapp' && <Check className="w-4 h-4 text-[#25D366]" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Sur réservation</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Contact direct WhatsApp / Tél</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccessType('external')}
+                  className={`p-3 rounded-2xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                    accessType === 'external'
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500'
+                      : 'border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#1A1829] text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <ExternalLink className="w-5 h-5 text-blue-500" />
+                    {accessType === 'external' && <Check className="w-4 h-4 text-blue-500" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Billetterie externe</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Site officiel ou guichet tiers</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccessType('free')}
+                  className={`p-3 rounded-2xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                    accessType === 'free'
+                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500'
+                      : 'border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#1A1829] text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <Sparkles className="w-5 h-5 text-emerald-500" />
+                    {accessType === 'free' && <Check className="w-4 h-4 text-emerald-500" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold leading-tight">Entrée libre</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Gratuit sans réservation</p>
+                  </div>
+                </button>
+              </div>
             </div>
 
-            {tickets.map((ticket, index) => (
-              <div key={index} className="card p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <select
-                    className={fieldClass}
-                    value={ticket.ticket_type}
-                    onChange={(e) =>
-                      setTickets(
-                        tickets.map((item, i) =>
-                          i === index ? { ...item, ticket_type: e.target.value } : item
-                        )
-                      )
-                    }
-                  >
-                    <option value="free">Gratuit</option>
-                    <option value="standard">Standard</option>
-                    <option value="vip">VIP</option>
-                    <option value="vvip">VVIP</option>
-                  </select>
-
-                  {tickets.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setTickets(tickets.filter((_, i) => i !== index))}
-                      className="ml-2 text-red-500 hover:text-red-600 p-2 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+            {/* Jauge / Capacité d'accueil (Gestion des places illimitées) */}
+            <div className="card p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-[#17131D] dark:text-white">
+                    Places & Jauge de l’événement
+                  </h4>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {unlimitedCapacity
+                      ? 'Aucune limite de places fixée (jauge libre / illimitée)'
+                      : 'Capacité maximale restreinte pour le lieu'}
+                  </p>
                 </div>
 
-                <input
-                  className={fieldClass}
-                  value={ticket.label}
-                  onChange={(e) =>
-                    setTickets(
-                      tickets.map((item, i) =>
-                        i === index ? { ...item, label: e.target.value } : item
-                      )
-                    )
-                  }
-                  placeholder="Nom du billet (ex. Pass 1 Jour, VIP Accès Lounge)"
-                />
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={unlimitedCapacity}
+                    onChange={(e) => setUnlimitedCapacity(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-white/10 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#6600FF]"></div>
+                </label>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">Prix (FCFA)</label>
-                    <input
-                      className={fieldClass}
-                      type="number"
-                      min="0"
-                      value={ticket.price}
-                      onChange={(e) =>
-                        setTickets(
-                          tickets.map((item, i) =>
-                            i === index ? { ...item, price: e.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">Quantité totale</label>
-                    <input
-                      className={fieldClass}
-                      type="number"
-                      min="1"
-                      value={ticket.quantity_total}
-                      onChange={(e) =>
-                        setTickets(
-                          tickets.map((item, i) =>
-                            i === index ? { ...item, quantity_total: e.target.value } : item
-                          )
-                        )
-                      }
-                      placeholder="100"
-                    />
-                  </div>
+              {!unlimitedCapacity && (
+                <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] animate-fade-in">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre total de places disponibles *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className={fieldClass}
+                    value={form.capacity}
+                    onChange={(e) => updateForm('capacity', e.target.value)}
+                    placeholder="ex. 350 places"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Formulaires spécifiques selon le mode d'accès */}
+            {accessType === 'whatsapp' ? (
+              <div className="card p-4 space-y-3.5 border-emerald-500/20 bg-emerald-500/5 animate-fade-in">
+                <div className="flex items-center gap-2 text-[#25D366]">
+                  <MessageCircle className="w-5 h-5" />
+                  <h4 className="text-sm font-bold text-[#17131D] dark:text-white">
+                    Configuration des réservations WhatsApp
+                  </h4>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Numéro WhatsApp officiel de réservation *
+                  </label>
+                  <input
+                    type="tel"
+                    className={fieldClass}
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    placeholder="ex. +228 90 12 34 56"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Les festivaliers cliqueront directement pour ouvrir WhatsApp et entamer la réservation avec vous.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Message pré-rempli pour le festivalier (facultatif)
+                  </label>
+                  <input
+                    className={fieldClass}
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    placeholder={`Bonjour, je souhaite réserver ma place pour "${form.title || 'cet événement'}".`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Tarif indicatif par personne (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={fieldClass}
+                    value={tickets[0]?.price || '0'}
+                    onChange={(e) =>
+                      setTickets([
+                        {
+                          ticket_type: 'standard',
+                          label: 'Sur réservation',
+                          price: e.target.value,
+                          quantity_total: form.capacity || '1000',
+                          description: 'Réservation WhatsApp',
+                        },
+                      ])
+                    }
+                    placeholder="0 pour gratuit, ou montant indicatif"
+                  />
                 </div>
               </div>
-            ))}
+            ) : accessType === 'external' ? (
+              <div className="card p-4 space-y-3.5 border-blue-500/20 bg-blue-500/5 animate-fade-in">
+                <div className="flex items-center gap-2 text-blue-500">
+                  <ExternalLink className="w-5 h-5" />
+                  <h4 className="text-sm font-bold text-[#17131D] dark:text-white">
+                    Billetterie sur site dédié ou externe
+                  </h4>
+                </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setTickets([
-                  ...tickets,
-                  { ticket_type: 'standard', label: '', price: '0', quantity_total: '100', description: '' },
-                ])
-              }
-              className="w-full py-3.5 rounded-2xl border border-dashed border-[#6600FF]/40 text-[#6600FF] dark:text-purple-300 font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-[#6600FF]/5"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter un type de billet
-            </button>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Lien direct vers la billetterie officielle *
+                  </label>
+                  <input
+                    type="url"
+                    className={fieldClass}
+                    value={externalTicketUrl}
+                    onChange={(e) => setExternalTicketUrl(e.target.value)}
+                    placeholder="https://mon-festival.com/billetterie ou lien dédié"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Tarif d’accès à partir de (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={fieldClass}
+                    value={tickets[0]?.price || '0'}
+                    onChange={(e) =>
+                      setTickets([
+                        {
+                          ticket_type: 'standard',
+                          label: 'Site externe',
+                          price: e.target.value,
+                          quantity_total: form.capacity || '1000',
+                          description: 'Billetterie externe',
+                        },
+                      ])
+                    }
+                    placeholder="ex. 5000"
+                  />
+                </div>
+              </div>
+            ) : accessType === 'free' ? (
+              <div className="card p-4 space-y-2 border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-900 dark:text-emerald-200 animate-fade-in">
+                <div className="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Événement en accès 100% libre et gratuit</span>
+                </div>
+                <p>
+                  Aucune vente de billet ni réservation requise. Le badge « Entrée libre » sera affiché sur les cartes et la page de l'événement.
+                </p>
+              </div>
+            ) : (
+              /* Billetterie Gbaigbance standard avec formules de billets */
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center gap-2 p-3 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 rounded-2xl text-xs text-[#17131D] dark:text-white">
+                  <Info className="w-4 h-4 text-[#6600FF] dark:text-purple-300 shrink-0" />
+                  <span>
+                    Vous pouvez créer plusieurs formules (Standard, VIP, etc.). Pour un pass gratuit, mettez le prix à 0 FCFA.
+                  </span>
+                </div>
+
+                {tickets.map((ticket, index) => (
+                  <div key={index} className="card p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <select
+                        className={fieldClass}
+                        value={ticket.ticket_type}
+                        onChange={(e) =>
+                          setTickets(
+                            tickets.map((item, i) =>
+                              i === index ? { ...item, ticket_type: e.target.value } : item
+                            )
+                          )
+                        }
+                      >
+                        <option value="standard">Standard</option>
+                        <option value="vip">VIP</option>
+                        <option value="vvip">VVIP</option>
+                        <option value="free">Gratuit</option>
+                      </select>
+
+                      {tickets.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setTickets(tickets.filter((_, i) => i !== index))}
+                          className="ml-2 text-red-500 hover:text-red-600 p-2 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      className={fieldClass}
+                      value={ticket.label}
+                      onChange={(e) =>
+                        setTickets(
+                          tickets.map((item, i) =>
+                            i === index ? { ...item, label: e.target.value } : item
+                          )
+                        )
+                      }
+                      placeholder="Nom du billet (ex. Pass 1 Jour, VIP Lounge)"
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">Prix (FCFA)</label>
+                        <input
+                          className={fieldClass}
+                          type="number"
+                          min="0"
+                          value={ticket.price}
+                          onChange={(e) =>
+                            setTickets(
+                              tickets.map((item, i) =>
+                                i === index ? { ...item, price: e.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 mb-1">Quantité totale</label>
+                        <input
+                          className={fieldClass}
+                          type="number"
+                          min="1"
+                          value={ticket.quantity_total}
+                          onChange={(e) =>
+                            setTickets(
+                              tickets.map((item, i) =>
+                                i === index ? { ...item, quantity_total: e.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="100"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTickets([
+                      ...tickets,
+                      { ticket_type: 'standard', label: '', price: '0', quantity_total: '100', description: '' },
+                    ])
+                  }
+                  className="w-full py-3.5 rounded-2xl border border-dashed border-[#6600FF]/40 text-[#6600FF] dark:text-purple-300 font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-[#6600FF]/5 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Ajouter un type de billet
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -1001,64 +1520,205 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           />
         )}
 
-        {/* STEP 9: CONFIRMATION */}
+        {/* STEP 9: CONFIRMATION & APERÇU EN DIRECT */}
         {step === 'Confirmation' && (
           <section className="space-y-4 animate-slide-up">
-            <div className="card p-5 space-y-3">
-              <h2 className="text-xl font-extrabold text-[#171726] dark:text-white">
-                {form.title || 'Votre événement'}
-              </h2>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="px-2.5 py-1 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 font-bold">
-                  {currentSubDef ? currentSubDef.label : t('events', `categories.${form.category}`)}
-                </span>
-                {currentMainDef && (
-                  <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold">
-                    {currentMainDef.shortLabel}
-                  </span>
-                )}
-                <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 font-medium">
-                  {form.city}
-                </span>
-                {galleryFiles.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#6600FF] font-medium">
-                    {galleryFiles.length + (coverPreview ? 1 : 0)} photo(s)
-                  </span>
-                )}
-                {scheduleItems.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 font-medium">
-                    {scheduleItems.length} créneau(x)
-                  </span>
-                )}
-                {isLiveEvent && liveItems.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-bold">Live activé</span>
-                )}
-                {sponsorItems.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 font-medium">
-                    {sponsorItems.length} sponsor(s)
-                  </span>
-                )}
-              </div>
+            {/* Segmented Control de vue en Confirmation */}
+            <div className="flex p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setConfirmationTab('summary')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  confirmationTab === 'summary'
+                    ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-purple-300 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                }`}
+              >
+                📋 Récapitulatif
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmationTab('card')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  confirmationTab === 'card'
+                    ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-purple-300 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Aperçu Carte</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmationTab('page')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  confirmationTab === 'page'
+                    ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-purple-300 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Aperçu Fiche</span>
+              </button>
             </div>
 
-            <div className="card p-4 space-y-2">
-              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                <TicketIcon className="w-4 h-4 text-[#6600FF]" /> Billets prévus
-              </h3>
-              {tickets.map((ticket, i) => (
-                <div key={i} className="flex justify-between text-xs py-1 border-b border-black/[0.04] dark:border-white/[0.06] last:border-0">
-                  <span className="font-semibold text-[#17131D] dark:text-white">{ticket.label || 'Standard'}</span>
-                  <span className="font-bold text-[#6600FF] dark:text-purple-300">
-                    {Number(ticket.price) === 0 ? 'Gratuit' : `${Number(ticket.price).toLocaleString('fr-FR')} FCFA`}
-                  </span>
+            {confirmationTab === 'summary' ? (
+              <div className="space-y-4">
+                <div className="card p-5 space-y-3">
+                  <h2 className="text-xl font-extrabold text-[#171726] dark:text-white leading-tight">
+                    {form.title || 'Votre événement'}
+                  </h2>
+
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2.5 py-1 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 font-bold">
+                      {currentSubDef ? currentSubDef.label : t('events', `categories.${form.category}`)}
+                    </span>
+                    {currentMainDef && (
+                      <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold">
+                        {currentMainDef.shortLabel}
+                      </span>
+                    )}
+                    <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 font-medium">
+                      {form.city}
+                    </span>
+
+                    {/* Access Type Badge */}
+                    {accessType === 'whatsapp' ? (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#25D366] dark:bg-emerald-950/40 font-bold flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" /> Réservation WhatsApp
+                      </span>
+                    ) : accessType === 'external' ? (
+                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 font-bold flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" /> Billetterie externe
+                      </span>
+                    ) : accessType === 'free' ? (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 font-bold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Entrée libre
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full bg-purple-50 text-[#6600FF] dark:bg-purple-950/40 font-bold flex items-center gap-1">
+                        <TicketIcon className="w-3 h-3" /> Billetterie Gbaigbance
+                      </span>
+                    )}
+
+                    {/* Jauge Badge */}
+                    <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 font-medium">
+                      {unlimitedCapacity ? 'Places illimitées' : `${form.capacity || '—'} places max`}
+                    </span>
+
+                    {galleryFiles.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#6600FF] font-medium">
+                        {galleryFiles.length + (coverPreview ? 1 : 0)} photo(s)
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-              Toutes les données seront synchronisées et sécurisées sur votre compte.
-            </p>
+                {/* Détails d'accès & Billetterie */}
+                <div className="card p-4 space-y-2.5">
+                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <TicketIcon className="w-4 h-4 text-[#6600FF]" /> Modalité d'accès
+                  </h3>
+
+                  {accessType === 'whatsapp' ? (
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold text-[#17131D] dark:text-white">
+                        Réservations directes via WhatsApp : {whatsappNumber || 'Non renseigné'}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Tarif indicatif : {tickets[0]?.price ? `${Number(tickets[0].price).toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+                      </p>
+                    </div>
+                  ) : accessType === 'external' ? (
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold text-[#17131D] dark:text-white truncate">
+                        Billetterie officielle : {externalTicketUrl || 'Lien non renseigné'}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Tarif à partir de : {tickets[0]?.price ? `${Number(tickets[0].price).toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+                      </p>
+                    </div>
+                  ) : accessType === 'free' ? (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Entrée libre & gratuite pour tous.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {tickets.map((ticket, i) => (
+                        <div key={i} className="flex justify-between text-xs py-1 border-b border-black/[0.04] dark:border-white/[0.06] last:border-0">
+                          <span className="font-semibold text-[#17131D] dark:text-white">{ticket.label || 'Standard'}</span>
+                          <span className="font-bold text-[#6600FF] dark:text-purple-300">
+                            {Number(ticket.price) === 0 ? 'Gratuit' : `${Number(ticket.price).toLocaleString('fr-FR')} FCFA`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dates et lieu */}
+                <div className="card p-4 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <Calendar className="w-4 h-4 text-[#6600FF]" />
+                    <span>Début : {formatFriendlyDateTime(form.starts_at) || 'Date à préciser'}</span>
+                  </div>
+                  {form.ends_at && (
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <Clock className="w-4 h-4 text-[#6600FF]" />
+                      <span>Fin : {formatFriendlyDateTime(form.ends_at)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <MapPin className="w-4 h-4 text-[#6600FF]" />
+                    <span>Lieu : {form.location_name}, {form.city}</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                  Toutes les données seront synchronisées et publiées instantanément.
+                </p>
+              </div>
+            ) : confirmationTab === 'card' ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-[#6600FF]/10 text-xs text-[#17131D] dark:text-purple-200">
+                  ✨ <strong>Aperçu dans le fil d’actualité :</strong> Voici comment votre événement sera affiché sur la page d'accueil et dans les recherches.
+                </div>
+                <div className="max-w-[340px] mx-auto p-2 rounded-[28px] bg-white dark:bg-[#1A1829] border border-black/10 dark:border-white/10 shadow-lg">
+                  <EventCard event={previewEvent} />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-[#6600FF]/10 text-xs text-[#17131D] dark:text-purple-200">
+                  📱 <strong>Aperçu de la page de l'événement :</strong> Voici la fiche détaillée que consulteront les festivaliers.
+                </div>
+                {/* Embedded preview */}
+                <div className="card p-4 space-y-4">
+                  <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gray-900">
+                    <img
+                      src={previewEvent.cover_url || ''}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute bottom-3 inset-x-3 text-white">
+                      <h4 className="text-base font-black">{previewEvent.title}</h4>
+                      <p className="text-xs text-white/80">{previewEvent.location_name}, {previewEvent.city}</p>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 text-xs flex justify-between items-center">
+                    <span>{formatFriendlyDateTime(form.starts_at) || 'Date à définir'}</span>
+                    <span className="font-extrabold text-[#6600FF] dark:text-purple-300">
+                      {previewEvent.price_min === 0 ? 'Gratuit' : `${Number(previewEvent.price_min).toLocaleString('fr-FR')} FCFA`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-line line-clamp-4">
+                    {previewEvent.description || 'Aucune description rédigée.'}
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -1110,6 +1770,21 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           </button>
         )}
       </main>
+
+      {/* Interactive Modal Preview accessible anytime from the header */}
+      <EventPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        event={previewEvent}
+        ticketOptions={tickets.map((t) => ({
+          ticket_type: t.ticket_type,
+          label: t.label || 'Pass',
+          price: Number(t.price) || 0,
+          quantity_total: Number(t.quantity_total) || 100,
+        }))}
+        scheduleItems={scheduleItems}
+        collaborators={collaborators}
+      />
     </div>
   );
 }

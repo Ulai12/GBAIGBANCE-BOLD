@@ -26,12 +26,14 @@ import { haptic } from '@/hooks/useHaptics';
  *   organique Apple Liquid Glass.
  */
 
-type Tab =
+export type Tab =
   | 'home'
   | 'explore'
   | 'tickets'
   | 'favorites'
   | 'profile';
+
+export type NavTab = Tab;
 
 interface BottomNavProps {
   active: Tab;

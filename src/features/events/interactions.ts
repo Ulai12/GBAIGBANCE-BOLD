@@ -1,4 +1,4 @@
-import { supabase } from '@/services/supabase';
+import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { EventComment, EventReaction, EventQuestion, PublicProfile } from '@/types';
 
 async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProfile>> {

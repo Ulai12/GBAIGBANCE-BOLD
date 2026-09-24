@@ -351,9 +351,9 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
     onToast({ message: `${artist.name} ajouté aux artistes invités`, type: 'success' });
   };
 
-  const handleRemoveExistingCollab = async (collabId: string, userId: string) => {
+  const handleRemoveExistingCollab = async (collabId: string) => {
     try {
-      await removeCollaborator(eventId, userId);
+      await removeCollaborator(collabId);
       setExistingCollabs((prev) => prev.filter((c) => c.id !== collabId));
       onToast({ message: 'Collaborateur retiré', type: 'info' });
     } catch {
@@ -918,8 +918,8 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                   className="w-full px-4 py-3.5 bg-white dark:bg-[#1A1829] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl text-sm font-semibold text-[#17131D] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 shadow-xs cursor-pointer"
                 >
                   {CITIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.value} value={c.value}>
+                      {c.value}
                     </option>
                   ))}
                 </select>
@@ -1386,7 +1386,7 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveExistingCollab(c.id, c.user_id)}
+                        onClick={() => handleRemoveExistingCollab(c.id)}
                         className="w-7 h-7 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center justify-center transition-colors cursor-pointer"
                         title="Retirer ce collaborateur"
                       >

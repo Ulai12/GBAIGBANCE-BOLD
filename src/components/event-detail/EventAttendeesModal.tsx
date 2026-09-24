@@ -246,7 +246,9 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                           </span>
                         )}
                         {attendee.hasTicket && (
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Billet confirmé" />
+                          <span title="Billet confirmé">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          </span>
                         )}
                       </div>
 

@@ -1,5 +1,4 @@
 import { supabase } from '@/services/supabase';
-import type { Profile } from '@/types';
 
 export interface AttendeeProfile {
   id: string;
@@ -58,14 +57,24 @@ export async function fetchEventAttendees(
     }
 
     // 3. Charger les profils réels des détenteurs de billets
-    const profileMap = new Map<string, Profile>();
+    type AttendeeProfileRow = {
+      id: string;
+      name: string;
+      avatar_url: string | null;
+      role: string;
+      city: string;
+      country: string;
+      bio: string | null;
+      created_at: string;
+    };
+    const profileMap = new Map<string, AttendeeProfileRow>();
     if (ticketUserIds.length > 0) {
       const { data: ticketProfiles } = await supabase
         .from('profiles')
         .select('id, name, avatar_url, role, city, country, bio, created_at')
         .in('id', ticketUserIds);
 
-      (ticketProfiles || []).forEach((p: Profile) => {
+      ((ticketProfiles || []) as unknown as AttendeeProfileRow[]).forEach((p) => {
         if (p?.id) profileMap.set(p.id, p);
       });
     }

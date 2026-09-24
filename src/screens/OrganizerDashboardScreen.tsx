@@ -74,10 +74,9 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   useEffect(() => {
     const handleSignedOut = () => {
       setEvents([]);
+      // Réinitialisation conforme à l'interface OrganizerPerformanceData
       setPerfData({
-        viewsByEvent: [],
-        salesByEvent: [],
-        dailyTrends: [],
+        timeSeries: [],
         categoryBreakdown: [],
         summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
       });

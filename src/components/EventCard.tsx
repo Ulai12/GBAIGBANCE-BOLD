@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
+  ExternalLink,
   Flame,
   MapPin,
+  MessageCircle,
   Share2,
   Sparkles,
   Users,
@@ -182,6 +184,20 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-orange-400/60 bg-gradient-to-r from-orange-500/40 to-red-500/40 px-2 backdrop-blur-md self-start text-[10px] font-black text-orange-200 shadow-xs">
                 <Flame className="h-3 w-3 text-orange-300 fill-orange-400" />
                 HOT
+              </div>
+            ) : event.access_type === 'whatsapp' ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-600/50 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100 shadow-xs">
+                <MessageCircle className="h-2.5 w-2.5 text-emerald-300" />
+                Sur réservation
+              </div>
+            ) : event.access_type === 'external' ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-blue-400/60 bg-blue-600/50 px-2 backdrop-blur-md self-start text-[10px] font-bold text-blue-100 shadow-xs">
+                <ExternalLink className="h-2.5 w-2.5 text-blue-300" />
+                Site officiel
+              </div>
+            ) : event.access_type === 'free' || event.price_min === 0 ? (
+              <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100">
+                Entrée libre
               </div>
             ) : event.is_featured ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-[#8B5CF6]/50 bg-[#6600FF]/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-purple-100">

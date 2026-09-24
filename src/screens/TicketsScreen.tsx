@@ -85,7 +85,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
               new CustomEvent('gba-tickets-count-changed', {
-                detail: { count: list.filter((t) => t.status === 'valid').length },
+                detail: { count: list.filter((t) => t.status === 'active').length },
               })
             );
           }
@@ -104,7 +104,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('gba-tickets-count-changed', {
-              detail: { count: list.filter((t) => t.status === 'valid').length },
+              detail: { count: list.filter((t) => t.status === 'active').length },
             })
           );
         }
@@ -136,7 +136,11 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     const unsubGlobalEvents = subscribeToGlobalEventsLive(({ eventType, new: newEvt }) => {
       if (eventType === 'UPDATE' && newEvt?.id) {
         setTickets((prev) =>
-          prev.map((t) => (t.event?.id === newEvt.id ? { ...t, event: { ...t.event, ...(newEvt as Partial<Event>) } } : t))
+          prev.map((t) =>
+            t.event && t.event.id === newEvt.id
+              ? { ...t, event: { ...t.event, ...(newEvt as Partial<Event>) } as Event }
+              : t
+          )
         );
       }
     });
@@ -149,7 +153,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           const next = [custom.detail.ticket, ...prev.filter((t) => t.id !== custom.detail.ticket.id)];
           window.dispatchEvent(
             new CustomEvent('gba-tickets-count-changed', {
-              detail: { count: next.filter((t) => t.status === 'valid').length },
+              detail: { count: next.filter((t) => t.status === 'active').length },
             })
           );
           return next;
@@ -173,7 +177,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           const next = prev.filter((t) => t.id !== custom.detail.ticketId);
           window.dispatchEvent(
             new CustomEvent('gba-tickets-count-changed', {
-              detail: { count: next.filter((t) => t.status === 'valid').length },
+              detail: { count: next.filter((t) => t.status === 'active').length },
             })
           );
           return next;

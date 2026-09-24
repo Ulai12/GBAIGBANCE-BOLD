@@ -97,6 +97,8 @@ export interface Artist {
   created_at: string;
 }
 
+export type EventAccessType = 'tickets' | 'whatsapp' | 'external' | 'free';
+
 export interface Event {
   id: string;
   title: string;
@@ -107,6 +109,11 @@ export interface Event {
   cover_url: string | null;
   images: string[];
   video_url?: string | null;
+  access_type?: EventAccessType;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  external_ticket_url?: string | null;
+  unlimited_capacity?: boolean;
   allow_comments?: boolean;
   location_name: string;
   location_address: string | null;

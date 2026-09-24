@@ -1,4 +1,4 @@
-import type { EventCategory } from '@/types';
+import type { EventCategory, EventAccessType } from '@/types';
 
 export type MainCategoryId =
   | 'cultural_artistic'
@@ -287,23 +287,49 @@ export function eventMatchesCategoryFilter(
 }
 
 /**
- * Extrait les métadonnées de sous-catégories encodées de manière non-destructive
+ * Métadonnées enrichies encodées de manière non-destructive dans la description
+ */
+export interface EventExtendedMeta {
+  sub?: SubCategoryId | string | null;
+  main?: MainCategoryId | string | null;
+  video_url?: string | null;
+  access_type?: EventAccessType;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  external_ticket_url?: string | null;
+  unlimited_capacity?: boolean;
+}
+
+/**
+ * Extrait les métadonnées de sous-catégories et paramètres avancés encodés de manière non-destructive
  */
 export function extractCategoryMeta(rawDescription?: string | null): {
   description: string;
   subcategory?: SubCategoryId;
   main_category?: MainCategoryId;
+  video_url?: string | null;
+  access_type?: EventAccessType;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  external_ticket_url?: string | null;
+  unlimited_capacity?: boolean;
 } {
   if (!rawDescription) return { description: '' };
-  const match = rawDescription.match(/<!--cat_meta:(.*?)-->/);
+  const match = rawDescription.match(/<!--(?:event_meta|cat_meta):(.*?)(?:-->)/);
   if (match) {
     try {
       const parsed = JSON.parse(match[1]);
-      const cleanDesc = rawDescription.replace(/<!--cat_meta:.*?-->/, '').trim();
+      const cleanDesc = rawDescription.replace(/<!--(?:event_meta|cat_meta):.*?-->/, '').trim();
       return {
         description: cleanDesc,
-        subcategory: parsed.sub as SubCategoryId,
-        main_category: parsed.main as MainCategoryId,
+        subcategory: (parsed.sub || parsed.subcategory) as SubCategoryId,
+        main_category: (parsed.main || parsed.main_category) as MainCategoryId,
+        video_url: parsed.video_url || null,
+        access_type: (parsed.access_type as EventAccessType) || 'tickets',
+        whatsapp_number: parsed.whatsapp_number || null,
+        whatsapp_message: parsed.whatsapp_message || null,
+        external_ticket_url: parsed.external_ticket_url || null,
+        unlimited_capacity: Boolean(parsed.unlimited_capacity),
       };
     } catch {
       // fallback
@@ -313,23 +339,50 @@ export function extractCategoryMeta(rawDescription?: string | null): {
 }
 
 /**
- * Enveloppe la description avec les métadonnées de catégorie
+ * Enveloppe la description avec les métadonnées de catégorie et de billetterie/vidéo
  */
-export function injectCategoryMeta(description: string, sub?: string | null, main?: string | null): string {
-  if (!sub && !main) return description;
-  const tag = `<!--cat_meta:${JSON.stringify({ sub, main })}-->`;
+export function injectCategoryMeta(
+  description: string,
+  sub?: string | null,
+  main?: string | null,
+  extra?: Partial<EventExtendedMeta>
+): string {
+  const meta: Record<string, unknown> = {};
+  if (sub) meta.sub = sub;
+  if (main) meta.main = main;
+  if (extra?.video_url) meta.video_url = extra.video_url;
+  if (extra?.access_type) meta.access_type = extra.access_type;
+  if (extra?.whatsapp_number) meta.whatsapp_number = extra.whatsapp_number;
+  if (extra?.whatsapp_message) meta.whatsapp_message = extra.whatsapp_message;
+  if (extra?.external_ticket_url) meta.external_ticket_url = extra.external_ticket_url;
+  if (extra?.unlimited_capacity !== undefined) meta.unlimited_capacity = extra.unlimited_capacity;
+
+  if (Object.keys(meta).length === 0) return description;
+  const tag = `<!--event_meta:${JSON.stringify(meta)}-->`;
   return `${tag}${description ? `\n${description}` : ''}`;
 }
 
 /**
  * Hydrate automatiquement les sous-catégories et catégories principales d'un événement
  */
-export function hydrateEventCategories<T extends { category: EventCategory; description?: string | null; subcategory?: SubCategoryId | null; main_category?: MainCategoryId | null }>(
+// Supporte les types Event où subcategory et main_category peuvent être typés string | null
+export function hydrateEventCategories<T extends {
+  category: EventCategory;
+  description?: string | null;
+  subcategory?: SubCategoryId | string | null;
+  main_category?: MainCategoryId | string | null;
+  video_url?: string | null;
+  access_type?: EventAccessType;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  external_ticket_url?: string | null;
+  unlimited_capacity?: boolean;
+}>(
   event: T
 ): T {
-  const { description, subcategory, main_category } = extractCategoryMeta(event.description);
-  let resolvedSub = event.subcategory || subcategory;
-  let resolvedMain = event.main_category || main_category;
+  const meta = extractCategoryMeta(event.description);
+  let resolvedSub = event.subcategory || meta.subcategory;
+  let resolvedMain = event.main_category || meta.main_category;
 
   if (!resolvedSub) {
     switch (event.category) {
@@ -371,8 +424,14 @@ export function hydrateEventCategories<T extends { category: EventCategory; desc
 
   return {
     ...event,
-    description: description || event.description,
+    description: meta.description || event.description,
     subcategory: resolvedSub,
     main_category: resolvedMain,
+    video_url: event.video_url || meta.video_url || null,
+    access_type: event.access_type || meta.access_type || 'tickets',
+    whatsapp_number: event.whatsapp_number || meta.whatsapp_number || null,
+    whatsapp_message: event.whatsapp_message || meta.whatsapp_message || null,
+    external_ticket_url: event.external_ticket_url || meta.external_ticket_url || null,
+    unlimited_capacity: event.unlimited_capacity ?? meta.unlimited_capacity ?? false,
   };
 }

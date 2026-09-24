@@ -14,6 +14,12 @@ import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
 import { clearLocalUserTickets } from '@/services/events';
 import type { Profile, Language } from '@/types';
 import { translate } from '@/locales';
+import {
+  type UserLocationState,
+  LOME_CENTER,
+  getCurrentUserLocation,
+  requestUserLocation,
+} from '@/utils/geo';
 
 export function performSignOutCleanup(userId?: string | null): void {
   try {
@@ -79,6 +85,8 @@ export interface AppContextValue {
   isSessionResolving: boolean;
   language: Language;
   theme: 'light' | 'dark';
+  userLocation: UserLocationState;
+  requestGPS: () => Promise<UserLocationState>;
   setLanguage: (lang: Language) => void;
   toggleTheme: () => void;
   refreshProfile: () => Promise<void>;
@@ -94,6 +102,20 @@ export const defaultAppContextFallback: AppContextValue = {
   isSessionResolving: false,
   language: 'fr',
   theme: 'light',
+  userLocation: {
+    latitude: LOME_CENTER.latitude,
+    longitude: LOME_CENTER.longitude,
+    isActual: false,
+    status: 'idle',
+    cityName: 'Lomé',
+  },
+  requestGPS: async () => ({
+    latitude: LOME_CENTER.latitude,
+    longitude: LOME_CENTER.longitude,
+    isActual: false,
+    status: 'idle',
+    cityName: 'Lomé',
+  }),
   setLanguage: () => {},
   toggleTheme: () => {},
   refreshProfile: async () => {},
@@ -139,6 +161,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (saved === 'dark' || saved === 'light') return saved;
     return 'light';
   });
+
+  const [userLocation, setUserLocation] = useState<UserLocationState>({
+    latitude: LOME_CENTER.latitude,
+    longitude: LOME_CENTER.longitude,
+    isActual: false,
+    status: 'idle',
+    cityName: 'Lomé',
+  });
+
+  useEffect(() => {
+    getCurrentUserLocation().then((loc) => {
+      setUserLocation(loc);
+    });
+  }, []);
+
+  const requestGPS = useCallback(async () => {
+    const loc = await requestUserLocation();
+    setUserLocation(loc);
+    return loc;
+  }, []);
 
   const activeUserIdRef = useRef<string | null>(getLocalProfile()?.id || null);
 
@@ -260,6 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       user, session, loading, isSessionResolving, language, theme,
+      userLocation, requestGPS,
       setLanguage, toggleTheme, refreshProfile,
       signOut: handleSignOut, t,
     }}>

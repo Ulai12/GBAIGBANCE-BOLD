@@ -300,14 +300,30 @@ async function executeClientTool(
 
       if (error || !data) return { count: 0, tickets: [] };
 
-      const ticketsList = data.map((t: { ticket_type: string; quantity: number; price_paid: number; currency: string; events?: { id: string; title: string; starts_at: string; location_name: string; city: string } | null }) => {
-        if (t.events?.id) turnEventIds.add(t.events.id);
+      interface TicketEventData {
+        id: string;
+        title: string;
+        starts_at: string;
+        location_name: string;
+        city: string;
+      }
+      interface TicketDataRow {
+        ticket_type: string;
+        quantity: number;
+        price_paid: number;
+        currency: string;
+        events: TicketEventData | TicketEventData[] | null;
+      }
+
+      const ticketsList = (data as unknown as TicketDataRow[]).map((t) => {
+        const evt = Array.isArray(t.events) ? t.events[0] : t.events;
+        if (evt?.id) turnEventIds.add(evt.id);
         return {
-          event_title: t.events?.title || 'Événement',
+          event_title: evt?.title || 'Événement',
           ticket_type: t.ticket_type,
           quantity: t.quantity || 1,
-          starts_at: t.events?.starts_at || 'Date à confirmer',
-          location: t.events ? `${t.events.location_name || ''}, ${t.events.city || 'Lomé'}`.trim() : 'Lomé',
+          starts_at: evt?.starts_at || 'Date à confirmer',
+          location: evt ? `${evt.location_name || ''}, ${evt.city || 'Lomé'}`.trim() : 'Lomé',
           price_paid: `${t.price_paid} ${t.currency || 'FCFA'}`,
         };
       });
@@ -426,7 +442,7 @@ export async function streamGeminiDirect(
   // Rendu de frappe progressif fluide (UX iOS)
   const tokens = finalReplyText.match(/(\S+\s*|\s+)/g) || [finalReplyText];
   for (const token of tokens) {
-    if (signal.aborted) return;
+    if (signal?.aborted) return;
     callbacks.onChunk(token);
     // Micro pause pour un affichage progressif naturel et élégant
     await new Promise((resolve) => setTimeout(resolve, 8));

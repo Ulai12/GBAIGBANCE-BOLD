@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase';
-import type { Event, EventCategory, EventStatus } from '@/types';
+import type { Event, EventCategory, EventStatus, EventAccessType } from '@/types';
 import { injectCategoryMeta, hydrateEventCategories } from '@/constants/categories';
 
 // ==================== IMAGE UPLOAD ====================
@@ -34,10 +34,15 @@ export async function createEventWithCollaborators(
     cover_url: string;
     images?: string[];
     video_url?: string | null;
-    capacity?: number;
+    capacity?: number | null;
     created_by_role: 'organizer' | 'artist';
     subcategory?: string | null;
     main_category?: string | null;
+    access_type?: EventAccessType;
+    whatsapp_number?: string | null;
+    whatsapp_message?: string | null;
+    external_ticket_url?: string | null;
+    unlimited_capacity?: boolean;
   },
   collaborators: { user_id: string; role: 'co_organizer' | 'performer' }[],
   ticketOptions: { ticket_type: string; label: string; price: number; quantity_total: number; description?: string }[],
@@ -49,7 +54,22 @@ export async function createEventWithCollaborators(
   const validCollaborators = collaborators.filter((c) => c.user_id && c.user_id.trim());
   const validTicketTypes = ['free', 'standard', 'vip', 'vvip'];
   const validTickets = ticketOptions.filter((t) => t.label.trim() && validTicketTypes.includes(t.ticket_type));
-  const finalDescription = injectCategoryMeta(eventData.description, eventData.subcategory, eventData.main_category);
+  
+  // Encodage propre des métadonnées (video_url, access_type, whatsapp, external tickets, unlimited) dans la description
+  const finalDescription = injectCategoryMeta(
+    eventData.description,
+    eventData.subcategory,
+    eventData.main_category,
+    {
+      video_url: eventData.video_url,
+      access_type: eventData.access_type,
+      whatsapp_number: eventData.whatsapp_number,
+      whatsapp_message: eventData.whatsapp_message,
+      external_ticket_url: eventData.external_ticket_url,
+      unlimited_capacity: eventData.unlimited_capacity,
+    }
+  );
+
   const { data: event, error: eventError } = await supabase
     .from('events')
     .insert({
@@ -67,8 +87,7 @@ export async function createEventWithCollaborators(
       price_min: eventData.price_min,
       cover_url: eventData.cover_url || null,
       images: eventData.images || [],
-      video_url: eventData.video_url || null,
-      capacity: eventData.capacity || null,
+      capacity: eventData.unlimited_capacity ? null : (eventData.capacity || null),
       organizer_user_id: organizerUserId,
       created_by_role: eventData.created_by_role,
       status: validCollaborators.length > 0 ? 'pending' : 'published',
@@ -124,6 +143,13 @@ export interface UpdateEventPayload {
   video_url?: string | null;
   capacity?: number | null;
   status?: EventStatus;
+  subcategory?: string | null;
+  main_category?: string | null;
+  access_type?: EventAccessType;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  external_ticket_url?: string | null;
+  unlimited_capacity?: boolean;
 }
 
 export async function updateEventFull(
@@ -137,9 +163,23 @@ export async function updateEventFull(
   if (!eventData.title.trim()) throw new Error('Le titre est obligatoire.');
   if (!eventData.starts_at) throw new Error("La date et l'heure sont obligatoires.");
 
+  const finalDescription = injectCategoryMeta(
+    eventData.description,
+    eventData.subcategory,
+    eventData.main_category,
+    {
+      video_url: eventData.video_url,
+      access_type: eventData.access_type,
+      whatsapp_number: eventData.whatsapp_number,
+      whatsapp_message: eventData.whatsapp_message,
+      external_ticket_url: eventData.external_ticket_url,
+      unlimited_capacity: eventData.unlimited_capacity,
+    }
+  );
+
   const updateFields: Record<string, unknown> = {
     title: eventData.title.trim(),
-    description: eventData.description || null,
+    description: finalDescription || null,
     category: eventData.category,
     location_name: eventData.location_name || 'Lieu à définir',
     location_address: eventData.location_address || null,
@@ -152,8 +192,7 @@ export async function updateEventFull(
     price_min: eventData.price_min,
     cover_url: eventData.cover_url || null,
     images: eventData.images || [],
-    video_url: eventData.video_url || null,
-    capacity: eventData.capacity || null,
+    capacity: eventData.unlimited_capacity ? null : (eventData.capacity || null),
     updated_at: new Date().toISOString(),
   };
 

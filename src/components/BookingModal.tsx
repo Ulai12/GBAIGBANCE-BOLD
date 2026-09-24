@@ -118,7 +118,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     };
 
     // 3. Persist optimistically to local storage & IndexedDB cache for instant offline access
-    saveLocalStoredTicket(optimisticTicket);
+    saveLocalStoredTicket(optimisticTicket as unknown as Record<string, unknown>);
     if (user?.id) {
       const prevTickets = getSyncCachedUserTickets(user.id);
       saveCachedUserTickets(user.id, [optimisticTicket, ...prevTickets.filter((t) => t.id !== optimisticTicketId)]).catch(() => {});
@@ -145,7 +145,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     // 7. Background synchronization with backend/Supabase with transparent rollback
     bookTicket(event.id, optionId, bookedQty, {
       name: user?.name,
-      email: user?.email,
+      email: user?.email || undefined,
     })
       .then((result) => {
         if (result.success && result.ticket) {

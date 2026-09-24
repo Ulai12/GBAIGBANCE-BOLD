@@ -11,6 +11,10 @@ import {
   Film,
   AlertCircle,
   Flag,
+  Users,
+  MessageCircle,
+  ExternalLink,
+  Check,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -259,7 +263,8 @@ export function EventDetailScreen({
       .then((cached) => {
         if (cached?.data && isMounted) {
           setFullEvent(cached.data);
-          if (cached.data.ticket_options) setTicketOptions(cached.data.ticket_options);
+          const cachedWithOpts = cached.data as unknown as { ticket_options?: TicketOption[] };
+          if (cachedWithOpts.ticket_options) setTicketOptions(cachedWithOpts.ticket_options);
         }
       })
       .catch(() => {});
@@ -293,7 +298,7 @@ export function EventDetailScreen({
     const unsubLive = subscribeToEventLive(event.id, {
       onStatusChange: (newStatus) => {
         if (!isMounted) return;
-        setFullEvent((prev) => (prev ? { ...prev, status: newStatus } : null));
+        setFullEvent((prev) => (prev ? { ...prev, status: newStatus as Event['status'] } : null));
       },
       onAttendeesChange: (newCount) => {
         if (!isMounted) return;
@@ -305,7 +310,7 @@ export function EventDetailScreen({
       },
       onEventUpdate: (updatedEvent) => {
         if (!isMounted) return;
-        setFullEvent((prev) => (prev ? { ...prev, ...updatedEvent } : (updatedEvent as EventWithRelations)));
+        setFullEvent((prev) => (prev ? ({ ...prev, ...updatedEvent } as EventWithRelations) : (updatedEvent as EventWithRelations)));
       },
     });
 
@@ -327,7 +332,7 @@ export function EventDetailScreen({
   const isDark = theme === 'dark';
 
   // Résolution robuste de la date cible pour le compte à rebours
-  const targetDateForCountdown = displayEvent.starts_at || displayEvent.date;
+  const targetDateForCountdown = displayEvent.starts_at;
   const countdown = useCountdown(targetDateForCountdown);
 
   // Extraction propre des artistes
@@ -412,7 +417,7 @@ export function EventDetailScreen({
   const eventDateObj = new Date(targetDateForCountdown || '');
   const isDateValid = !isNaN(eventDateObj.getTime());
 
-  let dateMainText = displayEvent.date || 'Date à confirmer';
+  let dateMainText = 'Date à confirmer';
   let dateSubText = 'Date certifiée';
   if (isDateValid) {
     const weekday = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
@@ -423,15 +428,15 @@ export function EventDetailScreen({
     dateSubText = `${eventDateObj.getFullYear()}`;
   }
 
-  const startTimeStr = displayEvent.time || (isDateValid ? formatTime(targetDateForCountdown) : '');
-  const endTimeStr = displayEvent.time_end || (displayEvent.ends_at ? formatTime(displayEvent.ends_at) : '');
+  const startTimeStr = isDateValid ? formatTime(targetDateForCountdown) : '';
+  const endTimeStr = displayEvent.ends_at ? formatTime(displayEvent.ends_at) : '';
   const timeMainText = startTimeStr
     ? (endTimeStr ? `${startTimeStr} - ${endTimeStr}` : `Dès ${startTimeStr}`)
     : 'Horaire à confirmer';
   const timeSubText = startTimeStr ? 'Heure locale (GMT)' : 'À préciser';
   const formattedDate = isDateValid
     ? formatFullDate(targetDateForCountdown, language)
-    : (displayEvent.date || 'Date à confirmer');
+    : 'Date à confirmer';
 
   // L'en-tête compact n'apparaît qu'après le hero pour éviter TOUT chevauchement visuel avec le titre et le compte à rebours
   const showCompactHeader = scrollY > 260;
@@ -668,14 +673,122 @@ export function EventDetailScreen({
           />
 
           {/* 
-            PASS & BILLETS DISPONIBLES (Avec jauge sous 20% et moyens Flooz / T-Money / MoMo)
+            PASS & BILLETS OU MODALITÉ D'ACCÈS SPÉCIALE (WhatsApp / Externe / Gratuit)
           */}
-          <EventTicketsList
-            event={displayEvent as Event}
-            ticketOptions={ticketOptions}
-            canBook={canBook}
-            onSelectPass={handleSelectPass}
-          />
+          {displayEvent.access_type === 'whatsapp' ? (
+            <div className="card p-5 space-y-3.5 border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shadow-md shadow-[#25D366]/25 shrink-0">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
+                    Réservation sur WhatsApp
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Les réservations sont gérées directement par l'organisateur
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-black/30 border border-emerald-500/20 text-xs text-gray-700 dark:text-gray-300 space-y-2">
+                <p>
+                  Pour garantir votre place à cet événement, envoyez directement un message à l'organisateur avec vos coordonnées.
+                </p>
+                {displayEvent.whatsapp_number && (
+                  <p className="font-bold text-[#1A1A2E] dark:text-white flex items-center gap-1.5">
+                    <span>Numéro officiel :</span>
+                    <span className="text-[#25D366]">{displayEvent.whatsapp_number}</span>
+                  </p>
+                )}
+                {displayEvent.unlimited_capacity && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    ✨ Événement sans limite stricte de jauge
+                  </p>
+                )}
+              </div>
+
+              {displayEvent.whatsapp_number && (
+                <a
+                  href={`https://wa.me/${displayEvent.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/25 transition-transform active:scale-98"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Contacter l'organisateur sur WhatsApp</span>
+                </a>
+              )}
+            </div>
+          ) : displayEvent.access_type === 'external' ? (
+            <div className="card p-5 space-y-3.5 border-purple-500/20 bg-gradient-to-b from-[#6600FF]/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#6600FF] text-white flex items-center justify-center shadow-md shadow-[#6600FF]/25 shrink-0">
+                  <ExternalLink className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
+                    Billetterie sur site dédié
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Les tickets sont vendus sur la plateforme officielle dédiée
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-black/30 border border-[#6600FF]/20 text-xs text-gray-700 dark:text-gray-300 space-y-2">
+                <p>
+                  Cet événement dispose de sa propre plateforme de billetterie en ligne. Cliquez ci-dessous pour accéder au guichet officiel.
+                </p>
+                {displayEvent.unlimited_capacity && (
+                  <p className="text-[11px] text-purple-600 dark:text-purple-300 font-semibold">
+                    ✨ Événement sans restriction de jauge
+                  </p>
+                )}
+              </div>
+
+              {displayEvent.external_ticket_url && (
+                <a
+                  href={displayEvent.external_ticket_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Accéder à la billetterie officielle</span>
+                </a>
+              )}
+            </div>
+          ) : displayEvent.access_type === 'free' ? (
+            <div className="card p-5 space-y-3.5 border-emerald-500/20 bg-emerald-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
+                  <Check className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
+                    Entrée libre & gratuite
+                  </h3>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                    Aucun billet requis à l'entrée
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                Cet événement est ouvert à tous sans réservation obligatoire. Venez sur place à l'heure du rendez-vous !
+              </p>
+            </div>
+          ) : (
+            <EventTicketsList
+              event={displayEvent as Event}
+              ticketOptions={ticketOptions}
+              canBook={canBook}
+              onSelectPass={handleSelectPass}
+            />
+          )}
 
           {/* 
             MÉDIAS, TEASER VIDÉO & GALERIE PHOTO
@@ -834,13 +947,13 @@ export function EventDetailScreen({
                     className="p-3 rounded-[20px] glass-ios flex items-center gap-2.5 shrink-0 min-w-[140px]"
                   >
                     <UserAvatar
-                      src={c.artist?.photo_url || c.organization?.logo_url}
-                      name={c.artist?.name || c.organization?.name || 'Partenaire'}
+                      src={c.artist?.photo_url || c.profile?.avatar_url || null}
+                      name={c.artist?.name || c.profile?.name || 'Partenaire'}
                       size="sm"
                     />
                     <div>
                       <p className="text-xs font-bold text-[#1A1A2E] dark:text-white line-clamp-1">
-                        {c.artist?.name || c.organization?.name || 'Partenaire'}
+                        {c.artist?.name || c.profile?.name || 'Partenaire'}
                       </p>
                       <span className="text-[10px] text-gray-500 capitalize">{c.role}</span>
                     </div>
@@ -875,36 +988,67 @@ export function EventDetailScreen({
       </main>
 
       {/* 
-        CAPSULE DE VERRE FLOTTANTE D'ACHAT (Barre inférieure fixe décollée des bords)
+        CAPSULE DE VERRE FLOTTANTE D'ACHAT OU DE RÉSERVATION (Barre inférieure fixe décollée des bords)
         Positionnée avec marge basse et safe-area. Le padding-bottom du contenu (pb-44)
         garantit qu'aucun élément ne sera masqué derrière elle !
       */}
       <div className="fixed bottom-4 inset-x-4 max-w-xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            À partir de
+            {displayEvent.access_type === 'free' ? 'Tarif' : 'À partir de'}
           </p>
           <p className="text-lg sm:text-xl font-black text-[#1A1A2E] dark:text-white tracking-tight">
-            {displayEvent.price_min === 0
+            {displayEvent.access_type === 'free' || displayEvent.price_min === 0
               ? 'Gratuit'
               : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
           </p>
         </div>
 
-        <button
-          type="button"
-          disabled={!canBook}
-          onClick={() => {
-            haptic.selection();
-            setSelectedTicketOptionId(null);
-            setShowBooking(true);
-            onBook?.(displayEvent as Event);
-          }}
-          className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-        >
-          <Ticket className="w-4 h-4" />
-          <span>{canBook ? 'Prendre un billet' : statusLabel || 'Indisponible'}</span>
-        </button>
+        {displayEvent.access_type === 'whatsapp' ? (
+          <a
+            href={`https://wa.me/${(displayEvent.whatsapp_number || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+              displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => haptic.selection()}
+            className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#25D366]/35 active:scale-95 cursor-pointer"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Réserver sur WhatsApp</span>
+          </a>
+        ) : displayEvent.access_type === 'external' ? (
+          <a
+            href={displayEvent.external_ticket_url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => haptic.selection()}
+            className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 cursor-pointer"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>Billetterie officielle</span>
+          </a>
+        ) : displayEvent.access_type === 'free' ? (
+          <div className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-emerald-600 text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30">
+            <Check className="w-4 h-4" />
+            <span>Entrée libre</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={!canBook}
+            onClick={() => {
+              haptic.selection();
+              setSelectedTicketOptionId(null);
+              setShowBooking(true);
+              onBook?.(displayEvent as Event);
+            }}
+            className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            <Ticket className="w-4 h-4" />
+            <span>{canBook ? 'Prendre un billet' : statusLabel || 'Indisponible'}</span>
+          </button>
+        )}
       </div>
 
       {/* MODALS : Signalement, Participants réels, Réservation, Gestion, Lightbox et Partage */}
@@ -956,7 +1100,7 @@ export function EventDetailScreen({
           alt={displayEvent.title}
           eventTitle={displayEvent.title}
           eventDate={formattedDate}
-          eventLocation={[displayEvent.venue_name || displayEvent.location, displayEvent.city].filter(Boolean).join(' • ')}
+          eventLocation={[displayEvent.location_name, displayEvent.city].filter(Boolean).join(' • ')}
           onClose={() => setLightboxState(null)}
           onToast={onToast}
         />
