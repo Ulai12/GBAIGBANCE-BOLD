@@ -160,7 +160,7 @@ export function subscribeToUserTicketsLive(
       (payload) => {
         const updated = payload.new as Ticket;
         if (!updated) return;
-        if (updated.status === 'cancelled' && callbacks.onTicketCancelled) {
+        if ((updated.status === 'refunded' || (updated.status as string) === 'cancelled') && callbacks.onTicketCancelled) {
           callbacks.onTicketCancelled(updated.id);
         } else if (callbacks.onTicketUpdated) {
           callbacks.onTicketUpdated(updated);

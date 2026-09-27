@@ -1,50 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-import fs from 'node:fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function debugBuildDepsPlugin() {
-  return {
-    name: 'debug-build-deps',
-    configResolved() {
-      // #region agent log
-      const payload = {
-        sessionId: 'db6fdd',
-        runId: process.env.DEBUG_RUN_ID || 'post-fix',
-        hypothesisId: 'C',
-        location: 'vite.config.ts:configResolved',
-        message: 'vite config resolved',
-        data: {
-          hasEsbuildKey: false,
-          usesRolldownOptions: true,
-          reactIsDeclared: true,
-        },
-        timestamp: Date.now(),
-      };
-      try {
-        fs.appendFileSync(path.join(__dirname, 'debug-db6fdd.log'), JSON.stringify(payload) + '\n');
-      } catch {
-        /* ignore */
-      }
-      fetch('http://127.0.0.1:7919/ingest/ce9dbe7c-1721-4bc6-90e5-ffa67b055c53', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'db6fdd' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-      // #endregion
-    },
-  };
-}
-
 export default defineConfig({
   envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'GEMINI_'],
   plugins: [
-    debugBuildDepsPlugin(),
     react(),
     VitePWA({
       registerType: 'prompt',

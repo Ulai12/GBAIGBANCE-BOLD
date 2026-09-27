@@ -30,6 +30,7 @@ import {
   subscribeToEventLive,
   subscribeToTicketInventory,
   isEventTerminated,
+  hasEventEnded,
 } from '@/services/events';
 import { getPublicEventCache, setPublicEventCache } from '@/infrastructure/cache/storage';
 import { shareEventNative } from '@/utils/share';
@@ -355,7 +356,7 @@ export function EventDetailScreen({
 
   const flag = COUNTRY_FLAGS[displayEvent.country || event.country] || '';
   const isOrganizer = !!(user && displayEvent.organizer_user_id === user.id);
-  const eventHasEnded = isEventTerminated(displayEvent as Event);
+  const eventHasEnded = isEventTerminated(displayEvent as Event) || hasEventEnded(displayEvent as Event);
   const canBook = displayEvent.status === 'published' && !eventHasEnded;
   const statusLabel =
     displayEvent.status === 'paused'

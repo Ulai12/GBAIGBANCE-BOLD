@@ -11,9 +11,9 @@ export function formatPrice(price: number, currency: string = 'XOF'): string {
   return `${formatted} ${symbols[currency] || currency}`;
 }
 
-export function formatDate(dateString?: string | null, lang: string = 'fr'): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+export function formatDate(dateInput?: string | Date | null, lang: string = 'fr'): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (Number.isNaN(date.getTime())) return '';
   const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
   try {
@@ -27,9 +27,9 @@ export function formatDate(dateString?: string | null, lang: string = 'fr'): str
   }
 }
 
-export function formatFullDate(dateString?: string | null, lang: string = 'fr'): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+export function formatFullDate(dateInput?: string | Date | null, lang: string = 'fr'): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (Number.isNaN(date.getTime())) return '';
   const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
   try {
@@ -44,9 +44,9 @@ export function formatFullDate(dateString?: string | null, lang: string = 'fr'):
   }
 }
 
-export function formatTime(dateString?: string | null): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+export function formatTime(dateInput?: string | Date | null): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (Number.isNaN(date.getTime())) return '';
   try {
     return date.toLocaleTimeString('fr-FR', {

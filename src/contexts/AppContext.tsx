@@ -226,7 +226,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         const prevId = activeUserIdRef.current;
         activeUserIdRef.current = null;
-        performSignOutCleanup(prevId);
+        if (prevId) {
+          performSignOutCleanup(prevId);
+        }
         setUser(null);
         setLoading(false);
         setIsSessionResolving(false);
@@ -244,9 +246,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadProfileForUser(currentSession.user, true);
       } else {
         const prevUserId = activeUserIdRef.current;
-        activeUserIdRef.current = null;
-        performSignOutCleanup(prevUserId);
-        setUser(null);
+        if (prevUserId) {
+          activeUserIdRef.current = null;
+          performSignOutCleanup(prevUserId);
+          setUser(null);
+        }
       }
     });
 

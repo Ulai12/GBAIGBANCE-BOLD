@@ -1,7 +1,7 @@
 import type { Event, Artist, Organization } from '@/types';
 
 /**
- * Validates if an event has concluded based on status.
+ * Validates if an event has concluded based on status (completed/cancelled) or concluded date.
  */
 export function isEventTerminated(event: { status?: string; starts_at?: string; ends_at?: string | null } | null | undefined): boolean {
   if (!event) return true;
@@ -30,7 +30,14 @@ export function isEventTerminated(event: { status?: string; starts_at?: string; 
 }
 
 /**
- * Validates if an event is currently active, published, and not terminated.
+ * Checks if an event's calendar date has concluded in real time.
+ */
+export function hasEventEnded(event: { status?: string; starts_at?: string; ends_at?: string | null } | null | undefined): boolean {
+  return isEventTerminated(event);
+}
+
+/**
+ * Validates if an event is currently active, published, and viewable by guests and users.
  */
 export function isEventActive(event: Event | null | undefined): boolean {
   if (!event) return false;

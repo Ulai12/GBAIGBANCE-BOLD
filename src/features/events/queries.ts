@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { Event, EventWithRelations, EventCategory } from '@/types';
 import { hydrateEventCategories, eventMatchesCategoryFilter } from '@/constants/categories';
-import { isRealEvent, isEventActive, isEventTerminated } from './status';
+import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded } from './status';
 import { getLocalStoredTickets } from '@/features/tickets/service';
 
 function sanitizeSearchInput(input: string): string {
@@ -122,6 +122,9 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
       const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
 
       const sorted = [...activeList].sort((a, b) => {
+        const endedA = hasEventEnded(a);
+        const endedB = hasEventEnded(b);
+        if (endedA !== endedB) return endedA ? 1 : -1;
         const scoreA =
           (a.is_featured ? 500 : 0) +
           (a.attendees_count || 0) * 4 +
@@ -193,7 +196,16 @@ export async function fetchUpcomingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(50);
     if (!error && data && data.length > 0) {
-      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e)).slice(0, 20);
+      const active = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
+      const sorted = [...active].sort((a, b) => {
+        const endedA = hasEventEnded(a);
+        const endedB = hasEventEnded(b);
+        if (endedA !== endedB) return endedA ? 1 : -1;
+        const timeA = new Date(a.starts_at || 0).getTime();
+        const timeB = new Date(b.starts_at || 0).getTime();
+        return timeA - timeB;
+      });
+      return sorted.slice(0, 20);
     }
     return [];
   } catch {
@@ -248,6 +260,24 @@ export async function searchEvents(query: string): Promise<Event[]> {
       .limit(40);
     if (error || !data) return [];
     return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchPastEvents(): Promise<Event[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .order('starts_at', { ascending: false })
+      .limit(30);
+    if (!error && data && data.length > 0) {
+      return (data as Event[]).filter((e) => isRealEvent(e) && isEventTerminated(e));
+    }
+    return [];
   } catch {
     return [];
   }

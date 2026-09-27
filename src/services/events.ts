@@ -19,6 +19,7 @@ export function sanitizeFilterInput(input: string): string {
 // ==================== EVENTS DOMAIN ====================
 export {
   isEventTerminated,
+  hasEventEnded,
   isEventActive,
   isRealEvent,
   isRealArtist,
@@ -62,6 +63,7 @@ export {
   fetchEventsByCategory,
   fetchTrendingEvents,
   fetchUpcomingEvents,
+  fetchPastEvents,
   fetchEventById,
   searchEvents,
   toggleEventLike,

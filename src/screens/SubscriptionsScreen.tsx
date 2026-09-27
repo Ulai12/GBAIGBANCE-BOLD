@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart, LogIn } from 'lucide-react';
+import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart, LogIn, Sparkles } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { supabase } from '@/services/supabase';
 import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers } from '@/services/events';
 import {
   getCachedSubscriptionsMemory,
@@ -32,6 +34,7 @@ export function SubscriptionsScreen({
   onLogin,
 }: SubscriptionsScreenProps) {
   const { user, t } = useApp();
+  const { followedArtistIds, followedOrgIds } = useFavorites();
   const [tab, setTab] = useState<Tab>('artists');
 
   const cachedSub = user ? getCachedSubscriptionsMemory(user.id) : null;
@@ -57,12 +60,28 @@ export function SubscriptionsScreen({
 
   useEffect(() => {
     if (!user) {
-      setArtists([]);
-      setOrgs([]);
-      setUsers([]);
-      setLoading(false);
+      const artIds = Array.from(followedArtistIds);
+      const orgIds = Array.from(followedOrgIds);
+      if (artIds.length === 0 && orgIds.length === 0) {
+        setArtists([]);
+        setOrgs([]);
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      Promise.all([
+        artIds.length > 0 ? supabase.from('artists').select('*').in('id', artIds) : Promise.resolve({ data: [] }),
+        orgIds.length > 0 ? supabase.from('organizations').select('*').in('id', orgIds) : Promise.resolve({ data: [] }),
+      ])
+        .then(([artRes, orgRes]) => {
+          setArtists((artRes.data as Artist[]) || []);
+          setOrgs((orgRes.data as Organization[]) || []);
+          setUsers([]);
+        })
+        .finally(() => setLoading(false));
       return;
     }
+
     Promise.all([
       fetchFollowedArtists(user.id),
       fetchFollowedOrganizations(user.id),
@@ -79,9 +98,9 @@ export function SubscriptionsScreen({
         });
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, followedArtistIds, followedOrgIds]);
 
-  if (!user) {
+  if (!user && artists.length === 0 && orgs.length === 0 && !loading) {
     return (
       <div className="min-h-screen pb-32">
         <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
@@ -104,7 +123,7 @@ export function SubscriptionsScreen({
             Vos abonnements & artistes suivis
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto leading-relaxed">
-            Connectez-vous pour retrouver et gérer tous vos artistes, organisateurs et profils suivis.
+            Connectez-vous pour retrouver et gérer tous vos artistes, organisateurs et profils suivis sur tous vos appareils.
           </p>
           {onLogin && (
             <button
@@ -147,6 +166,24 @@ export function SubscriptionsScreen({
             </h1>
           </div>
         </div>
+
+        {!user && (
+          <div className="max-w-md mx-auto px-5 pb-2">
+            <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] text-xs font-semibold">
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className="flex-1">Abonnements enregistrés sur cet appareil.</span>
+              {onLogin && (
+                <button
+                  type="button"
+                  onClick={onLogin}
+                  className="px-2.5 py-1 rounded-full bg-[#6600FF] text-white text-[10px] font-black shrink-0 hover:bg-[#5200cc]"
+                >
+                  Synchroniser
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="max-w-md mx-auto px-5 pb-3 flex gap-2">
           {tabs.map((tb) => {

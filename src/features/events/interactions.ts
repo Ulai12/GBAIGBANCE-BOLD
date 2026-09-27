@@ -166,7 +166,7 @@ export async function toggleArtistFollow(artistId: string, userId: string): Prom
 export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {
   const { data } = await supabase
     .from('artist_follows')
-    .select('id')
+    .select('artist_id')
     .eq('artist_id', artistId)
     .eq('user_id', userId)
     .maybeSingle();

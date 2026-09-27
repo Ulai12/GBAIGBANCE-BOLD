@@ -281,7 +281,7 @@ export function FavoritesScreen({
                 try {
                   const { count } = await supabase
                     .from('artist_follows')
-                    .select('id', { count: 'exact', head: true })
+                    .select('artist_id', { count: 'exact', head: true })
                     .eq('artist_id', art.id);
                   const realCount = typeof count === 'number' && count > 0 ? count : (art.followers_count || 1);
                   return { ...art, followers_count: realCount };

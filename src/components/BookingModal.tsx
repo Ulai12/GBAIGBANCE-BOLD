@@ -17,7 +17,7 @@ import {
 import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
-import { fetchTicketOptions, isEventTerminated, subscribeToTicketInventory } from '@/services/events';
+import { fetchTicketOptions, isEventTerminated, hasEventEnded, subscribeToTicketInventory } from '@/services/events';
 import { purchaseTicketsMulti, type TicketRecipientInput } from '@/features/tickets/service';
 import { fetchFollowingUsers } from '@/features/users/follows';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -216,7 +216,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
   const available = selectedOption ? selectedOption.quantity_total - selectedOption.quantity_sold : 0;
   const soldOut = options.length > 0 && options.every((o) => o.quantity_sold >= o.quantity_total);
-  const eventUnavailable = isEventTerminated(event);
+  const eventUnavailable = isEventTerminated(event) || hasEventEnded(event);
   const unitPrice = selectedOption ? selectedOption.price : 0;
   const totalPrice = unitPrice * quantity;
 

@@ -136,8 +136,8 @@ export function ProfileScreen({
       try {
         const [ticketsRes, artRes, orgRes, userFollowingRes, userFollowersRes] = await Promise.all([
           supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('organization_follows').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('artist_follows').select('artist_id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('organization_follows').select('organization_id', { count: 'exact', head: true }).eq('user_id', user.id),
           supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('follower_id', user.id),
           supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', user.id),
         ]);
