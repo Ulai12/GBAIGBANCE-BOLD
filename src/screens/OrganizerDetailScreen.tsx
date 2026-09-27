@@ -19,6 +19,7 @@ import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
+import { getDefaultOrgCover } from '@/utils/defaultImages';
 import type { Organization, Event } from '@/types';
 
 interface OrganizerDetailScreenProps {
@@ -104,15 +105,11 @@ export function OrganizerDetailScreen({
     <div className="min-h-screen pb-32">
       {/* Cover */}
       <div className="relative h-56 overflow-hidden">
-        {displayOrg.cover_url ? (
-          <img
-            src={displayOrg.cover_url}
-            alt={displayOrg.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#6600FF] via-[#7C3AED] to-[#9D4EDD]" />
-        )}
+        <img
+          src={displayOrg.cover_url || getDefaultOrgCover(displayOrg.id)}
+          alt={displayOrg.name}
+          className="w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/20 to-black/40" />
 
         {/* Buttons */}

@@ -46,6 +46,7 @@ import type { Artist, Event, EventCategory, EventAccessType, Organization, MainC
 import type { ToastData } from '@/components/Toast';
 import { EventPreviewModal } from '@/components/EventPreviewModal';
 import { EventCard } from '@/components/EventCard';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 interface Props {
   onBack: () => void;
@@ -204,7 +205,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       organizer_id: null,
       organizer_user_id: user?.id || null,
       status: 'published',
-      cover_url: coverPreview || form.cover_url || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200',
+      cover_url: coverPreview || form.cover_url || getDefaultEventCover(),
       images: galleryFiles.map((g) => g.preview),
       video_url: form.video_url.trim() || null,
       access_type: accessType,

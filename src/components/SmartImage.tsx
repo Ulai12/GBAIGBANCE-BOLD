@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
 import { buildResponsiveImageSources } from '@/utils/imageOptimizer';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 interface SmartImageProps {
   src: string | null | undefined;
@@ -17,7 +18,8 @@ interface SmartImageProps {
   fetchPriority?: 'high' | 'low' | 'auto';
 }
 
-const DEFAULT_FALLBACK = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1000&q=80';
+// Couverture noire par défaut avec texte en extra ultra bold GBAIGBAINCE
+const DEFAULT_FALLBACK = getDefaultEventCover();
 
 // Global memory cache of successfully loaded image URLs to prevent re-flashing on swipes or re-renders
 const LOADED_IMAGE_URLS = new Set<string>();

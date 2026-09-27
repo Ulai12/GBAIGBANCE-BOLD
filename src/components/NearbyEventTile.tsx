@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 import { formatDistanceKm, getAccurateTravelEstimate } from '@/utils/geo';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
@@ -77,7 +78,7 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
       {/* Visual Cover Header - Compact & Enclosed */}
       <div className="relative h-32 w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/5">
         <SmartImage
-          src={event.cover_url || event.images?.[0]}
+          src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
           alt={event.title}
           sizes="(max-width: 640px) 240px, 260px"
           widths={[240, 320, 480]}

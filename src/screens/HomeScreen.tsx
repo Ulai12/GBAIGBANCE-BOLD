@@ -351,40 +351,40 @@ export function HomeScreen({
     });
   }, [allActiveEvents, userLocation]);
 
-  // Section: Proximité / Sorties locales adaptées (GPS réel vs sélection Lomé)
+  // Section: Proximité / Sorties locales adaptées (uniquement si l'utilisateur a autorisé la localisation)
   const nearbySectionData = useMemo(() => {
-    if (userLocation.isActual) {
-      const sorted = [...allEventsWithDistance]
-        .filter((e) => typeof e.distanceKm === 'number')
-        .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-
-      const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
-      if (strictlyUnder10.length > 0) {
-        const maxDist = Math.max(...strictlyUnder10.map((e) => e.distanceKm || 0));
-        return {
-          title: maxDist <= 5.0 ? 'À moins de 5 km' : 'À proximité de vous',
-          subtitle: 'Autour de votre position GPS réelle',
-          events: strictlyUnder10,
-          isActual: true,
-        };
-      }
-      // User is far from Lomé (e.g. abroad or outside city)
+    // Ne pas afficher la section de lieu si l'utilisateur n'a pas autorisé la localisation
+    if (!userLocation.isActual) {
       return {
-        title: 'Sorties populaires à Lomé',
-        subtitle: 'Position GPS hors Lomé · Sélection Togo',
-        events: allActiveEvents.slice(0, 6),
+        title: '',
+        subtitle: '',
+        events: [],
         isActual: false,
       };
     }
 
-    // Default when GPS is not enabled / denied
+    const sorted = [...allEventsWithDistance]
+      .filter((e) => typeof e.distanceKm === 'number')
+      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+
+    const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
+    if (strictlyUnder10.length > 0) {
+      const maxDist = Math.max(...strictlyUnder10.map((e) => e.distanceKm || 0));
+      return {
+        title: maxDist <= 5.0 ? 'À moins de 5 km' : 'À proximité de vous',
+        subtitle: 'Autour de votre position GPS réelle',
+        events: strictlyUnder10,
+        isActual: true,
+      };
+    }
+    
     return {
-      title: 'Sorties populaires à Lomé',
-      subtitle: 'Lieu : Lomé · Activez le GPS pour vos sorties proches',
-      events: allActiveEvents.slice(0, 6),
-      isActual: false,
+      title: 'À proximité de vous',
+      subtitle: 'Autour de votre position',
+      events: sorted.slice(0, 6),
+      isActual: true,
     };
-  }, [allActiveEvents, allEventsWithDistance, userLocation]);
+  }, [allEventsWithDistance, userLocation]);
 
   // Section: Selon vos préférences (matches user profile preferred categories or vibrant defaults)
   const userPreferencesEvents = useMemo(() => {
@@ -605,32 +605,33 @@ export function HomeScreen({
         </section>
       ) : null}
 
-      {/* SECTION 4: Proximité / Sorties locales (Tuiles défilables horizontales compactes) */}
-      {loading && nearbySectionData.events.length === 0 ? (
-        <section className="mt-8 px-5" aria-label="Événements à proximité">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
-                <Navigation className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  À proximité de vous
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0 whiterap">
-                  Recherche des événements locaux...
-                </p>
+      {/* SECTION 4: Proximité / Sorties locales (Uniquement affiché si la localisation est autorisée) */}
+      {userLocation.isActual && (
+        loading && nearbySectionData.events.length === 0 ? (
+          <section className="mt-8 px-5" aria-label="Événements à proximité">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Navigation className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+                    À proximité de vous
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0 whiterap">
+                    Recherche des événements locaux...
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar py-1.5 -mx-5 px-5">
-            <NearbyTileSkeleton />
-            <NearbyTileSkeleton />
-            <NearbyTileSkeleton />
-          </div>
-        </section>
-      ) : nearbySectionData.events.length > 0 ? (
-        <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
+            <div className="flex gap-3.5 overflow-x-auto no-scrollbar py-1.5 -mx-5 px-5">
+              <NearbyTileSkeleton />
+              <NearbyTileSkeleton />
+              <NearbyTileSkeleton />
+            </div>
+          </section>
+        ) : nearbySectionData.events.length > 0 ? (
+          <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
           {/* En-tête aérée et ergonomique (iOS 27 - Zéro troncature) */}
           <div className="flex flex-col gap-1.5 mb-3.5">
             <div className="flex items-center justify-between gap-2">
@@ -688,7 +689,7 @@ export function HomeScreen({
             ))}
           </div>
         </section>
-      ) : null}
+      ) : null)}
 
       {/* SECTION 5: Selon vos préférences */}
       {userPreferencesEvents.length > 0 && (

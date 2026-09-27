@@ -14,6 +14,7 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { isEventTerminated } from '@/services/events';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
@@ -108,7 +109,7 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
           <SmartImage
-            src={event.cover_url || event.images?.[0]}
+            src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category)}
             alt={event.title}
             sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 280px"
             widths={[280, 380, 560, 720]}

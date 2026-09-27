@@ -16,6 +16,7 @@ import {
 import type { Event } from '@/types';
 import { EventCard } from '@/components/EventCard';
 import { formatFullDate, formatTime } from '@/utils/format';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 interface EventPreviewModalProps {
   isOpen: boolean;
@@ -38,8 +39,9 @@ export function EventPreviewModal({
 
   if (!isOpen) return null;
 
-  const startsDate = event.starts_at ? new Date(event.starts_at) : new Date();
-  const endsDate = event.ends_at ? new Date(event.ends_at) : null;
+  // Les fonctions formatFullDate et formatTime attendent des chaînes ISO (string | null | undefined)
+  const startsDate = event.starts_at;
+  const endsDate = event.ends_at;
 
   return (
     <div
@@ -128,7 +130,7 @@ export function EventPreviewModal({
               {/* Cover Banner */}
               <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-gray-900">
                 <img
-                  src={event.cover_url || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200'}
+                  src={event.cover_url || getDefaultEventCover(event.id, event.category, event.title)}
                   alt={event.title}
                   className="w-full h-full object-cover"
                 />

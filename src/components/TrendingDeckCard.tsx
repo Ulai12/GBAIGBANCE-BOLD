@@ -5,6 +5,7 @@ import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { formatDate } from '@/utils/format';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 interface TrendingDeckCardProps {
   event: Event;
@@ -82,7 +83,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
     >
       <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
         <SmartImage
-          src={event.cover_url || event.images?.[0]}
+          src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
           alt={event.title}
           className="h-full w-full object-cover"
         />

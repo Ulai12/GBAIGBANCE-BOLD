@@ -1,6 +1,31 @@
 import { supabase } from '@/services/supabase';
 import type { Profile, PublicProfile, Artist, Organization } from '@/types';
 
+function getLocalFollowedUserIds(userId?: string | null): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const key = `gba_user_following_users_${userId || 'guest'}_v1`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {
+    // Ignore
+  }
+  return new Set();
+}
+
+function saveLocalFollowedUserIds(userId: string | null | undefined, set: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = `gba_user_following_users_${userId || 'guest'}_v1`;
+    localStorage.setItem(key, JSON.stringify(Array.from(set)));
+  } catch {
+    // Ignore
+  }
+}
+
 async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProfile>> {
   const map = new Map<string, PublicProfile>();
   const unique = [...new Set(ids.filter(Boolean))];
@@ -15,41 +40,90 @@ async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProf
 
 export async function toggleUserFollow(followerId: string, followingId: string): Promise<boolean> {
   if (followerId === followingId) return false;
-  const { data: existing } = await supabase
-    .from('user_follows')
-    .select('id')
-    .eq('follower_id', followerId)
-    .eq('following_id', followingId)
-    .maybeSingle();
+  
+  // 1. Sauvegarde locale persistante immédiate (garantie au rechargement)
+  const localSet = getLocalFollowedUserIds(followerId);
+  const willFollow = !localSet.has(followingId);
+  if (willFollow) localSet.add(followingId);
+  else localSet.delete(followingId);
+  saveLocalFollowedUserIds(followerId, localSet);
 
-  if (existing) {
-    await supabase.from('user_follows').delete().eq('id', existing.id);
-    return false;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('gba-user-follow-changed', {
+        detail: { followerId, followingId, willFollow },
+      })
+    );
   }
-  await supabase.from('user_follows').insert({ follower_id: followerId, following_id: followingId });
-  return true;
+
+  // 2. Synchronisation Supabase avec gestion d'erreur transparente
+  try {
+    const { data: existing } = await supabase
+      .from('user_follows')
+      .select('id')
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('user_follows').delete().eq('id', existing.id);
+    } else {
+      await supabase.from('user_follows').insert({ follower_id: followerId, following_id: followingId });
+    }
+  } catch {
+    // Le statut reste conservé localement
+  }
+
+  return willFollow;
 }
 
 export async function isFollowingUser(followerId: string, followingId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('user_follows')
-    .select('id')
-    .eq('follower_id', followerId)
-    .eq('following_id', followingId)
-    .maybeSingle();
-  return !!data;
+  const localSet = getLocalFollowedUserIds(followerId);
+  if (localSet.has(followingId)) return true;
+
+  try {
+    const { data } = await supabase
+      .from('user_follows')
+      .select('id')
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId)
+      .maybeSingle();
+
+    if (data) {
+      localSet.add(followingId);
+      saveLocalFollowedUserIds(followerId, localSet);
+      return true;
+    }
+  } catch {
+    // Ignore
+  }
+  return false;
 }
 
 export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('user_follows')
-    .select('following_id')
-    .eq('follower_id', userId);
-  if (error) return [];
-  const ids = (data || []).map((r: { following_id: string }) => r.following_id);
-  if (ids.length === 0) return [];
-  const profileMap = await fetchProfilesByIds(ids);
-  return ids.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[];
+  const localIds = Array.from(getLocalFollowedUserIds(userId));
+  let dbIds: string[] = [];
+
+  try {
+    const { data } = await supabase
+      .from('user_follows')
+      .select('following_id')
+      .eq('follower_id', userId);
+    if (data) {
+      dbIds = data.map((r: { following_id: string }) => r.following_id);
+    }
+  } catch {
+    // Fallback to local
+  }
+
+  const allIds = [...new Set([...localIds, ...dbIds])];
+  if (allIds.length === 0) return [];
+
+  // Mettre à jour le cache local avec la fusion
+  saveLocalFollowedUserIds(userId, new Set(allIds));
+
+  const profileMap = await fetchProfilesByIds(allIds);
+  return allIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[];
 }
 
 export async function fetchUserFollowersCount(userId: string): Promise<number> {

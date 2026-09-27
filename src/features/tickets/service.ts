@@ -161,6 +161,7 @@ export function removeLocalStoredTicket(ticketId: string, userId?: string | null
 export interface TicketRecipientInput {
   recipient_name: string;
   recipient_phone?: string;
+  recipient_user_id?: string;
   is_for_me: boolean;
 }
 
@@ -230,6 +231,7 @@ export async function purchaseTicketsMulti(params: {
   paymentProvider: PaymentProvider;
   paymentPhone: string;
   userId: string;
+  buyerName?: string;
 }): Promise<{
   success: boolean;
   payment_id?: string;
@@ -243,7 +245,7 @@ export async function purchaseTicketsMulti(params: {
   }>;
   error?: string;
 }> {
-  const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId } = params;
+  const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId, buyerName } = params;
 
   if (isSupabaseConfigured && !userId.startsWith('guest-')) {
     try {
@@ -273,12 +275,17 @@ export async function purchaseTicketsMulti(params: {
         if (result.success && result.tickets) {
           // Sauvegarde locale de secours pour chaque ticket
           const event = await fetchEventById(eventId);
-          for (const item of result.tickets) {
+          for (let i = 0; i < result.tickets.length; i++) {
+            const item = result.tickets[i];
+            const recipientInput = recipients[i] || recipients[0];
+            const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
             const loc: Ticket = {
               id: item.ticket_id,
               event_id: eventId,
-              user_id: item.is_for_me ? userId : '',
+              user_id: targetUserId,
               buyer_user_id: userId,
+              buyer_name: buyerName || 'Un ami',
+              is_for_me: item.is_for_me,
               payment_id: result.payment_id,
               ticket_type: 'standard',
               ticket_option_id: ticketOptionId,
@@ -287,13 +294,24 @@ export async function purchaseTicketsMulti(params: {
               qr_code: item.qr_code,
               status: 'pending',
               quantity: 1,
-              recipient_name: item.recipient_name,
+              recipient_name: item.recipient_name || recipientInput?.recipient_name,
+              recipient_phone: recipientInput?.recipient_phone,
+              claim_token: item.claim_token,
               is_claimed: item.is_for_me,
               seat_info: null,
               created_at: new Date().toISOString(),
               event: event || undefined,
             };
+            // 1. Sauvegarder chez l'acheteur (section dédiée "Billets offerts")
             saveLocalStoredTicket(loc, userId);
+            // 2. Si le compte de l'ami est identifié, sauvegarder aussi directement chez l'ami
+            if (!item.is_for_me && recipientInput?.recipient_user_id) {
+              saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
+            }
+            // 3. Sauvegarder dans le registre des cadeaux partagés
+            if (!item.is_for_me) {
+              saveGiftTicketForFriend(loc);
+            }
           }
           return {
             success: true,
@@ -322,11 +340,14 @@ export async function purchaseTicketsMulti(params: {
     const qr = 'GBC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     const token = r.is_for_me ? undefined : Math.random().toString(36).slice(2, 16);
 
+    const targetUserId = r.is_for_me ? userId : (r.recipient_user_id || '');
     const ticket: Ticket = {
       id: tId,
       event_id: eventId,
-      user_id: r.is_for_me ? userId : '',
+      user_id: targetUserId,
       buyer_user_id: userId,
+      buyer_name: buyerName || 'Un ami',
+      is_for_me: r.is_for_me,
       payment_id: fakePaymentId,
       ticket_type: 'standard',
       ticket_option_id: ticketOptionId,
@@ -336,12 +357,21 @@ export async function purchaseTicketsMulti(params: {
       status: 'valid',
       quantity: 1,
       recipient_name: r.recipient_name,
+      recipient_phone: r.recipient_phone,
+      claim_token: token,
       is_claimed: r.is_for_me,
       seat_info: null,
       created_at: new Date().toISOString(),
       event: event || undefined,
     };
     saveLocalStoredTicket(ticket, userId);
+    if (!r.is_for_me && r.recipient_user_id) {
+      saveLocalStoredTicket(ticket, r.recipient_user_id);
+    }
+    if (!r.is_for_me) {
+      saveGiftTicketForFriend(ticket);
+    }
+
     createdList.push({
       ticket_id: tId,
       qr_code: qr,
@@ -357,6 +387,42 @@ export async function purchaseTicketsMulti(params: {
     amount_xof: 5000 * recipients.length,
     tickets: createdList,
   };
+}
+
+/**
+ * Enregistre un billet offert dans un registre partagé afin que l'ami puisse le voir
+ */
+export function saveGiftTicketForFriend(ticket: Ticket) {
+  try {
+    const raw = localStorage.getItem('gba_gift_registry') || '[]';
+    const list = JSON.parse(raw);
+    const updated = [ticket, ...list.filter((t: Ticket) => t.id !== ticket.id)];
+    localStorage.setItem('gba_gift_registry', JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Récupère les billets offerts destinés à un ami (par numéro de téléphone ou nom)
+ */
+export function getGiftTicketsForFriend(phone?: string | null, name?: string | null): Ticket[] {
+  try {
+    if (!phone && !name) return [];
+    const raw = localStorage.getItem('gba_gift_registry') || '[]';
+    const list: Ticket[] = JSON.parse(raw);
+    return list.filter((t) => {
+      const matchPhone = phone && t.recipient_phone && (
+        t.recipient_phone.replace(/\s+/g, '') === phone.replace(/\s+/g, '')
+      );
+      const matchName = name && t.recipient_name && (
+        t.recipient_name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      return matchPhone || matchName;
+    });
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -479,18 +545,23 @@ export async function reviewRefund(params: {
 }
 
 /**
- * Récupération de l'ensemble des billets d'un utilisateur (détenus + achetés pour des tiers)
+ * Récupération de l'ensemble des billets d'un utilisateur (détenus + achetés pour des tiers + reçus en cadeau)
  */
-export async function fetchUserTickets(userId: string): Promise<Ticket[]> {
+export async function fetchUserTickets(userId: string, userPhone?: string | null, userName?: string | null): Promise<Ticket[]> {
   const localTickets = getLocalStoredTickets(userId);
+  const friendGifts = getGiftTicketsForFriend(userPhone, userName);
   let dbTickets: Ticket[] = [];
 
   if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
     try {
+      let queryOr = `user_id.eq.${userId},buyer_user_id.eq.${userId}`;
+      if (userPhone && userPhone.length >= 8) {
+        queryOr += `,recipient_phone.eq.${userPhone.trim()}`;
+      }
       const { data, error } = await supabase
         .from('tickets')
         .select('*, event:events(*)')
-        .or(`user_id.eq.${userId},buyer_user_id.eq.${userId}`)
+        .or(queryOr)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -504,7 +575,7 @@ export async function fetchUserTickets(userId: string): Promise<Ticket[]> {
   const seen = new Set<string>();
   const merged: Ticket[] = [];
 
-  for (const t of [...localTickets, ...dbTickets]) {
+  for (const t of [...localTickets, ...friendGifts, ...dbTickets]) {
     const id = t.id || '';
     if (id && !seen.has(id)) {
       seen.add(id);

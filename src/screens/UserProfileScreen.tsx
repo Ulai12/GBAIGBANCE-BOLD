@@ -46,6 +46,7 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
         <div className="flex flex-col items-center text-center">
           <div className="relative">
             <UserAvatar
+              id={profile.id}
               src={profile.avatar_url}
               name={profile.name}
               role={profile.role}

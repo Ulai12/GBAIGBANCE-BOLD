@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { Event, Organization } from '@/types';
+import type { Event, Organization, Ticket } from '@/types';
 import { isRealEvent, isRealOrganization, isEventActive } from '@/features/events/status';
 import { getLocalStoredTickets } from '@/services/tickets';
 
@@ -169,18 +169,18 @@ export async function fetchOrganizerPerformanceMetrics(
 
     // Also include any locally booked tickets for these events
     const localTickets = getLocalStoredTickets();
-    localTickets.forEach((lt: Record<string, unknown>) => {
-      const eId = typeof lt.event_id === 'string' ? lt.event_id : '';
-      const tId = typeof lt.id === 'string' ? lt.id : '';
+    localTickets.forEach((lt: Ticket) => {
+      const eId = lt.event_id || '';
+      const tId = lt.id || '';
       if (eventIds.includes(eId) && !tickets.some((t) => t.id === tId)) {
         tickets.push({
           id: tId,
           event_id: eId,
-          ticket_type: typeof lt.ticket_type === 'string' ? lt.ticket_type : 'standard',
+          ticket_type: lt.ticket_type || 'standard',
           quantity: typeof lt.quantity === 'number' ? lt.quantity : 1,
           price_paid: typeof lt.price_paid === 'number' ? lt.price_paid : 0,
-          status: typeof lt.status === 'string' ? lt.status : 'active',
-          created_at: typeof lt.created_at === 'string' ? lt.created_at : new Date().toISOString(),
+          status: lt.status || 'valid',
+          created_at: lt.created_at || new Date().toISOString(),
         });
       }
     });

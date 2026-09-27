@@ -9,6 +9,7 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import { fetchArtistById, fetchEventsByArtist } from '@/services/events';
 import { formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
+import { getDefaultArtistCover } from '@/utils/defaultImages';
 import type { Artist, Event } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -90,7 +91,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
       {/* Cover Header */}
       <div className="relative h-64 overflow-hidden">
         <img
-          src={fullArtist.cover_url || fullArtist.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'}
+          src={fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id)}
           alt={fullArtist.name}
           className="w-full h-full object-cover"
         />

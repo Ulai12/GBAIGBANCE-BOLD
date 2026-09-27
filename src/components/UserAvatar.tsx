@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BadgeCheck, Music2, Building2, User } from 'lucide-react';
+import { getDefaultUserAvatar, getAvatarInitials } from '@/utils/defaultImages';
 import type { UserRole } from '@/types';
 
 interface UserAvatarProps {
+  id?: string | null;
   src?: string | null;
   name?: string | null;
   role?: UserRole | string;
@@ -34,17 +36,6 @@ const GRADIENTS = [
   'from-[#BE185D] via-[#DB2777] to-[#F472B6]', // Vivid Rose
 ];
 
-function getInitials(name?: string | null): string {
-  if (!name) return '';
-  const trimmed = name.trim();
-  if (!trimmed) return '';
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase();
-  }
-  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-}
-
 function getGradientIndex(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -55,6 +46,7 @@ function getGradientIndex(str: string): number {
 }
 
 export function UserAvatar({
+  id,
   src,
   name,
   role,
@@ -67,7 +59,8 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false);
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
-  const initials = useMemo(() => getInitials(name), [name]);
+  // Utilise la règle stricte des initiales : 2 mots -> 1ère lettre de chaque mot (HB), 1 mot -> 2 premières lettres (JU)
+  const initials = useMemo(() => getAvatarInitials(name), [name]);
 
   useEffect(() => {
     setImageError(false);
@@ -76,36 +69,42 @@ export function UserAvatar({
   const gradientClass = useMemo(() => {
     if (role === 'artist') return 'from-[#7C3AED] via-[#6600FF] to-[#C026D3]';
     if (role === 'organizer') return 'from-[#EA580C] via-[#E11D48] to-[#9333EA]';
-    return GRADIENTS[getGradientIndex(name || 'user')];
-  }, [name, role]);
+    return GRADIENTS[getGradientIndex(id || name || 'user')];
+  }, [id, name, role]);
 
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-2xl sm:rounded-[1.4rem]';
   const hasCustomRing = className.includes('ring-');
   const ringClass = ring && !hasCustomRing ? 'ring-2 ring-black/5 dark:ring-white/10 shadow-xs' : '';
 
-  const hasValidImage = Boolean(src && !imageError && src.trim() !== '');
+  const effectiveSrc = useMemo(() => {
+    if (src && src.trim() !== '' && !imageError) {
+      return src;
+    }
+    // Deterministic fallback avatar based on stable entity id/name and role
+    return getDefaultUserAvatar(name || 'user', typeof role === 'string' ? role : undefined, id);
+  }, [src, imageError, name, role, id]);
 
   const RoleIcon = role === 'artist' ? Music2 : role === 'organizer' ? Building2 : User;
 
   return (
     <div className={`relative inline-flex items-center justify-center shrink-0 ${sizeConfig.box} ${roundedClass} ${className}`}>
       <div
-        className={`relative overflow-hidden flex items-center justify-center select-none w-full h-full ${roundedClass} ${ringClass} ${
-          hasValidImage ? 'bg-zinc-100 dark:bg-zinc-800' : `bg-gradient-to-tr ${gradientClass} text-white shadow-sm`
-        }`}
+        className={`relative overflow-hidden flex items-center justify-center select-none w-full h-full ${roundedClass} ${ringClass} bg-zinc-100 dark:bg-zinc-800`}
       >
-        {hasValidImage ? (
+        {effectiveSrc ? (
           <img
-            src={src!}
+            src={effectiveSrc}
             alt={name || 'Avatar'}
-            onError={() => setImageError(true)}
+            onError={() => {
+              if (!imageError) setImageError(true);
+            }}
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
             className={`w-full h-full aspect-square object-cover ${roundedClass} ${imageClassName}`}
           />
         ) : (
-          <div className="flex items-center justify-center w-full h-full text-white font-black tracking-wider">
+          <div className={`flex items-center justify-center w-full h-full bg-gradient-to-tr ${gradientClass} text-white font-black tracking-wider`}>
             {initials ? (
               <span>{initials}</span>
             ) : (

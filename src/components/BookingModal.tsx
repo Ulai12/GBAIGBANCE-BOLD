@@ -10,18 +10,23 @@ import {
   Users, 
   Phone, 
   Smartphone,
-  Share2
+  Gift,
+  MessageCircle,
+  Copy
 } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, isEventTerminated, subscribeToTicketInventory } from '@/services/events';
 import { purchaseTicketsMulti, type TicketRecipientInput } from '@/features/tickets/service';
-import type { Event, TicketOption, PaymentProvider } from '@/types';
+import { fetchFollowingUsers } from '@/features/users/follows';
+import { UserAvatar } from '@/components/UserAvatar';
+import type { Event, TicketOption, PaymentProvider, Profile } from '@/types';
 
 interface BookingModalProps {
   open: boolean;
   event: Event | null;
+  // Permet un identifiant d'option null ou indéfini lors de la sélection initiale
   initialOptionId?: string | null;
   onClose: () => void;
   onSuccess: (qrCode: string) => void;
@@ -33,20 +38,29 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [selectedOption, setSelectedOption] = useState<TicketOption | null>(null);
-  
+
+  // Type d'achat : 'self' (Pour moi) ou 'friend' (Offrir à un ami)
+  const [purchaseTarget, setPurchaseTarget] = useState<'self' | 'friend'>('self');
+
   // Quantité et configuration des bénéficiaires
   const [quantity, setQuantity] = useState(1);
+  const [friendName, setFriendName] = useState('');
+  const [friendPhone, setFriendPhone] = useState('');
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [followingFriends, setFollowingFriends] = useState<Profile[]>([]);
+
   const [recipients, setRecipients] = useState<TicketRecipientInput[]>([
     { recipient_name: user?.name || 'Moi-même', recipient_phone: user?.phone || '', is_for_me: true },
   ]);
 
-  // Paiement Mobile Money
+  // Paiement Mobile Money (T-Money et Flooz uniquement, MTN MoMo supprimé)
   const [paymentProvider, setPaymentProvider] = useState<PaymentProvider>('tmoney');
   const [paymentPhone, setPaymentPhone] = useState(user?.phone || '');
 
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [createdTicketsSummary, setCreatedTicketsSummary] = useState<Array<{
     ticket_id: string;
     qr_code: string;
@@ -54,6 +68,22 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     recipient_name?: string;
     claim_token?: string;
   }>>([]);
+
+  // Récupération des profils amis suivis lorsque l'option "Offrir à un ami" est activée
+  useEffect(() => {
+    if (!open || purchaseTarget !== 'friend' || !user?.id) return;
+    let isMounted = true;
+    fetchFollowingUsers(user.id)
+      .then((list) => {
+        if (isMounted && Array.isArray(list)) {
+          setFollowingFriends(list);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [open, purchaseTarget, user?.id]);
 
   const loadOptions = useCallback(() => {
     if (!event) return;
@@ -82,16 +112,66 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   useEffect(() => {
     if (!open || !event) return;
     setSelectedOption(null);
+    setPurchaseTarget('self');
     setQuantity(1);
+    setFriendName('');
+    setFriendPhone('');
+    setSelectedFriendId(null);
     setRecipients([
       { recipient_name: user?.name || 'Moi-même', recipient_phone: user?.phone || '', is_for_me: true },
     ]);
     setPaymentPhone(user?.phone || '');
     setError(null);
+    setBooking(false);
     setSuccess(false);
     setCreatedTicketsSummary([]);
     loadOptions();
   }, [open, event, loadOptions, user]);
+
+  // Fermeture propre avec réinitialisation des erreurs et états de chargement
+  const handleCloseModal = () => {
+    setError(null);
+    setBooking(false);
+    onClose();
+  };
+
+  // Bascule entre "Pour moi" et "Offrir à un ami"
+  const handleTogglePurchaseTarget = (target: 'self' | 'friend') => {
+    haptic.selection();
+    setPurchaseTarget(target);
+    if (target === 'friend') {
+      setRecipients([
+        {
+          recipient_name: friendName.trim() || 'Mon ami',
+          recipient_phone: friendPhone.trim(),
+          recipient_user_id: selectedFriendId || undefined,
+          is_for_me: false,
+        },
+      ]);
+    } else {
+      setSelectedFriendId(null);
+      setRecipients([
+        {
+          recipient_name: user?.name || 'Moi-même',
+          recipient_phone: user?.phone || '',
+          is_for_me: true,
+        },
+      ]);
+    }
+  };
+
+  // Sélection rapide d'un ami suivi
+  const handleSelectFollowedFriend = (friend: Profile) => {
+    haptic.selection();
+    setSelectedFriendId(friend.id);
+    const chosenName = friend.name || 'Ami';
+    const chosenPhone = friend.phone || '';
+    setFriendName(chosenName);
+    setFriendPhone(chosenPhone);
+    handleUpdateRecipient(0, 'recipient_name', chosenName);
+    handleUpdateRecipient(0, 'recipient_phone', chosenPhone);
+    handleUpdateRecipient(0, 'recipient_user_id', friend.id);
+  };
 
   // Synchronisation du tableau des bénéficiaires avec la quantité
   const handleQuantityChange = (newQty: number) => {
@@ -101,9 +181,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       if (newQty > next.length) {
         for (let i = next.length; i < newQty; i++) {
           next.push({
-            recipient_name: `Ami #${i + 1}`,
-            recipient_phone: '',
-            is_for_me: false,
+            recipient_name: purchaseTarget === 'friend' ? (friendName.trim() || `Ami #${i + 1}`) : `Ami #${i + 1}`,
+            recipient_phone: purchaseTarget === 'friend' ? friendPhone.trim() : '',
+            is_for_me: purchaseTarget === 'self' && i === 0,
           });
         }
       } else {
@@ -121,13 +201,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     });
   };
 
-  // Temps réel d'inventaire
+  // Temps réel d'inventaire : subscribeToTicketInventory renvoie directement l'option TicketOption mise à jour
   useEffect(() => {
     if (!open || !event?.id) return;
-    const unsub = subscribeToTicketInventory(event.id, (payload) => {
-      if (payload.eventType === 'UPDATE' && payload.new) {
+    const unsub = subscribeToTicketInventory(event.id, (updatedOption) => {
+      if (updatedOption?.id) {
         setOptions((prev) =>
-          prev.map((o) => (o.id === payload.new.id ? { ...o, ...payload.new } : o))
+          prev.map((o) => (o.id === updatedOption.id ? { ...o, ...updatedOption } : o))
         );
       }
     });
@@ -146,24 +226,44 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       setError('Quantité demandée supérieure au stock disponible.');
       return;
     }
+
+    if (purchaseTarget === 'friend' && !friendName.trim()) {
+      setError('Veuillez renseigner le nom ou prénom de votre ami(e).');
+      return;
+    }
+
     if (!paymentPhone.trim() || paymentPhone.trim().length < 8) {
       setError('Veuillez renseigner un numéro de téléphone Mobile Money valide.');
       return;
     }
 
-    haptic.impactMedium();
+    haptic.medium();
     setError(null);
     setBooking(true);
 
     try {
       const callerUserId = user?.id || `guest-${Date.now()}`;
+      
+      // Préparation finale des bénéficiaires
+      const finalRecipients = recipients.map((r, i) => {
+        if (purchaseTarget === 'friend') {
+          return {
+            recipient_name: (i === 0 ? friendName.trim() : r.recipient_name) || `Ami #${i + 1}`,
+            recipient_phone: (i === 0 ? friendPhone.trim() : r.recipient_phone) || '',
+            is_for_me: false,
+          };
+        }
+        return r;
+      });
+
       const res = await purchaseTicketsMulti({
         eventId: event.id,
         ticketOptionId: selectedOption.id,
-        recipients,
+        recipients: finalRecipients,
         paymentProvider,
         paymentPhone: paymentPhone.trim(),
         userId: callerUserId,
+        buyerName: user?.name || 'Un ami',
       });
 
       if (!res.success) {
@@ -197,68 +297,78 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
   if (success) {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const firstTicket = createdTicketsSummary[0];
+    const claimLink = firstTicket?.claim_token ? `${origin}/#claim=${firstTicket.claim_token}` : origin;
+    const isGift = purchaseTarget === 'friend';
+
     return (
-      <Modal open={open} onClose={() => {}} title="">
+      <Modal open={open} onClose={handleCloseModal} title="">
         <div className="flex flex-col items-center justify-center py-6 text-center text-[#1A1A2E] space-y-4">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
+          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce-in">
             <Check className="w-10 h-10 text-emerald-600" strokeWidth={3} />
           </div>
+
           <div>
-            <h3 className="text-xl font-black">Commande Validée !</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              {quantity === 1
-                ? 'Votre billet est prêt dans votre espace « Mes billets »'
+            <h3 className="text-xl font-black">
+              {isGift ? `Billet offert à ${friendName || 'votre ami'} !` : 'Commande validée !'}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+              {isGift
+                ? `L'achat est confirmé. Le pass est attribué à votre ami et enregistré dans votre onglet « Billets offerts ».`
+                : quantity === 1
+                ? 'Votre pass d’entrée est prêt dans l’onglet « Mes billets ».'
                 : `${quantity} billets générés avec succès.`}
             </p>
           </div>
 
-          {/* Récapitulatif des billets et liens amis */}
-          {createdTicketsSummary.length > 0 && (
-            <div className="w-full space-y-2 text-left text-xs max-h-56 overflow-y-auto pr-1">
-              {createdTicketsSummary.map((t) => (
-                <div
-                  key={t.ticket_id}
-                  className="p-3 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-bold text-gray-800 block">
-                      {t.is_for_me ? 'Billet pour moi' : `Billet : ${t.recipient_name || 'Ami'}`}
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-mono">
-                      QR: {t.qr_code}
-                    </span>
-                  </div>
+          {/* Action cadeau directe WhatsApp / Copie */}
+          {isGift && (
+            <div className="w-full p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 text-left space-y-3">
+              <span className="text-xs font-bold text-[#6600FF] dark:text-purple-300 block">
+                Envoyer le pass d'accès à {friendName || 'votre ami'}
+              </span>
 
-                  {!t.is_for_me && t.claim_token && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const link = `${origin}/#claim=${t.claim_token}`;
-                        navigator.clipboard.writeText(link);
-                        haptic.selection();
-                        alert('Lien de réclamation copié !');
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#6600FF]/10 text-[#6600FF] font-semibold text-[11px] flex items-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Share2 className="w-3 h-3" />
-                      Copier le lien
-                    </button>
-                  )}
-                </div>
-              ))}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const eventTitle = event.title;
+                    const text = `Salut ${friendName || 'l\'ami'} ! Je t'ai offert un billet pour ${eventTitle} sur Gbaïgbancê 🎟️. Voici ton pass : ${claimLink}`;
+                    const waUrl = `https://wa.me/${friendPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
+                    window.open(waUrl, '_blank');
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Sur WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(claimLink);
+                    setCopiedLink(true);
+                    haptic.selection();
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-white text-[#6600FF] border border-purple-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Lien copié !' : 'Copier lien'}</span>
+                </button>
+              </div>
             </div>
           )}
 
           <button
             onClick={() => {
-              const firstQr = createdTicketsSummary[0]?.qr_code || 'GBC-OK';
+              const firstQr = firstTicket?.qr_code || 'GBC-OK';
               onSuccess(firstQr);
-              onClose();
-              setSuccess(false);
+              handleCloseModal();
             }}
             className="w-full py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-transform shadow-lg shadow-purple-900/20"
           >
-            Accéder à mes billets
+            {isGift ? 'Voir dans mes billets offerts' : 'Accéder à mes billets'}
           </button>
         </div>
       </Modal>
@@ -266,16 +376,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Réserver des billets">
+    <Modal open={open} onClose={handleCloseModal} title="Réserver des billets">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-        {/* En-tête de l'événement */}
+        {/* En-tête de l'événement compact */}
         <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 rounded-2xl">
-          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
+          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
             <img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" />
           </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-[#1A1A2E] text-sm line-clamp-1">{event.title}</h3>
-            <p className="text-xs text-gray-500">{event.location_name} · {event.city}</p>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-bold text-[#1A1A2E] text-sm truncate">{event.title}</h4>
+            <p className="text-xs text-gray-500 truncate">{event.city} · {event.location_name}</p>
           </div>
         </div>
 
@@ -309,50 +419,166 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         ) : soldOut ? (
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#171726]">Complet</p>
-            <p className="text-xs text-gray-400 mt-1">Tous les billets disponibles ont été vendus.</p>
+            <p className="text-sm font-semibold text-red-500">Événement complet</p>
           </div>
         ) : (
           <>
-            {/* Choix de l'option de billet */}
+            {/* 1. Choix du pass */}
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">1. Catégorie de pass</p>
-              {options.map((opt) => {
-                const optAvailable = opt.quantity_total - opt.quantity_sold;
-                const isSelected = selectedOption?.id === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => {
-                      haptic.selection();
-                      setSelectedOption(opt);
-                      handleQuantityChange(1);
-                    }}
-                    disabled={optAvailable <= 0}
-                    className={`w-full p-3.5 rounded-2xl border-2 transition-all text-left flex items-center justify-between ${
-                      isSelected
-                        ? 'border-[#6600FF] bg-[#6600FF]/10'
-                        : 'border-gray-200 hover:border-[#6600FF]/30'
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-sm text-[#1A1A2E]">{opt.label || opt.ticket_type.toUpperCase()}</p>
-                      <p className="text-[11px] text-gray-500">{optAvailable > 0 ? `${optAvailable} disponibles` : 'Complet'}</p>
-                    </div>
-                    <span className="font-extrabold text-[#6600FF] text-sm">
-                      {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} F`}
-                    </span>
-                  </button>
-                );
-              })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {options.map((opt) => {
+                  const optAvailable = opt.quantity_total - opt.quantity_sold;
+                  const isSelected = selectedOption?.id === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        haptic.selection();
+                        setSelectedOption(opt);
+                        handleQuantityChange(1);
+                      }}
+                      disabled={optAvailable <= 0}
+                      className={`p-3 rounded-2xl border-2 transition-all text-left flex items-center justify-between ${
+                        isSelected
+                          ? 'border-[#6600FF] bg-[#6600FF]/10'
+                          : 'border-gray-200 hover:border-[#6600FF]/30'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-bold text-xs text-[#1A1A2E]">{opt.label || opt.ticket_type.toUpperCase()}</p>
+                        <p className="text-[10px] text-gray-500">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
+                      </div>
+                      <span className="font-extrabold text-[#6600FF] text-xs">
+                        {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} F`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Sélecteur de Quantité */}
+            {/* 2. Destination du billet : Pour moi OU Offrir à un ami */}
             {selectedOption && available > 0 && (
-              <div className="p-4 rounded-2xl bg-gray-50 flex items-center justify-between">
+              <div className="space-y-2.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">2. Titulaire du billet</p>
+
+                {/* Segmented Control Apple Style */}
+                <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePurchaseTarget('self')}
+                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      purchaseTarget === 'self'
+                        ? 'bg-white text-[#17131D] shadow-xs'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Ticket className="w-3.5 h-3.5" /> Pour moi
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePurchaseTarget('friend')}
+                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      purchaseTarget === 'friend'
+                        ? 'bg-white text-[#6600FF] shadow-xs'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Gift className="w-3.5 h-3.5 text-[#6600FF]" /> Offrir à un ami
+                  </button>
+                </div>
+
+                {/* Formulaire si Offrir à un ami */}
+                {purchaseTarget === 'friend' && (
+                  <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3 animate-fade-in">
+                    {/* Sélecteur rapide d'amis suivis si disponible */}
+                    {followingFriends.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-gray-600 block">
+                          Choisir parmi vos amis suivis :
+                        </span>
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                          {followingFriends.map((f) => {
+                            const isSelected = selectedFriendId === f.id;
+                            return (
+                              <button
+                                key={f.id}
+                                type="button"
+                                onClick={() => handleSelectFollowedFriend(f)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                                  isSelected
+                                    ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-xs'
+                                    : 'bg-white text-gray-700 border-purple-200 hover:border-[#6600FF]/40'
+                                }`}
+                              >
+                                <UserAvatar id={f.id} name={f.name} src={f.avatar_url} size="xs" ring={false} />
+                                <span>{f.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label htmlFor="friend_name_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
+                        Nom & prénom de votre ami(e)
+                      </label>
+                      <input
+                        id="friend_name_input"
+                        type="text"
+                        inputMode="text"
+                        autoComplete="name"
+                        value={friendName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFriendName(val);
+                          handleUpdateRecipient(0, 'recipient_name', val);
+                        }}
+                        placeholder="Ex: Koffi Mensah"
+                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="friend_phone_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
+                        Numéro de téléphone de l'ami (WhatsApp / Appel)
+                      </label>
+                      <input
+                        id="friend_phone_input"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={friendPhone}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFriendPhone(val);
+                          handleUpdateRecipient(0, 'recipient_phone', val);
+                        }}
+                        placeholder="Ex: 90 12 34 56"
+                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
+                      />
+                    </div>
+
+                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                      💡 Le pass sera généré pour votre ami(e). Vous retrouverez la confirmation d'achat dans votre onglet « Billets offerts ».
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. Sélecteur de Quantité */}
+            {selectedOption && available > 1 && (
+              <div className="p-3 rounded-2xl bg-gray-50 flex items-center justify-between">
                 <div>
-                  <span className="text-sm font-bold text-[#1A1A2E] block">Quantité de billets</span>
-                  <span className="text-xs text-gray-500">Achetez pour vous et/ou vos amis</span>
+                  <span className="text-xs font-bold text-[#1A1A2E] block">Quantité</span>
+                  <span className="text-[10px] text-gray-500">
+                    {purchaseTarget === 'friend' ? 'Billets pour des amis' : 'Places pour vous ou accompagnateurs'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -363,11 +589,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-bold text-sm w-4 text-center">{quantity}</span>
+                  <span className="font-bold text-xs w-4 text-center">{quantity}</span>
                   <button
                     type="button"
                     onClick={() => handleQuantityChange(Math.min(available, quantity + 1))}
-                    disabled={quantity >= available || quantity >= 20}
+                    disabled={quantity >= available || quantity >= 10}
                     className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -376,45 +602,22 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               </div>
             )}
 
-            {/* Configuration des bénéficiaires (Moi / Un ami) */}
+            {/* Bénéficiaires supplémentaires si quantité > 1 */}
             {selectedOption && quantity > 1 && (
-              <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> 2. Titulaires des billets (1 QR unique par place)
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" /> Noms des titulaires ({quantity} places)
                 </p>
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
-                    <div key={i} className="p-3 rounded-2xl border border-gray-200 bg-white space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-gray-700">Place #{i + 1}</span>
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateRecipient(i, 'is_for_me', true)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                              r.is_for_me ? 'bg-[#6600FF] text-white' : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            Pour moi
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateRecipient(i, 'is_for_me', false)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                              !r.is_for_me ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            Pour un ami
-                          </button>
-                        </div>
-                      </div>
-
+                    <div key={i} className="p-2.5 rounded-xl border border-gray-200 bg-white flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 w-12">#{i + 1}</span>
                       <input
                         type="text"
                         value={r.recipient_name}
                         onChange={(e) => handleUpdateRecipient(i, 'recipient_name', e.target.value)}
-                        placeholder="Nom ou prénom du bénéficiaire"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#6600FF]"
+                        placeholder={`Bénéficiaire place #${i + 1}`}
+                        className="flex-1 min-h-[44px] px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF]"
                       />
                     </div>
                   ))}
@@ -422,24 +625,23 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               </div>
             )}
 
-            {/* Paiement Mobile Money */}
+            {/* 4. Paiement Mobile Money (T-Money et Flooz uniquement, MTN MoMo supprimé) */}
             {selectedOption && available > 0 && (
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5" /> 3. Règlement Mobile Money
                 </p>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'tmoney', name: 'T-Money' },
                     { id: 'flooz', name: 'Flooz' },
-                    { id: 'mtn', name: 'MTN MoMo' },
                   ].map((op) => (
                     <button
                       key={op.id}
                       type="button"
                       onClick={() => setPaymentProvider(op.id as PaymentProvider)}
-                      className={`py-2 px-2 rounded-xl border text-xs text-center font-bold transition-all ${
+                      className={`min-h-[44px] py-2 px-3 rounded-xl border text-xs text-center font-bold transition-all ${
                         paymentProvider === op.id
                           ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF]'
                           : 'border-gray-200 text-gray-600 hover:border-gray-300'
@@ -451,17 +653,20 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-[#6600FF]" /> Numéro de débit
+                  <label htmlFor="buyer_phone_input" className="text-[11px] font-semibold text-gray-600 flex items-center gap-1 cursor-pointer">
+                    <Phone className="w-3 h-3 text-[#6600FF]" /> Numéro de débit (Acheteur)
                   </label>
                   <input
+                    id="buyer_phone_input"
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     value={paymentPhone}
                     onChange={(e) => setPaymentPhone(e.target.value)}
-                    placeholder="Ex: 90123456"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#6600FF]"
+                    placeholder="Ex: 90 12 34 56"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
                   />
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-gray-400 block">
                     L'acheteur reste la référence financière pour tout remboursement éventuel.
                   </span>
                 </div>
@@ -469,21 +674,30 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             )}
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span className="font-semibold">{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-[11px] font-bold text-rose-600 underline hover:text-rose-800"
+                >
+                  Fermer
+                </button>
               </div>
             )}
 
             {/* Total et Bouton Final */}
             {selectedOption && available > 0 && (
-              <div className="border-t pt-4 space-y-3">
+              <div className="border-t pt-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 block">Total à payer</span>
-                    <span className="text-xs text-gray-400">15 min de réservation de stock</span>
+                    <span className="text-[10px] text-gray-400">15 min de réservation de stock</span>
                   </div>
-                  <span className="text-2xl font-black text-[#1A1A2E]">
+                  <span className="text-xl font-black text-[#1A1A2E]">
                     {totalPrice.toLocaleString('fr-FR')} F CFA
                   </span>
                 </div>
@@ -492,17 +706,19 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   type="button"
                   onClick={handleBook}
                   disabled={booking}
-                  className="w-full py-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all shadow-lg shadow-purple-900/20"
+                  className="w-full min-h-[48px] py-3.5 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all shadow-md shadow-purple-900/20"
                 >
                   {booking ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Génération des QR codes sécurisés...
+                      Génération du billet...
                     </>
                   ) : (
                     <>
-                      <Ticket className="w-4 h-4" />
-                      Confirmer et Payer ({quantity} billet{quantity > 1 ? 's' : ''})
+                      {purchaseTarget === 'friend' ? <Gift className="w-4 h-4" /> : <Ticket className="w-4 h-4" />}
+                      {purchaseTarget === 'friend'
+                        ? `Offrir à ${friendName || 'mon ami'} (${totalPrice.toLocaleString('fr-FR')} F)`
+                        : `Payer et valider (${quantity} billet${quantity > 1 ? 's' : ''})`}
                     </>
                   )}
                 </button>

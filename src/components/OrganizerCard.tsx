@@ -46,6 +46,7 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <UserAvatar
+              id={organization.id}
               src={organization.logo_url}
               name={organization.name}
               role="organizer"

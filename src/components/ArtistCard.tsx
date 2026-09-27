@@ -4,6 +4,7 @@ import { formatNumber } from '@/utils/format';
 import { useApp } from '@/hooks/useApp';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { getDefaultArtistAvatar, getDefaultArtistCover } from '@/utils/defaultImages';
 
 interface ArtistCardProps {
   artist: Artist;
@@ -45,7 +46,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
       >
         <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all">
           <SmartImage
-            src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200'}
+            src={artist.photo_url || getDefaultArtistAvatar(artist.id || artist.name)}
             alt={artist.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
@@ -69,7 +70,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
     >
       <div className="relative h-36 overflow-hidden">
         <SmartImage
-          src={artist.cover_url || artist.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=400'}
+          src={artist.cover_url || artist.photo_url || getDefaultArtistCover(artist.id || artist.name)}
           alt={artist.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -87,7 +88,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
 
         <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2.5">
           <SmartImage
-            src={artist.photo_url || 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100'}
+            src={artist.photo_url || getDefaultArtistAvatar(artist.id || artist.name)}
             alt={artist.name}
             className="w-11 h-11 rounded-2xl object-cover ring-2 ring-white/60 shrink-0 shadow-xs"
           />

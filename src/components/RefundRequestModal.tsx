@@ -116,17 +116,16 @@ export const RefundRequestModal: React.FC<RefundRequestModalProps> = ({
               <label className="font-semibold text-white/80 block">
                 Opérateur Mobile Money de réception
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'tmoney', name: 'T-Money (Togo)' },
                   { id: 'flooz', name: 'Flooz (Moov)' },
-                  { id: 'mtn', name: 'MTN MoMo (Bénin)' },
                 ].map((op) => (
                   <button
                     key={op.id}
                     type="button"
                     onClick={() => setProvider(op.id as PaymentProvider)}
-                    className={`py-2 px-2.5 rounded-xl border text-center transition-all ${
+                    className={`min-h-[44px] py-2 px-2.5 rounded-xl border text-center transition-all ${
                       provider === op.id
                         ? 'bg-purple-600/30 border-purple-500 text-white font-bold'
                         : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'

@@ -11,6 +11,7 @@ import {
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -113,7 +114,7 @@ export function FeaturedCarousel({
     }),
   };
 
-  const coverUrl = currentEvent.cover_url || currentEvent.images?.[0];
+  const coverUrl = currentEvent.cover_url || currentEvent.images?.[0] || getDefaultEventCover(currentEvent.id, currentEvent.category, currentEvent.title);
 
   return (
     <div

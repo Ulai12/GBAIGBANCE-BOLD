@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+// Utilisation de useDragControls pour restreindre le glisser au seul curseur (grab handle)
+// afin que les champs de saisie (inputs) ne soient jamais interceptés et puissent ouvrir le clavier virtuel
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { haptic } from '@/hooks/useHaptics';
 
 interface ModalProps {
@@ -11,6 +13,21 @@ interface ModalProps {
   title?: string;
   /** Allow overriding max width (e.g. max-w-lg) */
   maxWidthClass?: string;
+}
+
+// Gestionnaire global de verrouillage du défilement pour garantir que body ne reste jamais bloqué en overflow: hidden
+let activeModalCount = 0;
+
+function acquireScrollLock() {
+  activeModalCount++;
+  document.body.style.overflow = 'hidden';
+}
+
+function releaseScrollLock() {
+  activeModalCount = Math.max(0, activeModalCount - 1);
+  if (activeModalCount === 0) {
+    document.body.style.overflow = '';
+  }
 }
 
 /**
@@ -29,6 +46,8 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
   const triggerElementRef = useRef<HTMLElement | null>(null);
   const uniqueId = useId();
   const titleId = `modal-title-${uniqueId}`;
+  // Contrôle explicite du geste de glisser pour éviter le blocage du focus sur les inputs
+  const dragControls = useDragControls();
 
   useEffect(() => {
     if (!open) return;
@@ -38,11 +57,12 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
       triggerElementRef.current = document.activeElement;
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    acquireScrollLock();
 
-    // Initial focus on close button or modal container
+    // Focus initial : ne pas voler le focus si un champ de saisie est déjà ciblé par l'utilisateur
     const focusTimer = setTimeout(() => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
       if (closeButtonRef.current) {
         closeButtonRef.current.focus();
       } else if (modalRef.current) {
@@ -99,7 +119,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
 
     return () => {
       clearTimeout(focusTimer);
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       document.removeEventListener('keydown', handleKeyDown);
 
       // Focus restoration
@@ -139,6 +159,8 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
             ref={modalRef}
             tabIndex={-1}
             drag="y"
+            dragListener={false}
+            dragControls={dragControls}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0.05, bottom: 0.6 }}
             onDragEnd={(_e, info) => {
@@ -157,8 +179,11 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
             }}
             className={`relative w-full ${maxWidthClass} rounded-t-[32px] sm:rounded-3xl p-6 pt-3 sm:pt-6 bg-white/95 dark:bg-[#151221]/95 backdrop-blur-2xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none z-10`}
           >
-            {/* iOS Action Sheet Pull-to-Dismiss Grabber Bar */}
-            <div className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing">
+            {/* iOS Action Sheet Pull-to-Dismiss Grabber Bar (seul déclencheur du geste drag pour préserver le clavier) */}
+            <div
+              className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
               <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
             </div>
 

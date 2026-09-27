@@ -75,7 +75,8 @@ function AppContent() {
   const [liveTicketCount, setLiveTicketCount] = useState<number>(() => {
     if (!user?.id) return 0;
     const cached = getSyncCachedUserTickets(user.id);
-    return cached.filter((t) => t.status === 'active').length;
+    // Les billets comptabilisés comme valides/actifs sont ceux ayant le statut 'valid' ou 'pending'
+    return cached.filter((t) => t.status === 'valid' || t.status === 'pending').length;
   });
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -91,7 +92,7 @@ function AppContent() {
         .from('tickets')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('status', 'active')
+        .in('status', ['valid', 'pending'])
         .then(({ count }) => {
           if (typeof count === 'number') {
             setLiveTicketCount(count);

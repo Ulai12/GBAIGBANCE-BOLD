@@ -36,6 +36,7 @@ import { shareEventNative } from '@/utils/share';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchEventAttendees, type AttendeeProfile } from '@/services/attendeesService';
 import { toggleUserFollow } from '@/features/users/follows';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 
 // Subcomponents
 import { ProgressiveBlurHero } from '@/components/event-detail/ProgressiveBlurHero';
@@ -372,7 +373,7 @@ export function EventDetailScreen({
   );
   const coverImage =
     galleryImages[0] ||
-    'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800';
+    getDefaultEventCover(displayEvent.id, displayEvent.category);
 
   const openLightbox = (target: string | number) => {
     let index = 0;

@@ -35,8 +35,8 @@ export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | '
 
 export type TicketType = 'free' | 'standard' | 'vip' | 'vvip';
 
-// Statuts normalisés stricts du ticket
-export type TicketStatus = 'pending' | 'valid' | 'used' | 'frozen' | 'refunded' | 'expired';
+// Statuts normalisés stricts du ticket (inclut 'cancelled' pour les annulations temps réel)
+export type TicketStatus = 'pending' | 'valid' | 'used' | 'frozen' | 'refunded' | 'expired' | 'cancelled';
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 
@@ -247,6 +247,9 @@ export interface Ticket {
   recipient_name?: string | null;
   recipient_phone?: string | null;
   recipient_email?: string | null;
+  buyer_name?: string | null;
+  is_for_me?: boolean;
+  claim_token?: string | null;
   is_claimed?: boolean;
   claimed_at?: string | null;
   claim_token_expires_at?: string | null;

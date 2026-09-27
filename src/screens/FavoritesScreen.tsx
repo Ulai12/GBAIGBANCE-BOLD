@@ -16,6 +16,7 @@ import { getCachedHomeData } from '@/services/cache';
 import { isEventTerminated, subscribeToGlobalEventsLive } from '@/services/events';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
+import { getDefaultArtistAvatar } from '@/utils/defaultImages';
 import type { Event, Artist, Organization, Profile } from '@/types';
 
 interface FavoritesScreenProps {
@@ -755,7 +756,7 @@ export function FavoritesScreen({
                     className="flex items-center gap-3 min-w-0 flex-1 text-left"
                   >
                     <img
-                      src={art.photo_url || 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=150'}
+                      src={art.photo_url || getDefaultArtistAvatar(art.id || art.name)}
                       alt={art.name}
                       className="w-14 h-14 rounded-2xl object-cover ring-2 ring-[#6600FF]/20 shrink-0"
                     />

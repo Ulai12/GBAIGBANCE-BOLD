@@ -60,6 +60,13 @@ export const haptic = {
   success: () => triggerHaptic('success'),
   warning: () => triggerHaptic('warning'),
   error: () => triggerHaptic('error'),
+  // iOS / Capacitor Taptic Engine standard aliases
+  impactLight: () => triggerHaptic('light'),
+  impactMedium: () => triggerHaptic('medium'),
+  impactHeavy: () => triggerHaptic('heavy'),
+  notificationSuccess: () => triggerHaptic('success'),
+  notificationWarning: () => triggerHaptic('warning'),
+  notificationError: () => triggerHaptic('error'),
 };
 
 /**

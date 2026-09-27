@@ -4,6 +4,7 @@
 
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { isRealArtist, isRealEvent, isEventTerminated } from '@/features/events/status';
+import { getDefaultArtistAvatar } from '@/utils/defaultImages';
 import type { Artist, Event } from '@/types';
 
 export async function fetchFeaturedArtists(): Promise<Artist[]> {
@@ -50,7 +51,7 @@ export async function fetchFeaturedArtists(): Promise<Artist[]> {
             user_id: p.id,
             name: p.name,
             bio: p.bio || null,
-            photo_url: p.avatar_url || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
+            photo_url: p.avatar_url || getDefaultArtistAvatar(p.name),
             cover_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200',
             genres: (p.preferred_genres && p.preferred_genres.length > 0) ? p.preferred_genres : ['Afrobeats'],
             city: p.city || 'Lomé',
@@ -83,7 +84,7 @@ export async function fetchArtistById(artistId: string): Promise<Artist | null> 
         user_id: profileData.id,
         name: profileData.name,
         bio: profileData.bio || null,
-        photo_url: profileData.avatar_url || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
+        photo_url: profileData.avatar_url || getDefaultArtistAvatar(profileData.name),
         cover_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200',
         genres: (profileData.preferred_genres && profileData.preferred_genres.length > 0) ? profileData.preferred_genres : ['Afrobeats'],
         city: profileData.city || 'Lomé',
@@ -185,13 +186,17 @@ export async function searchArtists(query: string): Promise<Artist[]> {
 export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
   const { data: existing } = await supabase
     .from('artist_follows')
-    .select('id')
+    .select('artist_id, user_id')
     .eq('artist_id', artistId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('artist_follows').delete().eq('id', existing.id);
+    await supabase
+      .from('artist_follows')
+      .delete()
+      .eq('artist_id', artistId)
+      .eq('user_id', userId);
     return false;
   } else {
     await supabase.from('artist_follows').insert({ artist_id: artistId, user_id: userId });
@@ -202,7 +207,7 @@ export async function toggleArtistFollow(artistId: string, userId: string): Prom
 export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {
   const { data } = await supabase
     .from('artist_follows')
-    .select('id')
+    .select('artist_id')
     .eq('artist_id', artistId)
     .eq('user_id', userId)
     .maybeSingle();

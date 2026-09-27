@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
+import { getDefaultEventCover } from '@/utils/defaultImages';
 import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
@@ -93,7 +94,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
           <SmartImage
-            src={event.cover_url || event.images?.[0]}
+            src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
             alt={event.title}
             className="h-full w-full object-cover"
           />
