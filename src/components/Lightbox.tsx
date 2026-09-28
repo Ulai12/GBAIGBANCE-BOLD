@@ -661,7 +661,7 @@ export function Lightbox({
               <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] space-y-1">
                 <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Visuel officiel certifié Gbaïgbancê</span>
+                  <span>Visuel officiel Gbaïgbancê</span>
                 </div>
                 <p className="text-xs font-bold text-white truncate">{eventTitle}</p>
                 {(eventDate || eventLocation) && (

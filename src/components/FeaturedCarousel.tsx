@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { Event } from '@/types';
+import { isEventTerminated } from '@/features/events/status';
 import { SmartImage } from '@/components/SmartImage';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 import { getDefaultEventCover } from '@/utils/defaultImages';
@@ -47,8 +48,23 @@ export function FeaturedCarousel({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
-  const featuredList = useMemo(() => (events.length > 0 ? events.slice(0, 6) : []), [events]);
+  const featuredList = useMemo(
+    () =>
+      Array.isArray(events)
+        ? events.filter((e): e is Event => Boolean(e && e.id && !isEventTerminated(e))).slice(0, 6)
+        : [],
+    [events]
+  );
   const total = featuredList.length;
+
+  // Clamper l'index de manière sécurisée si la liste change de longueur
+  const safeIndex = total > 0 && currentIndex >= 0 && currentIndex < total ? currentIndex : 0;
+
+  useEffect(() => {
+    if (currentIndex >= total && total > 0) {
+      setCurrentIndex(0);
+    }
+  }, [currentIndex, total]);
 
   const nextSlide = useCallback(() => {
     if (total <= 1) return;
@@ -89,12 +105,15 @@ export function FeaturedCarousel({
 
   if (featuredList.length === 0) return null;
 
-  const currentEvent = featuredList[currentIndex];
+  const currentEvent = featuredList[safeIndex];
+  if (!currentEvent) return null;
 
   const formattedPrice =
     currentEvent.price_min === 0
       ? 'Gratuit'
-      : `${currentEvent.price_min.toLocaleString('fr-FR')} FCFA`;
+      : currentEvent.price_min != null
+        ? `${Number(currentEvent.price_min).toLocaleString('fr-FR')} FCFA`
+        : 'Gratuit';
 
   const variants = {
     enter: (dir: number) => ({
@@ -182,7 +201,7 @@ export function FeaturedCarousel({
                   À LA UNE
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/40 text-white text-[11px] font-bold backdrop-blur-md border border-white/20">
-                  {currentEvent.category.toUpperCase()}
+                  {(currentEvent.category || 'ÉVÉNEMENT').toUpperCase()}
                 </span>
               </div>
 
@@ -269,14 +288,14 @@ export function FeaturedCarousel({
       {total > 1 && (
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md border border-white/15 z-20 pointer-events-auto shadow-sm">
           {featuredList.map((evt, idx) => {
-            const isActive = idx === currentIndex;
+            const isActive = idx === safeIndex;
             return (
               <button
                 key={evt.id}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDirection(idx > currentIndex ? 1 : -1);
+                  setDirection(idx > safeIndex ? 1 : -1);
                   setCurrentIndex(idx);
                 }}
                 className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${

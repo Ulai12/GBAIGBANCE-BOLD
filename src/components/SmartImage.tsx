@@ -38,7 +38,15 @@ export function SmartImage({
   loading = 'lazy',
   fetchPriority = 'auto',
 }: SmartImageProps) {
-  const effectiveSrc = src || fallbackSrc;
+  const resolvedFallback = useMemo(() => {
+    if (fallbackSrc && fallbackSrc !== DEFAULT_FALLBACK) return fallbackSrc;
+    if (fallbackText || alt) {
+      return getDefaultEventCover(undefined, undefined, fallbackText || alt);
+    }
+    return DEFAULT_FALLBACK;
+  }, [fallbackSrc, fallbackText, alt]);
+
+  const effectiveSrc = (src && src.trim() !== '') ? src : resolvedFallback;
   const [imgSrc, setImgSrc] = useState<string>(effectiveSrc);
   const [errored, setErrored] = useState(false);
   const [loaded, setLoaded] = useState(() => (src ? LOADED_IMAGE_URLS.has(src) : false));
@@ -48,7 +56,7 @@ export function SmartImage({
   }, [effectiveSrc, widths, sizes]);
 
   useEffect(() => {
-    const nextSrc = src || fallbackSrc;
+    const nextSrc = (src && src.trim() !== '') ? src : resolvedFallback;
     setImgSrc(nextSrc);
     setErrored(false);
     if (src && LOADED_IMAGE_URLS.has(src)) {
@@ -56,11 +64,11 @@ export function SmartImage({
     } else {
       setLoaded(false);
     }
-  }, [src, fallbackSrc]);
+  }, [src, resolvedFallback]);
 
   const handleError = () => {
-    if (imgSrc !== fallbackSrc) {
-      setImgSrc(fallbackSrc);
+    if (imgSrc !== resolvedFallback) {
+      setImgSrc(resolvedFallback);
     } else {
       setErrored(true);
     }

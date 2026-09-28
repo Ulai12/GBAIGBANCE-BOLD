@@ -59,7 +59,8 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
           src={coverImage}
           alt={event.title}
           decoding="async"
-          fetchPriority="high"
+          // @ts-expect-error fetchpriority lowercase attribute is valid HTML and accepted in React 18
+          fetchpriority="high"
           onLoad={() => setImageLoaded(true)}
           style={{
             transform: 'translateY(calc(var(--scroll-y, 0px) * 0.22)) scale(calc(1 + var(--scroll-progress, 0) * 0.04))',

@@ -1,4 +1,4 @@
-import { BadgeCheck, Music2, Share2, UserCheck, UserPlus } from 'lucide-react';
+import { Music2, Share2, UserCheck, UserPlus } from 'lucide-react';
 import type { Artist } from '@/types';
 import { formatNumber } from '@/utils/format';
 import { useApp } from '@/hooks/useApp';
@@ -50,11 +50,6 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
             alt={artist.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
-          {artist.is_verified && (
-            <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5 shadow-xs">
-              <BadgeCheck className="w-3.5 h-3.5 text-white" />
-            </div>
-          )}
         </div>
         <span className="text-xs font-bold text-[#17131D] dark:text-white text-center line-clamp-1 w-full">
           {artist.name}
@@ -70,7 +65,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
     >
       <div className="relative h-36 overflow-hidden">
         <SmartImage
-          src={artist.cover_url || artist.photo_url || getDefaultArtistCover(artist.id || artist.name)}
+          src={artist.cover_url || artist.photo_url || getDefaultArtistCover(artist.id || artist.name, artist.name)}
           alt={artist.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -95,7 +90,6 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
               <h3 className="text-white font-black text-sm truncate">{artist.name}</h3>
-              {artist.is_verified && <BadgeCheck className="w-4 h-4 text-[#A885FF] shrink-0" />}
             </div>
             <p className="text-white/80 text-[11px] font-medium">
               {formatNumber(artist.followers_count, language)} followers

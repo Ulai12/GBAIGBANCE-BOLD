@@ -91,7 +91,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
       {/* Cover Header */}
       <div className="relative h-64 overflow-hidden">
         <img
-          src={fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id)}
+          src={fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id, fullArtist.name)}
           alt={fullArtist.name}
           className="w-full h-full object-cover"
         />
@@ -127,7 +127,6 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
             role="artist"
             size="2xl"
             shape="circle"
-            isVerified={fullArtist.is_verified}
             className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-white dark:ring-[#14121E] shadow-xl"
           />
           <div className="flex-1 pb-1">

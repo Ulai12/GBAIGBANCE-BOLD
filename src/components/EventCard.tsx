@@ -55,7 +55,9 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
   const formattedPrice =
     event.price_min === 0
       ? 'Gratuit'
-      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
+      : event.price_min != null
+        ? `${Number(event.price_min).toLocaleString('fr-FR')} FCFA`
+        : 'Gratuit';
 
   const terminated = isEventTerminated(event);
   const isCancelled = event.status === 'cancelled';
@@ -109,8 +111,10 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
           <SmartImage
-            src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category)}
+            src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
             alt={event.title}
+            fallbackSrc={getDefaultEventCover(event.id, event.category, event.title)}
+            fallbackText={event.title}
             sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 280px"
             widths={[280, 380, 560, 720]}
             className="h-full w-full object-cover"

@@ -7,7 +7,6 @@ import {
   Share2,
   Heart,
   Ticket,
-  BadgeCheck,
   Film,
   AlertCircle,
   Flag,
@@ -374,7 +373,7 @@ export function EventDetailScreen({
   );
   const coverImage =
     galleryImages[0] ||
-    getDefaultEventCover(displayEvent.id, displayEvent.category);
+    getDefaultEventCover(displayEvent.id, displayEvent.category, displayEvent.title);
 
   const openLightbox = (target: string | number) => {
     let index = 0;
@@ -420,7 +419,7 @@ export function EventDetailScreen({
   const isDateValid = !isNaN(eventDateObj.getTime());
 
   let dateMainText = 'Date à confirmer';
-  let dateSubText = 'Date certifiée';
+  let dateSubText = 'Date officielle';
   if (isDateValid) {
     const weekday = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
     const day = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric' });
@@ -882,11 +881,6 @@ export function EventDetailScreen({
                         alt={artist.name}
                         className="w-16 h-16 rounded-full object-cover ring-2 ring-[#6600FF]/30 group-hover:ring-[#6600FF] transition-all"
                       />
-                      {artist.is_verified && (
-                        <div className="absolute bottom-0 right-0 bg-[#6600FF] rounded-full p-0.5 shadow-sm">
-                          <BadgeCheck className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )}
                     </div>
                     <span className="text-xs font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full">
                       {artist.name}
@@ -903,7 +897,7 @@ export function EventDetailScreen({
           {fullEvent?.organizer && (
             <div className="pt-2 space-y-2.5">
               <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
-                Organisateur certifié
+                Organisateur
               </h2>
               <div className="p-4 rounded-[22px] glass-ios flex items-center gap-3">
                 <UserAvatar
@@ -912,16 +906,12 @@ export function EventDetailScreen({
                   role="organizer"
                   size="md"
                   shape="squircle"
-                  isVerified={fullEvent.organizer.verification_status === 'verified'}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <h3 className="font-extrabold text-sm text-[#1A1A2E] dark:text-white truncate">
                       {fullEvent.organizer.name}
                     </h3>
-                    {fullEvent.organizer.verification_status === 'verified' && (
-                      <BadgeCheck className="w-4 h-4 text-[#6600FF] shrink-0" />
-                    )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {fullEvent.organizer.city}

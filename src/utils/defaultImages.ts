@@ -66,11 +66,41 @@ export function createInitialsAvatarSvg(name?: string | null, seed?: string | nu
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+function escapeXml(unsafe?: string | null): string {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 /**
- * Génère une couverture d'événement noire avec le texte "GBAIGBAINCE" en extra ultra bold
+ * Génère une couverture noire élégante avec texte en extra ultra bold (style Apple).
+ * Affiche le nom complet fourni (titre d'événement, nom d'artiste ou d'organisation)
+ * ou "GBAIGBAINCE" par défaut.
  */
-export function createDefaultEventCoverSvg(): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675">
+export function createDefaultEventCoverSvg(title?: string | null, subtitle?: string | null): string {
+  const rawTitle = (title && title.trim()) ? title.trim() : 'GBAIGBAINCE';
+  const cleanTitle = escapeXml(rawTitle.toUpperCase());
+  const cleanSub = escapeXml((subtitle && subtitle.trim()) ? subtitle.trim() : 'EXPÉRIENCES & ÉVÉNEMENTS AFRO');
+
+  // Ajustement dynamique de la taille de police pour que le nom complet s'affiche parfaitement en très grand
+  let fontSize = 110;
+  let letterSpacing = 8;
+  if (rawTitle.length > 24) {
+    fontSize = 54;
+    letterSpacing = 2;
+  } else if (rawTitle.length > 16) {
+    fontSize = 70;
+    letterSpacing = 4;
+  } else if (rawTitle.length > 10) {
+    fontSize = 88;
+    letterSpacing = 6;
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" preserveAspectRatio="xMidYMid slice">
     <defs>
       <radialGradient id="darkCenter" cx="50%" cy="50%" r="65%">
         <stop offset="0%" stop-color="#141418" stop-opacity="0.9"/>
@@ -79,33 +109,33 @@ export function createDefaultEventCoverSvg(): string {
       </radialGradient>
       <linearGradient id="textGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stop-color="#FFFFFF"/>
-        <stop offset="100%" stop-color="#ECECEE"/>
+        <stop offset="100%" stop-color="#EDEDED"/>
       </linearGradient>
       <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="10" stdDeviation="20" flood-color="#000000" flood-opacity="0.9"/>
+        <feDropShadow dx="0" dy="12" stdDeviation="22" flood-color="#000000" flood-opacity="0.95"/>
       </filter>
     </defs>
 
-    <!-- Fond noir profond -->
+    <!-- Fond noir profond avec texture Apple -->
     <rect width="1200" height="675" fill="#000000"/>
     <rect width="1200" height="675" fill="url(#darkCenter)"/>
 
-    <!-- Lignes de texture minimalistes style Apple -->
-    <line x1="160" y1="210" x2="1040" y2="210" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
-    <line x1="160" y1="465" x2="1040" y2="465" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
+    <!-- Lignes de texture minimalistes -->
+    <line x1="120" y1="210" x2="1080" y2="210" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
+    <line x1="120" y1="465" x2="1080" y2="465" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
 
-    <!-- Badge supérieur discret -->
+    <!-- Badge supérieur discret (sans badge de certification) -->
     <g transform="translate(600, 160)">
-      <rect x="-115" y="-16" width="230" height="32" rx="16" fill="#18181B" stroke="#27272A" stroke-width="1"/>
-      <circle cx="-85" cy="0" r="4.5" fill="#6600FF"/>
-      <text x="10" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="12" font-weight="700" fill="#A1A1AA" letter-spacing="3" text-anchor="middle">OFFICIAL PASS</text>
+      <rect x="-120" y="-16" width="240" height="32" rx="16" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+      <circle cx="-90" cy="0" r="4.5" fill="#6600FF"/>
+      <text x="12" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="12" font-weight="700" fill="#A1A1AA" letter-spacing="3" text-anchor="middle">GBAÏGBANCÊ</text>
     </g>
 
-    <!-- Texte Central Extra Ultra Bold GBAIGBAINCE -->
-    <text x="50%" y="345" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Impact', 'Arial Black', sans-serif" font-size="112" font-weight="900" fill="url(#textGrad)" text-anchor="middle" dominant-baseline="middle" letter-spacing="8" filter="url(#glow)">GBAIGBAINCE</text>
+    <!-- Texte Central Extra Ultra Bold avec nom complet -->
+    <text x="50%" y="345" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Impact', 'Arial Black', sans-serif" font-size="${fontSize}" font-weight="900" fill="url(#textGrad)" text-anchor="middle" dominant-baseline="middle" letter-spacing="${letterSpacing}" filter="url(#glow)">${cleanTitle}</text>
 
     <!-- Sous-titre officiel élégant -->
-    <text x="50%" y="420" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="16" font-weight="700" fill="#71717A" text-anchor="middle" dominant-baseline="middle" letter-spacing="6">EXPÉRIENCES &amp; ÉVÉNEMENTS AFRO</text>
+    <text x="50%" y="420" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="16" font-weight="700" fill="#71717A" text-anchor="middle" dominant-baseline="middle" letter-spacing="5">${cleanSub}</text>
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -152,36 +182,27 @@ export function getDefaultOrgAvatar(idOrName: string): string {
 }
 
 /**
- * Retourne la couverture d'événement noire par défaut avec texte en extra ultra bold (GBAIGBAINCE).
+ * Retourne la couverture d'événement noire par défaut avec texte en extra ultra bold.
+ * Affiche le titre complet de l'événement si disponible.
  */
 export function getDefaultEventCover(): string;
 export function getDefaultEventCover(eventId?: string | null, category?: string | null, title?: string | null): string;
-export function getDefaultEventCover(..._args: unknown[]): string {
-  void _args;
-  return createDefaultEventCoverSvg();
+export function getDefaultEventCover(...args: unknown[]): string {
+  const title = typeof args[2] === 'string' ? args[2] : typeof args[0] === 'string' && isNaN(Number(args[0])) && !args[0].includes('-') ? args[0] : null;
+  const category = typeof args[1] === 'string' ? args[1] : null;
+  return createDefaultEventCoverSvg(title, category ? `${category.toUpperCase()} • OFFICIEL` : undefined);
 }
 
 /**
- * Returns a deterministic banner cover for an artist profile.
+ * Retourne la couverture d'artiste par défaut en style noir extra ultra bold avec le nom complet.
  */
-export function getDefaultArtistCover(artistId: string): string {
-  const covers = [
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80',
-  ];
-  return covers[hashString(artistId || 'artist') % covers.length];
+export function getDefaultArtistCover(artistId: string, artistName?: string | null): string {
+  return createDefaultEventCoverSvg(artistName || 'ARTISTE', 'ARTISTE OFFICIEL');
 }
 
 /**
- * Returns a deterministic banner cover for an organization profile.
+ * Retourne la couverture d'organisation par défaut en style noir extra ultra bold avec le nom complet.
  */
-export function getDefaultOrgCover(orgId: string): string {
-  const covers = [
-    'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80',
-  ];
-  return covers[hashString(orgId || 'org') % covers.length];
+export function getDefaultOrgCover(orgId: string, orgName?: string | null): string {
+  return createDefaultEventCoverSvg(orgName || 'ORGANISATEUR', 'ORGANISATION OFFICIELLE');
 }

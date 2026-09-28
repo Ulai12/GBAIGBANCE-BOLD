@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BadgeCheck, Music2, Building2, User } from 'lucide-react';
+import { Music2, Building2, User } from 'lucide-react';
 import { getDefaultUserAvatar, getAvatarInitials } from '@/utils/defaultImages';
 import type { UserRole } from '@/types';
 
@@ -52,7 +52,6 @@ export function UserAvatar({
   role,
   size = 'md',
   shape = 'circle',
-  isVerified = false,
   className = '',
   imageClassName = '',
   ring = true,
@@ -114,15 +113,15 @@ export function UserAvatar({
         )}
       </div>
 
-      {/* Verification Badge */}
-      {isVerified && (
+      {/* Badge de certification retiré temporairement selon la demande utilisateur */}
+      {/* {isVerified && (
         <div
           className={`absolute ${sizeConfig.badge} rounded-full bg-[#6600FF] ring-2 ring-white dark:ring-[#14121E] flex items-center justify-center text-white shadow-xs z-10`}
           title="Compte Vérifié"
         >
           <BadgeCheck className="w-full h-full p-0.5 text-white" />
         </div>
-      )}
+      )} */}
     </div>
   );
 }

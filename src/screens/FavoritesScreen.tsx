@@ -5,7 +5,6 @@ import {
   Building2,
   Search,
   X,
-  BadgeCheck,
   Calendar,
   Clock,
 } from 'lucide-react';
@@ -765,9 +764,6 @@ export function FavoritesScreen({
                         <p className="font-extrabold text-sm text-[#17131D] dark:text-white truncate">
                           {art.name}
                         </p>
-                        {art.is_verified && (
-                          <BadgeCheck className="w-4 h-4 text-[#6600FF] shrink-0" />
-                        )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                         {art.city || 'Lomé'} · {art.followers_count ?? 1} {(art.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
@@ -823,9 +819,6 @@ export function FavoritesScreen({
                         <p className="font-extrabold text-sm text-[#17131D] dark:text-white truncate">
                           {org.name}
                         </p>
-                        {org.verification_status === 'verified' && (
-                          <BadgeCheck className="w-4 h-4 text-[#6600FF] shrink-0" />
-                        )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                         {org.city || 'Lomé'} · {org.followers_count ?? 1} {(org.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {org.events_count || 0} événement{(org.events_count || 0) > 1 ? 's' : ''}

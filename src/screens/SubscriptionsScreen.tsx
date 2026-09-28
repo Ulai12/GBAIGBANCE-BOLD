@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Music2, Building2, Users, BadgeCheck, Heart, LogIn, Sparkles } from 'lucide-react';
+import { ChevronLeft, Music2, Building2, Users, Heart, LogIn, Sparkles } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
@@ -267,9 +267,6 @@ export function SubscriptionsScreen({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <p className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{u.name}</p>
-                    {(u.role === 'organizer' || u.role === 'artist') && (
-                      <BadgeCheck className="w-4 h-4 text-[#6600FF] dark:text-[#A78BFA] shrink-0" />
-                    )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {u.city}

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   MapPin,
-  BadgeCheck,
   Globe,
   Phone,
   Mail,
@@ -106,7 +105,7 @@ export function OrganizerDetailScreen({
       {/* Cover */}
       <div className="relative h-56 overflow-hidden">
         <img
-          src={displayOrg.cover_url || getDefaultOrgCover(displayOrg.id)}
+          src={displayOrg.cover_url || getDefaultOrgCover(displayOrg.id, displayOrg.name)}
           alt={displayOrg.name}
           className="w-full h-full object-cover"
         />
@@ -152,7 +151,6 @@ export function OrganizerDetailScreen({
             role="organizer"
             size="2xl"
             shape="squircle"
-            isVerified={displayOrg.verification_status === 'verified'}
             className="w-24 h-24 shadow-xl ring-4 ring-white dark:ring-[#14121E]"
           />
           <div className="flex-1 pb-1 min-w-0">
@@ -160,9 +158,6 @@ export function OrganizerDetailScreen({
               <h1 className="text-xl font-black text-[#17131D] dark:text-white tracking-tight truncate">
                 {displayOrg.name}
               </h1>
-              {displayOrg.verification_status === 'verified' && (
-                <BadgeCheck className="w-5 h-5 text-[#6600FF] shrink-0" />
-              )}
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-[#6600FF]" />

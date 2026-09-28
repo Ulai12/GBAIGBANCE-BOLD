@@ -75,16 +75,17 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const { user, t } = useApp();
 
-  // Instant 0ms cache loading: read synchronously from memory or storage
+  // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
   const initialCache = getCachedHomeData();
-  const [featured, setFeatured] = useState<Event[]>(initialCache.data?.featured || []);
+  const [featured, setFeatured] = useState<Event[]>(() =>
+    (initialCache.data?.featured || []).filter((e) => !isEventTerminated(e))
+  );
   const [trending, setTrending] = useState<Event[]>(initialCache.data?.trending || []);
   const [nearby, setNearby] = useState<Event[]>(initialCache.data?.nearby || []);
   const [artists, setArtists] = useState<Artist[]>(initialCache.data?.artists || []);
   const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
-  const [allEventsFilter, setAllEventsFilter] = useState<'all' | 'concert' | 'festival' | 'exposition' | 'conference'>('all');
   const [loading, setLoading] = useState(!initialCache.hasCache);
   const onToastRef = useRef(onToast);
 
@@ -132,7 +133,7 @@ export function HomeScreen({
     if (!initialCache.hasCache) {
       hydrateHomeFromIndexedDB().then((cached) => {
         if (cached && (cached.featured.length > 0 || cached.nearby.length > 0)) {
-          setFeatured(cached.featured);
+          setFeatured((cached.featured || []).filter((e) => !isEventTerminated(e)));
           setTrending(cached.trending);
           setNearby(cached.nearby);
           setArtists(cached.artists);
@@ -149,7 +150,6 @@ export function HomeScreen({
     if (!silent && !initialCache.hasCache) {
       setLoading(true);
     }
-    const isValidDate = (dateStr?: string) => Boolean(dateStr && !isNaN(new Date(dateStr).getTime()));
 
     try {
       const [feat, up, trend, art, orgs, stats] = await Promise.all([
@@ -161,29 +161,39 @@ export function HomeScreen({
         fetchPlatformStats(),
       ]);
 
-      const filterValid = (list: Event[]) =>
-        list.filter((event) => event.status === 'published' && isValidDate(event.starts_at) && !isEventTerminated(event));
+      const sortEventsWithActiveFirst = (list: Event[]) => {
+        return [...list].sort((a, b) => {
+          const endedA = isEventTerminated(a);
+          const endedB = isEventTerminated(b);
+          if (endedA !== endedB) return endedA ? 1 : -1;
+          const timeA = new Date(a.starts_at || 0).getTime();
+          const timeB = new Date(b.starts_at || 0).getTime();
+          return timeA - timeB;
+        });
+      };
 
-      // Master pool of all unique active published events from any of the queries
+      // Master pool of all unique published events from any of the discovery queries
       const allRaw = [...feat, ...up, ...trend];
       const masterMap = new Map<string, Event>();
       allRaw.forEach((ev) => {
-        if (ev && ev.id && isRealEvent(ev) && ev.status === 'published' && !isEventTerminated(ev)) {
+        if (ev && ev.id && isRealEvent(ev) && ev.status === 'published') {
           masterMap.set(ev.id, ev);
         }
       });
-      const masterEvents = Array.from(masterMap.values());
+      const masterEvents = sortEventsWithActiveFirst(Array.from(masterMap.values()));
       setAllEvents(masterEvents);
 
-      const validFeat = filterValid(feat);
-      const validTrend = filterValid(trend);
-      const validUp = filterValid(up);
+      // La section "À la une" doit EXCLUSIVEMENT contenir des événements actifs (non terminés)
+      const activeMaster = masterEvents.filter((e) => !isEventTerminated(e));
+      const activeFeat = feat.filter((e) => isRealEvent(e) && e.status === 'published' && !isEventTerminated(e));
 
-      const newFeat = validFeat.length > 0
-        ? validFeat
-        : masterEvents.filter((e) => e.is_featured).length > 0
-          ? masterEvents.filter((e) => e.is_featured)
-          : masterEvents.slice(0, 3);
+      const newFeat = activeFeat.length > 0
+        ? activeFeat
+        : activeMaster.filter((e) => e.is_featured).length > 0
+          ? activeMaster.filter((e) => e.is_featured)
+          : activeMaster.slice(0, 6);
+      const validTrend = sortEventsWithActiveFirst(trend.filter((e) => e.status === 'published'));
+      const validUp = sortEventsWithActiveFirst(up.filter((e) => e.status === 'published'));
       const newTrend = validTrend.length > 0 ? validTrend : masterEvents.slice(0, 4);
       const newNearby = validUp.length > 0 ? validUp : masterEvents;
 
@@ -300,14 +310,6 @@ export function HomeScreen({
     });
     return Array.from(map.values());
   }, [allEvents, featured, trending, nearby]);
-
-  const filteredAllEvents = useMemo(() => {
-    if (allEventsFilter === 'all') return allActiveEvents;
-    return allActiveEvents.filter((e) => {
-      const cat = (e.category || '').toLowerCase();
-      return cat.includes(allEventsFilter);
-    });
-  }, [allActiveEvents, allEventsFilter]);
 
   // Category events fetch
   useEffect(() => {
@@ -799,81 +801,19 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* SECTION 7.5: Tous les événements actifs */}
-      {allActiveEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Tous les événements actifs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#6600FF]/15 text-[#6600FF] dark:text-[#A78BFA] flex items-center justify-center shrink-0 shadow-2xs">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                    Tous les événements
-                  </h2>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA]">
-                    {allActiveEvents.length}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Découvrez l'ensemble des sorties actives
-                </p>
-              </div>
-            </div>
-
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {[
-                { id: 'all', label: 'Tous' },
-                { id: 'concert', label: 'Concerts' },
-                { id: 'festival', label: 'Festivals' },
-                { id: 'exposition', label: 'Expos' },
-                { id: 'conference', label: 'Conférences' },
-              ].map((pill) => {
-                const isActive = allEventsFilter === pill.id;
-                return (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    onClick={() => setAllEventsFilter(pill.id as typeof allEventsFilter)}
-                    className={`
-                      px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95
-                      ${
-                        isActive
-                          ? 'bg-[#6600FF] text-white shadow-xs shadow-[#6600FF]/30'
-                          : 'bg-black/5 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/15'
-                      }
-                    `}
-                  >
-                    {pill.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {filteredAllEvents.map((event) => (
-              <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* SECTION 8: Artistes du moment (vrais comptes artistes) */}
       {artists.length > 0 && (
-        <section className="mt-9" aria-label="Artistes du moment">
-          <div className="px-5 flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2.5">
+        <section className="mt-8" aria-label="Artistes du moment">
+          <div className="px-5 flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
                 <Music className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
                   Artistes du moment
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                   Talents et créateurs de la communauté
                 </p>
               </div>
@@ -882,7 +822,7 @@ export function HomeScreen({
             <button
               type="button"
               onClick={() => setSeeMoreType('artists')}
-              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
               <span>Voir plus</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -890,15 +830,19 @@ export function HomeScreen({
           </div>
 
           <div className="relative">
-            <div className="flex gap-4 overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
+            <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
                 const followersCount = artist.followers_count ?? 0;
+                const fansText =
+                  followersCount > 1000
+                    ? `${(followersCount / 1000).toFixed(1)}K fans`
+                    : `${followersCount} fan${followersCount > 1 ? 's' : ''}`;
                 return (
                   <button
                     type="button"
                     key={artist.id}
                     onClick={() => onArtistClick?.(artist)}
-                    className="flex flex-col items-center gap-1.5 w-18 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
+                    className="group flex flex-col items-center gap-2 w-20 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
                   >
                     <UserAvatar
                       src={artist.photo_url}
@@ -908,14 +852,14 @@ export function HomeScreen({
                       shape="circle"
                       isVerified={artist.is_verified}
                     />
-                    <span className="text-[11px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
-                      {artist.name}
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-bold">
-                      {followersCount > 1000
-                        ? `${(followersCount / 1000).toFixed(1)}K fans`
-                        : `${followersCount} fan${followersCount > 1 ? 's' : ''}`}
-                    </span>
+                    <div className="w-full flex flex-col items-center gap-0.5">
+                      <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
+                        {artist.name}
+                      </span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                        {fansText}
+                      </span>
+                    </div>
                   </button>
                 );
               })}
@@ -926,17 +870,17 @@ export function HomeScreen({
 
       {/* SECTION 9: Organisateurs officiels (vrais comptes organisateurs) */}
       {organizations.length > 0 && (
-        <section className="mt-6" aria-label="Organisateurs officiels">
-          <div className="px-5 flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2.5">
+        <section className="mt-8" aria-label="Organisateurs officiels">
+          <div className="px-5 flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 shadow-2xs">
                 <Building2 className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
                   Organisateurs officiels
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                   Collectifs et créateurs d’expériences
                 </p>
               </div>
@@ -945,7 +889,7 @@ export function HomeScreen({
             <button
               type="button"
               onClick={() => setSeeMoreType('organizations')}
-              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
+              className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
               <span>Voir plus</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -953,14 +897,16 @@ export function HomeScreen({
           </div>
 
           <div className="relative">
-            <div className="flex gap-4 items-center overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
+            <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {organizations.map((org) => {
+                const count = org.events_count ?? 0;
+                const countText = `${count} événement${count > 1 ? 's' : ''}`;
                 return (
                   <button
                     type="button"
                     key={org.id}
                     onClick={() => onOrganizationClick?.(org)}
-                    className="flex flex-col items-center gap-1.5 w-18 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
+                    className="group flex flex-col items-center gap-2 w-20 shrink-0 snap-start active:scale-95 transition-transform duration-200 ease-out cursor-pointer text-center"
                   >
                     <UserAvatar
                       src={org.logo_url}
@@ -970,13 +916,14 @@ export function HomeScreen({
                       shape="squircle"
                       isVerified={org.verification_status === 'verified'}
                     />
-                    <span className="text-[11px] font-bold text-[#1A1A2E] dark:text-white text-center line-clamp-1 w-full leading-tight">
-                      {org.name}
-                    </span>
-
-                    <span className="text-[10px] text-gray-400 font-bold">
-                      {org.events_count ?? 0} événement{(org.events_count ?? 0) > 1 ? 's' : ''}
-                    </span>
+                    <div className="w-full flex flex-col items-center gap-0.5">
+                      <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
+                        {org.name}
+                      </span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                        {countText}
+                      </span>
+                    </div>
                   </button>
                 );
               })}

@@ -116,15 +116,13 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
       .select('*')
       .eq('status', 'published')
       .order('starts_at', { ascending: true })
-      .limit(40);
+      .limit(50);
 
     if (!error && data && data.length > 0) {
+      // La section "À la une" doit EXCLUSIVEMENT afficher des événements actifs (non terminés)
       const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
 
       const sorted = [...activeList].sort((a, b) => {
-        const endedA = hasEventEnded(a);
-        const endedB = hasEventEnded(b);
-        if (endedA !== endedB) return endedA ? 1 : -1;
         const scoreA =
           (a.is_featured ? 500 : 0) +
           (a.attendees_count || 0) * 4 +
@@ -178,7 +176,14 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(30);
     if (!error && data && data.length > 0) {
-      return (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e)).slice(0, 8);
+      const published = (data as Event[]).filter((e) => isRealEvent(e) && e.status === 'published');
+      const sorted = [...published].sort((a, b) => {
+        const endedA = hasEventEnded(a);
+        const endedB = hasEventEnded(b);
+        if (endedA !== endedB) return endedA ? 1 : -1;
+        return (b.views_count || 0) - (a.views_count || 0);
+      });
+      return sorted.slice(0, 8);
     }
     return [];
   } catch {
@@ -196,8 +201,8 @@ export async function fetchUpcomingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(50);
     if (!error && data && data.length > 0) {
-      const active = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
-      const sorted = [...active].sort((a, b) => {
+      const published = (data as Event[]).filter((e) => isRealEvent(e) && e.status === 'published');
+      const sorted = [...published].sort((a, b) => {
         const endedA = hasEventEnded(a);
         const endedB = hasEventEnded(b);
         if (endedA !== endedB) return endedA ? 1 : -1;

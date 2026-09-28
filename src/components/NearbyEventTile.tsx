@@ -42,7 +42,9 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
   const formattedPrice =
     event.price_min === 0
       ? 'Gratuit'
-      : `${event.price_min.toLocaleString('fr-FR')} F`;
+      : event.price_min != null
+        ? `${Number(event.price_min).toLocaleString('fr-FR')} F`
+        : 'Gratuit';
 
   const travel = isActualLocation ? getAccurateTravelEstimate(event.distanceKm) : null;
   const showRealDistance = isActualLocation && typeof event.distanceKm === 'number' && event.distanceKm < 50;

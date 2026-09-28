@@ -117,30 +117,38 @@ export function BottomNav({
         aria-label={label}
         aria-current={isActive ? 'page' : undefined}
         className={[
-          'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-2xl select-none',
+          'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-full select-none',
           'touch-manipulation transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] cursor-pointer',
-          isPressed ? 'scale-[0.91]' : 'scale-100',
+          isPressed ? 'scale-[0.92]' : 'scale-100',
         ].join(' ')}
       >
-        {/* Capsule active Liquid Glass */}
+        {/* Capsule active & hover Apple Liquid Glass — Forme pilule harmonieuse avec la tuile */}
         <span
           aria-hidden="true"
           className={[
-            'absolute inset-x-1 inset-y-1 rounded-xl pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+            'absolute inset-x-1.5 inset-y-1 rounded-full pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
             isActive
               ? 'opacity-100 scale-100'
-              : 'opacity-0 scale-75',
+              : 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-95',
           ].join(' ')}
           style={{
-            background: isDark
-              ? 'linear-gradient(145deg, rgba(102,0,255,0.40), rgba(139,92,246,0.25))'
-              : 'linear-gradient(145deg, rgba(102,0,255,0.12), rgba(139,92,246,0.06))',
-            border: isDark
-              ? '1px solid rgba(255,255,255,0.14)'
-              : '1px solid rgba(102,0,255,0.18)',
-            boxShadow: isDark
-              ? '0 4px 14px rgba(102,0,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)'
-              : '0 4px 12px rgba(102,0,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8)',
+            background: isActive
+              ? isDark
+                ? 'linear-gradient(145deg, rgba(102,0,255,0.36), rgba(139,92,246,0.22))'
+                : 'linear-gradient(145deg, rgba(102,0,255,0.12), rgba(139,92,246,0.06))'
+              : isDark
+                ? 'rgba(255,255,255,0.07)'
+                : 'rgba(102,0,255,0.05)',
+            border: isActive
+              ? isDark
+                ? '1px solid rgba(255,255,255,0.16)'
+                : '1px solid rgba(102,0,255,0.18)'
+              : '1px solid transparent',
+            boxShadow: isActive
+              ? isDark
+                ? '0 3px 12px rgba(102,0,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)'
+                : '0 3px 10px rgba(102,0,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8)'
+              : 'none',
           }}
         />
 
@@ -161,7 +169,7 @@ export function BottomNav({
             className={[
               'w-5 h-5 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
               isActive
-                ? 'text-[#6600FF] dark:text-purple-300 scale-110'
+                ? 'text-[#6600FF] dark:text-purple-300 scale-105'
                 : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200',
             ].join(' ')}
             strokeWidth={isActive ? 2.5 : 2}
@@ -182,7 +190,7 @@ export function BottomNav({
         {/* Micro-label ergonomique */}
         <span
           className={[
-            'relative z-10 mt-1 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
+            'relative z-10 mt-0.5 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
             isActive
               ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
               : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300',
@@ -198,21 +206,21 @@ export function BottomNav({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 pb-safe-nav"
+      className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4"
       style={{
-        paddingBottom: 'max(1.125rem, calc(env(safe-area-inset-bottom, 0px) + 0.625rem))',
+        paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.75 + 0.25rem))',
       }}
     >
       <nav
         aria-label="Navigation principale"
         className={[
-          'relative pointer-events-auto w-full max-w-md h-[64px] px-2 py-1 rounded-[2rem]',
+          'relative pointer-events-auto w-full max-w-md h-[58px] px-2 py-1 rounded-full',
           'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
         ].join(' ')}
         style={{
           background: isDark
-            ? 'linear-gradient(180deg, rgba(24,21,36,0.90), rgba(16,14,26,0.96))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,243,255,0.88))',
+            ? 'linear-gradient(180deg, rgba(24,21,36,0.92), rgba(16,14,26,0.97))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(245,243,255,0.90))',
           border: isDark
             ? '1px solid rgba(255,255,255,0.12)'
             : '1px solid rgba(255,255,255,0.85)',
@@ -253,7 +261,7 @@ export function BottomNav({
                 onPointerLeave={() => setPressed(null)}
                 aria-label={createLabel}
                 className={[
-                  'group relative w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer select-none',
+                  'group relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer select-none',
                   'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
                   pressed === 'create'
                     ? 'scale-[0.88] brightness-90'
@@ -270,14 +278,14 @@ export function BottomNav({
                 {/* Lueur d'ambiance */}
                 <span
                   aria-hidden="true"
-                  className="absolute -inset-1 rounded-2xl pointer-events-none opacity-60 blur-md"
+                  className="absolute -inset-1 rounded-full pointer-events-none opacity-60 blur-md"
                   style={{
                     background: 'radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)',
                   }}
                 />
 
                 <Plus
-                  className="w-5 h-5 text-white transition-transform duration-300 group-hover:rotate-90"
+                  className="w-4.5 h-4.5 text-white transition-transform duration-300 group-hover:rotate-90"
                   strokeWidth={2.6}
                 />
               </button>

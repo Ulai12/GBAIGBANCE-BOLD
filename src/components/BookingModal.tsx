@@ -69,9 +69,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     claim_token?: string;
   }>>([]);
 
-  // Récupération des profils amis suivis lorsque l'option "Offrir à un ami" est activée
+  // Pré-chargement immédiat des profils amis dès l'ouverture de la modale pour éviter tout saut de mise en page
   useEffect(() => {
-    if (!open || purchaseTarget !== 'friend' || !user?.id) return;
+    if (!open || !user?.id) return;
     let isMounted = true;
     fetchFollowingUsers(user.id)
       .then((list) => {
@@ -83,7 +83,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     return () => {
       isMounted = false;
     };
-  }, [open, purchaseTarget, user?.id]);
+  }, [open, user?.id]);
 
   const loadOptions = useCallback(() => {
     if (!event) return;
@@ -110,7 +110,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }, [event, initialOptionId]);
 
   useEffect(() => {
-    if (!open || !event) return;
+    if (!open || !event?.id) return;
     setSelectedOption(null);
     setPurchaseTarget('self');
     setQuantity(1);
@@ -126,7 +126,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     setSuccess(false);
     setCreatedTicketsSummary([]);
     loadOptions();
-  }, [open, event, loadOptions, user]);
+  }, [open, event?.id, loadOptions, user?.id, user?.name, user?.phone]);
 
   // Fermeture propre avec réinitialisation des erreurs et états de chargement
   const handleCloseModal = () => {
@@ -493,36 +493,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
                 {/* Formulaire si Offrir à un ami */}
                 {purchaseTarget === 'friend' && (
-                  <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3 animate-fade-in">
-                    {/* Sélecteur rapide d'amis suivis si disponible */}
-                    {followingFriends.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[11px] font-bold text-gray-600 block">
-                          Choisir parmi vos amis suivis :
-                        </span>
-                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                          {followingFriends.map((f) => {
-                            const isSelected = selectedFriendId === f.id;
-                            return (
-                              <button
-                                key={f.id}
-                                type="button"
-                                onClick={() => handleSelectFollowedFriend(f)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
-                                  isSelected
-                                    ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-xs'
-                                    : 'bg-white text-gray-700 border-purple-200 hover:border-[#6600FF]/40'
-                                }`}
-                              >
-                                <UserAvatar id={f.id} name={f.name} src={f.avatar_url} size="xs" ring={false} />
-                                <span>{f.name}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
+                  <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3">
                     <div className="space-y-1">
                       <label htmlFor="friend_name_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
                         Nom & prénom de votre ami(e)
@@ -531,7 +502,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                         id="friend_name_input"
                         type="text"
                         inputMode="text"
-                        autoComplete="name"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={friendName}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -543,6 +516,38 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                       />
                     </div>
 
+                    {/* Suggestions d'amis suivis positionnées SOUS le champ nom pour ne jamais déplacer l'input ni fermer le clavier */}
+                    {followingFriends.length > 0 && (
+                      <div className="space-y-1.5 pt-0.5">
+                        <span className="text-[10px] font-semibold text-gray-500 block">
+                          Suggestions parmi vos amis :
+                        </span>
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                          {followingFriends
+                            .filter((f) => !friendName.trim() || f.name.toLowerCase().includes(friendName.trim().toLowerCase()))
+                            .map((f) => {
+                              const isSelected = selectedFriendId === f.id;
+                              return (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => handleSelectFollowedFriend(f)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                                    isSelected
+                                      ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-xs'
+                                      : 'bg-white text-gray-700 border-purple-200 hover:border-[#6600FF]/40'
+                                  }`}
+                                >
+                                  <UserAvatar id={f.id} name={f.name} src={f.avatar_url} size="xs" ring={false} />
+                                  <span>{f.name}</span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-1">
                       <label htmlFor="friend_phone_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
                         Numéro de téléphone de l'ami (WhatsApp / Appel)
@@ -551,7 +556,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                         id="friend_phone_input"
                         type="tel"
                         inputMode="tel"
-                        autoComplete="tel"
+                        autoComplete="off"
+                        autoCorrect="off"
                         value={friendPhone}
                         onChange={(e) => {
                           const val = e.target.value;

@@ -134,7 +134,11 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
               {event.location_name || 'Lieu à confirmer'}
             </p>
             <p className="mt-1 text-[1.3em] font-black text-[#A78BFA]">
-              {event.price_min === 0 ? 'Entrée libre' : `${event.price_min.toLocaleString('fr-FR')} FCFA`}
+              {event.price_min === 0
+                ? 'Entrée libre'
+                : event.price_min != null
+                  ? `${Number(event.price_min).toLocaleString('fr-FR')} FCFA`
+                  : 'Entrée libre'}
             </p>
           </div>
           <button
