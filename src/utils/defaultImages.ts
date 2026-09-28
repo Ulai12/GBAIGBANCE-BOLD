@@ -128,7 +128,7 @@ export function createDefaultEventCoverSvg(title?: string | null, subtitle?: str
     <g transform="translate(600, 160)">
       <rect x="-120" y="-16" width="240" height="32" rx="16" fill="#18181B" stroke="#27272A" stroke-width="1"/>
       <circle cx="-90" cy="0" r="4.5" fill="#6600FF"/>
-      <text x="12" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="12" font-weight="700" fill="#A1A1AA" letter-spacing="3" text-anchor="middle">GBAÏGBANCÊ</text>
+      <text x="12" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="12" font-weight="700" fill="#A1A1AA" letter-spacing="3" text-anchor="middle">GBAIGBANCE</text>
     </g>
 
     <!-- Texte Central Extra Ultra Bold avec nom complet -->

@@ -210,17 +210,19 @@ export function FavoritesScreen({
             .from('events')
             .select('*')
             .in('id', ids)
-            .then(({ data }) => {
-              if (data && data.length > 0) {
-                setEvents((prev) => {
-                  const map = new Map<string, Event>();
-                  prev.forEach((e) => map.set(e.id, e));
-                  (data as Event[]).forEach((e) => map.set(e.id, e));
-                  return Array.from(map.values()).filter((e) => likedEventIds.has(e.id));
-                });
-              }
-            })
-            .catch(() => {});
+            .then(
+              ({ data }) => {
+                if (data && data.length > 0) {
+                  setEvents((prev) => {
+                    const map = new Map<string, Event>();
+                    prev.forEach((e) => map.set(e.id, e));
+                    (data as Event[]).forEach((e) => map.set(e.id, e));
+                    return Array.from(map.values()).filter((e) => likedEventIds.has(e.id));
+                  });
+                }
+              },
+              () => {}
+            );
         }
       }
     }, 3000);

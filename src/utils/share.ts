@@ -42,10 +42,10 @@ export function getEventShareData(event: Event): EventShareData {
       ? 'Entrée Gratuite'
       : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
 
-  const text = `🔥 Rejoins-moi pour "${event.title}" !\n📅 ${formattedDate}\n📍 ${formattedLocation}\n🎟️ ${formattedPrice}\n\nDécouvre tous les détails et réserve ta place sur Gbaïgbancê :`;
+  const text = `🔥 Rejoins-moi pour "${event.title}" !\n📅 ${formattedDate}\n📍 ${formattedLocation}\n🎟️ ${formattedPrice}\n\nDécouvre tous les détails et réserve ta place sur Gbaigbance :`;
 
   return {
-    title: `${event.title} · Gbaïgbancê`,
+    title: `${event.title} · Gbaigbance`,
     text,
     url,
     formattedDate,

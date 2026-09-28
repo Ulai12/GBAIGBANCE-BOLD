@@ -87,7 +87,7 @@ export async function fetchEventAttendees(
 
       return {
         id: p.id,
-        name: p.name || 'Membre Gbaïgbancê',
+        name: p.name || 'Membre Gbaigbance',
         avatar_url: p.avatar_url,
         role: p.role || 'user',
         city: p.city || 'Lomé',

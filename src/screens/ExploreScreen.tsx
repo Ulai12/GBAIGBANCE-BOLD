@@ -370,7 +370,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           ) : participants.length === 0 ? (
             <div className="mt-8">
               <EmptyState
-                icon={Users}
+                icon={<Users className="w-10 h-10 text-[#6600FF]" />}
                 title="Aucun participant trouvé"
                 description="Recherchez un ami par son prénom ou nom pour visiter son profil et voir ses sorties."
               />

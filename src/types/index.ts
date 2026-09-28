@@ -142,6 +142,8 @@ export interface Event {
   likes_count: number;
   views_count: number;
   created_by_role?: 'organizer' | 'artist';
+  artist_id?: string | null;
+  is_free?: boolean;
   created_at: string;
   updated_at: string;
   event_artists?: Artist[] | { artist: Artist }[];

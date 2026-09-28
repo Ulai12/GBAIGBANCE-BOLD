@@ -1,5 +1,5 @@
 /**
- * Gbaïgbancê - Route & Chunk Prefetching Strategy
+ * Gbaigbance - Route & Chunk Prefetching Strategy
  * Pre-warms lazy-loaded application chunks before user interaction
  * to ensure 0ms navigation latency.
  */

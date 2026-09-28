@@ -1,3 +1,4 @@
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -5,19 +6,48 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug-*.log
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+node_modules/
 
+# Production & Build outputs
+dist/
+dist-ssr/
+dev-dist/
+
+# Cache & Build artifacts
+.cache/
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# Vercel deployment cache
+.vercel/
+
+# Environment variables
+.env
+.env*.local
+!.env.example
+
+# IDE & Editor settings
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
+.cursor/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
+*.swo
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini

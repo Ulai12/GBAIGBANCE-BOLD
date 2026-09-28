@@ -1,5 +1,17 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
+
+export interface VercelRequest extends IncomingMessage {
+  query: Partial<Record<string, string | string[]>>;
+  cookies: Partial<Record<string, string>>;
+  body: unknown;
+}
+
+export interface VercelResponse extends ServerResponse {
+  status: (statusCode: number) => VercelResponse;
+  json: (jsonBody: unknown) => VercelResponse;
+  send: (body: unknown) => VercelResponse;
+}
 
 /**
  * Route publique en lecture seule pour exposer les événements publiés de Gbaigbance.
