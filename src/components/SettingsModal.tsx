@@ -10,9 +10,6 @@ import {
   ChevronRight,
   User,
   Inbox,
-  Database,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
@@ -37,13 +34,14 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const { user, theme, toggleTheme, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+      // MODIFIÉ : z-[100] -> z-[9999] pour passer au-dessus de la BottomNav.
+      // Si le grep montre que BottomNav dépasse 9999 (peu probable), prends une valeur plus haute.
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -316,7 +314,7 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
                 <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
-                  v3.5.0 · Back-Stack Router & Full Event Studio
+                  v4.0 · Back-Stack Router & Full Event Studio
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
@@ -337,7 +335,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              GBAIGBANCE v3.6.0
+              GBAIGBANCE v4.0
             </p>
           </div>
         </div>
