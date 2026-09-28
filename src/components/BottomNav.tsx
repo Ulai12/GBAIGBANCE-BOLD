@@ -126,7 +126,7 @@ export function BottomNav({
         <span
           aria-hidden="true"
           className={[
-            'absolute inset-x-1.5 inset-y-1 rounded-full pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+            'absolute inset-x-0.5 inset-y-0.5 rounded-full pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
             isActive
               ? 'opacity-100 scale-100'
               : 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-95',
@@ -214,7 +214,7 @@ export function BottomNav({
       <nav
         aria-label="Navigation principale"
         className={[
-          'relative pointer-events-auto w-full max-w-md h-[58px] px-2 py-1 rounded-full',
+          'relative pointer-events-auto w-full max-w-md h-[58px] px-0 py-0 rounded-full',
           'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
         ].join(' ')}
         style={{
@@ -241,7 +241,7 @@ export function BottomNav({
         />
 
         {/* Grille dynamique proportionnée */}
-        <div className={`w-full h-full grid ${canCreate ? 'grid-cols-5' : 'grid-cols-4'} items-center gap-1`}>
+        <div className={`w-full h-full grid ${canCreate ? 'grid-cols-5' : 'grid-cols-4'} items-center gap-0`}>
           {NAV_ITEMS_LEFT.map(renderTabButton)}
 
           {/* Bouton Créer intégré (Uniquement si Organisateur ou Artiste) */}

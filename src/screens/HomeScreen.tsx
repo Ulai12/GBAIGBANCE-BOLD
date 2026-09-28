@@ -389,11 +389,11 @@ export function HomeScreen({
     const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
     const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : sorted;
 
-    // Plafonnement strict à 4 événements max pour garder le flux fini et performant
+    // Plafonnement strict à 12 événements max pour garder le flux fini et performant
     return {
       title: 'À proximité de vous',
       subtitle: `Autour de votre position (${userLocation.cityName || 'GPS'})`,
-      events: selected.slice(0, 4),
+      events: selected.slice(0, 12),
       isActual: true,
     };
   }, [allEventsWithDistance, userLocation]);
@@ -441,11 +441,11 @@ export function HomeScreen({
       return { event, score };
     });
 
-    // Tri par score décroissant et plafonnement strict à 4 événements max (flux fini)
+    // Tri par score décroissant et plafonnement strict à 12 événements max (flux fini)
     return scored
       .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 4)
+      .slice(0, 12)
       .map((s) => s.event);
   }, [allEventsWithDistance, featured, trending, user, followedOrgIds, followedArtistIds, likedEventIds]);
 
@@ -466,13 +466,13 @@ export function HomeScreen({
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'Bonjour';
-    if (hour >= 12 && hour < 18) return 'Bon après-midi';
+    if (hour >= 12 && hour < 18) return 'Salut';
     if (hour >= 18 && hour < 23) return 'Bonsoir';
     return 'Douce nuit';
   };
 
   return (
-    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
+    <div className="min-h-screen max-w-7xl mx-auto">
       {/* En-tête modernisée style iOS avec respect de la zone de sécurité (Dynamic Island & Encoche) */}
       <header className="px-5 pt-safe-header pb-3">
         {/* Ligne Logo & Identité */}
@@ -491,11 +491,12 @@ export function HomeScreen({
 
   {/* Dynamic greeting et boutons harmonisés */}
   {/* ✅ Le salut redevient un vrai titre h1 sur sa propre ligne (avant, il était dans la ligne du logo) */}
-  <div className="flex items-center justify-between mb-4">
+  <div className="flex items-center justify-between mb-4 mr-2">
     <div>
       <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}</span>
-        <span className="text-xl">👋</span>
+        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}
+        <span className="text-xl"> 👋</span>
+        </span>
       </h1>
       <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
     </div>

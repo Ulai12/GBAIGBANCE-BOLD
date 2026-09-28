@@ -43,7 +43,7 @@ export function SettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -306,65 +306,7 @@ export function SettingsModal({
               </div>
             </div>
           )}
-
-          {/* Groupe 4b: Supabase Backend & Migration */}
-          <div>
-            <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              Backend Supabase
-            </h3>
-            <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] p-4 text-xs space-y-3 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#17131D] dark:text-white">Projet Supabase</p>
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Connecté à lwwiolbofrqakvrdvbbj
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold">
-                  Actif
-                </span>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] space-y-1.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 break-all">
-                <div className="text-[10px] uppercase font-bold text-gray-400 font-sans">Instance :</div>
-                <div>https://lwwiolbofrqakvrdvbbj.supabase.co</div>
-              </div>
-
-              <div className="pt-1 flex items-center justify-between gap-2 border-t border-black/[0.04] dark:border-white/[0.06]">
-                <div className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Schéma complet : <span className="font-mono font-semibold">supabase/complete_schema.sql</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText('supabase/complete_schema.sql');
-                    setCopiedScript(true);
-                    setTimeout(() => setCopiedScript(false), 2000);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 hover:bg-[#6600FF]/20 transition-all text-[11px] font-bold flex items-center gap-1 shrink-0"
-                >
-                  {copiedScript ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-500" />
-                      <span>Copié !</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span>Copier nom</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
+          
           {/* Groupe 5: Crédits & Système */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
@@ -378,102 +320,6 @@ export function SettingsModal({
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Routage & Navigation</span>
-                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
-                  Pile d'historique contextuelle (Back Stack) + Sync popstate natif
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Gestion Événement</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Édition complète (billetterie, collabs, lieu, dates, médias vidéo/photos)
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Fiche Événement iOS 27</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Aura frosted glass, lecteur vidéo, galerie, pass & dispo temps réel
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Navigation Dock</span>
-                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
-                  Apple iOS 27 Fluid Dock (Stacking z-index & auto-hide sous modals)
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Recherche & Explorer</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  En-tête unifiée (Favoris/Billets) + Taxonomie Home avec icônes Lucide
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Partage & Social</span>
-                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
-                  Web Share API natif + Fiche iOS 27 (WhatsApp, 𝕏, Telegram)
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Deep Linking</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Résolution URL instantanée (?event=...)
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Architecture</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  PWA (Workbox Prompt) + Private IDB Store
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Billetterie Hors-ligne</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  QR Codes persistés dans IndexedDB privé
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Affichage & Rendu</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Zéro squelette plein écran · Navigation 0ms instantanée
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Cache Chaud Étendu</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Home, Explorer, Favoris, Billets & Profil
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Apple Wallet Pass</span>
-                <span className="font-semibold text-[#6600FF] dark:text-purple-300">
-                  Design Poster grand format · Extraction palette d'image dynamique (CORS Safe)
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Achat Multi-Bénéficiaires</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Pass pour soi & amis · 1 QR unique par place · Liens de réclamation sécurisés
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Remboursements Mobile Money</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  Flux complet (T-Money, Flooz, MTN) · Déduction auto des motifs · Espace organisateur
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Défi de Présence Live</span>
-                <span className="font-semibold text-amber-500">
-                  Vérification serveur (graine & fenêtre horaire) · Anti-triche · Badge exclusif
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">APIs & Backend</span>
-                <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Supabase (RPC SECURITY DEFINER purchase/refund/challenge) · Gemini AI
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Traduction</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
                   Français · English
@@ -482,7 +328,7 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Licence</span>
                 <span className="text-gray-600 dark:text-gray-300">
-                  Propriétaire · Gbaïgbancê © 2026
+                  Propriétaire · GBAIGBANCE © 2026
                 </span>
               </div>
             </div>
@@ -491,7 +337,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-2">
             <p className="text-[11px] text-gray-400 font-medium">
-              Gbaïgbancê v3.6.0 · Apple Wallet Poster & Mobile Money Live System
+              GBAIGBANCE v3.6.0
             </p>
           </div>
         </div>

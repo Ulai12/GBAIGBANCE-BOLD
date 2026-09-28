@@ -220,16 +220,13 @@ export function ProfileScreen({
   }
 
   return (
-    <div className="min-h-screen pb-40">
+    <div className="min-h-screen">
       <div className="max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto">
         {/* Barre d'en-tête supérieure avec bouton Paramètres Stratégique */}
         <div className="px-5 pt-safe-header flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-lg font-black text-[#17131D] dark:text-white tracking-tight">
               Mon Espace
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-[10px] font-bold">
-              v2.8
             </span>
           </div>
 
@@ -239,10 +236,10 @@ export function ProfileScreen({
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Ouvrir les Paramètres de l'application"
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1A1829] shadow-xs border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-[#6600FF]/10 hover:text-[#6600FF] active:scale-90 transition-all"
+            className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
             title="Paramètres de l'application"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
           </button>
         </div>
 
