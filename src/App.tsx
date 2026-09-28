@@ -268,7 +268,7 @@ function AppContent() {
     <>
       <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
         {isTabScreen ? (
-          <div className="pb-28">
+          <div className="pb-28 max-w-7xl mx-auto">
             <div className={activeTab === 'home' ? 'block' : 'hidden'}>
               <HomeScreen
                 onEventClick={handleEventClick}
@@ -285,7 +285,10 @@ function AppContent() {
               />
             </div>
             <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
-              <ExploreScreen onEventClick={handleEventClick} />
+              <ExploreScreen
+                onEventClick={handleEventClick}
+                onUserClick={(u) => navigate(`/users/${u.id}`)}
+              />
             </div>
             <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
               <TicketsScreen

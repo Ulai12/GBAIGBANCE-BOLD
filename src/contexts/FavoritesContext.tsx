@@ -10,7 +10,7 @@ import {
 } from '@/services/events';
 
 export interface OptimisticRollbackDetail {
-  type: 'favorite' | 'artist_follow' | 'org_follow' | 'ticket';
+  type: 'favorite' | 'artist_follow' | 'org_follow' | 'user_follow' | 'ticket';
   id: string;
   message: string;
 }
@@ -25,6 +25,10 @@ export interface FavoritesContextValue {
   followedOrgIds: Set<string>;
   isFollowingOrg: (orgId: string) => boolean;
   toggleFollowOrg: (orgId: string) => Promise<boolean>;
+  // Synchronisation unifiée des participants / amis suivis
+  followedUserIds: Set<string>;
+  isFollowingUser: (userId: string) => boolean;
+  toggleFollowUser: (targetUserId: string) => Promise<boolean>;
 }
 
 const defaultFavoritesContextFallback: FavoritesContextValue = {
@@ -37,6 +41,9 @@ const defaultFavoritesContextFallback: FavoritesContextValue = {
   followedOrgIds: new Set<string>(),
   isFollowingOrg: () => false,
   toggleFollowOrg: async () => false,
+  followedUserIds: new Set<string>(),
+  isFollowingUser: () => false,
+  toggleFollowUser: async () => false,
 };
 
 const FavoritesContext = createContext<FavoritesContextValue>(defaultFavoritesContextFallback);
@@ -44,8 +51,9 @@ const FavoritesContext = createContext<FavoritesContextValue>(defaultFavoritesCo
 const STORAGE_LIKES_KEY = 'gba_liked_event_ids_v1';
 const STORAGE_ARTIST_FOLLOWS_KEY = 'gba_followed_artists_v1';
 const STORAGE_ORG_FOLLOWS_KEY = 'gba_followed_orgs_v1';
+const STORAGE_USER_FOLLOWS_KEY = 'gba_followed_users_v1';
 
-export function getFavoritesStorageKey(type: 'likes' | 'artists' | 'orgs', userId?: string | null): string {
+export function getFavoritesStorageKey(type: 'likes' | 'artists' | 'orgs' | 'users', userId?: string | null): string {
   if (userId && !userId.startsWith('guest-')) {
     return `gba_user_${type}_${userId}_v1`;
   }
@@ -59,16 +67,19 @@ export function clearUserFavoritesStorage(userId?: string | null): void {
     localStorage.removeItem(STORAGE_LIKES_KEY);
     localStorage.removeItem(STORAGE_ARTIST_FOLLOWS_KEY);
     localStorage.removeItem(STORAGE_ORG_FOLLOWS_KEY);
+    localStorage.removeItem(STORAGE_USER_FOLLOWS_KEY);
     localStorage.removeItem('gba_fav_events_cache');
     // Purge guest keys
     localStorage.removeItem('gba_guest_likes_v1');
     localStorage.removeItem('gba_guest_artists_v1');
     localStorage.removeItem('gba_guest_orgs_v1');
+    localStorage.removeItem('gba_guest_users_v1');
     // Purge user-specific keys if userId given
     if (userId) {
       localStorage.removeItem(getFavoritesStorageKey('likes', userId));
       localStorage.removeItem(getFavoritesStorageKey('artists', userId));
       localStorage.removeItem(getFavoritesStorageKey('orgs', userId));
+      localStorage.removeItem(getFavoritesStorageKey('users', userId));
     }
     // Wildcard purge all favorite & follow keys to prevent any cross-session leakage
     for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -78,11 +89,14 @@ export function clearUserFavoritesStorage(userId?: string | null): void {
         (k.startsWith('gba_user_likes_') ||
           k.startsWith('gba_user_artists_') ||
           k.startsWith('gba_user_orgs_') ||
+          k.startsWith('gba_user_users_') ||
           k.startsWith('gba_guest_likes_') ||
           k.startsWith('gba_guest_artists_') ||
           k.startsWith('gba_guest_orgs_') ||
+          k.startsWith('gba_guest_users_') ||
           k.startsWith('gba_liked_') ||
           k.startsWith('gba_followed_') ||
+          k.startsWith('gba_user_following_users_') ||
           k === 'gba_fav_events_cache')
       ) {
         localStorage.removeItem(k);
@@ -130,6 +144,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [followedOrgIds, setFollowedOrgIds] = useState<Set<string>>(() =>
     readStoredSet(getFavoritesStorageKey('orgs', userId))
   );
+  const [followedUserIds, setFollowedUserIds] = useState<Set<string>>(() =>
+    readStoredSet(getFavoritesStorageKey('users', userId))
+  );
 
   // Clear immediately when signed out
   useEffect(() => {
@@ -137,6 +154,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       setLikedEventIds(new Set());
       setFollowedArtistIds(new Set());
       setFollowedOrgIds(new Set());
+      setFollowedUserIds(new Set());
     };
     window.addEventListener('gba-user-signed-out', handleSignedOut);
     return () => {
@@ -149,12 +167,14 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     const likesKey = getFavoritesStorageKey('likes', userId);
     const artistsKey = getFavoritesStorageKey('artists', userId);
     const orgsKey = getFavoritesStorageKey('orgs', userId);
+    const usersKey = getFavoritesStorageKey('users', userId);
 
     if (!userId) {
       // Guest mode - load guest state
       setLikedEventIds(readStoredSet(likesKey));
       setFollowedArtistIds(readStoredSet(artistsKey));
       setFollowedOrgIds(readStoredSet(orgsKey));
+      setFollowedUserIds(readStoredSet(usersKey));
       return;
     }
 
@@ -162,6 +182,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     setLikedEventIds(readStoredSet(likesKey));
     setFollowedArtistIds(readStoredSet(artistsKey));
     setFollowedOrgIds(readStoredSet(orgsKey));
+    setFollowedUserIds(readStoredSet(usersKey));
 
     if (!isSupabaseConfigured) return;
 
@@ -208,6 +229,22 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           setFollowedOrgIds((prev) => {
             const merged = new Set([...prev, ...dbOrgs]);
             writeStoredSet(orgsKey, merged);
+            return merged;
+          });
+        }
+      });
+
+    // Fetch user followed participant/friends from Supabase
+    supabase
+      .from('user_follows')
+      .select('following_id')
+      .eq('follower_id', userId)
+      .then(({ data }) => {
+        if (data) {
+          const dbUsers = new Set(data.map((r: { following_id: string }) => r.following_id));
+          setFollowedUserIds((prev) => {
+            const merged = new Set([...prev, ...dbUsers]);
+            writeStoredSet(usersKey, merged);
             return merged;
           });
         }
@@ -262,8 +299,66 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       },
     });
 
+    // Realtime listener for user_follows table
+    const userFollowsChannel = supabase
+      .channel(`user-follows-live-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_follows',
+          filter: `follower_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as { following_id?: string };
+          if (!row?.following_id) return;
+          const targetId = row.following_id;
+          const isDelete = payload.eventType === 'DELETE';
+          setFollowedUserIds((prev) => {
+            const next = new Set(prev);
+            if (isDelete) next.delete(targetId);
+            else next.add(targetId);
+            writeStoredSet(usersKey, next);
+            return next;
+          });
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-user-follow-changed', {
+                detail: { followerId: userId, followingId: targetId, willFollow: !isDelete },
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       if (unsubscribe) unsubscribe();
+      supabase.removeChannel(userFollowsChannel);
+    };
+  }, [userId]);
+
+  // Synchronisation réactive bidirectionnelle via événements CustomEvent (ex: déclenché par un sous-composant)
+  useEffect(() => {
+    const handleUserFollowChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ followerId: string; followingId: string; willFollow: boolean }>;
+      if (!customEvent.detail) return;
+      const { followerId, followingId, willFollow } = customEvent.detail;
+      if (userId && followerId === userId) {
+        setFollowedUserIds((prev) => {
+          const next = new Set(prev);
+          if (willFollow) next.add(followingId);
+          else next.delete(followingId);
+          writeStoredSet(getFavoritesStorageKey('users', userId), next);
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('gba-user-follow-changed', handleUserFollowChanged);
+    return () => {
+      window.removeEventListener('gba-user-follow-changed', handleUserFollowChanged);
     };
   }, [userId]);
 
@@ -277,10 +372,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       const willBeLiked = !likedEventIds.has(eventId);
       const likesKey = getFavoritesStorageKey('likes', userId);
 
-      // 1. Immediate haptic feedback (Taptic pulse)
+      // 1. Feedback haptique immédiat (Taptic engine Apple)
       haptic.medium();
 
-      // 2. Instantaneous optimistic state update (0ms latency)
+      // 2. Mise à jour optimiste instantanée (0ms)
       setLikedEventIds((prev) => {
         const next = new Set(prev);
         if (willBeLiked) next.add(eventId);
@@ -289,10 +384,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      // 3. Asynchronous background network sync
+      // 3. Synchronisation réseau en arrière-plan
       if (isSupabaseConfigured && userId) {
         apiToggleEventLike(eventId, userId).catch(() => {
-          // Transparent rollback on failure
+          // Rollback transparent en cas d'échec
           setLikedEventIds((prev) => {
             const next = new Set(prev);
             if (willBeLiked) next.delete(eventId);
@@ -317,7 +412,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Resolves immediately so callers can animate and display toasts without waiting
       return Promise.resolve(willBeLiked);
     },
     [likedEventIds, userId]
@@ -333,10 +427,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       const willFollow = !followedArtistIds.has(artistId);
       const artistsKey = getFavoritesStorageKey('artists', userId);
 
-      // 1. Immediate tactile confirmation
       haptic.selection();
 
-      // 2. Instantaneous optimistic state update (0ms latency)
       setFollowedArtistIds((prev) => {
         const next = new Set(prev);
         if (willFollow) next.add(artistId);
@@ -345,10 +437,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      // 3. Background network sync
       if (isSupabaseConfigured && userId) {
         apiToggleArtistFollow(artistId, userId).catch(() => {
-          // Transparent rollback on network error
           setFollowedArtistIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(artistId);
@@ -373,6 +463,14 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gba-follows-updated', {
+            detail: { artistId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'artist' },
+          })
+        );
+      }
+
       return Promise.resolve(willFollow);
     },
     [followedArtistIds, userId]
@@ -388,10 +486,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       const willFollow = !followedOrgIds.has(orgId);
       const orgsKey = getFavoritesStorageKey('orgs', userId);
 
-      // 1. Immediate tactile confirmation
       haptic.selection();
 
-      // 2. Instantaneous optimistic state update (0ms latency)
       setFollowedOrgIds((prev) => {
         const next = new Set(prev);
         if (willFollow) next.add(orgId);
@@ -400,10 +496,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      // 3. Background network sync
       if (isSupabaseConfigured && userId) {
         apiToggleOrgFollow(orgId, userId).catch(() => {
-          // Transparent rollback on network error
           setFollowedOrgIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(orgId);
@@ -428,9 +522,99 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gba-follows-updated', {
+            detail: { orgId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'org' },
+          })
+        );
+      }
+
       return Promise.resolve(willFollow);
     },
     [followedOrgIds, userId]
+  );
+
+  const isFollowingUser = useCallback(
+    (targetUserId: string) => followedUserIds.has(targetUserId),
+    [followedUserIds]
+  );
+
+  const toggleFollowUser = useCallback(
+    async (targetUserId: string): Promise<boolean> => {
+      if (!userId || userId === targetUserId) return false;
+      const willFollow = !followedUserIds.has(targetUserId);
+      const usersKey = getFavoritesStorageKey('users', userId);
+
+      haptic.selection();
+
+      // Mise à jour optimiste locale immédiate
+      setFollowedUserIds((prev) => {
+        const next = new Set(prev);
+        if (willFollow) next.add(targetUserId);
+        else next.delete(targetUserId);
+        writeStoredSet(usersKey, next);
+        return next;
+      });
+
+      // Émission d'événement global pour synchroniser toutes les pages ouvertes
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gba-user-follow-changed', {
+            detail: { followerId: userId, followingId: targetUserId, willFollow },
+          })
+        );
+      }
+
+      // Synchronisation Supabase en arrière-plan
+      if (isSupabaseConfigured) {
+        try {
+          const { data: existing } = await supabase
+            .from('user_follows')
+            .select('id')
+            .eq('follower_id', userId)
+            .eq('following_id', targetUserId)
+            .maybeSingle();
+
+          if (existing && !willFollow) {
+            await supabase.from('user_follows').delete().eq('id', existing.id);
+          } else if (!existing && willFollow) {
+            await supabase.from('user_follows').insert({ follower_id: userId, following_id: targetUserId });
+          }
+        } catch {
+          // Rollback en cas d'échec réseau
+          setFollowedUserIds((prev) => {
+            const next = new Set(prev);
+            if (willFollow) next.delete(targetUserId);
+            else next.add(targetUserId);
+            writeStoredSet(usersKey, next);
+            return next;
+          });
+          haptic.error();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gba-optimistic-rollback', {
+                detail: {
+                  type: 'user_follow',
+                  id: targetUserId,
+                  message: willFollow
+                    ? "Impossible de suivre cet utilisateur pour l'instant. Problème réseau."
+                    : "Impossible de retirer cet abonnement. Problème réseau.",
+                },
+              })
+            );
+            window.dispatchEvent(
+              new CustomEvent('gba-user-follow-changed', {
+                detail: { followerId: userId, followingId: targetUserId, willFollow: !willFollow },
+              })
+            );
+          }
+        }
+      }
+
+      return willFollow;
+    },
+    [followedUserIds, userId]
   );
 
   return (
@@ -445,6 +629,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         followedOrgIds,
         isFollowingOrg,
         toggleFollowOrg,
+        followedUserIds,
+        isFollowingUser,
+        toggleFollowUser,
       }}
     >
       {children}
@@ -457,3 +644,4 @@ export function useFavorites() {
   const context = useContext(FavoritesContext);
   return context || defaultFavoritesContextFallback;
 }
+

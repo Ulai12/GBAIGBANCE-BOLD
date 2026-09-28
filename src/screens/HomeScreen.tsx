@@ -13,7 +13,6 @@ import {
   EventCardSkeleton,
   FeaturedCarouselSkeleton,
   TrendingDeckSkeleton,
-  NearbyTileSkeleton,
 } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -21,6 +20,7 @@ import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard'
 import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { EVENT_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
@@ -35,7 +35,6 @@ import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from 
 import {
   calculateDistanceKm,
   getCurrentUserLocation,
-  requestUserLocation,
   getEventCoordinates,
   LOME_CENTER,
   type UserLocationState,
@@ -74,6 +73,7 @@ export function HomeScreen({
   onToast,
 }: HomeScreenProps) {
   const { user, t } = useApp();
+  const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
   const initialCache = getCachedHomeData();
@@ -101,7 +101,6 @@ export function HomeScreen({
     status: 'idle',
     cityName: 'Lomé',
   });
-  const [requestingGps, setRequestingGps] = useState(false);
 
   // Category filter state
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
@@ -117,16 +116,6 @@ export function HomeScreen({
       setUserLocation(loc);
     });
   }, []);
-
-  const handleRequestGPS = async () => {
-    setRequestingGps(true);
-    try {
-      const loc = await requestUserLocation();
-      setUserLocation(loc);
-    } finally {
-      setRequestingGps(false);
-    }
-  };
 
   // IndexedDB background fallback if localStorage was cleared
   useEffect(() => {
@@ -161,6 +150,21 @@ export function HomeScreen({
         fetchPlatformStats(),
       ]);
 
+      // Algorithme de score de tendance basé sur l'engagement réel et la proximité temporelle
+      const calculateTrendingScore = (e: Event): number => {
+        if (isEventTerminated(e) || e.status !== 'published') return -1;
+        const likes = e.likes_count || 0;
+        const attendees = e.attendees_count || 0;
+        const views = e.views_count || 0;
+        let score = likes * 3 + attendees * 4 + views * 0.5;
+        const startsAt = new Date(e.starts_at || 0).getTime();
+        const now = Date.now();
+        const diffDays = (startsAt - now) / (1000 * 60 * 60 * 24);
+        if (diffDays >= 0 && diffDays <= 7) score += 20;
+        if (diffDays >= 0 && diffDays <= 2) score += 15;
+        return score;
+      };
+
       const sortEventsWithActiveFirst = (list: Event[]) => {
         return [...list].sort((a, b) => {
           const endedA = isEventTerminated(a);
@@ -183,25 +187,36 @@ export function HomeScreen({
       const masterEvents = sortEventsWithActiveFirst(Array.from(masterMap.values()));
       setAllEvents(masterEvents);
 
-      // La section "À la une" doit EXCLUSIVEMENT contenir des événements actifs (non terminés)
+      // La section "À la une" doit EXCLUSIVEMENT contenir des événements actifs (non terminés) - plafonné à 5 max
       const activeMaster = masterEvents.filter((e) => !isEventTerminated(e));
       const activeFeat = feat.filter((e) => isRealEvent(e) && e.status === 'published' && !isEventTerminated(e));
 
-      const newFeat = activeFeat.length > 0
+      const newFeat = (activeFeat.length > 0
         ? activeFeat
         : activeMaster.filter((e) => e.is_featured).length > 0
           ? activeMaster.filter((e) => e.is_featured)
-          : activeMaster.slice(0, 6);
-      const validTrend = sortEventsWithActiveFirst(trend.filter((e) => e.status === 'published'));
-      const validUp = sortEventsWithActiveFirst(up.filter((e) => e.status === 'published'));
-      const newTrend = validTrend.length > 0 ? validTrend : masterEvents.slice(0, 4);
-      const newNearby = validUp.length > 0 ? validUp : masterEvents;
+          : activeMaster
+      ).slice(0, 5);
+
+      // Algorithme tendances : tri par score pondéré et plafonnement strict à 5 pour éviter tout flux infini
+      const poolForTrending = masterEvents.filter((e) => !isEventTerminated(e));
+      const sortedTrending = [...poolForTrending].sort(
+        (a, b) => calculateTrendingScore(b) - calculateTrendingScore(a)
+      );
+      const newTrend = sortedTrending.slice(0, 5);
+
+      // Proximité / sorties : plafonnement à 6 cartes maximum
+      const validUp = sortEventsWithActiveFirst(up.filter((e) => e.status === 'published' && !isEventTerminated(e)));
+      const newNearby = (validUp.length > 0 ? validUp : masterEvents).slice(0, 6);
+
+      const cappedArtists = art.slice(0, 8);
+      const cappedOrgs = orgs.slice(0, 6);
 
       setFeatured(newFeat);
       setTrending(newTrend);
       setNearby(newNearby);
-      setArtists(art);
-      setOrganizations(orgs);
+      setArtists(cappedArtists);
+      setOrganizations(cappedOrgs);
       setPlatformStats(stats);
 
       // Save fresh data into the 0ms synchronous cache
@@ -209,8 +224,8 @@ export function HomeScreen({
         featured: newFeat,
         trending: newTrend,
         nearby: newNearby,
-        artists: art,
-        organizations: orgs,
+        artists: cappedArtists,
+        organizations: cappedOrgs,
         stats,
       });
     } catch {
@@ -254,7 +269,7 @@ export function HomeScreen({
     };
   }, [refreshHomeData]);
 
-  // Proactive automatic foreground / event-based auto-refresh
+  // Proactive automatic foreground / event-based auto-refresh (Cycle 3 secondes max)
   useEffect(() => {
     const handleSyncTrigger = () => {
       refreshHomeData(true);
@@ -274,18 +289,20 @@ export function HomeScreen({
     window.addEventListener('gba-event-updated', handleSyncTrigger);
     window.addEventListener('gba-ticket-booked', handleSyncTrigger);
 
-    // Auto-polling interval every 45 seconds for fresh data
+    // Auto-polling silencieux toutes les 3 secondes max (uniquement si page active/visible)
     const periodicSync = setInterval(() => {
-      refreshHomeData(true);
-    }, 45000);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshHomeData(true);
+      }
+    }, 3000);
 
-    // Immediate 10-second ticker to purge any terminated events from in-memory lists without waiting for network
+    // Ticker silencieux pour purger tout événement qui viendrait d'expirer
     const pruneTicker = setInterval(() => {
       setFeatured((prev) => prev.filter((e) => !isEventTerminated(e)));
       setTrending((prev) => prev.filter((e) => !isEventTerminated(e)));
       setNearby((prev) => prev.filter((e) => !isEventTerminated(e)));
       setAllEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 10000);
+    }, 3000);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibility);
@@ -355,7 +372,7 @@ export function HomeScreen({
 
   // Section: Proximité / Sorties locales adaptées (uniquement si l'utilisateur a autorisé la localisation)
   const nearbySectionData = useMemo(() => {
-    // Ne pas afficher la section de lieu si l'utilisateur n'a pas autorisé la localisation
+    // Ne pas afficher la section de lieu si l'utilisateur n'a pas autorisé la géolocalisation
     if (!userLocation.isActual) {
       return {
         title: '',
@@ -370,48 +387,81 @@ export function HomeScreen({
       .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
 
     const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
-    if (strictlyUnder10.length > 0) {
-      const maxDist = Math.max(...strictlyUnder10.map((e) => e.distanceKm || 0));
-      return {
-        title: maxDist <= 5.0 ? 'À moins de 5 km' : 'À proximité de vous',
-        subtitle: 'Autour de votre position GPS réelle',
-        events: strictlyUnder10,
-        isActual: true,
-      };
-    }
-    
+    const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : sorted;
+
+    // Plafonnement strict à 4 événements max pour garder le flux fini et performant
     return {
       title: 'À proximité de vous',
-      subtitle: 'Autour de votre position',
-      events: sorted.slice(0, 6),
+      subtitle: `Autour de votre position (${userLocation.cityName || 'GPS'})`,
+      events: selected.slice(0, 4),
       isActual: true,
     };
   }, [allEventsWithDistance, userLocation]);
 
-  // Section: Selon vos préférences (matches user profile preferred categories or vibrant defaults)
-  const userPreferencesEvents = useMemo(() => {
-    const userPrefs = (user?.preferred_genres || []).map((g) => g.toLowerCase());
-    const targetCategories = userPrefs.length > 0 ? userPrefs : ['concert', 'party', 'festival', 'culture', 'spectacle'];
+  // Section: Recommandations personnalisées (Algorithme fondé sur les préférences, abonnements, favoris et popularité)
+  const recommendedEvents = useMemo(() => {
+    const userPrefs = (user?.preferred_genres || [])
+      .map((g) => g.toLowerCase().trim())
+      .filter(Boolean);
+    const excludedIds = new Set([...featured.map((e) => e.id), ...trending.map((e) => e.id)]);
 
-    const matches = allEventsWithDistance.filter((event) => {
+    const candidates = allEventsWithDistance.filter((e) => !excludedIds.has(e.id));
+
+    const scored = candidates.map((event) => {
+      let score = 0;
       const cat = (event.category || '').toLowerCase();
       const title = (event.title || '').toLowerCase();
-      return targetCategories.some((pref) => cat.includes(pref) || title.includes(pref));
+
+      // 1. Préférences déclarées de genres musicaux
+      if (userPrefs.some((pref) => cat.includes(pref) || title.includes(pref))) {
+        score += 35;
+      }
+
+      // 2. Organisation ou artiste suivi
+      if (
+        (event.organizer_id && followedOrgIds.has(event.organizer_id)) ||
+        (event.artist_id && followedArtistIds.has(event.artist_id))
+      ) {
+        score += 40;
+      }
+
+      // 3. Événement liké / mis en favoris
+      if (likedEventIds.has(event.id)) {
+        score += 25;
+      }
+
+      // 4. Popularité réelle de la communauté (engagement vérifié)
+      score += Math.min(25, (event.attendees_count || 0) * 3 + (event.views_count || 0) * 0.4);
+
+      // 5. Événement à venir dans les 14 jours
+      const startsAt = new Date(event.starts_at || 0).getTime();
+      const diffDays = (startsAt - Date.now()) / (1000 * 60 * 60 * 24);
+      if (diffDays >= 0 && diffDays <= 14) score += 15;
+
+      return { event, score };
     });
 
-    return matches.length > 0 ? matches : allEventsWithDistance;
-  }, [allEventsWithDistance, user]);
+    // Tri par score décroissant et plafonnement strict à 4 événements max (flux fini)
+    return scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map((s) => s.event);
+  }, [allEventsWithDistance, featured, trending, user, followedOrgIds, followedArtistIds, likedEventIds]);
 
-  // Section: Événements 100% Gratuits
+  // Section: Événements 100% Gratuits (plafonné à 4 max)
   const freeEvents = useMemo(() => {
-    return allEventsWithDistance.filter((event) => event.price_min === 0);
+    return allEventsWithDistance.filter((event) => event.price_min === 0 || event.is_free).slice(0, 4);
   }, [allEventsWithDistance]);
 
-  // Section: À ne pas manquer (High engagement upcoming active events)
+  // Section: À ne pas manquer (fort engagement, exclus ceux déjà en vedette ou en tendance - max 4)
   const unmissableEvents = useMemo(() => {
+    const excludedIds = new Set([...featured.map((e) => e.id), ...trending.map((e) => e.id)]);
     return [...allEventsWithDistance]
-      .sort((a, b) => (b.attendees_count || 0) + (b.views_count || 0) - ((a.attendees_count || 0) + (a.views_count || 0)));
-  }, [allEventsWithDistance]);
+      .filter((e) => !excludedIds.has(e.id) && ((e.attendees_count || 0) > 0 || (e.views_count || 0) >= 10))
+      .sort((a, b) => ((b.attendees_count || 0) * 2 + (b.views_count || 0)) - ((a.attendees_count || 0) * 2 + (a.views_count || 0)))
+      .slice(0, 4);
+  }, [allEventsWithDistance, featured, trending]);
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
@@ -422,7 +472,7 @@ export function HomeScreen({
   };
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
       {/* En-tête modernisée style iOS avec respect de la zone de sécurité (Dynamic Island & Encoche) */}
       <header className="px-5 pt-safe-header pb-3">
         {/* Ligne Logo & Identité */}
@@ -537,7 +587,7 @@ export function HomeScreen({
           Explorer par catégorie
         </h2>
         </div>
-        <div className="grid grid-cols-4 gap-2.5 py-1">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5 py-1">
           {EVENT_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.icon] || Music;
             const isActive = selectedCategory === cat.value;
@@ -581,13 +631,13 @@ export function HomeScreen({
             </button>
           </div>
           {categoryLoading ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
             </div>
           ) : categoryEvents.length === 0 ? (
             <EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {categoryEvents.map((event) => (
                 <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
               ))}
@@ -607,39 +657,15 @@ export function HomeScreen({
         </section>
       ) : null}
 
-      {/* SECTION 4: Proximité / Sorties locales (Uniquement affiché si la localisation est autorisée) */}
-      {userLocation.isActual && (
-        loading && nearbySectionData.events.length === 0 ? (
-          <section className="mt-8 px-5" aria-label="Événements à proximité">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
-                  <Navigation className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                    À proximité de vous
-                  </h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0 whiterap">
-                    Recherche des événements locaux...
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3.5 overflow-x-auto no-scrollbar py-1.5 -mx-5 px-5">
-              <NearbyTileSkeleton />
-              <NearbyTileSkeleton />
-              <NearbyTileSkeleton />
-            </div>
-          </section>
-        ) : nearbySectionData.events.length > 0 ? (
-          <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
+      {/* SECTION 4: Proximité / Sorties locales (Strictement masqué si la localisation n'est pas autorisée) */}
+      {userLocation.isActual && nearbySectionData.events.length > 0 && (
+        <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
           {/* En-tête aérée et ergonomique (iOS 27 - Zéro troncature) */}
           <div className="flex flex-col gap-1.5 mb-3.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
-                  <Navigation className={`w-4 h-4 ${requestingGps ? 'animate-spin' : ''}`} />
+                  <Navigation className="w-4 h-4" />
                 </div>
                 <h2 className="text-lg sm:text-xl font-black tracking-[-0.03em] text-[#17131d] dark:text-white leading-tight">
                   {nearbySectionData.title}
@@ -656,25 +682,11 @@ export function HomeScreen({
               </button>
             </div>
 
-            {/* Ligne de statut de localisation & Action GPS intelligente */}
             <div className="flex items-center gap-2 pl-10.5">
-              {!userLocation.isActual ? (
-                <button
-                  type="button"
-                  onClick={handleRequestGPS}
-                  disabled={requestingGps}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 dark:bg-blue-500/20 px-2.5 py-1 rounded-full cursor-pointer transition-all active:scale-95 border border-blue-500/20"
-                  title="Activer la géolocalisation"
-                >
-                  <Navigation className={`w-3 h-3 ${requestingGps ? 'animate-spin' : ''}`} />
-                  <span>{requestingGps ? 'Localisation en cours...' : 'Activer le GPS pour filtrer'}</span>
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {nearbySectionData.subtitle}
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                {nearbySectionData.subtitle}
+              </span>
             </div>
           </div>
 
@@ -691,11 +703,11 @@ export function HomeScreen({
             ))}
           </div>
         </section>
-      ) : null)}
+      )}
 
-      {/* SECTION 5: Selon vos préférences */}
-      {userPreferencesEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Selon vos préférences">
+      {/* SECTION 5: Recommandé pour vous (Algorithme fondé sur les goûts, affinités et tendances) */}
+      {recommendedEvents.length > 0 && (
+        <section className="mt-9 px-5" aria-label="Recommandations personnalisées">
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -703,10 +715,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  Selon vos préférences
+                  Recommandé pour vous
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Sélection personnalisée selon vos goûts
+                  Sélection intelligente selon vos goûts et affinités
                 </p>
               </div>
             </div>
@@ -721,8 +733,8 @@ export function HomeScreen({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {userPreferencesEvents.slice(0, 4).map((event) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {recommendedEvents.slice(0, 4).map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
             ))}
           </div>
@@ -757,7 +769,7 @@ export function HomeScreen({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {freeEvents.slice(0, 4).map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
             ))}
@@ -793,7 +805,7 @@ export function HomeScreen({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {unmissableEvents.slice(0, 4).map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
             ))}

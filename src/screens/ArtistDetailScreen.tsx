@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, Music2, Calendar, Share2, Heart, Eye, Sparkles } from 'lucide-react';
+// ArtistDetailScreen.tsx - Vue profil artiste avec vérification de perspective (soi-même vs public),
+// rafraîchissement silencieux 3s en arrière-plan et grille responsive Apple HIG (mobile, tablette, PC).
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, Music2, Calendar, Share2, Heart, Eye, Sparkles, UserCheck } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -22,7 +24,7 @@ interface ArtistDetailScreenProps {
 }
 
 export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLogin }: ArtistDetailScreenProps) {
-  const { language, session, t } = useApp();
+  const { language, session, user, t } = useApp();
   const { isFollowingArtist, toggleFollowArtist } = useFavorites();
   const [fullArtist, setFullArtist] = useState<Artist>(artist);
   const [events, setEvents] = useState<Event[]>([]);
@@ -30,7 +32,25 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
 
   const following = isFollowingArtist(artist.id);
 
+  // Vérification de perspective : l'utilisateur connecté est-il le propriétaire de ce profil artiste ?
+  const isOwnProfile = Boolean(user && (user.id === fullArtist.user_id || user.id === fullArtist.id));
+
+  // Chargement silencieux en arrière-plan (aucun flicker d'écran)
+  const refreshSilentData = useCallback(async () => {
+    try {
+      const [freshArtist, freshEvents] = await Promise.all([
+        fetchArtistById(artist.id),
+        fetchEventsByArtist(artist.id),
+      ]);
+      if (freshArtist) setFullArtist(freshArtist);
+      if (freshEvents) setEvents(freshEvents);
+    } catch {
+      // Échec silencieux
+    }
+  }, [artist.id]);
+
   useEffect(() => {
+    setLoading(true);
     fetchArtistById(artist.id).then((data) => {
       if (data) setFullArtist(data);
     });
@@ -38,6 +58,17 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
       .then(setEvents)
       .finally(() => setLoading(false));
   }, [artist.id]);
+
+  // Polling silencieux en arrière-plan toutes les 3 secondes max si l'onglet est actif
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshSilentData();
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [refreshSilentData]);
 
   const handleFollow = async () => {
     if (!session) {
@@ -48,6 +79,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
       onLogin?.();
       return;
     }
+    if (isOwnProfile) return;
 
     try {
       const willFollow = !following;
@@ -56,7 +88,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
         message: willFollow
           ? t('events', 'artist.followedToast') || `Vous suivez maintenant ${fullArtist.name}`
           : t('events', 'artist.unfollowedToast') || `Désabonné de ${fullArtist.name}`,
-        type: 'success',
+        type: willFollow ? 'success' : 'info',
       });
     } catch {
       onToast({ message: t('common', 'error') || 'Une erreur est survenue', type: 'error' });
@@ -89,7 +121,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
   return (
     <div className="min-h-screen pb-32">
       {/* Cover Header */}
-      <div className="relative h-64 overflow-hidden">
+      <div className="relative h-64 sm:h-72 lg:h-80 overflow-hidden">
         <img
           src={fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id, fullArtist.name)}
           alt={fullArtist.name}
@@ -98,12 +130,12 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
         <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/25 to-black/50" />
 
         {/* Action buttons */}
-        <div className="absolute top-0 inset-x-4 pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
+        <div className="absolute top-0 inset-x-4 max-w-4xl mx-auto pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
           <button
             type="button"
             onClick={onBack}
             aria-label="Retour"
-            className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white"
+            className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -111,27 +143,27 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
             type="button"
             onClick={handleShare}
             aria-label="Partager le profil"
-            className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white"
+            className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
             <Share2 className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Profile Info Container */}
-      <div className="max-w-md mx-auto px-5 -mt-16 relative">
-        <div className="flex items-end gap-4">
+      {/* Profile Info Container responsive pour tablette et PC */}
+      <div className="max-w-4xl mx-auto px-5 -mt-16 sm:-mt-20 relative">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <UserAvatar
             src={fullArtist.photo_url}
             name={fullArtist.name}
             role="artist"
             size="2xl"
             shape="circle"
-            className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-white dark:ring-[#14121E] shadow-xl"
+            className="w-24 h-24 sm:w-32 sm:h-32 ring-4 ring-white dark:ring-[#14121E] shadow-xl"
           />
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-[#17131D] dark:text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
                 {fullArtist.name}
               </h1>
             </div>
@@ -142,31 +174,31 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-2.5 mt-5">
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mt-5">
           <div className="rounded-[1.4rem] p-3 text-center bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs">
             <Heart className={`w-4 h-4 mx-auto mb-1 ${following ? 'text-red-500 fill-red-500' : 'text-[#6600FF]'}`} />
-            <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
+            <p className="text-lg sm:text-xl font-black text-[#17131D] dark:text-white animate-pop">
               {formatNumber(displayFollowers, language)}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">
               {t('events', 'artist.followers') || 'Abonnés'}
             </p>
           </div>
           <div className="rounded-[1.4rem] p-3 text-center bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs">
             <Calendar className="w-4 h-4 text-[#6600FF] mx-auto mb-1" />
-            <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
+            <p className="text-lg sm:text-xl font-black text-[#17131D] dark:text-white animate-pop">
               {events.length}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">
               {t('events', 'artist.events') || 'Événements'}
             </p>
           </div>
           <div className="rounded-[1.4rem] p-3 text-center bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs">
             <Eye className="w-4 h-4 text-[#6600FF] mx-auto mb-1" />
-            <p className="text-lg font-black text-[#17131D] dark:text-white animate-pop">
+            <p className="text-lg sm:text-xl font-black text-[#17131D] dark:text-white animate-pop">
               {formatNumber(totalViews, language)}
             </p>
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">
               {t('events', 'artist.views') || 'Vues'}
             </p>
           </div>
@@ -187,21 +219,39 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           </div>
         )}
 
-        {/* Follow Button */}
-        <button
-          type="button"
-          onClick={handleFollow}
-          className={`w-full mt-5 py-3.5 rounded-full font-black text-sm transition-all active:scale-[0.98] cursor-pointer shadow-md flex items-center justify-center gap-2 ${
-            following
-              ? 'bg-white dark:bg-white/15 text-[#6600FF] dark:text-white border border-[#6600FF]/30 dark:border-white/20'
-              : 'bg-[#6600FF] text-white hover:bg-[#5200cc]'
-          }`}
-        >
-          <Heart className={`w-4 h-4 ${following ? 'fill-[#6600FF] dark:fill-white' : ''}`} />
-          {following
-            ? (t('events', 'artist.unfollow') || 'Abonné · Ne plus suivre')
-            : (t('events', 'artist.follow') || 'Suivre cet artiste')}
-        </button>
+        {/* Action Button selon la perspective : Vous êtes l'artiste vs Vous êtes un fan */}
+        {isOwnProfile ? (
+          <div className="w-full mt-5 p-3.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 border border-[#6600FF]/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#6600FF] dark:text-[#A78BFA]">
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span>Votre page Artiste (Vue publique des fans)</span>
+            </div>
+            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-black/30 px-2.5 py-1 rounded-full">
+              Compte vérifié
+            </span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleFollow}
+            className={`w-full mt-5 py-3.5 rounded-full font-black text-sm transition-all active:scale-[0.98] cursor-pointer shadow-md flex items-center justify-center gap-2 ${
+              following
+                ? 'bg-white dark:bg-white/15 text-[#6600FF] dark:text-white border border-[#6600FF]/30 dark:border-white/20'
+                : 'bg-[#6600FF] text-white hover:bg-[#5200cc]'
+            }`}
+          >
+            {following ? (
+              <UserCheck className="w-4 h-4 text-[#6600FF] dark:text-white" />
+            ) : (
+              <Heart className="w-4 h-4" />
+            )}
+            <span>
+              {following
+                ? (t('events', 'artist.unfollow') || 'Abonné · Ne plus suivre')
+                : (t('events', 'artist.follow') || 'Suivre cet artiste')}
+            </span>
+          </button>
+        )}
 
         {/* Bio */}
         {fullArtist.bio && (
@@ -215,10 +265,10 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           </div>
         )}
 
-        {/* Events List */}
+        {/* Events List responsive (grid-cols-2 md:grid-cols-3 lg:grid-cols-4) */}
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="flex items-center gap-2 text-lg font-black text-[#17131D] dark:text-white">
+            <h2 className="flex items-center gap-2 text-lg sm:text-xl font-black text-[#17131D] dark:text-white">
               <Calendar className="w-5 h-5 text-[#6600FF]" /> {t('events', 'artist.eventsAndConcerts') || 'Événements & Concerts'}
             </h2>
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
@@ -230,7 +280,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="card overflow-hidden">
                   <Skeleton className="rounded-none h-32 w-full" />
@@ -247,7 +297,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
               description={t('events', 'artist.noEvents') || "Cet artiste n'a pas d'événement programmé pour le moment."}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
               {events.map((event) => (
                 <EventCard
                   key={event.id}
@@ -262,3 +312,4 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
     </div>
   );
 }
+

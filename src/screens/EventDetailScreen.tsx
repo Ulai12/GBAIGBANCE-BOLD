@@ -35,7 +35,6 @@ import { getPublicEventCache, setPublicEventCache } from '@/infrastructure/cache
 import { shareEventNative } from '@/utils/share';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchEventAttendees, type AttendeeProfile } from '@/services/attendeesService';
-import { toggleUserFollow } from '@/features/users/follows';
 import { getDefaultEventCover } from '@/utils/defaultImages';
 
 // Subcomponents
@@ -155,7 +154,7 @@ export function EventDetailScreen({
   onUserClick,
 }: EventDetailScreenProps) {
   const { user, theme, language } = useApp();
-  const { isLiked, toggleLike } = useFavorites();
+  const { isLiked, toggleLike, toggleFollowUser, isFollowingUser } = useFavorites();
   const liked = isLiked(event.id);
   const { scrollY } = useScrollGlass(12);
 
@@ -174,10 +173,9 @@ export function EventDetailScreen({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [attendees, setAttendees] = useState<AttendeeProfile[]>([]);
-  const [attendeesFriendsCount, setAttendeesFriendsCount] = useState(0);
   const [attendeesLoading, setAttendeesLoading] = useState(true);
 
-  // Chargement des vrais participants (tickets + profils réels Supabase) avec amis en tête
+  // Chargement des vrais participants (tickets + profils réels Supabase)
   useEffect(() => {
     let isMounted = true;
     setAttendeesLoading(true);
@@ -185,7 +183,6 @@ export function EventDetailScreen({
       .then((res) => {
         if (!isMounted) return;
         setAttendees(res.attendees);
-        setAttendeesFriendsCount(res.friendsCount);
         if (res.totalCount > 0) {
           setLiveAttendees(res.totalCount);
         }
@@ -202,18 +199,20 @@ export function EventDetailScreen({
     };
   }, [event.id, user?.id]);
 
+  // Participants synchronisés avec le système d'abonnements unifié
+  const computedAttendees: AttendeeProfile[] = attendees.map((a) => ({
+    ...a,
+    isFriend: user?.id ? (a.id === user.id ? false : isFollowingUser(a.id)) : false,
+  }));
+  const computedFriendsCount = computedAttendees.filter((a) => a.isFriend).length;
+
   const handleToggleFollowAttendee = async (targetUserId: string): Promise<boolean> => {
     if (!user?.id) {
       onToast({ message: 'Connectez-vous pour suivre ce profil', type: 'info' });
       return false;
     }
     try {
-      const isNowFollowing = await toggleUserFollow(user.id, targetUserId);
-      setAttendees((prev) =>
-        prev.map((a) => (a.id === targetUserId ? { ...a, isFriend: isNowFollowing } : a))
-      );
-      setAttendeesFriendsCount((prev) => (isNowFollowing ? prev + 1 : Math.max(0, prev - 1)));
-      haptic.selection();
+      const isNowFollowing = await toggleFollowUser(targetUserId);
       onToast({
         message: isNowFollowing ? 'Abonnement réussi !' : 'Désabonnement effectué',
         type: 'success',
@@ -225,6 +224,40 @@ export function EventDetailScreen({
       return false;
     }
   };
+
+  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (statut, billets restants, vues, participants)
+  useEffect(() => {
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && isMounted) {
+        try {
+          const [freshEv, freshOpts, freshAttendees] = await Promise.all([
+            fetchEventById(event.id),
+            fetchTicketOptions(event.id),
+            fetchEventAttendees(event.id, user?.id).catch(() => null),
+          ]);
+          if (freshEv && isMounted) {
+            setFullEvent((prev) => (prev ? { ...prev, ...freshEv } : freshEv));
+            setLiveViews(freshEv.views_count);
+            setLiveAttendees(freshEv.attendees_count);
+          }
+          if (freshOpts && isMounted) {
+            setTicketOptions(freshOpts);
+          }
+          if (freshAttendees && isMounted && freshAttendees.attendees.length > 0) {
+            setAttendees(freshAttendees.attendees);
+          }
+        } catch {
+          // Polling silencieux sans perturbation visuelle
+        }
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [event.id, user?.id]);
 
   const handleSelectAttendeeProfile = (profile: Profile) => {
     setShowAttendeesModal(false);
@@ -551,7 +584,7 @@ export function EventDetailScreen({
         Monte avec une courbure 32px sur le hero flouté.
         Padding-bottom de sécurité généreux (pb-44) pour dégager complètement la barre flottante.
       */}
-      <main className="-mt-14 sm:-mt-18 relative z-20 max-w-xl mx-auto px-4 sm:px-6 pb-44 sm:pb-48 space-y-5">
+      <main className="-mt-14 sm:-mt-18 relative z-20 max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-44 sm:pb-48 space-y-6">
         {/* Carte Principale : Identité, Titre, Badges, Compte à rebours, Date/Heure */}
         <section className="p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] glass-ios border border-white/60 dark:border-white/15 space-y-5 shadow-xl">
           {/* Ligne des badges : Catégorie violet plein + Ville en verre + Statut éventuel */}
@@ -959,9 +992,9 @@ export function EventDetailScreen({
             PARTICIPANTS RÉELS AVEC AMIS EN PRIORITÉ & VUES INTÉGRÉES
           */}
           <EventAttendeesSection
-            attendees={attendees}
+            attendees={computedAttendees}
             totalCount={attendees.length || liveAttendees}
-            friendsCount={attendeesFriendsCount}
+            friendsCount={computedFriendsCount}
             viewsCount={liveViews}
             loading={attendeesLoading}
             onOpenModal={() => setShowAttendeesModal(true)}
@@ -984,7 +1017,7 @@ export function EventDetailScreen({
         Positionnée avec marge basse et safe-area. Le padding-bottom du contenu (pb-44)
         garantit qu'aucun élément ne sera masqué derrière elle !
       */}
-      <div className="fixed bottom-4 inset-x-4 max-w-xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
+      <div className="fixed bottom-4 inset-x-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             {displayEvent.access_type === 'free' ? 'Tarif' : 'À partir de'}
@@ -1060,8 +1093,8 @@ export function EventDetailScreen({
       <EventAttendeesModal
         isOpen={showAttendeesModal}
         eventTitle={displayEvent.title}
-        attendees={attendees}
-        friendsCount={attendeesFriendsCount}
+        attendees={computedAttendees}
+        friendsCount={computedFriendsCount}
         onClose={() => setShowAttendeesModal(false)}
         onSelectProfile={handleSelectAttendeeProfile}
         onToggleFollow={handleToggleFollowAttendee}

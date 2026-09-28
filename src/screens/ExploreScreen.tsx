@@ -1,3 +1,5 @@
+// ExploreScreen.tsx - Écran de découverte et de recherche enrichi (Événements & Participants/Amis),
+// synchronisation silencieuse 3s en arrière-plan, filtres dynamiques et responsive layout Apple HIG (mobile, tablette, PC).
 import { useState, useEffect, useCallback } from 'react';
 import {
   SlidersHorizontal,
@@ -5,6 +7,10 @@ import {
   Search,
   X,
   Sparkles,
+  Users,
+  Calendar,
+  Heart,
+  UserCheck,
   Music,
   PartyPopper,
   Mic,
@@ -19,14 +25,25 @@ import { EventCard } from '@/components/EventCard';
 import { EventCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { BottomSheet } from '@/components/BottomSheet';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
-import { searchEvents, fetchUpcomingEvents, isEventTerminated, isRealEvent, subscribeToGlobalEventsLive } from '@/services/events';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { haptic } from '@/hooks/useHaptics';
+import {
+  searchEvents,
+  fetchUpcomingEvents,
+  isEventTerminated,
+  isRealEvent,
+  subscribeToGlobalEventsLive,
+  searchProfiles,
+} from '@/services/events';
 import { getCachedHomeData } from '@/services/cache';
-import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories } from '@/constants';
-import type { Event, EventCategory } from '@/types';
+import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories, COUNTRY_FLAGS } from '@/constants';
+import type { Event, EventCategory, Profile } from '@/types';
 
 interface ExploreScreenProps {
   onEventClick: (event: Event) => void;
+  onUserClick?: (user: Profile) => void;
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -61,8 +78,13 @@ function getWarmExploreEvents(): Event[] {
   return [];
 }
 
-export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
-  const { t } = useApp();
+export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps) {
+  const { user: currentUser, t } = useApp();
+  const { isFollowingUser, toggleFollowUser } = useFavorites();
+
+  // Mode de recherche : événements ou participants/amis
+  const [searchMode, setSearchMode] = useState<'events' | 'participants'>('events');
+
   const [query, setQuery] = useState('');
   const [events, setEvents] = useState<Event[]>(() => getWarmExploreEvents());
   const [loading, setLoading] = useState(() => getWarmExploreEvents().length === 0);
@@ -70,6 +92,10 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
+
+  // Participants trouvés lors de la recherche
+  const [participants, setParticipants] = useState<Profile[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   const loadEvents = useCallback(async (isDefault = false) => {
     setLoading((prev) => (events.length === 0 ? true : prev));
@@ -93,195 +119,330 @@ export function ExploreScreen({ onEventClick }: ExploreScreenProps) {
     }
   }, [query, selectedCategory, selectedCity, priceFilter, events.length]);
 
-  useEffect(() => {
-    const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
-    const timer = setTimeout(() => {
-      loadEvents(isDefault);
-    }, isDefault && exploreCache ? 100 : 250);
-    return () => clearTimeout(timer);
-  }, [loadEvents, query, selectedCategory, selectedCity, priceFilter]);
+  const loadParticipants = useCallback(async () => {
+    setLoadingParticipants(true);
+    try {
+      const results = await searchProfiles(query || 'a');
+      // Exclure l'utilisateur lui-même de la liste de recherche pour amis
+      const filtered = results.filter((p) => p.id !== currentUser?.id);
+      setParticipants(filtered);
+    } catch {
+      setParticipants([]);
+    } finally {
+      setLoadingParticipants(false);
+    }
+  }, [query, currentUser?.id]);
 
-  // Real-time automatic synchronization and pruning for Explore
   useEffect(() => {
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const triggerRefresh = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
+    if (searchMode === 'events') {
+      const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
+      const timer = setTimeout(() => {
         loadEvents(isDefault);
-      }, 500);
-    };
+      }, isDefault && exploreCache ? 100 : 250);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        loadParticipants();
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
-    const unsubscribe = subscribeToGlobalEventsLive(triggerRefresh);
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') triggerRefresh();
-    };
+  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  useEffect(() => {
+    const periodicSync = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        if (searchMode === 'events') {
+          const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
+          loadEvents(isDefault);
+        } else if (query.trim()) {
+          loadParticipants();
+        }
+      }
+    }, 3000);
 
-    window.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', triggerRefresh);
-    window.addEventListener('online', triggerRefresh);
-    window.addEventListener('gba-refresh-events', triggerRefresh);
+    const unsubscribe = subscribeToGlobalEventsLive(() => {
+      if (searchMode === 'events') {
+        loadEvents(false);
+      }
+    });
 
     const pruneTicker = setInterval(() => {
       setEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 10000);
+    }, 3000);
 
     return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      if (unsubscribe) unsubscribe();
-      window.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', triggerRefresh);
-      window.removeEventListener('online', triggerRefresh);
-      window.removeEventListener('gba-refresh-events', triggerRefresh);
+      clearInterval(periodicSync);
       clearInterval(pruneTicker);
+      if (unsubscribe) unsubscribe();
     };
-  }, [loadEvents, query, selectedCategory, selectedCity, priceFilter]);
+  }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
   const resetFilters = () => {
     setSelectedCategory(null);
     setSelectedCity(null);
     setPriceFilter('any');
-    setQuery('');
   };
 
-  const hasActiveFilters = selectedCategory || selectedCity || priceFilter !== 'any' || query;
-  const activeFiltersCount = (selectedCategory ? 1 : 0) + (selectedCity ? 1 : 0) + (priceFilter !== 'any' ? 1 : 0);
+  const hasActiveFilters = Boolean(selectedCategory || selectedCity || priceFilter !== 'any');
+
+  const handleToggleFollowUserInSearch = async (targetUserId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    haptic.selection();
+    await toggleFollowUser(targetUserId);
+  };
 
   return (
-    <div className="min-h-screen pb-32">
-      {/* Header — Coherent with Favorites & Tickets */}
-      <div className="px-5 pt-safe-header pb-3">
-        <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-          Recherche & Découverte
-        </p>
-        <div className="flex items-center justify-between mt-1">
-          <h1 className="text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
-            Explorer
-          </h1>
-          <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
-            {events.length} {events.length > 1 ? 'événements' : 'événement'}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Trouvez les meilleurs concerts, festivals, spectacles et sorties près de chez vous
-        </p>
-      </div>
-
-      {/* Barre de recherche iOS & Bouton Filtres */}
-      <div className="px-5 mt-2 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Événement, artiste, lieu, ambiance..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] text-xs font-semibold text-[#17131D] dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 shadow-xs"
-          />
-          {query && (
+    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
+      {/* Header Sticky avec recherche et filtres */}
+      <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
+        <div className="px-5 pt-safe-header pb-3 max-w-7xl mx-auto">
+          {/* Segmented Control iOS Apple : Événements vs Participants / Amis */}
+          <div className="flex items-center p-1 bg-gray-100 dark:bg-white/10 rounded-2xl mb-3 max-w-md mx-auto sm:mx-0">
             <button
               type="button"
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+              onClick={() => {
+                haptic.selection();
+                setSearchMode('events');
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                searchMode === 'events'
+                  ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-white shadow-xs'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+              }`}
             >
-              <X className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Événements</span>
             </button>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowFilters(true)}
-          className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] shadow-xs flex items-center justify-center relative active:scale-95 transition-transform shrink-0 cursor-pointer"
-          aria-label="Filtres avancés"
-        >
-          <SlidersHorizontal className="w-4 h-4 text-[#6600FF] dark:text-[#A78BFA]" />
-          {activeFiltersCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#6600FF] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-              {activeFiltersCount}
-            </span>
-          )}
-        </button>
-      </div>
+            <button
+              type="button"
+              onClick={() => {
+                haptic.selection();
+                setSearchMode('participants');
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                searchMode === 'participants'
+                  ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-white shadow-xs'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Amis & Participants</span>
+            </button>
+          </div>
 
-      {/* Catégories harmonisées avec Home Screen (Icônes + Libellés) */}
-      <div className="px-5 mt-3">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory(null)}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-              selectedCategory === null
-                ? 'bg-[#6600FF] text-white shadow-xs'
-                : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Tous</span>
-          </button>
-          {EVENT_CATEGORIES.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.icon] || Music;
-            const isActive = selectedCategory === cat.value;
-            return (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={
+                  searchMode === 'events'
+                    ? (t('events', 'searchPlaceholder') || 'Rechercher un concert, festival...')
+                    : 'Rechercher un ami ou participant...'
+                }
+                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-gray-100 dark:bg-white/10 text-[#17131D] dark:text-white text-xs font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 transition-all"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Effacer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {searchMode === 'events' && (
               <button
-                key={cat.value}
                 type="button"
-                onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-[#6600FF] text-white shadow-xs'
-                    : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+                onClick={() => setShowFilters(true)}
+                aria-label="Filtres avancés"
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
+                  hasActiveFilters
+                    ? 'bg-[#6600FF] text-white shadow-purple'
+                    : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-gray-200'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{t('events', `categories.${cat.value}`)}</span>
+                <SlidersHorizontal className="w-4 h-4" />
+                {hasActiveFilters && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white animate-pulse" />
+                )}
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Grid Results */}
-      <div className="max-w-md mx-auto px-5 mt-4">
-        {loading && events.length === 0 ? (
-          <div className="grid grid-cols-2 gap-3.5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <EventCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : events.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState
-              title="Aucun événement trouvé"
-              description="Essayez de modifier vos filtres, votre mot-clé ou élargissez la ville."
-              action={
-                hasActiveFilters ? (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all cursor-pointer"
-                  >
-                    Réinitialiser les filtres
-                  </button>
-                ) : undefined
-              }
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3.5">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => onEventClick(event)}
-              />
-            ))}
+        {/* Barre de catégories horizontales si mode événements */}
+        {searchMode === 'events' && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pb-3 max-w-7xl mx-auto">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                !selectedCategory
+                  ? 'bg-[#6600FF] text-white shadow-xs'
+                  : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{t('events', 'categories.all')}</span>
+            </button>
+            {EVENT_CATEGORIES.map((cat) => {
+              const Icon = CATEGORY_ICONS[cat.icon] || Music;
+              const isActive = selectedCategory === cat.value;
+              return (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setSelectedCategory(isActive ? null : cat.value)}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-[#6600FF] text-white shadow-xs'
+                      : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{t('events', `categories.${cat.value}`)}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* BottomSheet Filtres avancés */}
+      {/* Contenu principal : Grille Événements OU Liste Participants */}
+      <div className="px-5 mt-5">
+        {searchMode === 'events' ? (
+          loading && events.length === 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <EventCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : events.length === 0 ? (
+            <div className="mt-8">
+              <EmptyState
+                title="Aucun événement trouvé"
+                description="Essayez de modifier vos filtres, votre mot-clé ou élargissez la ville."
+                action={
+                  hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all cursor-pointer"
+                    >
+                      Réinitialiser les filtres
+                    </button>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
+              {events.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => onEventClick(event)}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          /* Mode Participants / Amis */
+          loadingParticipants && participants.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="card p-4 flex items-center gap-3 animate-pulse">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-white/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-white/10 rounded w-1/2" />
+                    <div className="h-3 bg-gray-200 dark:bg-white/10 rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : participants.length === 0 ? (
+            <div className="mt-8">
+              <EmptyState
+                icon={Users}
+                title="Aucun participant trouvé"
+                description="Recherchez un ami par son prénom ou nom pour visiter son profil et voir ses sorties."
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {participants.map((person) => {
+                const isFollowing = isFollowingUser(person.id);
+                return (
+                  <div
+                    key={person.id}
+                    onClick={() => onUserClick?.(person)}
+                    className="card p-4 flex items-center justify-between gap-3 hover:shadow-card-hover transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UserAvatar
+                        id={person.id}
+                        src={person.avatar_url}
+                        name={person.name}
+                        role={person.role}
+                        size="md"
+                        className="shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate group-hover:text-[#6600FF] transition-colors">
+                          {person.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
+                          {person.city ? (
+                            <>
+                              <span>{COUNTRY_FLAGS[person.country] || ''}</span>
+                              <span>{person.city}</span>
+                            </>
+                          ) : (
+                            <span>Participant Gbaigbance</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleFollowUserInSearch(person.id, e)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                        isFollowing
+                          ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border border-black/5 dark:border-white/10'
+                          : 'bg-[#6600FF] hover:bg-[#5200cc] text-white shadow-xs'
+                      }`}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5 text-[#6600FF] dark:text-white" />
+                          <span>Abonné</span>
+                        </>
+                      ) : (
+                        <>
+                          <Heart className="w-3.5 h-3.5" />
+                          <span>Suivre</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        )}
+      </div>
+
+      {/* BottomSheet Filtres avancés pour les événements */}
       <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title="Filtres de recherche">
-        <div className="space-y-5 text-[#17131D] dark:text-white">
+        <div className="space-y-5 text-[#17131D] dark:text-white max-w-2xl mx-auto">
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
               Catégorie

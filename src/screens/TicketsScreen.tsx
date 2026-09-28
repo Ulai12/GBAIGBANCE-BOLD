@@ -171,6 +171,17 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     };
   }, [user, refreshTickets, onToast]);
 
+  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshTickets();
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [user, refreshTickets]);
+
   // Réclamation d'un billet offert par un ami
   const handleClaimTicket = async () => {
     if (!claimTokenInput.trim()) return;
@@ -286,7 +297,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       : pastTickets;
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 max-w-4xl mx-auto">
       {/* Header compact & élégant */}
       <div className="px-5 pt-safe-header pb-2">
         <div className="flex items-center justify-between">

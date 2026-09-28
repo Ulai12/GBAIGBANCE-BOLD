@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, Music2, Building2, Users, Heart, LogIn, Sparkles } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -34,7 +34,7 @@ export function SubscriptionsScreen({
   onLogin,
 }: SubscriptionsScreenProps) {
   const { user, t } = useApp();
-  const { followedArtistIds, followedOrgIds } = useFavorites();
+  const { followedArtistIds, followedOrgIds, followedUserIds } = useFavorites();
   const [tab, setTab] = useState<Tab>('artists');
 
   const cachedSub = user ? getCachedSubscriptionsMemory(user.id) : null;
@@ -58,11 +58,12 @@ export function SubscriptionsScreen({
     };
   }, []);
 
-  useEffect(() => {
+  const refreshSubscriptions = useCallback(() => {
     if (!user) {
       const artIds = Array.from(followedArtistIds);
       const orgIds = Array.from(followedOrgIds);
-      if (artIds.length === 0 && orgIds.length === 0) {
+      const uIds = Array.from(followedUserIds);
+      if (artIds.length === 0 && orgIds.length === 0 && uIds.length === 0) {
         setArtists([]);
         setOrgs([]);
         setUsers([]);
@@ -72,11 +73,12 @@ export function SubscriptionsScreen({
       Promise.all([
         artIds.length > 0 ? supabase.from('artists').select('*').in('id', artIds) : Promise.resolve({ data: [] }),
         orgIds.length > 0 ? supabase.from('organizations').select('*').in('id', orgIds) : Promise.resolve({ data: [] }),
+        uIds.length > 0 ? supabase.from('profiles').select('*').in('id', uIds) : Promise.resolve({ data: [] }),
       ])
-        .then(([artRes, orgRes]) => {
+        .then(([artRes, orgRes, uRes]) => {
           setArtists((artRes.data as Artist[]) || []);
           setOrgs((orgRes.data as Organization[]) || []);
-          setUsers([]);
+          setUsers((uRes.data as Profile[]) || []);
         })
         .finally(() => setLoading(false));
       return;
@@ -98,7 +100,21 @@ export function SubscriptionsScreen({
         });
       })
       .finally(() => setLoading(false));
-  }, [user, followedArtistIds, followedOrgIds]);
+  }, [user, followedArtistIds, followedOrgIds, followedUserIds]);
+
+  useEffect(() => {
+    refreshSubscriptions();
+  }, [refreshSubscriptions]);
+
+  // Polling silencieux 3s max
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshSubscriptions();
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [refreshSubscriptions]);
 
   if (!user && artists.length === 0 && orgs.length === 0 && !loading) {
     return (
@@ -152,7 +168,7 @@ export function SubscriptionsScreen({
   return (
     <div className="min-h-screen bg-transparent">
       <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="max-w-md mx-auto px-5 pt-safe-header pb-4 flex items-center gap-3">
+        <div className="max-w-3xl lg:max-w-5xl mx-auto px-5 pt-safe-header pb-4 flex items-center gap-3">
           <button
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
@@ -168,7 +184,7 @@ export function SubscriptionsScreen({
         </div>
 
         {!user && (
-          <div className="max-w-md mx-auto px-5 pb-2">
+          <div className="max-w-3xl lg:max-w-5xl mx-auto px-5 pb-2">
             <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] text-xs font-semibold">
               <Sparkles className="w-4 h-4 shrink-0" />
               <span className="flex-1">Abonnements enregistrés sur cet appareil.</span>
@@ -185,7 +201,7 @@ export function SubscriptionsScreen({
           </div>
         )}
 
-        <div className="max-w-md mx-auto px-5 pb-3 flex gap-2">
+        <div className="max-w-3xl lg:max-w-5xl mx-auto px-5 pb-3 flex gap-2">
           {tabs.map((tb) => {
             const Icon = tb.icon;
             const isActive = tab === tb.id;
@@ -214,7 +230,7 @@ export function SubscriptionsScreen({
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-5 py-4 pb-32">
+      <div className="max-w-3xl lg:max-w-5xl mx-auto px-5 py-4 pb-32">
         {tab === 'artists' ? (
           artists.length === 0 ? (
             <EmptyState
@@ -223,7 +239,7 @@ export function SubscriptionsScreen({
               description={t('settings', 'subscriptions.noArtistsDesc')}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {artists.map((artist) => (
                 <ArtistCard key={artist.id} artist={artist} onClick={() => onArtistClick(artist)} />
               ))}
@@ -237,7 +253,7 @@ export function SubscriptionsScreen({
               description={t('settings', 'subscriptions.noOrganizersDesc')}
             />
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {orgs.map((org) => (
                 <OrganizerCard key={org.id} organization={org} onClick={() => onOrganizationClick(org)} />
               ))}
@@ -250,12 +266,12 @@ export function SubscriptionsScreen({
             description={t('settings', 'subscriptions.noUsersDesc')}
           />
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {users.map((u) => (
               <button
                 key={u.id}
                 onClick={() => onUserClick(u)}
-                className="w-full card p-4 flex items-center gap-3 hover:shadow-card-hover transition-all text-left"
+                className="w-full card p-4 flex items-center gap-3 hover:shadow-card-hover transition-all text-left cursor-pointer"
               >
                 <UserAvatar
                   src={u.avatar_url}

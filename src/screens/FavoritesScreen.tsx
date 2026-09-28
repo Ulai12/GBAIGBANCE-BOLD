@@ -200,11 +200,37 @@ export function FavoritesScreen({
     };
 
     window.addEventListener('gba-event-updated', handleCustomEventUpdate);
+
+    // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        if (likedEventIds.size > 0) {
+          const ids = Array.from(likedEventIds).slice(0, 40);
+          supabase
+            .from('events')
+            .select('*')
+            .in('id', ids)
+            .then(({ data }) => {
+              if (data && data.length > 0) {
+                setEvents((prev) => {
+                  const map = new Map<string, Event>();
+                  prev.forEach((e) => map.set(e.id, e));
+                  (data as Event[]).forEach((e) => map.set(e.id, e));
+                  return Array.from(map.values()).filter((e) => likedEventIds.has(e.id));
+                });
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    }, 3000);
+
     return () => {
       if (unsub) unsub();
+      clearInterval(interval);
       window.removeEventListener('gba-event-updated', handleCustomEventUpdate);
     };
-  }, []);
+  }, [likedEventIds]);
 
   // Charger les artistes et organisations suivis avec leurs vrais comptes
   useEffect(() => {
@@ -443,7 +469,7 @@ export function FavoritesScreen({
   const totalFavEventsCount = activeEvents.length + terminatedEvents.length;
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
       {/* Header */}
       <div className="px-5 pt-safe-header pb-3">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
@@ -668,7 +694,7 @@ export function FavoritesScreen({
                         </span>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
                       {activeEvents.map((event) => (
                         <EventCard
                           key={event.id}
@@ -705,7 +731,7 @@ export function FavoritesScreen({
                         </span>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-3.5 opacity-90">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 opacity-90">
                       {terminatedEvents.map((event) => (
                         <EventCard
                           key={event.id}
@@ -732,7 +758,7 @@ export function FavoritesScreen({
 
         {/* ONGLET 2 : ARTISTES SUIVIS */}
         {activeTab === 'artists' && (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredArtists.length === 0 ? (
               <EmptyState
                 title={query ? 'Aucun artiste trouvé' : 'Aucun artiste suivi'}
@@ -785,7 +811,7 @@ export function FavoritesScreen({
 
         {/* ONGLET 3 : ORGANISATIONS SUIVIES */}
         {activeTab === 'organizations' && (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredOrgs.length === 0 ? (
               <EmptyState
                 title={query ? 'Aucun organisateur trouvé' : 'Aucun organisateur suivi'}

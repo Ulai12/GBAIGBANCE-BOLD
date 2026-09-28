@@ -96,6 +96,26 @@ export function ProfileScreen({
     return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
   }, []);
 
+  const refreshSilentCounts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [ticketsRes, artRes, orgRes, userFollowingRes, userFollowersRes] = await Promise.all([
+        supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('artist_follows').select('artist_id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('organization_follows').select('organization_id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('follower_id', user.id),
+        supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', user.id),
+      ]);
+
+      setTicketsCount(ticketsRes.count || 0);
+      const totalFollowing = (artRes.count || 0) + (orgRes.count || 0) + (userFollowingRes.count || 0);
+      setFollowingCount(totalFollowing);
+      setFollowersCount(userFollowersRes.count || 0);
+    } catch {
+      // En cas d'erreur de requête isolée, conserver l'état actuel
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
       setMyEvents([]);
@@ -131,30 +151,33 @@ export function ProfileScreen({
         }
       );
 
-    // Récupérer les nombres réels d'abonnements, abonnés et billets depuis la base de données
-    void (async () => {
-      try {
-        const [ticketsRes, artRes, orgRes, userFollowingRes, userFollowersRes] = await Promise.all([
-          supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('artist_follows').select('artist_id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('organization_follows').select('organization_id', { count: 'exact', head: true }).eq('user_id', user.id),
-          supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('follower_id', user.id),
-          supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', user.id),
-        ]);
-
-        setTicketsCount(ticketsRes.count || 0);
-        const totalFollowing = (artRes.count || 0) + (orgRes.count || 0) + (userFollowingRes.count || 0);
-        setFollowingCount(totalFollowing);
-        setFollowersCount(userFollowersRes.count || 0);
-      } catch {
-        // En cas d'erreur de requête isolée, conserver 0
-      }
-    })();
+    refreshSilentCounts();
 
     fetchPendingInvitations(user.id)
       .then(setInvitations)
       .catch(() => setInvitations([]));
-  }, [user]);
+  }, [user, refreshSilentCounts]);
+
+  // Polling silencieux en arrière-plan toutes les 3 secondes max et écoute d'événements
+  useEffect(() => {
+    const handleSync = () => refreshSilentCounts();
+    window.addEventListener('gba-user-follow-changed', handleSync);
+    window.addEventListener('gba-follows-updated', handleSync);
+    window.addEventListener('gba-ticket-booked', handleSync);
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshSilentCounts();
+      }
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('gba-user-follow-changed', handleSync);
+      window.removeEventListener('gba-follows-updated', handleSync);
+      window.removeEventListener('gba-ticket-booked', handleSync);
+      clearInterval(interval);
+    };
+  }, [refreshSilentCounts]);
 
   const handleRespond = async (invId: string, status: 'accepted' | 'declined') => {
     setResponding(invId);
@@ -198,7 +221,7 @@ export function ProfileScreen({
 
   return (
     <div className="min-h-screen pb-40">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto">
         {/* Barre d'en-tête supérieure avec bouton Paramètres Stratégique */}
         <div className="px-5 pt-safe-header flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -383,7 +406,7 @@ export function ProfileScreen({
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
                 {myEvents.map((event) => (
                   <EventCard
                     key={event.id}
