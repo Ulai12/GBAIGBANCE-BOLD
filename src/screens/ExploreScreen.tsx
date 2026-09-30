@@ -216,104 +216,103 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       </div>
 
       {/* Barre de recherche et filtres directement sur le fond de la page (sans conteneur boîte) */}
-      <div className="w-full bg-transparent">
-        <div className="px-5 py-2 max-w-7xl mx-auto">
-          {/* Segmented Control iOS Apple : Événements vs Participants / Amis */}
-          <div className="flex items-center p-1 bg-black/[0.04] dark:bg-white/10 rounded-2xl mb-3 max-w-md mx-auto sm:mx-0 backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => {
-                haptic.selection();
-                setSearchMode('events');
-              }}
-              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+      <div className="px-5 pt-1 pb-3 space-y-3">
+        {/* Segmented Control iOS Apple : Événements vs Participants / Amis */}
+        <div className="flex items-center p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl max-w-md backdrop-blur-xl border border-black/[0.04] dark:border-white/[0.06]">
+          <button
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              setSearchMode('events');
+            }}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              searchMode === 'events'
+                ? 'bg-white dark:bg-[#1A1829] text-[#5900E6] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Événements</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              setSearchMode('participants');
+            }}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              searchMode === 'participants'
+                ? 'bg-white dark:bg-[#1A1829] text-[#5900E6] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Amis & Participants</span>
+          </button>
+        </div>
+
+        {/* Barre de recherche fluide intégrée au fond */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={
                 searchMode === 'events'
-                  ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-white shadow-xs'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Événements</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                haptic.selection();
-                setSearchMode('participants');
-              }}
-              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                searchMode === 'participants'
-                  ? 'bg-white dark:bg-[#1A1829] text-[#6600FF] dark:text-white shadow-xs'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Amis & Participants</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={
-                  searchMode === 'events'
-                    ? (t('events', 'searchPlaceholder') && !t('events', 'searchPlaceholder').includes('searchPlaceholder')
-                        ? t('events', 'searchPlaceholder')
-                        : 'Rechercher un concert, festival, artiste...')
-                    : 'Rechercher un ami ou participant...'
-                }
-                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-[#17131D] dark:text-white text-xs font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 transition-all shadow-2xs"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Effacer"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {searchMode === 'events' && (
+                  ? (t('events', 'searchPlaceholder') && !t('events', 'searchPlaceholder').includes('searchPlaceholder')
+                      ? t('events', 'searchPlaceholder')
+                      : 'Rechercher un concert, festival, artiste...')
+                  : 'Rechercher un ami ou participant...'
+              }
+              className="w-full pl-10 pr-9 py-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl border border-black/[0.05] dark:border-white/[0.08] text-[#17131D] dark:text-white text-xs sm:text-sm font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5900E6]/30 transition-all shadow-2xs"
+            />
+            {query && (
               <button
                 type="button"
-                onClick={() => setShowFilters(true)}
-                aria-label="Filtres avancés"
-                className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
-                  hasActiveFilters
-                    ? 'bg-[#6600FF] text-white shadow-purple'
-                    : 'bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-gray-700 dark:text-gray-200 hover:bg-white'
-                }`}
+                onClick={() => setQuery('')}
+                aria-label="Effacer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-1"
               >
-                <SlidersHorizontal className="w-4 h-4" />
-                {hasActiveFilters && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white animate-pulse" />
-                )}
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
+
+          {searchMode === 'events' && (
+            <button
+              type="button"
+              onClick={() => setShowFilters(true)}
+              aria-label="Filtres avancés"
+              className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
+                hasActiveFilters
+                  ? 'bg-[#5900E6] text-white shadow-purple'
+                  : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl border border-black/[0.05] dark:border-white/[0.08] text-gray-700 dark:text-gray-200 hover:bg-black/[0.06] dark:hover:bg-white/10'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              {hasActiveFilters && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* Barre de catégories horizontales si mode événements */}
         {searchMode === 'events' && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pb-3 pt-1 max-w-7xl mx-auto">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1 -mx-5 px-5">
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 !selectedCategory
-                  ? 'bg-[#6600FF] text-white shadow-xs'
-                  : 'bg-white/70 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-white/90'
+                  ? 'bg-[#5900E6] text-white shadow-xs'
+                  : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('events', 'allCategories') && !t('events', 'allCategories').includes('allCategories') ? t('events', 'allCategories') : 'Tous'}</span>
+              <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
             </button>
             {EVENT_CATEGORIES.map((cat) => {
               const Icon = CATEGORY_ICONS[cat.icon] || Music;
@@ -323,10 +322,10 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                   key={cat.value}
                   type="button"
                   onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-[#6600FF] text-white shadow-xs'
-                      : 'bg-white/70 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-white/90'
+                      ? 'bg-[#5900E6] text-white shadow-xs'
+                      : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />

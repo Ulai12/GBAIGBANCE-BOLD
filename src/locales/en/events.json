@@ -26,6 +26,7 @@
   "searchPlaceholder": "Search for a concert, festival, artist...",
   "allCategories": "All",
   "categories": {
+    "all": "All",
     "concert": "Concert",
     "festival": "Festival",
     "conference": "Conference",

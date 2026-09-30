@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, MapPin, Send, Settings, ChevronRight, Bot } from 'lucide-react';
+import { Sparkles, MapPin, Settings, ChevronRight, MessageSquareQuote } from 'lucide-react';
 import { isGeminiActive } from '@/services/gemini';
 import { EventAIAssistantModal } from '@/components/EventAIAssistantModal';
-import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
 
 /**
@@ -10,7 +9,6 @@ import type { Event } from '@/types';
  * 
  * Carte de lancement du conseiller IA dédiée à l'événement avec :
  * - Puces de suggestions rapides défilables
- * - Champ de question libre ergonomique
  * - Déclenchement automatique de la modale dédiée grand format avec fil de conversation complet
  */
 
@@ -23,9 +21,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
   event,
   onOpenSettings,
 }) => {
-  const { user } = useApp();
   const [active, setActive] = useState(isGeminiActive);
-  const [prompt, setPrompt] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
 
@@ -90,12 +86,12 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
     <>
       <div
         id="event-ai-insights-card"
-        className="p-4 sm:p-5 rounded-[28px] glass-ios border-2 border-[#6600FF]/25 dark:border-[#6600FF]/35 shadow-md space-y-3.5"
+        className="p-4 sm:p-5 rounded-[28px] glass-ios border-2 border-[#6600FF]/25 dark:border-[#6600FF]/35 shadow-md space-y-3"
       >
         {/* En-tête du conseiller */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#6600FF]/15 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#9333EA] text-white flex items-center justify-center shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -108,8 +104,8 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-emerald-500" />
-                <span>Réponses vérifiées sur le lieu & l'accès</span>
+                <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
+                <span>Accès, stationnement, ambiance & conseils pratiques</span>
               </p>
             </div>
           </div>
@@ -140,34 +136,19 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
           ))}
         </div>
 
-        {/* Champ de saisie rapide ouvrant directement la modale dédiée */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (prompt.trim()) {
-              handleOpenWithQuestion(prompt.trim());
-              setPrompt('');
-            } else {
-              setModalOpen(true);
-            }
+        {/* Bouton d'ouverture directe de la modale dédiée */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedQuestion(null);
+            setModalOpen(true);
           }}
-          className="flex items-center gap-2 pt-1"
+          className="w-full min-h-[44px] px-4 py-3 rounded-2xl bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
         >
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Poser une question spécifique sur cet événement..."
-            className="flex-1 min-h-[44px] px-4 rounded-full bg-white/80 dark:bg-white/[0.08] border border-black/10 dark:border-white/10 text-xs sm:text-sm text-[#1A1A2E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/50"
-          />
-          <button
-            type="submit"
-            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white flex items-center justify-center transition-transform active:scale-95 shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
-            aria-label="Poser ma question au conseiller IA"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+          <MessageSquareQuote className="w-4 h-4" />
+          <span>Ouvrir la conversation avec le conseiller IA</span>
+          <ChevronRight className="w-4 h-4 ml-auto" />
+        </button>
       </div>
 
       {/* Modale dédiée grand format avec fil de discussion et réponses complètes sans coupure */}
@@ -176,7 +157,6 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
         onClose={() => setModalOpen(false)}
         event={event}
         initialQuestion={selectedQuestion}
-        onOpenSettings={onOpenSettings}
       />
     </>
   );

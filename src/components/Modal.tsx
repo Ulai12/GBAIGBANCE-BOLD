@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useId, useState } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 // Utilisation de useDragControls pour restreindre le glisser au seul curseur (grab handle)
@@ -145,7 +145,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
     <AnimatePresence>
       {open && (
         <div
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto"
+          className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? titleId : undefined}
@@ -184,7 +184,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
               stiffness: 380,
               mass: 0.85,
             }}
-            className={`relative w-full ${maxWidthClass} rounded-t-[32px] sm:rounded-3xl p-6 pt-3 sm:pt-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] bg-white/95 dark:bg-[#151221]/95 backdrop-blur-2xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none z-10`}
+            className={`relative w-full ${maxWidthClass} rounded-t-[32px] sm:rounded-3xl p-6 pt-3 sm:pt-6 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2.5rem))] bg-white/95 dark:bg-[#151221]/95 backdrop-blur-2xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none z-10`}
           >
             {/* iOS Action Sheet Pull-to-Dismiss Grabber Bar (seul déclencheur du geste drag pour préserver le clavier) */}
             <div

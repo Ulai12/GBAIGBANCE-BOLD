@@ -25,26 +25,6 @@ const SIZE_MAP = {
   '2xl': { box: 'w-28 h-28 text-3xl font-black', icon: 'w-12 h-12', badge: 'w-6 h-6 -bottom-1 -right-1' },
 };
 
-const GRADIENTS = [
-  'from-[#6600FF] via-[#7C3AED] to-[#A855F7]', // Royal Purple
-  'from-[#0052D4] via-[#4364F7] to-[#6FB1FC]', // Deep Azure
-  'from-[#FF416C] via-[#FF4B2B] to-[#FF758C]', // Vivid Coral
-  'from-[#0575E6] via-[#00F260] to-[#20BDFF]', // Emerald Breeze
-  'from-[#8E2DE2] via-[#4A00E0] to-[#7F00FF]', // Deep Indigo
-  'from-[#F97316] via-[#EA580C] to-[#C2410C]', // Warm Tangerine
-  'from-[#0D9488] via-[#14B8A6] to-[#2DD4BF]', // Modern Teal
-  'from-[#BE185D] via-[#DB2777] to-[#F472B6]', // Vivid Rose
-];
-
-function getGradientIndex(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash) % GRADIENTS.length;
-}
-
 export function UserAvatar({
   id,
   src,
@@ -64,11 +44,6 @@ export function UserAvatar({
   useEffect(() => {
     setImageError(false);
   }, [src]);
-
-  const gradientClass = useMemo(() => {
-    // Tous les avatars par défaut partagent une esthétique monochrome noire épurée
-    return 'from-[#18181B] via-[#121118] to-[#000000]';
-  }, []);
 
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-2xl sm:rounded-[1.4rem]';
   const hasCustomRing = className.includes('ring-');

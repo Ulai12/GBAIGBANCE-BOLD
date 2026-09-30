@@ -50,7 +50,7 @@ export function SettingsModal({
 
   const modalNode = (
     <div
-      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -330,7 +330,13 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Traduction</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Français · English
+                  Français · English (i18n)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Moteurs & APIs</span>
+                <span className="font-semibold text-[#17131D] dark:text-gray-200">
+                  Supabase · Gemini 2.5/Flash
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">
@@ -343,9 +349,9 @@ export function SettingsModal({
           </div>
 
           {/* Footer note */}
-          <div className="text-center pt-1 pb-2">
+          <div className="text-center pt-1 pb-3">
             <p className="text-[11px] text-gray-400 font-medium">
-              GBAIGBANCE v4.0
+              GBAIGBANCE v4.1 · Architecture iOS 27 Fluid
             </p>
           </div>
         </div>

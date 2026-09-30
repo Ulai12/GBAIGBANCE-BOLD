@@ -5,18 +5,6 @@
  * et une couverture d'événement noire élégante avec texte en extra ultra bold (GBAIGBAINCE).
  */
 
-// Palettes d'initiales inspirées du design Apple Human Interface Guidelines
-const AVATAR_PALETTES = [
-  { c1: '#1E1B4B', c2: '#0F172A', text: '#FFFFFF' }, // Midnight Obsidian
-  { c1: '#4F46E5', c2: '#3730A3', text: '#FFFFFF' }, // Indigo Royal
-  { c1: '#6600FF', c2: '#4338CA', text: '#FFFFFF' }, // Signature Gbaigbance Purple
-  { c1: '#0F766E', c2: '#115E59', text: '#FFFFFF' }, // Deep Teal
-  { c1: '#BE123C', c2: '#881337', text: '#FFFFFF' }, // Vivid Ruby
-  { c1: '#C2410C', c2: '#9A3412', text: '#FFFFFF' }, // Warm Amber
-  { c1: '#15803D', c2: '#14532D', text: '#FFFFFF' }, // Forest Green
-  { c1: '#18181B', c2: '#09090B', text: '#FFFFFF' }, // Dark Graphite
-];
-
 /**
  * Calcule les initiales de l'utilisateur :
  * - Si le nom comporte plusieurs mots (ex: "Hill blo", "Koffi Mensah") -> 1ère lettre du 1er mot + 1ère lettre du 2e mot ("HB", "KM")
@@ -43,10 +31,10 @@ export function getAvatarInitials(name?: string | null): string {
 /**
  * Génère un avatar SVG vectoriel Data-URI net avec fond noir profond et initiales blanches (style Apple Monochrome)
  */
-export function createInitialsAvatarSvg(name?: string | null, _seed?: string | null, _role?: string): string {
+export function createInitialsAvatarSvg(name?: string | null): string {
   const initials = getAvatarInitials(name);
-  // Tous les avatars par défaut sont désormais en noir uni élégant avec texte blanc haute visibilité
-  const palette = { c1: '#1A1822', c2: '#08070C', text: '#FFFFFF' };
+  // Tous les avatars par défaut sont en noir uni élégant avec texte blanc haute visibilité
+  const palette = { c1: '#111018', c2: '#000000', text: '#FFFFFF' };
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" preserveAspectRatio="xMidYMid slice">
     <defs>
@@ -138,23 +126,11 @@ export function createDefaultEventCoverSvg(title?: string | null, subtitle?: str
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-function hashString(str: string): number {
-  let hash = 0;
-  if (!str) return 0;
-  const clean = str.trim().toLowerCase();
-  for (let i = 0; i < clean.length; i++) {
-    hash = (hash << 5) - hash + clean.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
 /**
  * Retourne un avatar par défaut avec initiales vectorielles (ex: JULAI -> JU, Hill blo -> HB).
  */
-export function getDefaultUserAvatar(idOrName: string, role?: string, entityId?: string | null): string {
-  const seed = (entityId || idOrName || 'user').trim();
-  return createInitialsAvatarSvg(idOrName, seed, role);
+export function getDefaultUserAvatar(idOrName: string, _role?: string, _entityId?: string | null): string {
+  return createInitialsAvatarSvg(idOrName);
 }
 
 /**

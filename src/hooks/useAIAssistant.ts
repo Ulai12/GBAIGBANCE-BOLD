@@ -36,7 +36,6 @@ export function useAIAssistant() {
   const [verifiedEvents, setVerifiedEvents] = useState<Record<string, Event>>({});
 
   const abortRef = useRef<(() => void) | null>(null);
-  const previousAuthKeyRef = useRef<string>(`${user?.id || 'guest'}-${session?.user?.id || 'none'}`);
 
   const resetAllChatData = useCallback((activeUser: typeof user) => {
     if (abortRef.current) {
@@ -59,19 +58,17 @@ export function useAIAssistant() {
     ]);
   }, []);
 
+  // Clé d'authentification unique : tout changement (connexion / déconnexion / changement d'utilisateur) déclenche la purge immédiate
+  const authKey = `${user?.id || 'guest'}-${session?.user?.id || 'none'}`;
+
   // Réinitialisation automatique et immédiate lors du passage invité <-> connecté ou déconnexion
   useEffect(() => {
-    const currentKey = `${user?.id || 'guest'}-${session?.user?.id || 'none'}`;
-    if (previousAuthKeyRef.current !== currentKey) {
-      previousAuthKeyRef.current = currentKey;
-      resetAllChatData(user);
-    }
-  }, [user?.id, session?.user?.id, user?.name, resetAllChatData, user]);
+    resetAllChatData(user);
+  }, [authKey, resetAllChatData, user]);
 
-  // Écoute directe des événements système de connexion et déconnexion
+  // Écoute directe des événements système de connexion et déconnexion avec reset à 0ms
   useEffect(() => {
     const handleSignedOut = () => {
-      previousAuthKeyRef.current = 'guest-none';
       resetAllChatData(null);
     };
 

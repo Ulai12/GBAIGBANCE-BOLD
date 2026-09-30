@@ -6,9 +6,13 @@ import React from 'react';
  * Analyse et formate le texte généré par l'IA :
  * - Gras (**texte** ou __texte__)
  * - Italique (*texte* ou _texte_)
- * - Titres de sections (### ou ##)
+ * - Gras + Italique (***texte***)
+ * - Code en ligne (`code`)
+ * - Citations / Notes (> texte)
+ * - Titres de sections (### ou ## ou #)
  * - Listes à puces (- item, * item, • item)
  * - Listes numérotées (1. item)
+ * - Lignes de séparation (---)
  * - Paragraphes avec interligne fluide
  * 
  * 100% sécurisé (aucun dangerouslySetInnerHTML, aucun risque XSS).
@@ -22,7 +26,6 @@ interface AIMarkdownRendererProps {
 export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({ content, className = '' }) => {
   if (!content) return null;
 
-  // Découpage en blocs (titres, puces, paragraphes)
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
 
@@ -34,7 +37,7 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({ content,
     elements.push(
       <ul
         key={`list-${elements.length}`}
-        className="my-2.5 space-y-1.5 pl-1.5 text-xs sm:text-sm text-gray-700 dark:text-gray-200"
+        className="my-2.5 space-y-1.5 pl-1 text-xs sm:text-sm text-gray-700 dark:text-gray-200"
       >
         {currentList.items.map((item, idx) => (
           <li key={idx} className="flex items-start gap-2.5">
@@ -64,17 +67,47 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({ content,
       continue;
     }
 
-    // Titres de section Markdown (### ou ##)
-    if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+    // Séparateur horizontal (---)
+    if (trimmed === '---' || trimmed === '***') {
       flushList();
-      const headerText = trimmed.replace(/^#{1,4}\s+/, '');
       elements.push(
-        <h4
-          key={`header-${i}`}
-          className="text-xs sm:text-sm font-black text-[#17131D] dark:text-white uppercase tracking-wider mt-3.5 mb-1.5 flex items-center gap-1.5 text-[#6600FF] dark:text-[#A78BFA]"
+        <hr key={`hr-${i}`} className="my-3 border-black/[0.06] dark:border-white/[0.08]" />
+      );
+      continue;
+    }
+
+    // Titres de section Markdown (### ou ## ou #)
+    if (trimmed.startsWith('#')) {
+      const headerMatch = trimmed.match(/^(#{1,4})\s+(.*)$/);
+      if (headerMatch) {
+        flushList();
+        const level = headerMatch[1].length;
+        const headerText = headerMatch[2];
+        elements.push(
+          <div
+            key={`header-${i}`}
+            className={`font-black tracking-tight text-[#17131D] dark:text-white ${
+              level <= 2 ? 'text-sm sm:text-base mt-4 mb-2' : 'text-xs sm:text-sm mt-3 mb-1.5'
+            } text-[#6600FF] dark:text-[#A78BFA] flex items-center gap-1.5`}
+          >
+            <span>{renderInlineFormatting(headerText)}</span>
+          </div>
+        );
+        continue;
+      }
+    }
+
+    // Citations / Notes (> texte)
+    if (trimmed.startsWith('>')) {
+      flushList();
+      const quoteText = trimmed.replace(/^>\s*/, '');
+      elements.push(
+        <blockquote
+          key={`quote-${i}`}
+          className="my-2.5 pl-3 py-2 border-l-3 border-[#6600FF] dark:border-[#A78BFA] bg-[#6600FF]/5 dark:bg-[#6600FF]/15 rounded-r-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed italic"
         >
-          <span>{renderInlineFormatting(headerText)}</span>
-        </h4>
+          {renderInlineFormatting(quoteText)}
+        </blockquote>
       );
       continue;
     }
@@ -119,12 +152,14 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({ content,
 };
 
 /**
- * Analyse le formatage inline : **gras**, *italique*, etc.
+ * Analyse le formatage inline : ***gras+italique***, **gras**, *italique*, `code`, etc.
  */
 function renderInlineFormatting(text: string): React.ReactNode {
-  // Regex pour détecter **gras** et *italique*
+  if (!text) return '';
+
   const parts: React.ReactNode[] = [];
-  const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|___([^_]+)___)/g;
+  // Regex capturant les segments spéciaux
+  const regex = /(\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|_([^_]+)_|`([^`]+)`)/g;
 
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -135,26 +170,50 @@ function renderInlineFormatting(text: string): React.ReactNode {
     }
 
     const fullMatch = match[0];
-    if (fullMatch.startsWith('**') && fullMatch.endsWith('**')) {
+    if (fullMatch.startsWith('***') && fullMatch.endsWith('***')) {
+      // Gras + Italique
+      parts.push(
+        <strong key={`bi-${match.index}`} className="font-black italic text-[#17131D] dark:text-white">
+          {match[2]}
+        </strong>
+      );
+    } else if (fullMatch.startsWith('**') && fullMatch.endsWith('**')) {
       // Gras
       parts.push(
         <strong key={`b-${match.index}`} className="font-extrabold text-[#17131D] dark:text-white">
-          {match[2]}
+          {match[3]}
         </strong>
       );
     } else if (fullMatch.startsWith('__') && fullMatch.endsWith('__')) {
       // Gras souligné
       parts.push(
         <strong key={`bu-${match.index}`} className="font-extrabold text-[#17131D] dark:text-white">
-          {match[4]}
+          {match[5]}
         </strong>
       );
     } else if (fullMatch.startsWith('*') && fullMatch.endsWith('*')) {
       // Italique
       parts.push(
         <em key={`i-${match.index}`} className="italic text-gray-600 dark:text-gray-300">
-          {match[3]}
+          {match[4]}
         </em>
+      );
+    } else if (fullMatch.startsWith('_') && fullMatch.endsWith('_')) {
+      // Italique
+      parts.push(
+        <em key={`iu-${match.index}`} className="italic text-gray-600 dark:text-gray-300">
+          {match[6]}
+        </em>
+      );
+    } else if (fullMatch.startsWith('`') && fullMatch.endsWith('`')) {
+      // Code en ligne
+      parts.push(
+        <code
+          key={`c-${match.index}`}
+          className="px-1.5 py-0.5 rounded-md bg-black/[0.06] dark:bg-white/[0.1] font-mono text-[11px] text-[#6600FF] dark:text-[#A78BFA] font-bold"
+        >
+          {match[7]}
+        </code>
       );
     } else {
       parts.push(fullMatch);

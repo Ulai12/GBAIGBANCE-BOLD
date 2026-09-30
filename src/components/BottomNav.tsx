@@ -5,7 +5,7 @@ import {
   Heart,
   Plus,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { prefetchCreateEvent } from '@/utils/prefetchRoutes';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
@@ -225,8 +225,9 @@ export function BottomNav({
   return (
     <div
       className={`fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 transition-all duration-300 ${
-        isModalOpen ? 'opacity-0 pointer-events-none translate-y-10' : 'opacity-100'
+        isModalOpen ? 'opacity-0 invisible pointer-events-none translate-y-12' : 'opacity-100 visible'
       }`}
+      aria-hidden={isModalOpen ? 'true' : undefined}
       style={{
         paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.75 + 0.25rem))',
       }}
@@ -234,7 +235,8 @@ export function BottomNav({
       <nav
         aria-label="Navigation principale"
         className={[
-          'relative pointer-events-auto w-full max-w-md h-[58px] px-0 py-0 rounded-full',
+          'relative w-full max-w-md h-[58px] px-0 py-0 rounded-full',
+          isModalOpen ? 'pointer-events-none' : 'pointer-events-auto',
           'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
         ].join(' ')}
         style={{

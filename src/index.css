@@ -587,3 +587,10 @@
     -webkit-backdrop-filter: none !important;
   }
 }
+
+/* Cache immédiatement la navigation principale dès qu'une modale est ouverte */
+body.gba-modal-open [aria-label="Navigation principale"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+

@@ -1,19 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
   X,
   Send,
   Bot,
-  User,
-  Settings,
   AlertCircle,
   MapPin,
-  Calendar,
   RotateCcw,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { askGeminiAssistant, isGeminiActive } from '@/services/gemini';
+import { motion } from 'motion/react';
+import { askGeminiAssistant } from '@/services/gemini';
 import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
@@ -24,7 +21,7 @@ interface EventAIAssistantModalProps {
   onClose: () => void;
   event: Event;
   initialQuestion?: string | null;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
 }
 
 interface EventAIMessage {
@@ -39,7 +36,6 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
   onClose,
   event,
   initialQuestion,
-  onOpenSettings,
 }) => {
   const { user, session } = useApp();
   const [messages, setMessages] = useState<EventAIMessage[]>([]);
@@ -62,7 +58,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
   }, [isOpen]);
 
   // Initialisation du message de bienvenue contextualisé à l'événement
-  const resetConversation = () => {
+  const resetConversation = useCallback(() => {
     setMessages([
       {
         id: `welcome-${event.id}`,
@@ -73,13 +69,13 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
     ]);
     setErrorMsg(null);
     setInput('');
-  };
+  }, [event.id, event.title, event.location_name, event.city]);
 
   // Réinitialisation lors du changement d'événement ou lors de la connexion / déconnexion
   useEffect(() => {
     resetConversation();
     hasSentInitialRef.current = false;
-  }, [event.id, user?.id, session?.user?.id]);
+  }, [event.id, user?.id, session?.user?.id, resetConversation]);
 
   // Écoute de l'événement global de déconnexion ou connexion pour réinitialiser immédiatement les données de l'IA
   useEffect(() => {
@@ -92,24 +88,9 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
       window.removeEventListener('gba-user-signed-out', handleAuthEvent);
       window.removeEventListener('gba-user-signed-in', handleAuthEvent);
     };
-  }, []);
+  }, [resetConversation]);
 
-  // Défilement automatique vers le bas à chaque nouveau message
-  useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, loading, isOpen]);
-
-  // Envoi automatique de la question initiale si transmise à l'ouverture
-  useEffect(() => {
-    if (isOpen && initialQuestion && !hasSentInitialRef.current) {
-      hasSentInitialRef.current = true;
-      handleSendMessage(initialQuestion);
-    }
-  }, [isOpen, initialQuestion]);
-
-  const handleSendMessage = async (textToSend: string) => {
+  const handleSendMessage = useCallback(async (textToSend: string) => {
     const cleanText = textToSend.trim();
     if (!cleanText || loading) return;
 
@@ -149,7 +130,22 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, event]);
+
+  // Défilement automatique vers le bas à chaque nouveau message
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, loading, isOpen]);
+
+  // Envoi automatique de la question initiale si transmise à l'ouverture
+  useEffect(() => {
+    if (isOpen && initialQuestion && !hasSentInitialRef.current) {
+      hasSentInitialRef.current = true;
+      handleSendMessage(initialQuestion);
+    }
+  }, [isOpen, initialQuestion, handleSendMessage]);
 
   const sampleQuestions = [
     "Comment s'y rendre et où se garer ?",
@@ -193,7 +189,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                   Conseiller IA de l'événement
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-[#6600FF]/15 text-[#6600FF] dark:text-[#A78BFA] text-[10px] font-black uppercase tracking-wider">
-                  Gemini
+                  Gemini Live
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
@@ -242,7 +238,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                 <div
                   className={`max-w-[85%] rounded-[1.4rem] px-4 py-3 text-xs sm:text-sm shadow-xs ${
                     isUser
-                      ? 'bg-[#6600FF] text-white rounded-tr-xs'
+                      ? 'bg-[#6600FF] text-white rounded-tr-xs font-medium'
                       : 'bg-white dark:bg-[#1A1829] text-[#17131D] dark:text-gray-100 border border-black/[0.06] dark:border-white/[0.08] rounded-tl-xs'
                   }`}
                 >
@@ -259,12 +255,6 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                     {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-
-                {isUser && (
-                  <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 text-gray-600 dark:text-gray-300 flex items-center justify-center shrink-0 mt-1">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
               </div>
             );
           })}
@@ -308,7 +298,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                 type="button"
                 onClick={() => handleSendMessage(q)}
                 disabled={loading}
-                className="px-3 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 text-gray-700 dark:text-gray-300 text-[11px] font-bold shrink-0 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#6600FF]/10 text-gray-700 dark:text-gray-300 text-[11px] font-bold shrink-0 transition-all active:scale-95 disabled:opacity-50 cursor-pointer min-h-[36px]"
               >
                 {q}
               </button>

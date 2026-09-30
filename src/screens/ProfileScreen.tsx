@@ -23,6 +23,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { ProfilePictureModal } from '@/components/ProfilePictureModal';
 import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
 import { fetchPendingInvitations, respondToInvitation } from '@/services/events';
 import { ProfileScreenSkeleton } from '@/components/Skeleton';
@@ -69,6 +70,7 @@ export function ProfileScreen({
   onToast,
 }: ProfileScreenProps) {
   const { user, session, refreshProfile } = useApp();
+  const { followedArtistIds, followedOrgIds, followedUserIds } = useFavorites();
   const [myEvents, setMyEvents] = useState<Event[]>(() => getInitialMyEvents(user?.id));
   const [loading, setLoading] = useState(false);
   const [ticketsCount, setTicketsCount] = useState<number>(0);
@@ -82,6 +84,9 @@ export function ProfileScreen({
   const [qrOpen, setQrOpen] = useState(false);
   const isCreator = user?.role === 'organizer' || user?.role === 'artist';
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => (isCreator ? 'events' : 'tickets'));
+
+  const liveFollowingCount = followedArtistIds.size + followedOrgIds.size + followedUserIds.size;
+  const effectiveFollowingCount = Math.max(followingCount, liveFollowingCount);
 
   useEffect(() => {
     const handleSignedOut = () => {
@@ -161,7 +166,15 @@ export function ProfileScreen({
   // Polling silencieux en arrière-plan toutes les 3 secondes max et écoute d'événements
   useEffect(() => {
     const handleSync = () => refreshSilentCounts();
-    window.addEventListener('gba-user-follow-changed', handleSync);
+    const handleFollowChanged = (e: globalThis.Event) => {
+      const custom = e as CustomEvent<{ followerId: string; followingId: string; willFollow: boolean }>;
+      if (custom.detail?.followingId === user?.id) {
+        setFollowersCount((prev) => Math.max(0, prev + (custom.detail.willFollow ? 1 : -1)));
+      }
+      refreshSilentCounts();
+    };
+
+    window.addEventListener('gba-user-follow-changed', handleFollowChanged);
     window.addEventListener('gba-follows-updated', handleSync);
     window.addEventListener('gba-ticket-booked', handleSync);
 
@@ -172,12 +185,12 @@ export function ProfileScreen({
     }, 3000);
 
     return () => {
-      window.removeEventListener('gba-user-follow-changed', handleSync);
+      window.removeEventListener('gba-user-follow-changed', handleFollowChanged);
       window.removeEventListener('gba-follows-updated', handleSync);
       window.removeEventListener('gba-ticket-booked', handleSync);
       clearInterval(interval);
     };
-  }, [refreshSilentCounts]);
+  }, [refreshSilentCounts, user?.id]);
 
   const handleRespond = async (invId: string, status: 'accepted' | 'declined') => {
     setResponding(invId);
@@ -249,7 +262,7 @@ export function ProfileScreen({
           eventsCount={myEvents.length}
           ticketsCount={ticketsCount}
           followersCount={followersCount}
-          followingCount={followingCount}
+          followingCount={effectiveFollowingCount}
           onEditClick={() => setEditOpen(true)}
           onAvatarClick={() => setPictureModalOpen(true)}
           onOpenQR={() => setQrOpen(true)}
