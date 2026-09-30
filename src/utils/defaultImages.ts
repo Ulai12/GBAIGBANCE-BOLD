@@ -45,7 +45,8 @@ export function getAvatarInitials(name?: string | null): string {
  */
 export function createInitialsAvatarSvg(name?: string | null, seed?: string | null, role?: string): string {
   const initials = getAvatarInitials(name);
-  const hashKey = seed || name || 'gba';
+  // Clé canonique stable : privilégie le nom pour que la couleur soit 100% identique que l'ID soit fourni ou non
+  const hashKey = (name || seed || 'user').trim().toLowerCase();
   const palette = role === 'artist' 
     ? { c1: '#7C3AED', c2: '#4C1D95', text: '#FFFFFF' }
     : role === 'organizer'

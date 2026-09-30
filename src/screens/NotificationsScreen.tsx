@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   Bell,
@@ -81,6 +82,7 @@ function getActionLabel(type: string) {
 
 export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsScreenProps) {
   const { user } = useApp();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -128,6 +130,32 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const displayedNotifications = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
+
+  // Redirection directe vers l'endroit exact concerné par la notification (événement, profil, billet, etc.)
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.is_read) {
+      handleMarkRead(n.id);
+    }
+
+    if (n.entity_type === 'event' && n.entity_id) {
+      navigate(`/events/${n.entity_id}`);
+    } else if (
+      (n.entity_type === 'user' || n.entity_type === 'profile' || n.type === 'new_follower') &&
+      (n.entity_id || n.actor_id)
+    ) {
+      navigate(`/users/${n.entity_id || n.actor_id}`);
+    } else if (n.entity_type === 'artist' && n.entity_id) {
+      navigate(`/artists/${n.entity_id}`);
+    } else if (n.entity_type === 'organizer' && n.entity_id) {
+      navigate(`/organizers/${n.entity_id}`);
+    } else if (n.type.includes('ticket') || n.entity_type === 'ticket') {
+      navigate('/tickets');
+    } else if (n.entity_id) {
+      navigate(`/events/${n.entity_id}`);
+    } else if (n.actor_id) {
+      navigate(`/users/${n.actor_id}`);
+    }
+  };
 
   if (!user) {
     return (
@@ -282,9 +310,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               return (
                 <div
                   key={n.id}
-                  onClick={() => {
-                    if (!n.is_read) handleMarkRead(n.id);
-                  }}
+                  onClick={() => handleNotificationClick(n)}
                   className={`flex items-start gap-3.5 p-4 rounded-3xl cursor-pointer transition-all active:scale-[0.98] border border-black/[0.04] dark:border-white/[0.06] ${
                     n.is_read
                       ? 'bg-white/70 dark:bg-white/5 opacity-85'

@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase';
+import { supabase, supabaseUrl as canonicalSupabaseUrl, supabaseAnonKey as canonicalSupabaseAnonKey } from '@/infrastructure/supabase';
 import { getUserGeminiApiKey } from '@/services/gemini';
 import { streamGeminiDirect } from '@/services/aiAssistantDirect';
 import { safeFetch } from '@/utils/safeFetch';
@@ -60,18 +60,10 @@ export async function streamAIAssistant(
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      // 2. Détermination des endpoints et credentials Supabase
-      const supabaseUrl =
-        import.meta.env.VITE_SUPABASE_URL ||
-        import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
-        'https://lwwiolbofrqakvrdvbbj.supabase.co';
-
+      // 2. Détermination des endpoints et credentials Supabase avec résolution canonique
+      const supabaseUrl = canonicalSupabaseUrl;
       const functionUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-
-      const supabaseAnonKey =
-        import.meta.env.VITE_SUPABASE_ANON_KEY ||
-        import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-        'sb_publishable_eE9BhdjrsQP6dwfo3hV88A_u831UYMF';
+      const supabaseAnonKey = canonicalSupabaseAnonKey;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

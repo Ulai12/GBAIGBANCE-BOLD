@@ -65,6 +65,7 @@ export function ProfileHeader({
               title="Modifier et redimensionner la photo de profil"
             >
               <UserAvatar
+                id={profile.id}
                 src={profile.avatar_url}
                 name={profile.name}
                 role={profile.role}

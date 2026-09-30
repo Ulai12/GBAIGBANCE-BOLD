@@ -8,10 +8,10 @@ import {
   Bell,
   LogOut,
   ChevronRight,
-  User,
   Inbox,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
+import { UserAvatar } from '@/components/UserAvatar';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
 import { COUNTRY_FLAGS } from '@/constants';
 
@@ -74,13 +74,14 @@ export function SettingsModal({
           {user && (
             <div className="p-4 rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-[#6600FF]/15 flex items-center justify-center shrink-0 ring-2 ring-[#6600FF]/20">
-                  {user.avatar_url ? (
-                    <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-6 h-6 text-[#6600FF]" />
-                  )}
-                </div>
+                <UserAvatar
+                  id={user.id}
+                  name={user.name}
+                  src={user.avatar_url}
+                  role={user.role}
+                  size="md"
+                  className="shrink-0"
+                />
                 <div className="min-w-0">
                   <p className="font-extrabold text-[#17131D] dark:text-white text-sm truncate">
                     {user.name}

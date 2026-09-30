@@ -305,7 +305,6 @@ async function executeToolCall(
             'id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url'
           )
           .eq('status', 'published')
-          .not('id', 'like', 'mock-%')
           .order('starts_at', { ascending: true })
           .limit(limit);
 
@@ -459,7 +458,6 @@ async function executeToolCall(
             .from('events')
             .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency')
             .eq('status', 'published')
-            .not('id', 'like', 'mock-%')
             .limit(limit);
 
           const list = (fallbackEvents || []).map(

@@ -221,7 +221,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     };
   }, [form, tickets, accessType, unlimitedCapacity, whatsappNumber, whatsappMessage, externalTicketUrl, coverPreview, galleryFiles, user]);
 
-  // Auto-search collaborators
+  // Auto-search collaborators ciblé selon le rôle actif (artiste ou co-organisateur réel)
   useEffect(() => {
     if (!collabSearch.trim()) {
       setResults({ artists: [], orgs: [] });
@@ -229,13 +229,20 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     }
     setSearching(true);
     const timer = window.setTimeout(() => {
-      Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)])
-        .then(([artists, orgs]) => setResults({ artists, orgs }))
-        .catch(() => setResults({ artists: [], orgs: [] }))
-        .finally(() => setSearching(false));
+      if (collabRole === 'artist') {
+        searchArtists(collabSearch)
+          .then((artists) => setResults({ artists: artists.filter((a) => Boolean(a.user_id)), orgs: [] }))
+          .catch(() => setResults({ artists: [], orgs: [] }))
+          .finally(() => setSearching(false));
+      } else {
+        searchOrganizations(collabSearch)
+          .then((orgs) => setResults({ artists: [], orgs: orgs.filter((o) => Boolean(o.owner_id)) }))
+          .catch(() => setResults({ artists: [], orgs: [] }))
+          .finally(() => setSearching(false));
+      }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [collabSearch]);
+  }, [collabSearch, collabRole]);
 
   const updateForm = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -526,9 +533,15 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
-              onClick={onBack}
+              onClick={() => {
+                if (stepIndex > 0) {
+                  previous();
+                } else {
+                  onBack();
+                }
+              }}
               aria-label="Retour"
-              className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform shrink-0"
+              className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform shrink-0 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5 text-[#171726] dark:text-white" />
             </button>
@@ -1452,36 +1465,47 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 className={`${fieldClass} pl-11`}
                 value={collabSearch}
                 onChange={(e) => setCollabSearch(e.target.value)}
-                placeholder="Rechercher un artiste ou une organisation..."
+                placeholder={collabRole === 'artist' ? 'Rechercher un artiste...' : 'Rechercher un co-organisateur...'}
               />
             </div>
 
             {searching && <p className="text-xs text-gray-500 text-center">Recherche en cours...</p>}
 
             <div className="space-y-2">
-              {results.artists.map((artist) => (
-                <button
-                  type="button"
-                  key={artist.id}
-                  onClick={() => addCollaborator(artist.user_id || '', artist.name, 'artist')}
-                  className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors"
-                >
-                  <Music2 className="w-4 h-4 text-[#6600FF] shrink-0" />
-                  <span className="text-xs font-bold text-[#17131D] dark:text-white">{artist.name}</span>
-                </button>
-              ))}
+              {collabRole === 'artist' &&
+                results.artists.map((artist) => (
+                  <button
+                    type="button"
+                    key={artist.id}
+                    onClick={() => addCollaborator(artist.user_id || '', artist.name, 'artist')}
+                    className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors cursor-pointer"
+                  >
+                    <Music2 className="w-4 h-4 text-[#6600FF] shrink-0" />
+                    <span className="text-xs font-bold text-[#17131D] dark:text-white">{artist.name}</span>
+                  </button>
+                ))}
 
-              {results.orgs.map((org) => (
-                <button
-                  type="button"
-                  key={org.id}
-                  onClick={() => addCollaborator(org.owner_id || '', org.name, 'organizer')}
-                  className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors"
-                >
-                  <Building2 className="w-4 h-4 text-[#6600FF] shrink-0" />
-                  <span className="text-xs font-bold text-[#17131D] dark:text-white">{org.name}</span>
-                </button>
-              ))}
+              {collabRole === 'co_organizer' &&
+                results.orgs.map((org) => (
+                  <button
+                    type="button"
+                    key={org.id}
+                    onClick={() => addCollaborator(org.owner_id || '', org.name, 'organizer')}
+                    className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors cursor-pointer"
+                  >
+                    <Building2 className="w-4 h-4 text-[#6600FF] shrink-0" />
+                    <span className="text-xs font-bold text-[#17131D] dark:text-white">{org.name}</span>
+                  </button>
+                ))}
+
+              {collabSearch.trim() && !searching && (
+                (collabRole === 'artist' && results.artists.length === 0) ||
+                (collabRole === 'co_organizer' && results.orgs.length === 0)
+              ) && (
+                <p className="text-xs text-gray-500 text-center py-2">
+                  Aucun {collabRole === 'artist' ? 'artiste' : 'co-organisateur'} trouvé pour &ldquo;{collabSearch}&rdquo;
+                </p>
+              )}
             </div>
 
             {collaborators.length > 0 && (

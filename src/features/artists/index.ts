@@ -34,7 +34,8 @@ export async function fetchFeaturedArtists(): Promise<Artist[]> {
     const list: Artist[] = [];
     if (artistsRes.data) {
       artistsRes.data.forEach((a: Artist) => {
-        if (isRealArtist(a)) {
+        // Exclut rigoureusement tout artiste sans compte utilisateur réel ou issu des jeux de test
+        if (isRealArtist(a) && a.user_id) {
           list.push({
             ...a,
             followers_count: Math.max(a.followers_count || 0, followsByArtist[a.id] || 0),
@@ -176,11 +177,16 @@ export async function searchArtists(query: string): Promise<Artist[]> {
     youtube_url: null, spotify_url: null, followers_count: 0, events_count: 0, is_verified: false, created_at: p.created_at || new Date().toISOString(),
   })) as Artist[];
   const seen = new Set<string>();
-  const merged = [...(seedArtists || []), ...fromProfiles].filter((a) => {
-    const key = a.user_id || a.id;
-    if (seen.has(key)) return false;
-    seen.add(key); return true;
-  });
+  const merged = [...(seedArtists || []).filter((a) => Boolean(a.user_id)), ...fromProfiles]
+    .filter(isRealArtist)
+    .filter((a) => {
+      // Pour une collaboration ou association, un artiste doit obligatoirement posséder un identifiant utilisateur valide
+      if (!a.user_id) return false;
+      const key = a.user_id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   return merged as Artist[];
 }
 

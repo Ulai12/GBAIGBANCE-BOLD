@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Event, EventWithRelations, Artist, Organization, Profile, Ticket } from '@/types';
 import type { PlatformStats } from '@/features/events/queries';
 import { sanitizeProfileSnapshot } from '@/hooks/useLocalProfile';
-import { isEventTerminated } from '@/features/events/status';
+import { isEventTerminated, isRealArtist, isRealOrganization } from '@/features/events/status';
 
 /**
  * CACHE PHILOSOPHY (Stale-While-Revalidate):
@@ -98,6 +98,8 @@ if (typeof window !== 'undefined') {
           featured: (idbData.featured || []).filter(isValidEvent),
           trending: (idbData.trending || []).filter(isValidEvent),
           nearby: (idbData.nearby || []).filter(isValidEvent),
+          artists: (idbData.artists || []).filter(isRealArtist),
+          organizations: (idbData.organizations || []).filter(isRealOrganization),
         };
         if (!MEMORY_CACHE.home || (cleaned.timestamp || 0) > (MEMORY_CACHE.home.timestamp || 0)) {
           MEMORY_CACHE.home = cleaned;
@@ -121,6 +123,8 @@ export function getCachedHomeData(): { data: HomeCacheData | null; hasCache: boo
     MEMORY_CACHE.home.featured = MEMORY_CACHE.home.featured.filter(isValidEvent);
     MEMORY_CACHE.home.trending = MEMORY_CACHE.home.trending.filter(isValidEvent);
     MEMORY_CACHE.home.nearby = MEMORY_CACHE.home.nearby.filter(isValidEvent);
+    MEMORY_CACHE.home.artists = (MEMORY_CACHE.home.artists || []).filter(isRealArtist);
+    MEMORY_CACHE.home.organizations = (MEMORY_CACHE.home.organizations || []).filter(isRealOrganization);
     const isStale = now - (MEMORY_CACHE.home.timestamp || 0) > HOME_CACHE_TTL_MS;
     return { data: MEMORY_CACHE.home, hasCache: true, isStale };
   }
@@ -133,6 +137,8 @@ export function getCachedHomeData(): { data: HomeCacheData | null; hasCache: boo
         parsed.featured = parsed.featured.filter(isValidEvent);
         parsed.trending = (parsed.trending || []).filter(isValidEvent);
         parsed.nearby = parsed.nearby.filter(isValidEvent);
+        parsed.artists = (parsed.artists || []).filter(isRealArtist);
+        parsed.organizations = (parsed.organizations || []).filter(isRealOrganization);
 
         if (parsed.featured.length > 0 || parsed.nearby.length > 0) {
           MEMORY_CACHE.home = parsed;
@@ -156,8 +162,8 @@ export function saveCachedHomeData(data: Omit<HomeCacheData, 'timestamp'>): void
     featured: data.featured.filter(isValidEvent),
     trending: (data.trending || []).filter(isValidEvent),
     nearby: data.nearby.filter(isValidEvent),
-    artists: data.artists || [],
-    organizations: data.organizations || [],
+    artists: (data.artists || []).filter(isRealArtist),
+    organizations: (data.organizations || []).filter(isRealOrganization),
     stats: data.stats || null,
     timestamp: Date.now(),
   };

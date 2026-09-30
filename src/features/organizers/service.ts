@@ -330,7 +330,8 @@ export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
     });
 
     const orgs = ((orgsRes.data || []) as Organization[])
-      .filter(isRealOrganization)
+      // Exclut les organisations fantômes ou de démo sans propriétaire réel
+      .filter((o) => isRealOrganization(o) && Boolean(o.owner_id))
       .map((o) => ({
         ...o,
         followers_count: followersMap[o.id] || (o.owner_id ? followersMap[o.owner_id] : 0) || (o.followers_count || 0),
@@ -355,9 +356,10 @@ export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
         followers_count: followersMap[p.id] || 0,
         events_count: eventCountByUser[p.id] || 0,
         created_at: p.created_at || new Date().toISOString(),
-      }));
+      }))
+      .filter(isRealOrganization);
 
-    return [...orgs, ...profileOrgs];
+    return [...orgs, ...profileOrgs].filter(isRealOrganization);
   } catch {
     return [];
   }
@@ -419,11 +421,16 @@ export async function searchOrganizations(query: string): Promise<Organization[]
     verification_status: 'pending' as const, followers_count: 0, events_count: 0, created_at: p.created_at || new Date().toISOString(),
   })) as Organization[];
   const seen = new Set<string>();
-  const merged = [...(seedOrgs || []), ...fromProfiles].filter((o) => {
-    const key = o.owner_id || o.id;
-    if (key && seen.has(key)) return false;
-    if (key) seen.add(key); return true;
-  });
+  const merged = [...(seedOrgs || []).filter((o) => Boolean(o.owner_id)), ...fromProfiles]
+    .filter(isRealOrganization)
+    .filter((o) => {
+      // Pour une collaboration ou association, une organisation doit obligatoirement être rattachée à un utilisateur propriétaire
+      if (!o.owner_id) return false;
+      const key = o.owner_id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   return merged as Organization[];
 }
 

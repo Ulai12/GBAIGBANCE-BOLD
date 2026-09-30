@@ -68,7 +68,7 @@ export function UserAvatar({
   const gradientClass = useMemo(() => {
     if (role === 'artist') return 'from-[#7C3AED] via-[#6600FF] to-[#C026D3]';
     if (role === 'organizer') return 'from-[#EA580C] via-[#E11D48] to-[#9333EA]';
-    return GRADIENTS[getGradientIndex(id || name || 'user')];
+    return GRADIENTS[getGradientIndex((name || id || 'user').trim().toLowerCase())];
   }, [id, name, role]);
 
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-2xl sm:rounded-[1.4rem]';

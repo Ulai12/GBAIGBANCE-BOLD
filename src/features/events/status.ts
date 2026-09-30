@@ -54,17 +54,45 @@ export function isRealEvent(event: Partial<Event> | null | undefined): boolean {
   return true;
 }
 
+// Liste stricte des noms de démo/mock issus des jeux de tests initiaux à exclure impérativement
+const FAKE_ARTIST_NAMES = new Set([
+  'kafui mensah',
+  'aminata diallo',
+  'dj eklu',
+  'kofi & the roots',
+  'sira kone',
+  'ama rhythm',
+]);
+
+const FAKE_ORGANIZATION_NAMES = new Set([
+  'afrovibe events',
+  'afrovibes events',
+  'culture bénin',
+  'culture benin',
+  'grand place productions',
+]);
+
 export function isRealArtist(artist: Partial<Artist> | null | undefined): boolean {
   if (!artist || !artist.id) return false;
-  const id = String(artist.id).trim();
-  if (!id || id.startsWith('mock-')) return false;
+  const id = String(artist.id).trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('b1000000-')) return false;
+
+  const name = String(artist.name || '').trim().toLowerCase();
+  if (!name || FAKE_ARTIST_NAMES.has(name) || name.startsWith('test ') || name.startsWith('artiste démo')) {
+    return false;
+  }
   return true;
 }
 
 export function isRealOrganization(org: Partial<Organization> | null | undefined): boolean {
   if (!org || !org.id) return false;
-  const id = String(org.id).trim();
-  if (!id || id.startsWith('mock-')) return false;
+  const id = String(org.id).trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('a1000000-')) return false;
+
+  const name = String(org.name || '').trim().toLowerCase();
+  if (!name || FAKE_ORGANIZATION_NAMES.has(name) || name.startsWith('test ') || name.startsWith('orga démo')) {
+    return false;
+  }
   return true;
 }
 

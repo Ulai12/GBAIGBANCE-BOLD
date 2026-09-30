@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams, useNavigationType, Navigate } from 'react-router-dom';
 import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -148,12 +148,59 @@ function AppContent() {
   })();
 
   const isTabScreen = ['/', '/home', '/explore', '/tickets', '/favorites', '/profile'].includes(location.pathname);
+  const navigationType = useNavigationType();
+  const scrollPositionsRef = useRef<Map<string, number>>(new Map());
 
-  // Scroll to top on navigation
+  // Enregistrement continu de la position de défilement par écran
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    const handleScroll = () => {
+      const y = window.scrollY || scrollRef.current?.scrollTop || 0;
+      scrollPositionsRef.current.set(location.pathname, y);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    const container = scrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, [location.pathname]);
+
+  // Restauration intelligente du scroll style Apple :
+  // Lors d'un retour arrière (POP), restaure la position précédente au lieu de forcer le haut de page.
+  // Lors d'une navigation avant (PUSH), défile fluidement vers le haut.
+  useEffect(() => {
+    if (navigationType === 'POP') {
+      const savedY = scrollPositionsRef.current.get(location.pathname) || 0;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' });
+        if (scrollRef.current) scrollRef.current.scrollTop = savedY;
+      });
+    } else {
+      if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [location.pathname, navigationType]);
+
+  // Retour arrière intelligent : utilise l'historique interne React Router s'il existe, sinon redirige vers la route de repli
+  const handleSmartBack = useCallback((fallbackPath: string = '/') => {
+    if (
+      typeof window !== 'undefined' &&
+      window.history.state &&
+      typeof window.history.state.idx === 'number' &&
+      window.history.state.idx > 0
+    ) {
+      navigate(-1);
+    } else {
+      navigate(fallbackPath, { replace: true });
+    }
+  }, [navigate]);
 
   // Support legacy ?event= query param deep linking
   useEffect(() => {
@@ -364,7 +411,7 @@ function AppContent() {
             />
             <Route
               path="/forgot-password"
-              element={<ForgotPasswordScreen onBack={() => navigate(-1)} onToast={addToast} />}
+              element={<ForgotPasswordScreen onBack={() => handleSmartBack('/login')} onToast={addToast} />}
             />
             <Route path="/otp" element={<OtpRoute />} />
             <Route
@@ -377,17 +424,17 @@ function AppContent() {
             <Route path="/users/:id" element={<UserProfileRoute onToast={addToast} />} />
             <Route
               path="/notifications"
-              element={<NotificationsScreen onBack={() => navigate(-1)} onToast={addToast} />}
+              element={<NotificationsScreen onBack={() => handleSmartBack('/')} onToast={addToast} />}
             />
             <Route
               path="/notifications/settings"
-              element={<NotificationSettingsScreen onBack={() => navigate(-1)} onToast={addToast} />}
+              element={<NotificationSettingsScreen onBack={() => handleSmartBack('/notifications')} onToast={addToast} />}
             />
             <Route
               path="/subscriptions"
               element={
                 <SubscriptionsScreen
-                  onBack={() => navigate(-1)}
+                  onBack={() => handleSmartBack('/profile')}
                   onArtistClick={handleArtistClick}
                   onOrganizationClick={handleOrganizationClick}
                   onUserClick={(p) => navigate(`/users/${p.id}`)}
@@ -398,7 +445,7 @@ function AppContent() {
               path="/organizer/dashboard"
               element={
                 <OrganizerDashboardScreen
-                  onBack={() => navigate(-1)}
+                  onBack={() => handleSmartBack('/profile')}
                   onEventClick={handleEventClick}
                   onEditEvent={(ev) => navigate(`/events/${ev.id}/edit`, { state: { event: ev } })}
                   onToast={addToast}
@@ -409,10 +456,10 @@ function AppContent() {
               path="/create"
               element={
                 !canCreate ? (
-                  <UnauthorizedCreateGate onBack={() => navigate(-1)} />
+                  <UnauthorizedCreateGate onBack={() => handleSmartBack('/')} />
                 ) : (
                   <CreateEventScreen
-                    onBack={() => navigate(-1)}
+                    onBack={() => handleSmartBack('/')}
                     onCreated={(event) => navigate(`/events/${event.id}`, { state: { event } })}
                     onToast={addToast}
                   />
@@ -423,7 +470,7 @@ function AppContent() {
               path="/ai-settings"
               element={
                 <AISettingsScreen
-                  onBack={() => navigate(-1)}
+                  onBack={() => handleSmartBack('/')}
                   onToast={(t) => addToast({ message: t.message, type: t.type || 'info' })}
                 />
               }

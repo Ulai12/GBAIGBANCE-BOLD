@@ -107,8 +107,7 @@ async function executeClientTool(
       let query = supabase
         .from('events')
         .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url')
-        .eq('status', 'published')
-        .not('id', 'like', 'mock-%');
+        .eq('status', 'published');
 
       if (args.free_only) {
         query = query.eq('price_min', 0);
@@ -126,17 +125,19 @@ async function executeClientTool(
       const { data, error } = await query.order('starts_at', { ascending: true }).limit(limit);
       if (error || !data) return { count: 0, events: [] };
 
-      const events = data.map((ev) => {
-        turnEventIds.add(ev.id);
-        return {
-          id: ev.id,
-          title: ev.title,
-          category: ev.category,
-          starts_at: ev.starts_at,
-          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-          price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
-        };
-      });
+      const events = data
+        .filter((ev) => !String(ev.id).startsWith('mock-'))
+        .map((ev) => {
+          turnEventIds.add(ev.id);
+          return {
+            id: ev.id,
+            title: ev.title,
+            category: ev.category,
+            starts_at: ev.starts_at,
+            location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
+            price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
+          };
+        });
 
       return { count: events.length, events };
     }
@@ -199,22 +200,23 @@ async function executeClientTool(
         .from('events')
         .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url')
         .eq('status', 'published')
-        .not('id', 'like', 'mock-%')
         .gte('starts_at', now)
         .order('starts_at', { ascending: true })
         .limit(limit);
 
-      const list = (data || []).map((ev) => {
-        turnEventIds.add(ev.id);
-        return {
-          id: ev.id,
-          title: ev.title,
-          category: ev.category,
-          starts_at: ev.starts_at,
-          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-          price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
-        };
-      });
+      const list = (data || [])
+        .filter((ev) => !String(ev.id).startsWith('mock-'))
+        .map((ev) => {
+          turnEventIds.add(ev.id);
+          return {
+            id: ev.id,
+            title: ev.title,
+            category: ev.category,
+            starts_at: ev.starts_at,
+            location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
+            price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
+          };
+        });
 
       return { count: list.length, events: list };
     }

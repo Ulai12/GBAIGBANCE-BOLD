@@ -22,6 +22,20 @@ interface RouteProps {
   onBook: (event: Event) => void;
 }
 
+// Fonction utilitaire de retour sécurisé garantissant de ne jamais sortir de l'application ni d'échouer
+function smartNavigateBack(navigate: ReturnType<typeof useNavigate>, fallbackPath: string = '/') {
+  if (
+    typeof window !== 'undefined' &&
+    window.history.state &&
+    typeof window.history.state.idx === 'number' &&
+    window.history.state.idx > 0
+  ) {
+    navigate(-1);
+  } else {
+    navigate(fallbackPath, { replace: true });
+  }
+}
+
 export function EventDetailRoute({ onToast, onBook }: RouteProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -61,13 +75,7 @@ export function EventDetailRoute({ onToast, onBook }: RouteProps) {
     };
   }, [id, stateEvent, onToast]);
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
-  };
+  const handleBack = () => smartNavigateBack(navigate, '/');
 
   if (loading) {
     return <HomeScreenSkeleton />;
@@ -117,7 +125,7 @@ export function EditEventRoute({ onToast }: { onToast: (toast: Omit<ToastData, '
   return (
     <EditEventScreen
       eventId={id}
-      onBack={() => navigate(-1)}
+      onBack={() => smartNavigateBack(navigate, `/events/${id}`)}
       onSaved={() => {
         onToast({ message: 'Événement mis à jour avec succès', type: 'success' });
         navigate(`/events/${id}`);
@@ -163,13 +171,7 @@ export function ArtistDetailRoute({ onToast }: { onToast: (toast: Omit<ToastData
     };
   }, [id, stateArtist, onToast]);
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
-  };
+  const handleBack = () => smartNavigateBack(navigate, '/');
 
   if (loading) {
     return <HomeScreenSkeleton />;
@@ -239,13 +241,7 @@ export function OrganizerDetailRoute({ onToast }: { onToast: (toast: Omit<ToastD
     };
   }, [id, stateOrg, onToast]);
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
-  };
+  const handleBack = () => smartNavigateBack(navigate, '/');
 
   if (loading) {
     return <HomeScreenSkeleton />;
@@ -291,7 +287,7 @@ export function UserProfileRoute({ onToast }: { onToast: (toast: Omit<ToastData,
   return (
     <UserProfileScreen
       userId={id}
-      onBack={() => navigate(-1)}
+      onBack={() => smartNavigateBack(navigate, '/')}
       onEventClick={(event) => navigate(`/events/${event.id}`, { state: { event } })}
       onToast={onToast}
     />

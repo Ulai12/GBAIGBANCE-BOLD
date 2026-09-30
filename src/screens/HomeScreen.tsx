@@ -526,6 +526,7 @@ export function HomeScreen({
         aria-label="Profil"
       >
         <UserAvatar
+          id={user?.id}
           src={user?.avatar_url}
           name={user?.name || 'Invité'}
           role={user?.role || 'attendee'}
