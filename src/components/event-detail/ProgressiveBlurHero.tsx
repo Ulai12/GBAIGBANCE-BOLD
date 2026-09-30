@@ -67,43 +67,20 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             willChange: 'transform',
           }}
           className={`w-full h-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-105 ${
-            imageLoaded ? 'opacity-100 filter brightness-[0.96]' : 'opacity-40 filter blur-lg'
+            imageLoaded ? 'opacity-100 filter brightness-100' : 'opacity-40 filter blur-lg'
           }`}
         />
       </button>
 
       {/* 
-        FLOU PROGRESSIF HAUTE DÉFINITION (Zéro halo grisâtre)
-        Au lieu d'un backdrop-filter qui crée des bordures grises disgracieuses en mode clair/sombre,
-        on utilise un dédoublement de l'image filtrée avec un masque progressif naturel.
+        Voile supérieur sombre très discret et allégé (h-10) pour laisser l'image pleinement visible
       */}
-      <div
-        className="absolute inset-0 pointer-events-none z-5 overflow-hidden"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.85) 75%, black 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.85) 75%, black 100%)',
-        }}
-      >
-        <img
-          src={coverImage}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-full object-cover object-center filter blur-2xl scale-110 saturate-[1.2]"
-        />
-      </div>
+      <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/20 via-black/5 to-transparent pointer-events-none z-10" />
 
       {/* 
-        Voile supérieur sombre continu pour la zone d'encoche / Dynamic Island iOS
-        Garantit un contraste parfait pour les boutons d'action quel que soit le fond de l'image.
+        Dégradé bas très discret (h-8) pour adoucir le raccord sans couvrir la photo
       */}
-      <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-none z-10" />
-
-      {/* 
-        DÉGRADÉ CONTINU PROFOND VERS LA FEUILLE DE CONTENU
-        Couvre largement la moitié inférieure du hero (h-72 / h-80) pour un fondu
-        parfaitement soyeux et continu dans l'arrière-plan, éliminant tout bloc ou ligne de rupture.
-      */}
-      <div className="absolute inset-x-0 bottom-0 h-72 sm:h-80 bg-gradient-to-t from-[#f4f1ff] via-[#f4f1ff]/80 to-transparent dark:from-[#0c0a14] dark:via-[#0c0a14]/85 pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#f4f1ff]/50 to-transparent dark:from-[#0c0a14]/50 to-transparent pointer-events-none z-10" />
 
       {/* 
         BARRE D'OUTILS FLOTTANTE SUPÉRIEURE iOS

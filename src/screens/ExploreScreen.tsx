@@ -34,6 +34,7 @@ import {
   fetchUpcomingEvents,
   isEventTerminated,
   isRealEvent,
+  isRealProfile,
   subscribeToGlobalEventsLive,
   searchProfiles,
 } from '@/services/events';
@@ -123,8 +124,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     setLoadingParticipants(true);
     try {
       const results = await searchProfiles(query || 'a');
-      // Exclure l'utilisateur lui-même de la liste de recherche pour amis
-      const filtered = results.filter((p) => p.id !== currentUser?.id);
+      // Exclure l'utilisateur lui-même et les faux profils de test
+      const filtered = results.filter((p) => p.id !== currentUser?.id && isRealProfile(p));
       setParticipants(filtered);
     } catch {
       setParticipants([]);
@@ -193,10 +194,30 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   };
 
   return (
-    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
-      {/* Header Sticky avec recherche et filtres */}
+    <div className="w-full max-w-7xl mx-auto">
+      {/* Header harmonisé style Favoris & Tickets */}
+      <div className="px-5 pt-safe-header pb-2">
+        <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
+          Découverte & Exploration
+        </p>
+        <div className="flex items-center justify-between mt-1">
+          <h1 className="text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
+            Recherche
+          </h1>
+          <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
+            {searchMode === 'events'
+              ? `${events.length} résultat${events.length > 1 ? 's' : ''}`
+              : `${participants.length} profil${participants.length > 1 ? 's' : ''}`}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Trouvez des concerts, festivals, artistes et amis à proximité
+        </p>
+      </div>
+
+      {/* Barre de recherche et filtres Sticky */}
       <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="px-5 pt-safe-header pb-3 max-w-7xl mx-auto">
+        <div className="px-5 py-2.5 max-w-7xl mx-auto">
           {/* Segmented Control iOS Apple : Événements vs Participants / Amis */}
           <div className="flex items-center p-1 bg-gray-100 dark:bg-white/10 rounded-2xl mb-3 max-w-md mx-auto sm:mx-0">
             <button

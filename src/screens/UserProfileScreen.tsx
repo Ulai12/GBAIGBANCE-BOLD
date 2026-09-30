@@ -12,6 +12,7 @@ import { UserProfileScreenSkeleton } from '@/components/Skeleton';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SmartImage } from '@/components/SmartImage';
 import { ProfilePictureModal } from '@/components/ProfilePictureModal';
+import { getDefaultUserCover } from '@/utils/defaultImages';
 import type { Profile, Event } from '@/types';
 import type { ToastData } from '@/components/Toast';
 
@@ -33,6 +34,13 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
   const [toggling, setToggling] = useState(false);
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [pictureModalOpen, setPictureModalOpen] = useState(false);
+  const [coverSrc, setCoverSrc] = useState<string>('');
+
+  useEffect(() => {
+    if (profile) {
+      setCoverSrc(profile.cover_url || getDefaultUserCover(profile.id, profile.name));
+    }
+  }, [profile]);
 
   // Synchronisation globale du statut de suivi via FavoritesContext
   const following = isFollowingUser(userId);
@@ -160,21 +168,31 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
 
   return (
     <div className="min-h-screen pb-32">
-      {/* En-tête avec dégradé Apple et bouton retour */}
-      <div className="relative h-52 bg-gradient-to-br from-[#6600FF]/25 via-[#9D4EDD]/20 to-[#EDE8FF] dark:to-[#141022]">
-        <div className="max-w-2xl mx-auto px-5 pt-safe-header">
+      {/* En-tête Cover Header avec couverture par défaut Apple et bouton retour */}
+      <div className="relative h-56 sm:h-64 lg:h-72 overflow-hidden bg-zinc-900">
+        <img
+          src={coverSrc || getDefaultUserCover(profile.id, profile.name)}
+          alt={`Couverture de ${profile.name}`}
+          onError={() => setCoverSrc(getDefaultUserCover(profile.id, profile.name))}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {/* Voiles très légers et discrets pour laisser l'image de couverture pleinement visible */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/25 via-black/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/35 to-transparent pointer-events-none" />
+
+        <div className="absolute top-0 inset-x-4 max-w-4xl mx-auto pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
           <button
             onClick={onBack}
             aria-label="Retour"
-            className="w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 backdrop-blur-md flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5 text-[#1A1A2E] dark:text-white" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Conteneur principal responsive adapté mobile, tablette et PC */}
-      <div className="max-w-2xl mx-auto px-5 -mt-16 relative">
+      <div className="max-w-2xl mx-auto px-5 -mt-10 sm:-mt-12 relative">
         <div className="flex flex-col items-center text-center">
           <div className="relative">
             <UserAvatar

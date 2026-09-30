@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
+  ChevronDown,
   Calendar,
   Clock,
   MapPin,
@@ -172,6 +173,7 @@ export function EventDetailScreen({
   // Nouveaux états : Signalement & Participants réels avec priorité aux amis
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [attendees, setAttendees] = useState<AttendeeProfile[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(true);
 
@@ -581,10 +583,10 @@ export function EventDetailScreen({
 
       {/* 
         FEUILLE DE CONTENU (Bottom Sheet en Verre Liquid Glass)
-        Monte avec une courbure 32px sur le hero flouté.
+        Positionnée avec un léger décalage (-mt-4 sm:-mt-6) pour préserver l'affiche de couverture intacte.
         Padding-bottom de sécurité généreux (pb-44) pour dégager complètement la barre flottante.
       */}
-      <main className="-mt-14 sm:-mt-18 relative z-20 max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-44 sm:pb-48 space-y-6">
+      <main className="-mt-4 sm:-mt-6 relative z-20 max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-44 sm:pb-48 space-y-6">
         {/* Carte Principale : Identité, Titre, Badges, Compte à rebours, Date/Heure */}
         <section className="p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] glass-ios border border-white/60 dark:border-white/15 space-y-5 shadow-xl">
           {/* Ligne des badges : Catégorie violet plein + Ville en verre + Statut éventuel */}
@@ -881,15 +883,52 @@ export function EventDetailScreen({
           )}
 
           {/* 
-            DESCRIPTION / À PROPOS
+            DESCRIPTION / À PROPOS (Gestion soignée des descriptions longues avec dégradé fondu)
           */}
-          <div className="pt-2 space-y-2">
+          <div className="pt-2 space-y-2.5">
             <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
               À propos de cet événement
             </h2>
-            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-              {displayEvent.description}
-            </p>
+            {displayEvent.description ? (
+              <div>
+                <div
+                  className={`relative transition-all duration-300 ${
+                    !isDescriptionExpanded && displayEvent.description.length > 240
+                      ? 'max-h-24 overflow-hidden'
+                      : 'max-h-none'
+                  }`}
+                >
+                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line break-words">
+                    {displayEvent.description}
+                  </p>
+                  {!isDescriptionExpanded && displayEvent.description.length > 240 && (
+                    <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white/95 dark:from-[#151126] to-transparent pointer-events-none" />
+                  )}
+                </div>
+
+                {displayEvent.description.length > 240 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptic.selection();
+                      setIsDescriptionExpanded(!isDescriptionExpanded);
+                    }}
+                    className="mt-2 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] hover:underline cursor-pointer inline-flex items-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <span>{isDescriptionExpanded ? 'Afficher moins' : 'Lire la suite'}</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                        isDescriptionExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs sm:text-sm text-gray-400 italic">
+                Aucune description détaillée n'a été fournie pour cet événement.
+              </p>
+            )}
           </div>
 
           {/* 

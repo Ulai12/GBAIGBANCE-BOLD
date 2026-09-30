@@ -472,7 +472,7 @@ export function HomeScreen({
   };
 
   return (
-    <div className="min-h-screen max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto">
       {/* En-tête modernisée style iOS avec respect de la zone de sécurité (Dynamic Island & Encoche) */}
       <header className="px-5 pt-safe-header pb-3">
         {/* Ligne Logo & Identité */}

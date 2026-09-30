@@ -220,7 +220,7 @@ export function ProfileScreen({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="w-full">
       <div className="max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto">
         {/* Barre d'en-tête supérieure avec bouton Paramètres Stratégique */}
         <div className="px-5 pt-safe-header flex items-center justify-between">

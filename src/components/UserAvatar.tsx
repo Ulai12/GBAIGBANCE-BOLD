@@ -75,6 +75,12 @@ export function UserAvatar({
   const hasCustomRing = className.includes('ring-');
   const ringClass = ring && !hasCustomRing ? 'ring-2 ring-black/5 dark:ring-white/10 shadow-xs' : '';
 
+  // Évite les conflits de classes Tailwind si className spécifie déjà une largeur ou hauteur personnalisée
+  const hasCustomDimension = /(?:^|\s)[wh]-/.test(className);
+  const dimensionClass = hasCustomDimension
+    ? sizeConfig.box.replace(/(?:^|\s)[wh]-[\w/.[\]]+(?=\s|$)/g, '').trim()
+    : sizeConfig.box;
+
   const effectiveSrc = useMemo(() => {
     if (src && src.trim() !== '' && !imageError) {
       return src;
@@ -86,9 +92,9 @@ export function UserAvatar({
   const RoleIcon = role === 'artist' ? Music2 : role === 'organizer' ? Building2 : User;
 
   return (
-    <div className={`relative inline-flex items-center justify-center shrink-0 ${sizeConfig.box} ${roundedClass} ${className}`}>
+    <div className={`relative inline-flex items-center justify-center shrink-0 ${dimensionClass} ${roundedClass} ${className}`}>
       <div
-        className={`relative overflow-hidden flex items-center justify-center select-none w-full h-full ${roundedClass} ${ringClass} bg-zinc-100 dark:bg-zinc-800`}
+        className={`relative overflow-hidden select-none w-full h-full ${roundedClass} ${ringClass} bg-zinc-100 dark:bg-zinc-800`}
       >
         {effectiveSrc ? (
           <img
@@ -100,10 +106,10 @@ export function UserAvatar({
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            className={`w-full h-full aspect-square object-cover ${roundedClass} ${imageClassName}`}
+            className={`absolute inset-0 w-full h-full object-cover object-center ${imageClassName}`}
           />
         ) : (
-          <div className={`flex items-center justify-center w-full h-full bg-gradient-to-tr ${gradientClass} text-white font-black tracking-wider`}>
+          <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr ${gradientClass} text-white font-black tracking-wider`}>
             {initials ? (
               <span>{initials}</span>
             ) : (

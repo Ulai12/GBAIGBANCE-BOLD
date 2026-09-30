@@ -48,6 +48,7 @@ export interface Profile {
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
+  cover_url?: string | null;
   role: UserRole;
   city: string;
   country: string;

@@ -46,6 +46,14 @@ export function OrganizerDetailScreen({
   const following = isFollowingOrg(organization.id);
   const displayOrg = fullOrg || organization;
 
+  const [coverSrc, setCoverSrc] = useState(
+    () => displayOrg.cover_url || getDefaultOrgCover(displayOrg.id, displayOrg.name)
+  );
+
+  useEffect(() => {
+    setCoverSrc(displayOrg.cover_url || getDefaultOrgCover(displayOrg.id, displayOrg.name));
+  }, [displayOrg.cover_url, displayOrg.id, displayOrg.name]);
+
   // Perspective : l'utilisateur connecté est-il le propriétaire de cette organisation ?
   const isOwnProfile = Boolean(user && (user.id === displayOrg.owner_id || user.id === displayOrg.id));
 
@@ -134,13 +142,16 @@ export function OrganizerDetailScreen({
   return (
     <div className="min-h-screen pb-32">
       {/* Cover Header */}
-      <div className="relative h-56 sm:h-64 lg:h-72 overflow-hidden">
+      <div className="relative h-56 sm:h-64 lg:h-72 overflow-hidden bg-zinc-900">
         <img
-          src={displayOrg.cover_url || getDefaultOrgCover(displayOrg.id, displayOrg.name)}
+          src={coverSrc}
           alt={displayOrg.name}
-          className="w-full h-full object-cover"
+          onError={() => setCoverSrc(getDefaultOrgCover(displayOrg.id, displayOrg.name))}
+          className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/20 to-black/40" />
+        {/* Voiles très légers et discrets pour laisser l'image de couverture pleinement visible */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/25 via-black/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/35 to-transparent pointer-events-none" />
 
         {/* Buttons */}
         <div className="absolute top-0 inset-x-4 max-w-4xl mx-auto pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
@@ -176,7 +187,7 @@ export function OrganizerDetailScreen({
       </div>
 
       {/* Main Body responsive pour tablette et PC */}
-      <div className="max-w-4xl mx-auto px-5 -mt-14 sm:-mt-16 relative">
+      <div className="max-w-4xl mx-auto px-5 -mt-10 sm:-mt-12 relative">
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <UserAvatar
             src={displayOrg.logo_url}

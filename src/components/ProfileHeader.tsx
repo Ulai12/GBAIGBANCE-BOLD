@@ -134,7 +134,7 @@ export function ProfileHeader({
           </div>
 
           {profile.bio && (
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-1">
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-1 break-words [overflow-wrap:anywhere]">
               {profile.bio}
             </p>
           )}

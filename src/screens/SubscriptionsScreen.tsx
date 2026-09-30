@@ -3,7 +3,7 @@ import { ChevronLeft, Music2, Building2, Users, Heart, LogIn, Sparkles } from 'l
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
-import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers } from '@/services/events';
+import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers, isRealArtist, isRealOrganization, isRealProfile } from '@/services/events';
 import {
   getCachedSubscriptionsMemory,
   setCachedSubscriptionsMemory,
@@ -76,9 +76,9 @@ export function SubscriptionsScreen({
         uIds.length > 0 ? supabase.from('profiles').select('*').in('id', uIds) : Promise.resolve({ data: [] }),
       ])
         .then(([artRes, orgRes, uRes]) => {
-          setArtists((artRes.data as Artist[]) || []);
-          setOrgs((orgRes.data as Organization[]) || []);
-          setUsers((uRes.data as Profile[]) || []);
+          setArtists(((artRes.data as Artist[]) || []).filter(isRealArtist));
+          setOrgs(((orgRes.data as Organization[]) || []).filter(isRealOrganization));
+          setUsers(((uRes.data as Profile[]) || []).filter(isRealProfile));
         })
         .finally(() => setLoading(false));
       return;
@@ -90,13 +90,16 @@ export function SubscriptionsScreen({
       fetchFollowingUsers(user.id),
     ])
       .then(([a, o, u]) => {
-        setArtists(a);
-        setOrgs(o);
-        setUsers(u);
+        const cleanA = a.filter(isRealArtist);
+        const cleanO = o.filter(isRealOrganization);
+        const cleanU = u.filter(isRealProfile);
+        setArtists(cleanA);
+        setOrgs(cleanO);
+        setUsers(cleanU);
         setCachedSubscriptionsMemory(user.id, {
-          artists: a,
-          orgs: o,
-          users: u,
+          artists: cleanA,
+          orgs: cleanO,
+          users: cleanU,
         });
       })
       .finally(() => setLoading(false));

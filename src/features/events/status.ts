@@ -67,3 +67,50 @@ export function isRealOrganization(org: Partial<Organization> | null | undefined
   if (!id || id.startsWith('mock-')) return false;
   return true;
 }
+
+/**
+ * Validates if a user/participant profile is genuine and strictly excludes mock or test profiles.
+ */
+export function isRealProfile<T extends { id?: string | null; name?: string | null; email?: string | null }>(
+  profile: T | null | undefined
+): profile is T {
+  if (!profile || !profile.id) return false;
+  const id = String(profile.id).trim().toLowerCase();
+  const name = String(profile.name || '').trim().toLowerCase();
+  const email = String(profile.email || '').trim().toLowerCase();
+
+  // Test UUIDs / mock IDs
+  if (
+    id.startsWith('mock-') ||
+    id.startsWith('test-') ||
+    id === 'd0ebe334-ba93-413e-a64e-fb2787bcafaa'
+  ) {
+    return false;
+  }
+
+  // Test names
+  if (
+    name === 'test user' ||
+    name === 'test' ||
+    name === 'fake user' ||
+    name === 'demo user' ||
+    name === 'utilisateur test' ||
+    name.startsWith('test ') ||
+    name.startsWith('fake ')
+  ) {
+    return false;
+  }
+
+  // Test emails
+  if (
+    email.includes('testuser@') ||
+    email.includes('example.com') ||
+    email.includes('test@') ||
+    email === 'test@gbaigbance.com'
+  ) {
+    return false;
+  }
+
+  return true;
+}
+

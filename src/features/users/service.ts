@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase';
+import { isRealProfile } from '@/features/events/status';
 import type { Profile } from '@/types';
 
 function sanitizeSearchInput(input: string): string {
@@ -13,9 +14,10 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
     .from('profiles')
     .select('id, name, avatar_url, role, city, country, bio, created_at')
     .ilike('name', `%${sanitized}%`)
-    .limit(20);
+    .limit(30);
   if (error) throw error;
-  return (data as Profile[]) || [];
+  const list = ((data as Profile[]) || []);
+  return list.filter(isRealProfile);
 }
 
 export * from './follows';

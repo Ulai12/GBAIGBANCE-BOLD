@@ -471,7 +471,7 @@ export function FavoritesScreen({
   const totalFavEventsCount = activeEvents.length + terminatedEvents.length;
 
   return (
-    <div className="min-h-screen pb-32 max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto">
       {/* Header */}
       <div className="px-5 pt-safe-header pb-3">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">

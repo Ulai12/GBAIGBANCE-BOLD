@@ -24,6 +24,7 @@ export {
   isRealEvent,
   isRealArtist,
   isRealOrganization,
+  isRealProfile,
   uploadEventImage,
   createEventWithCollaborators,
   updateEventFull,

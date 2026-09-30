@@ -1,13 +1,14 @@
 // ArtistDetailScreen.tsx - Vue profil artiste avec vérification de perspective (soi-même vs public),
 // rafraîchissement silencieux 3s en arrière-plan et grille responsive Apple HIG (mobile, tablette, PC).
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, Music2, Calendar, Share2, Heart, Eye, Sparkles, UserCheck } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Music2, Calendar, Share2, Heart, Eye, Sparkles, UserCheck } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { haptic } from '@/hooks/useHaptics';
 import { fetchArtistById, fetchEventsByArtist } from '@/services/events';
 import { formatNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
@@ -29,6 +30,14 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
   const [fullArtist, setFullArtist] = useState<Artist>(artist);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [coverSrc, setCoverSrc] = useState(
+    () => fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id, fullArtist.name)
+  );
+
+  useEffect(() => {
+    setCoverSrc(fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id, fullArtist.name));
+  }, [fullArtist.cover_url, fullArtist.photo_url, fullArtist.id, fullArtist.name]);
 
   const following = isFollowingArtist(artist.id);
 
@@ -121,13 +130,16 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
   return (
     <div className="min-h-screen pb-32">
       {/* Cover Header */}
-      <div className="relative h-64 sm:h-72 lg:h-80 overflow-hidden">
+      <div className="relative h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-900">
         <img
-          src={fullArtist.cover_url || fullArtist.photo_url || getDefaultArtistCover(fullArtist.id, fullArtist.name)}
+          src={coverSrc}
           alt={fullArtist.name}
-          className="w-full h-full object-cover"
+          onError={() => setCoverSrc(getDefaultArtistCover(fullArtist.id, fullArtist.name))}
+          className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#EDE8FF] dark:from-[#0f0d19] via-black/25 to-black/50" />
+        {/* Voiles très légers et discrets pour laisser l'image de couverture pleinement visible */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/25 via-black/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/35 to-transparent pointer-events-none" />
 
         {/* Action buttons */}
         <div className="absolute top-0 inset-x-4 max-w-4xl mx-auto pt-safe-header flex items-center justify-between z-10 pointer-events-auto">
@@ -151,7 +163,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
       </div>
 
       {/* Profile Info Container responsive pour tablette et PC */}
-      <div className="max-w-4xl mx-auto px-5 -mt-16 sm:-mt-20 relative">
+      <div className="max-w-4xl mx-auto px-5 -mt-10 sm:-mt-12 relative">
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <UserAvatar
             src={fullArtist.photo_url}
@@ -259,9 +271,27 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
             <h2 className="text-sm font-black uppercase tracking-wider text-[#17131D] dark:text-white mb-2 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-[#6600FF]" /> {t('events', 'artist.biography') || 'Biographie'}
             </h2>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal break-words whitespace-pre-line">
-              {fullArtist.bio}
-            </p>
+            <div className={`relative ${!isBioExpanded && fullArtist.bio.length > 250 ? 'max-h-24 overflow-hidden' : ''}`}>
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal break-words whitespace-pre-line">
+                {fullArtist.bio}
+              </p>
+              {!isBioExpanded && fullArtist.bio.length > 250 && (
+                <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white/95 dark:from-[#181524] to-transparent pointer-events-none" />
+              )}
+            </div>
+            {fullArtist.bio.length > 250 && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptic.selection();
+                  setIsBioExpanded(!isBioExpanded);
+                }}
+                className="mt-2 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>{isBioExpanded ? 'Afficher moins' : 'Lire la suite'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isBioExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            )}
           </div>
         )}
 

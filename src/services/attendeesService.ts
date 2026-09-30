@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase';
+import { isRealProfile } from '@/features/events/status';
 
 export interface AttendeeProfile {
   id: string;
@@ -80,7 +81,9 @@ export async function fetchEventAttendees(
     }
 
     // 4. Mapper vers la structure AttendeeProfile (exclusivement les vrais détenteurs de billets de cet événement)
-    const attendees: AttendeeProfile[] = Array.from(profileMap.values()).map((p) => {
+    const attendees: AttendeeProfile[] = Array.from(profileMap.values())
+      .filter(isRealProfile)
+      .map((p) => {
       const isFriend = followingSet.has(p.id);
       const isSelf = Boolean(currentUserId && p.id === currentUserId);
       const ticket = (tickets || []).find((t: { user_id?: string; ticket_type?: string; created_at?: string }) => t.user_id === p.id);

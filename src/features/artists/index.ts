@@ -3,8 +3,8 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
-import { isRealArtist, isRealEvent, isEventTerminated } from '@/features/events/status';
-import { getDefaultArtistAvatar } from '@/utils/defaultImages';
+import { isRealArtist, isRealProfile, isRealEvent, isEventTerminated } from '@/features/events/status';
+import { getDefaultArtistAvatar, getDefaultArtistCover } from '@/utils/defaultImages';
 import type { Artist, Event } from '@/types';
 
 export async function fetchFeaturedArtists(): Promise<Artist[]> {
@@ -45,6 +45,7 @@ export async function fetchFeaturedArtists(): Promise<Artist[]> {
 
     if (profilesRes.data) {
       profilesRes.data.forEach((p) => {
+        if (!isRealProfile(p)) return;
         if (!list.some((existing) => existing.id === p.id || existing.name.toLowerCase() === p.name.toLowerCase())) {
           list.push({
             id: p.id,
@@ -52,7 +53,7 @@ export async function fetchFeaturedArtists(): Promise<Artist[]> {
             name: p.name,
             bio: p.bio || null,
             photo_url: p.avatar_url || getDefaultArtistAvatar(p.name),
-            cover_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200',
+            cover_url: p.cover_url || getDefaultArtistCover(p.id, p.name),
             genres: (p.preferred_genres && p.preferred_genres.length > 0) ? p.preferred_genres : ['Afrobeats'],
             city: p.city || 'Lomé',
             country: p.country || 'Togo',
@@ -78,14 +79,14 @@ export async function fetchArtistById(artistId: string): Promise<Artist | null> 
     if (artistData && isRealArtist(artistData)) return artistData as Artist;
 
     const { data: profileData } = await supabase.from('profiles').select('*').eq('id', artistId).maybeSingle();
-    if (profileData) {
+    if (profileData && isRealProfile(profileData)) {
       return {
         id: profileData.id,
         user_id: profileData.id,
         name: profileData.name,
         bio: profileData.bio || null,
         photo_url: profileData.avatar_url || getDefaultArtistAvatar(profileData.name),
-        cover_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200',
+        cover_url: profileData.cover_url || getDefaultArtistCover(profileData.id, profileData.name),
         genres: (profileData.preferred_genres && profileData.preferred_genres.length > 0) ? profileData.preferred_genres : ['Afrobeats'],
         city: profileData.city || 'Lomé',
         country: profileData.country || 'Togo',

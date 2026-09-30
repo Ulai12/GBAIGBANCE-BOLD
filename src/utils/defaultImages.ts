@@ -52,14 +52,15 @@ export function createInitialsAvatarSvg(name?: string | null, seed?: string | nu
     ? { c1: '#EA580C', c2: '#9A3412', text: '#FFFFFF' }
     : AVATAR_PALETTES[hashString(hashKey) % AVATAR_PALETTES.length];
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" preserveAspectRatio="xMidYMid slice">
     <defs>
       <linearGradient id="avGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stop-color="${palette.c1}" />
         <stop offset="100%" stop-color="${palette.c2}" />
       </linearGradient>
     </defs>
-    <rect width="160" height="160" rx="80" fill="url(#avGrad)" />
+    <!-- Rectangle plein pour couvrir 100% du conteneur parent (squircle ou cercle) sans bordures vides -->
+    <rect width="160" height="160" fill="url(#avGrad)" />
     <text x="50%" y="54%" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="62" font-weight="900" fill="${palette.text}" text-anchor="middle" dominant-baseline="middle" letter-spacing="2">${initials}</text>
   </svg>`;
 
@@ -205,4 +206,11 @@ export function getDefaultArtistCover(artistId: string, artistName?: string | nu
  */
 export function getDefaultOrgCover(orgId: string, orgName?: string | null): string {
   return createDefaultEventCoverSvg(orgName || 'ORGANISATEUR', 'ORGANISATION OFFICIELLE');
+}
+
+/**
+ * Retourne la couverture de profil utilisateur/participant par défaut.
+ */
+export function getDefaultUserCover(userId: string, userName?: string | null): string {
+  return createDefaultEventCoverSvg(userName || 'MEMBRE GBAIGBANCE', 'EXPÉRIENCES & ÉVÉNEMENTS AFRO');
 }

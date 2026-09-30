@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase';
+import { isRealProfile } from '@/features/events/status';
 import type { Profile, PublicProfile, Artist, Organization } from '@/types';
 
 function getLocalFollowedUserIds(userId?: string | null): Set<string> {
@@ -123,7 +124,7 @@ export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
   saveLocalFollowedUserIds(userId, new Set(allIds));
 
   const profileMap = await fetchProfilesByIds(allIds);
-  return allIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[];
+  return (allIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[]).filter(isRealProfile);
 }
 
 export async function fetchUserFollowersCount(userId: string): Promise<number> {

@@ -132,21 +132,37 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   if (!user) {
     return (
       <div className="min-h-screen pb-32">
-        <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08] pt-safe-subpage">
-          <div className="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
+        {/* Header harmonisé style Favoris & Tickets */}
+        <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={onBack}
-              className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform"
+              className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform cursor-pointer"
+              aria-label="Retour"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-base font-black text-[#17131D] dark:text-white">Notifications</h1>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
+              Centre d'Activité
+            </p>
             <div className="w-10" />
           </div>
+
+          <div className="flex items-center justify-between mt-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
+              Notifications
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
+              0
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Suivi de vos réservations, alertes artistes et actualités en direct
+          </p>
         </div>
 
-        <div className="max-w-md mx-auto px-6 py-20 text-center">
+        <div className="max-w-md mx-auto px-6 py-16 text-center">
           <div className="w-20 h-20 rounded-3xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] flex items-center justify-center mx-auto mb-4">
             <Bell className="w-10 h-10" />
           </div>
@@ -172,46 +188,50 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
 
   return (
     <div className="min-h-screen pb-32">
-      {/* Top Bar */}
-      <div className="sticky top-0 z-20 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08] pt-safe-subpage">
-        <div className="max-w-md mx-auto px-5 py-3.5 flex items-center justify-between">
+      {/* Header harmonisé style Favoris & Tickets */}
+      <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
-            className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform"
+            className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform cursor-pointer"
+            aria-label="Retour"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-
-          <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#6600FF] dark:text-[#A78BFA]" />
-            <h1 className="text-base font-black text-[#17131D] dark:text-white">
-              Notifications
-            </h1>
-            {unreadCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-[#6600FF] text-white text-[10px] font-black">
-                {unreadCount}
-              </span>
-            )}
-          </div>
-
+          <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
+            Centre d'Activité
+          </p>
           {unreadCount > 0 ? (
             <button
               type="button"
               onClick={handleMarkAllRead}
-              className="flex items-center gap-1 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] active:scale-95 transition-transform"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] active:scale-95 transition-all cursor-pointer"
             >
-              <CheckCheck className="w-4 h-4" /> Tout lire
+              <CheckCheck className="w-3.5 h-3.5" />
+              <span>Tout lire</span>
             </button>
           ) : (
             <div className="w-10" />
           )}
         </div>
+
+        <div className="flex items-center justify-between mt-2">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
+            Notifications
+          </h1>
+          <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
+            {unreadCount > 0 ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}` : `${notifications.length} reçue${notifications.length > 1 ? 's' : ''}`}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Suivi de vos réservations, alertes artistes et actualités en direct
+        </p>
       </div>
 
-      <div className="max-w-md mx-auto px-5 py-4">
-        {/* Segmented filter */}
-        <div className="p-1 bg-gray-200/70 dark:bg-white/10 rounded-2xl flex items-center mb-4">
+      <div className="max-w-2xl mx-auto px-5 py-3">
+        {/* Segmented filter style Apple HIG */}
+        <div className="p-1 bg-gray-200/80 dark:bg-white/10 rounded-2xl flex items-center mb-4">
           <button
             type="button"
             onClick={() => setFilter('all')}
