@@ -215,11 +215,11 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
         </p>
       </div>
 
-      {/* Barre de recherche et filtres Sticky */}
-      <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="px-5 py-2.5 max-w-7xl mx-auto">
+      {/* Barre de recherche et filtres directement sur le fond de la page (sans conteneur boîte) */}
+      <div className="w-full bg-transparent">
+        <div className="px-5 py-2 max-w-7xl mx-auto">
           {/* Segmented Control iOS Apple : Événements vs Participants / Amis */}
-          <div className="flex items-center p-1 bg-gray-100 dark:bg-white/10 rounded-2xl mb-3 max-w-md mx-auto sm:mx-0">
+          <div className="flex items-center p-1 bg-black/[0.04] dark:bg-white/10 rounded-2xl mb-3 max-w-md mx-auto sm:mx-0 backdrop-blur-sm">
             <button
               type="button"
               onClick={() => {
@@ -261,10 +261,12 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={
                   searchMode === 'events'
-                    ? (t('events', 'searchPlaceholder') || 'Rechercher un concert, festival...')
+                    ? (t('events', 'searchPlaceholder') && !t('events', 'searchPlaceholder').includes('searchPlaceholder')
+                        ? t('events', 'searchPlaceholder')
+                        : 'Rechercher un concert, festival, artiste...')
                     : 'Rechercher un ami ou participant...'
                 }
-                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-gray-100 dark:bg-white/10 text-[#17131D] dark:text-white text-xs font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 transition-all"
+                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-[#17131D] dark:text-white text-xs font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 transition-all shadow-2xs"
               />
               {query && (
                 <button
@@ -286,7 +288,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
                   hasActiveFilters
                     ? 'bg-[#6600FF] text-white shadow-purple'
-                    : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-gray-200'
+                    : 'bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-gray-700 dark:text-gray-200 hover:bg-white'
                 }`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
@@ -300,18 +302,18 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
         {/* Barre de catégories horizontales si mode événements */}
         {searchMode === 'events' && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pb-3 max-w-7xl mx-auto">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pb-3 pt-1 max-w-7xl mx-auto">
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
               className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 !selectedCategory
                   ? 'bg-[#6600FF] text-white shadow-xs'
-                  : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+                  : 'bg-white/70 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-white/90'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('events', 'categories.all')}</span>
+              <span>{t('events', 'allCategories') && !t('events', 'allCategories').includes('allCategories') ? t('events', 'allCategories') : 'Tous'}</span>
             </button>
             {EVENT_CATEGORIES.map((cat) => {
               const Icon = CATEGORY_ICONS[cat.icon] || Music;
@@ -324,7 +326,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                   className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                     isActive
                       ? 'bg-[#6600FF] text-white shadow-xs'
-                      : 'bg-white dark:bg-[#1A1829] text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/5'
+                      : 'bg-white/70 dark:bg-white/10 backdrop-blur-md text-gray-600 dark:text-gray-300 border border-black/[0.06] dark:border-white/[0.08] hover:bg-white/90'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />

@@ -17,7 +17,7 @@ export interface ChatMessage {
 }
 
 export function useAIAssistant() {
-  const { user, userLocation } = useApp();
+  const { user, session, userLocation } = useApp();
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome',
@@ -36,6 +36,56 @@ export function useAIAssistant() {
   const [verifiedEvents, setVerifiedEvents] = useState<Record<string, Event>>({});
 
   const abortRef = useRef<(() => void) | null>(null);
+  const previousAuthKeyRef = useRef<string>(`${user?.id || 'guest'}-${session?.user?.id || 'none'}`);
+
+  const resetAllChatData = useCallback((activeUser: typeof user) => {
+    if (abortRef.current) {
+      abortRef.current();
+    }
+    setIsLoading(false);
+    setIsStreaming(false);
+    setError(null);
+    setQuotaExceeded(false);
+    setVerifiedEvents({});
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        text: activeUser
+          ? `Bonjour ${activeUser.name ? activeUser.name.split(' ')[0] : ''} ! Je suis votre concierge Gbaigbance. Envie de sortir ce week-end, de trouver un concert ou de consulter vos billets ?`
+          : 'Bonjour ! Je suis votre concierge Gbaigbance. Quel genre d’événement ou de concert recherchez-vous aujourd’hui ?',
+        timestamp: new Date(),
+      },
+    ]);
+  }, []);
+
+  // Réinitialisation automatique et immédiate lors du passage invité <-> connecté ou déconnexion
+  useEffect(() => {
+    const currentKey = `${user?.id || 'guest'}-${session?.user?.id || 'none'}`;
+    if (previousAuthKeyRef.current !== currentKey) {
+      previousAuthKeyRef.current = currentKey;
+      resetAllChatData(user);
+    }
+  }, [user?.id, session?.user?.id, user?.name, resetAllChatData, user]);
+
+  // Écoute directe des événements système de connexion et déconnexion
+  useEffect(() => {
+    const handleSignedOut = () => {
+      previousAuthKeyRef.current = 'guest-none';
+      resetAllChatData(null);
+    };
+
+    const handleSignedIn = () => {
+      resetAllChatData(user);
+    };
+
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    window.addEventListener('gba-user-signed-in', handleSignedIn);
+    return () => {
+      window.removeEventListener('gba-user-signed-out', handleSignedOut);
+      window.removeEventListener('gba-user-signed-in', handleSignedIn);
+    };
+  }, [resetAllChatData, user]);
 
   // Nettoyage à la fermeture
   useEffect(() => {

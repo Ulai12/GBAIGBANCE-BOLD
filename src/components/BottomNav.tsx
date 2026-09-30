@@ -89,7 +89,25 @@ export function BottomNav({
 }: BottomNavProps) {
   const { language, theme } = useApp();
   const [pressed, setPressed] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const isDark = theme === 'dark';
+
+  // Détecte automatiquement l'ouverture de modales pour masquer le dock de navigation
+  useEffect(() => {
+    const checkModalState = () => {
+      setIsModalOpen(Boolean(typeof document !== 'undefined' && document.body.classList.contains('gba-modal-open')));
+    };
+    checkModalState();
+    window.addEventListener('gba-modal-visibility-changed', checkModalState);
+    const observer = new MutationObserver(checkModalState);
+    if (typeof document !== 'undefined') {
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+    return () => {
+      window.removeEventListener('gba-modal-visibility-changed', checkModalState);
+      observer.disconnect();
+    };
+  }, []);
 
   const renderTabButton = (item: NavItem) => {
     const Icon = item.icon;
@@ -206,7 +224,9 @@ export function BottomNav({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4"
+      className={`fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 transition-all duration-300 ${
+        isModalOpen ? 'opacity-0 pointer-events-none translate-y-10' : 'opacity-100'
+      }`}
       style={{
         paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.75 + 0.25rem))',
       }}

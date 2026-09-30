@@ -1,12 +1,14 @@
 import { supabase } from '@/services/supabase';
 import { isRealProfile } from '@/features/events/status';
+import { getFavoritesStorageKey } from '@/contexts/FavoritesContext';
 import type { Profile, PublicProfile, Artist, Organization } from '@/types';
 
 function getLocalFollowedUserIds(userId?: string | null): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const key = `gba_user_following_users_${userId || 'guest'}_v1`;
-    const raw = localStorage.getItem(key);
+    const key = getFavoritesStorageKey('users', userId);
+    const legacyKey = `gba_user_following_users_${userId || 'guest'}_v1`;
+    const raw = localStorage.getItem(key) || localStorage.getItem(legacyKey);
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) return new Set(arr);
@@ -20,7 +22,7 @@ function getLocalFollowedUserIds(userId?: string | null): Set<string> {
 function saveLocalFollowedUserIds(userId: string | null | undefined, set: Set<string>): void {
   if (typeof window === 'undefined') return;
   try {
-    const key = `gba_user_following_users_${userId || 'guest'}_v1`;
+    const key = getFavoritesStorageKey('users', userId);
     localStorage.setItem(key, JSON.stringify(Array.from(set)));
   } catch {
     // Ignore
@@ -125,6 +127,26 @@ export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
 
   const profileMap = await fetchProfilesByIds(allIds);
   return (allIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[]).filter(isRealProfile);
+}
+
+export async function fetchFollowersUsers(userId: string): Promise<Profile[]> {
+  let dbIds: string[] = [];
+  try {
+    const { data } = await supabase
+      .from('user_follows')
+      .select('follower_id')
+      .eq('following_id', userId);
+    if (data) {
+      dbIds = data.map((r: { follower_id: string }) => r.follower_id);
+    }
+  } catch {
+    // Ignore
+  }
+
+  const unique = [...new Set(dbIds.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const profileMap = await fetchProfilesByIds(unique);
+  return (unique.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[]).filter(isRealProfile);
 }
 
 export async function fetchUserFollowersCount(userId: string): Promise<number> {

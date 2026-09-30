@@ -243,9 +243,10 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 >
                   <div className="flex items-start gap-3">
                     <UserAvatar
+                      id={c.user_id}
                       src={c.profile?.avatar_url}
-                      name={c.profile?.name || 'Anonyme'}
-                      role={c.is_organizer_reply ? 'organizer' : 'attendee'}
+                      name={c.profile?.name || 'Membre'}
+                      role={c.is_organizer_reply ? 'organizer' : (c.profile?.role || 'participant')}
                       size="sm"
                       className="shrink-0 mt-0.5"
                     />
@@ -287,6 +288,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
           {user ? (
             <div className="p-2.5 rounded-[22px] glass-ios flex items-end gap-2 shadow-xs">
               <UserAvatar
+                id={user.id}
                 src={user.avatar_url}
                 name={user.name}
                 role={user.role}

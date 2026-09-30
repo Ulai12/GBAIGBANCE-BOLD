@@ -194,11 +194,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (data) {
           const dbLikes = new Set(data.map((r) => r.event_id as string));
-          setLikedEventIds((prev) => {
-            const merged = new Set([...prev, ...dbLikes]);
-            writeStoredSet(likesKey, merged);
-            return merged;
-          });
+          setLikedEventIds(dbLikes);
+          writeStoredSet(likesKey, dbLikes);
         }
       });
 
@@ -210,11 +207,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (data) {
           const dbArtists = new Set(data.map((r) => r.artist_id as string));
-          setFollowedArtistIds((prev) => {
-            const merged = new Set([...prev, ...dbArtists]);
-            writeStoredSet(artistsKey, merged);
-            return merged;
-          });
+          setFollowedArtistIds(dbArtists);
+          writeStoredSet(artistsKey, dbArtists);
         }
       });
 
@@ -226,11 +220,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (data) {
           const dbOrgs = new Set(data.map((r) => r.organization_id as string));
-          setFollowedOrgIds((prev) => {
-            const merged = new Set([...prev, ...dbOrgs]);
-            writeStoredSet(orgsKey, merged);
-            return merged;
-          });
+          setFollowedOrgIds(dbOrgs);
+          writeStoredSet(orgsKey, dbOrgs);
         }
       });
 
@@ -242,11 +233,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (data) {
           const dbUsers = new Set(data.map((r: { following_id: string }) => r.following_id));
-          setFollowedUserIds((prev) => {
-            const merged = new Set([...prev, ...dbUsers]);
-            writeStoredSet(usersKey, merged);
-            return merged;
-          });
+          setFollowedUserIds(dbUsers);
+          writeStoredSet(usersKey, dbUsers);
         }
       });
 
@@ -562,6 +550,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(
           new CustomEvent('gba-user-follow-changed', {
             detail: { followerId: userId, followingId: targetUserId, willFollow },
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('gba-follows-updated', {
+            detail: { userId: targetUserId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'user' },
           })
         );
       }

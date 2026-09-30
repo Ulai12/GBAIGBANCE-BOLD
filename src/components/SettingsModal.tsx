@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Moon,
@@ -35,12 +36,20 @@ export function SettingsModal({
   const { user, theme, toggleTheme, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return;
+    document.body.classList.add('gba-modal-open');
+    window.dispatchEvent(new CustomEvent('gba-modal-visibility-changed', { detail: { open: true } }));
+    return () => {
+      document.body.classList.remove('gba-modal-open');
+      window.dispatchEvent(new CustomEvent('gba-modal-visibility-changed', { detail: { open: false } }));
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  return (
+  const modalNode = (
     <div
-      // MODIFIÉ : z-[100] -> z-[9999] pour passer au-dessus de la BottomNav.
-      // Si le grep montre que BottomNav dépasse 9999 (peu probable), prends une valeur plus haute.
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
@@ -343,4 +352,10 @@ export function SettingsModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalNode, document.body);
+  }
+
+  return modalNode;
 }

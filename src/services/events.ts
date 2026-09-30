@@ -141,6 +141,7 @@ export {
   toggleUserFollow,
   isFollowingUser,
   fetchFollowingUsers,
+  fetchFollowersUsers,
   fetchUserFollowersCount,
   fetchUserFollowingCount,
   fetchProfileById,

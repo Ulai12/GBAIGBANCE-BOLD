@@ -35,7 +35,7 @@ interface ProfileScreenProps {
   onOrganizerDashboard: () => void;
   onOpenNotifications: () => void;
   onOpenNotificationSettings: () => void;
-  onOpenSubscriptions: () => void;
+  onOpenSubscriptions: (initialTab?: 'artists' | 'organizers' | 'users' | 'followers') => void;
   onOpenTickets?: () => void;
   onOpenAISettings?: () => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
@@ -248,7 +248,7 @@ export function ProfileScreen({
           profile={user}
           eventsCount={myEvents.length}
           ticketsCount={ticketsCount}
-          followersCount={isCreator ? followersCount : undefined}
+          followersCount={followersCount}
           followingCount={followingCount}
           onEditClick={() => setEditOpen(true)}
           onAvatarClick={() => setPictureModalOpen(true)}

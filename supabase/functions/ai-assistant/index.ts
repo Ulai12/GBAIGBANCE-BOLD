@@ -348,7 +348,21 @@ async function executeToolCall(
           return { success: false, error: 'Erreur lors de la recherche des événements.' };
         }
 
-        const eventsList = (data || []).map(
+        const nowMs = Date.now();
+        const eventsList = (data || [])
+          .filter((ev: { id: string; starts_at?: string; ends_at?: string | null }) => {
+            if (ev.ends_at) {
+              const endMs = new Date(ev.ends_at).getTime();
+              if (!Number.isNaN(endMs)) return endMs >= nowMs;
+            }
+            if (ev.starts_at) {
+              const startMs = new Date(ev.starts_at).getTime();
+              if (!Number.isNaN(startMs)) return (startMs + 6 * 3600 * 1000) >= nowMs;
+            }
+            return true;
+          })
+          .slice(0, limit)
+          .map(
           (ev: {
             id: string;
             title: string;

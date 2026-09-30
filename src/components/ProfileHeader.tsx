@@ -13,7 +13,7 @@ interface ProfileHeaderProps {
   onEditClick?: () => void;
   onAvatarClick?: () => void;
   onOpenQR?: () => void;
-  onOpenSubscriptions?: () => void;
+  onOpenSubscriptions?: (initialTab?: 'artists' | 'organizers' | 'users' | 'followers') => void;
   onOpenTickets?: () => void;
 }
 
@@ -141,12 +141,12 @@ export function ProfileHeader({
           )}
         </div>
 
-        {/* Grille de métriques clés style iOS Widget */}
-        <div className={`grid ${isCreator && followersCount !== undefined ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-5 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]`}>
+        {/* Grille de métriques clés style iOS Widget avec synchronisation Abonnés & Abonnements */}
+        <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]">
           <button
             type="button"
             onClick={onOpenTickets}
-            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform"
+            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform cursor-pointer"
           >
             <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
               {ticketsCount}
@@ -165,21 +165,25 @@ export function ProfileHeader({
             </p>
           </div>
 
-          {isCreator && followersCount !== undefined && (
-            <div className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04]">
-              <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
-                {followersCount}
-              </p>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
-                <Users className="w-3 h-3 text-[#6600FF]" /> Abonnés
-              </p>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => onOpenSubscriptions?.('followers')}
+            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform cursor-pointer"
+            title="Voir mes abonnés"
+          >
+            <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
+              {followersCount ?? 0}
+            </p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
+              <Users className="w-3 h-3 text-[#6600FF]" /> Abonnés
+            </p>
+          </button>
 
           <button
             type="button"
-            onClick={onOpenSubscriptions}
-            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform"
+            onClick={() => onOpenSubscriptions?.('users')}
+            className="p-2.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] text-center border border-black/[0.03] dark:border-white/[0.04] active:scale-95 transition-transform cursor-pointer"
+            title="Voir mes abonnements"
           >
             <p className="text-lg font-black text-[#17131D] dark:text-white leading-none">
               {followingCount}

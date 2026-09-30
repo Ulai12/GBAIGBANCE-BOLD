@@ -359,7 +359,7 @@ function AppContent() {
                 onOrganizerDashboard={() => navigate('/organizer/dashboard')}
                 onOpenNotifications={() => navigate('/notifications')}
                 onOpenNotificationSettings={() => navigate('/notifications/settings')}
-                onOpenSubscriptions={() => navigate('/subscriptions')}
+                onOpenSubscriptions={(tab) => navigate(tab ? `/subscriptions?tab=${tab}` : '/subscriptions')}
                 onOpenTickets={() => navigate('/tickets')}
                 onOpenAISettings={() => navigate('/ai-settings')}
                 onToast={addToast}

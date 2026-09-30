@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, Music2, Building2, Users, Heart, LogIn, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronLeft, Music2, Building2, Users, Heart, LogIn, Sparkles, UserCheck } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { supabase } from '@/services/supabase';
-import { fetchFollowedArtists, fetchFollowedOrganizations, fetchFollowingUsers, isRealArtist, isRealOrganization, isRealProfile } from '@/services/events';
+import {
+  fetchFollowedArtists,
+  fetchFollowedOrganizations,
+  fetchFollowingUsers,
+  fetchFollowersUsers,
+  isRealArtist,
+  isRealOrganization,
+  isRealProfile,
+} from '@/services/events';
 import {
   getCachedSubscriptionsMemory,
   setCachedSubscriptionsMemory,
@@ -23,8 +32,9 @@ interface SubscriptionsScreenProps {
   onOrganizationClick: (org: Organization) => void;
   onUserClick: (profile: Profile) => void;
   onLogin?: () => void;
+  initialTab?: 'artists' | 'organizers' | 'users' | 'followers';
 }
-type Tab = 'artists' | 'organizers' | 'users';
+type Tab = 'artists' | 'organizers' | 'users' | 'followers';
 
 export function SubscriptionsScreen({
   onBack,
@@ -32,17 +42,27 @@ export function SubscriptionsScreen({
   onOrganizationClick,
   onUserClick,
   onLogin,
+  initialTab,
 }: SubscriptionsScreenProps) {
   const { user, t } = useApp();
+  const [searchParams] = useSearchParams();
+  const queryTab = searchParams.get('tab') as Tab | null;
   const { followedArtistIds, followedOrgIds, followedUserIds } = useFavorites();
-  const [tab, setTab] = useState<Tab>('artists');
+  const [tab, setTab] = useState<Tab>(() => queryTab || initialTab || 'artists');
 
   const cachedSub = user ? getCachedSubscriptionsMemory(user.id) : null;
   const hasCache = Boolean(cachedSub);
   const [artists, setArtists] = useState<Artist[]>(() => (hasCache ? cachedSub!.artists : []));
   const [orgs, setOrgs] = useState<Organization[]>(() => (hasCache ? cachedSub!.orgs : []));
   const [users, setUsers] = useState<Profile[]>(() => (hasCache ? cachedSub!.users : []));
+  const [followers, setFollowers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(!hasCache);
+
+  useEffect(() => {
+    if (queryTab) {
+      setTab(queryTab);
+    }
+  }, [queryTab]);
 
   useEffect(() => {
     const handleSignedOut = () => {
@@ -50,6 +70,7 @@ export function SubscriptionsScreen({
       setArtists([]);
       setOrgs([]);
       setUsers([]);
+      setFollowers([]);
       setLoading(false);
     };
     window.addEventListener('gba-user-signed-out', handleSignedOut);
@@ -67,6 +88,7 @@ export function SubscriptionsScreen({
         setArtists([]);
         setOrgs([]);
         setUsers([]);
+        setFollowers([]);
         setLoading(false);
         return;
       }
@@ -88,14 +110,17 @@ export function SubscriptionsScreen({
       fetchFollowedArtists(user.id),
       fetchFollowedOrganizations(user.id),
       fetchFollowingUsers(user.id),
+      fetchFollowersUsers(user.id),
     ])
-      .then(([a, o, u]) => {
+      .then(([a, o, u, f]) => {
         const cleanA = a.filter(isRealArtist);
         const cleanO = o.filter(isRealOrganization);
         const cleanU = u.filter(isRealProfile);
+        const cleanF = f.filter(isRealProfile);
         setArtists(cleanA);
         setOrgs(cleanO);
         setUsers(cleanU);
+        setFollowers(cleanF);
         setCachedSubscriptionsMemory(user.id, {
           artists: cleanA,
           orgs: cleanO,
@@ -107,6 +132,20 @@ export function SubscriptionsScreen({
 
   useEffect(() => {
     refreshSubscriptions();
+  }, [refreshSubscriptions]);
+
+  // Écoute des événements système de mise à jour des abonnements pour une synchronisation immédiate
+  useEffect(() => {
+    const handleFollowChange = () => {
+      clearCachedSubscriptions();
+      refreshSubscriptions();
+    };
+    window.addEventListener('gba-user-follow-changed', handleFollowChange);
+    window.addEventListener('gba-follows-updated', handleFollowChange);
+    return () => {
+      window.removeEventListener('gba-user-follow-changed', handleFollowChange);
+      window.removeEventListener('gba-follows-updated', handleFollowChange);
+    };
   }, [refreshSubscriptions]);
 
   // Polling silencieux 3s max
@@ -162,10 +201,11 @@ export function SubscriptionsScreen({
     return <SubscriptionsScreenSkeleton />;
   }
 
-  const tabs: { id: Tab; labelKey: string; icon: typeof Music2; count: number }[] = [
-    { id: 'artists', labelKey: 'artists', icon: Music2, count: artists.length },
-    { id: 'organizers', labelKey: 'organizers', icon: Building2, count: orgs.length },
-    { id: 'users', labelKey: 'users', icon: Users, count: users.length },
+  const tabs: { id: Tab; label: string; icon: typeof Music2; count: number }[] = [
+    { id: 'artists', label: t('settings', 'subscriptions.artists') || 'Artistes', icon: Music2, count: artists.length },
+    { id: 'organizers', label: t('settings', 'subscriptions.organizers') || 'Organisateurs', icon: Building2, count: orgs.length },
+    { id: 'users', label: t('settings', 'subscriptions.users') || 'Abonnements', icon: Users, count: users.length },
+    { id: 'followers', label: 'Abonnés', icon: UserCheck, count: followers.length },
   ];
 
   return (
@@ -219,7 +259,7 @@ export function SubscriptionsScreen({
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {t('settings', `subscriptions.${tb.labelKey}`)}
+                <span>{tb.label}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                     isActive ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400'
@@ -262,6 +302,41 @@ export function SubscriptionsScreen({
               ))}
             </div>
           )
+        ) : tab === 'followers' ? (
+          followers.length === 0 ? (
+            <EmptyState
+              icon={UserCheck}
+              title="Aucun abonné pour le moment"
+              description="Vos amis et d'autres membres apparaîtront ici dès qu'ils s'abonneront à votre profil."
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {followers.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => onUserClick(f)}
+                  className="w-full card p-4 flex items-center gap-3 hover:shadow-card-hover transition-all text-left cursor-pointer"
+                >
+                  <UserAvatar
+                    id={f.id}
+                    src={f.avatar_url}
+                    name={f.name}
+                    role={f.role}
+                    size="md"
+                    className="shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{f.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {f.city || 'Lomé'}
+                      {f.bio ? ` · ${f.bio.slice(0, 40)}${f.bio.length > 40 ? '...' : ''}` : ''}
+                    </p>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 text-gray-300 dark:text-gray-600 rotate-180 shrink-0" />
+                </button>
+              ))}
+            </div>
+          )
         ) : users.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -277,6 +352,7 @@ export function SubscriptionsScreen({
                 className="w-full card p-4 flex items-center gap-3 hover:shadow-card-hover transition-all text-left cursor-pointer"
               >
                 <UserAvatar
+                  id={u.id}
                   src={u.avatar_url}
                   name={u.name}
                   role={u.role}

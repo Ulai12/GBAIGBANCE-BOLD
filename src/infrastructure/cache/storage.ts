@@ -503,6 +503,7 @@ export interface CachedSubscriptionsData {
   artists: Artist[];
   orgs: Organization[];
   users: Profile[];
+  followers?: Profile[];
 }
 
 let cachedTicketsMemory: { userId: string; tickets: (Ticket & { event?: Event })[] } | null = null;

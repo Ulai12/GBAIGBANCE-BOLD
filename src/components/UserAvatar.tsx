@@ -66,10 +66,9 @@ export function UserAvatar({
   }, [src]);
 
   const gradientClass = useMemo(() => {
-    if (role === 'artist') return 'from-[#7C3AED] via-[#6600FF] to-[#C026D3]';
-    if (role === 'organizer') return 'from-[#EA580C] via-[#E11D48] to-[#9333EA]';
-    return GRADIENTS[getGradientIndex((name || id || 'user').trim().toLowerCase())];
-  }, [id, name, role]);
+    // Tous les avatars par défaut partagent une esthétique monochrome noire épurée
+    return 'from-[#18181B] via-[#121118] to-[#000000]';
+  }, []);
 
   const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-2xl sm:rounded-[1.4rem]';
   const hasCustomRing = className.includes('ring-');
@@ -109,7 +108,7 @@ export function UserAvatar({
             className={`absolute inset-0 w-full h-full object-cover object-center ${imageClassName}`}
           />
         ) : (
-          <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr ${gradientClass} text-white font-black tracking-wider`}>
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#12111A] text-white font-black tracking-wider">
             {initials ? (
               <span>{initials}</span>
             ) : (

@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ExternalLink,
 } from 'lucide-react';
+import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
 import { useAIAssistant, type ChatMessage } from '@/hooks/useAIAssistant';
 import { useApp } from '@/hooks/useApp';
 import {
@@ -137,7 +138,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   return (
     <div
       id="ai-assistant-modal"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+      style={{ zIndex: 99999 }}
       onClick={onClose}
     >
       <div
@@ -285,7 +287,11 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                         : 'bg-gray-100 dark:bg-[#1E1E26] text-[#17131D] dark:text-zinc-100 rounded-bl-xs border border-black/5 dark:border-white/5'
                     }`}
                   >
-                    {renderPlainText(msg.text)}
+                    {isUser ? (
+                      renderPlainText(msg.text)
+                    ) : (
+                      <AIMarkdownRenderer content={msg.text} />
+                    )}
                   </div>
 
                   {/* Cartes d'événements certifiées */}

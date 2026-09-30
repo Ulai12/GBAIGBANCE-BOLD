@@ -239,11 +239,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     // 2. Event listener for subsequent changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       if (currentSession?.user) {
         // If already resolved during initial getSession, avoid redundant network cascade
         loadProfileForUser(currentSession.user, true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-user-signed-in', { detail: { userId: currentSession.user.id } }));
+        }
       } else {
         const prevUserId = activeUserIdRef.current;
         if (prevUserId) {

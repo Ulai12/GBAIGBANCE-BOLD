@@ -41,17 +41,12 @@ export function getAvatarInitials(name?: string | null): string {
 }
 
 /**
- * Génère un avatar SVG vectoriel Data-URI net avec les initiales exactes de l'utilisateur
+ * Génère un avatar SVG vectoriel Data-URI net avec fond noir profond et initiales blanches (style Apple Monochrome)
  */
-export function createInitialsAvatarSvg(name?: string | null, seed?: string | null, role?: string): string {
+export function createInitialsAvatarSvg(name?: string | null, _seed?: string | null, _role?: string): string {
   const initials = getAvatarInitials(name);
-  // Clé canonique stable : privilégie le nom pour que la couleur soit 100% identique que l'ID soit fourni ou non
-  const hashKey = (name || seed || 'user').trim().toLowerCase();
-  const palette = role === 'artist' 
-    ? { c1: '#7C3AED', c2: '#4C1D95', text: '#FFFFFF' }
-    : role === 'organizer'
-    ? { c1: '#EA580C', c2: '#9A3412', text: '#FFFFFF' }
-    : AVATAR_PALETTES[hashString(hashKey) % AVATAR_PALETTES.length];
+  // Tous les avatars par défaut sont désormais en noir uni élégant avec texte blanc haute visibilité
+  const palette = { c1: '#1A1822', c2: '#08070C', text: '#FFFFFF' };
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" preserveAspectRatio="xMidYMid slice">
     <defs>
@@ -60,7 +55,7 @@ export function createInitialsAvatarSvg(name?: string | null, seed?: string | nu
         <stop offset="100%" stop-color="${palette.c2}" />
       </linearGradient>
     </defs>
-    <!-- Rectangle plein pour couvrir 100% du conteneur parent (squircle ou cercle) sans bordures vides -->
+    <!-- Rectangle plein noir profond pour couvrir 100% du conteneur parent sans bordures vides -->
     <rect width="160" height="160" fill="url(#avGrad)" />
     <text x="50%" y="54%" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="62" font-weight="900" fill="${palette.text}" text-anchor="middle" dominant-baseline="middle" letter-spacing="2">${initials}</text>
   </svg>`;

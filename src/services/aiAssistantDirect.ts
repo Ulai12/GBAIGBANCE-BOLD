@@ -10,6 +10,7 @@ import { supabase } from '@/infrastructure/supabase';
 import { resolveAvailableGeminiModel } from '@/services/gemini';
 import type { AIAssistantMessage, StreamCallbacks } from '@/services/aiAssistantService';
 import { safeFetch } from '@/utils/safeFetch';
+import { isEventTerminated } from '@/features/events/status';
 import { AI_SYSTEM_INSTRUCTION as SYSTEM_INSTRUCTION } from '@/constants/aiSystemPrompt';
 
 const GEMINI_TOOLS = [
@@ -104,10 +105,12 @@ async function executeClientTool(
   switch (name) {
     case 'search_events': {
       const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 8);
+      const sixHoursAgoIso = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
       let query = supabase
         .from('events')
         .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url')
-        .eq('status', 'published');
+        .eq('status', 'published')
+        .or(`ends_at.gte.${now},and(ends_at.is.null,starts_at.gte.${sixHoursAgoIso})`);
 
       if (args.free_only) {
         query = query.eq('price_min', 0);
@@ -122,11 +125,12 @@ async function executeClientTool(
         query = query.or(`title.ilike.%${q}%,location_name.ilike.%${q}%,city.ilike.%${q}%`);
       }
 
-      const { data, error } = await query.order('starts_at', { ascending: true }).limit(limit);
+      const { data, error } = await query.order('starts_at', { ascending: true }).limit(limit * 2);
       if (error || !data) return { count: 0, events: [] };
 
       const events = data
-        .filter((ev) => !String(ev.id).startsWith('mock-'))
+        .filter((ev) => !String(ev.id).startsWith('mock-') && !isEventTerminated(ev))
+        .slice(0, limit)
         .map((ev) => {
           turnEventIds.add(ev.id);
           return {
@@ -182,7 +186,10 @@ async function executeClientTool(
       });
 
       if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
-        const list = rpcData.map((ev: { id: string; title: string; category: string; starts_at: string; location_name?: string; city?: string; price_min: number; currency?: string }) => {
+        const list = rpcData
+          .filter((ev: { id: string; starts_at?: string; ends_at?: string; status?: string }) => !isEventTerminated(ev))
+          .slice(0, limit)
+          .map((ev: { id: string; title: string; category: string; starts_at: string; location_name?: string; city?: string; price_min: number; currency?: string }) => {
           turnEventIds.add(ev.id);
           return {
             id: ev.id,
@@ -193,19 +200,22 @@ async function executeClientTool(
             price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
           };
         });
-        return { count: list.length, events: list };
+        if (list.length > 0) {
+          return { count: list.length, events: list };
+        }
       }
 
       const { data } = await supabase
         .from('events')
-        .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url')
+        .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url, status')
         .eq('status', 'published')
         .gte('starts_at', now)
         .order('starts_at', { ascending: true })
-        .limit(limit);
+        .limit(limit * 2);
 
       const list = (data || [])
-        .filter((ev) => !String(ev.id).startsWith('mock-'))
+        .filter((ev) => !String(ev.id).startsWith('mock-') && !isEventTerminated(ev))
+        .slice(0, limit)
         .map((ev) => {
           turnEventIds.add(ev.id);
           return {

@@ -23,6 +23,8 @@
   "like": "Like",
   "follow": "Follow",
   "following": "Following",
+  "searchPlaceholder": "Search for a concert, festival, artist...",
+  "allCategories": "All",
   "categories": {
     "concert": "Concert",
     "festival": "Festival",
