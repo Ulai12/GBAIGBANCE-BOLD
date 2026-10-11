@@ -1,18 +1,31 @@
+/**
+ * Modal.tsx
+ * ---------
+ * Composant Modal & Action Sheet iOS haute ergonomie pour GBAIGBANCE.
+ *
+ * Fonctionnalités clés :
+ * - Intégration de Liquid Glass via <GlassPanel radius={32}> pour un rendu en verre
+ *   fluide avec réfraction GPU ou repli CSS Apple (backdrop-filter saturé).
+ * - Physique à ressort native iOS (Motion) avec fermeture au glisser vers le bas (pull-to-dismiss).
+ * - Barre de préhension (grab handle) dédiée pour ne jamais intercepter la saisie dans les formulaires.
+ * - Gestion du focus trap, verrouillage propre du scroll (classe .gba-modal-open) et touche Échap.
+ * - Prise en charge intégrale de la safe-area iOS (env(safe-area-inset-bottom)).
+ */
+
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-// Utilisation de useDragControls pour restreindre le glisser au seul curseur (grab handle)
-// afin que les champs de saisie (inputs) ne soient jamais interceptés et puissent ouvrir le clavier virtuel
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { haptic } from '@/hooks/useHaptics';
+import { GlassPanel } from '@/components/glass';
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   title?: string;
-  /** Allow overriding max width (e.g. max-w-lg) */
+  /** Permet de surcharger la largeur maximale (ex. max-w-lg) */
   maxWidthClass?: string;
 }
 
@@ -37,36 +50,27 @@ function releaseScrollLock() {
   }
 }
 
-/**
- * GBAIGBANCE — iOS Action Sheet & Modal Component
- * 
- * Features:
- * - Native iOS Action Sheet ergonomics on mobile (attached to bottom) with drag-to-dismiss handle
- * - Centered elevated glass card on desktop / tablet
- * - Elastic spring physics (stiffness: 360, damping: 32)
- * - Drag "y" with downward threshold to dismiss with light haptic click
- * - Full accessibility: focus trapping, escape key, ARIA dialog attributes
- */
 export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-md' }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
   const uniqueId = useId();
   const titleId = `modal-title-${uniqueId}`;
+  
   // Contrôle explicite du geste de glisser pour éviter le blocage du focus sur les inputs
   const dragControls = useDragControls();
 
   useEffect(() => {
     if (!open) return;
 
-    // Save previous active element for focus restoration upon dismiss
+    // Enregistre l'élément précédemment actif pour restaurer le focus à la fermeture
     if (document.activeElement instanceof HTMLElement) {
       triggerElementRef.current = document.activeElement;
     }
 
     acquireScrollLock();
 
-    // Focus initial : ne pas voler le focus si un champ de saisie est déjà ciblé par l'utilisateur
+    // Focus initial respectueux : ne vole pas le focus si un champ de saisie est déjà actif
     const focusTimer = setTimeout(() => {
       const activeTag = document.activeElement?.tagName?.toLowerCase();
       if (activeTag === 'input' || activeTag === 'textarea') return;
@@ -85,7 +89,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
         return;
       }
 
-      // Focus Trap implementation
+      // Piège de focus (Focus Trap) pour accessibilité clavier
       if (event.key === 'Tab' && modalRef.current) {
         const focusableSelectors = [
           'a[href]',
@@ -100,38 +104,31 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
           modalRef.current.querySelectorAll<HTMLElement>(focusableSelectors)
         ).filter((el) => el.offsetParent !== null);
 
-        if (focusableElements.length === 0) {
-          event.preventDefault();
-          return;
-        }
+        if (focusableElements.length === 0) return;
 
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
 
-        if (event.shiftKey) {
-          if (document.activeElement === firstElement || document.activeElement === modalRef.current) {
-            event.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            event.preventDefault();
-            firstElement.focus();
-          }
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleKeyDown);
       releaseScrollLock();
-      document.removeEventListener('keydown', handleKeyDown);
 
-      // Focus restoration
+      // Restaure le focus sur l'élément d'origine
       if (triggerElementRef.current && typeof triggerElementRef.current.focus === 'function') {
-        triggerElementRef.current.focus();
+        setTimeout(() => triggerElementRef.current?.focus(), 50);
       }
     };
   }, [open, onClose]);
@@ -150,7 +147,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
           aria-modal="true"
           aria-labelledby={title ? titleId : undefined}
         >
-          {/* Backdrop with progressive blur */}
+          {/* Arrière-plan assombri avec flou progressif */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -161,7 +158,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
             aria-hidden="true"
           />
 
-          {/* Action Sheet / Modal Surface */}
+          {/* Surface de la feuille modale animée par Motion */}
           <motion.div
             ref={modalRef}
             tabIndex={-1}
@@ -184,43 +181,55 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
               stiffness: 380,
               mass: 0.85,
             }}
-            className={`relative w-full ${maxWidthClass} rounded-t-[32px] sm:rounded-3xl p-6 pt-3 sm:pt-6 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2.5rem))] bg-white/95 dark:bg-[#151221]/95 backdrop-blur-2xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto no-scrollbar focus:outline-none z-10`}
+            className={`relative w-full ${maxWidthClass} max-h-[90vh] sm:max-h-[85vh] focus:outline-none z-10 flex flex-col`}
           >
-            {/* iOS Action Sheet Pull-to-Dismiss Grabber Bar (seul déclencheur du geste drag pour préserver le clavier) */}
-            <div
-              className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing"
-              onPointerDown={(e) => dragControls.start(e)}
+            {/* 
+              Surface en verre liquide adaptative :
+              - WebGPU : Réfraction physique des couches d'arrière-plan
+              - Repli : Glassmorphism Apple ultra-fluide
+            */}
+            <GlassPanel
+              radius={32}
+              interactive={false}
+              className="w-full h-full p-6 pt-3 sm:pt-6 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2.5rem))] rounded-t-[32px] sm:rounded-3xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl overflow-y-auto no-scrollbar"
             >
-              <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
-            </div>
+              {/* Barre de préhension iOS pour fermeture au glisser (seul déclencheur du geste drag pour préserver le clavier) */}
+              <div
+                className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+              >
+                <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
+              </div>
 
-            {title ? (
-              <div className="flex items-center justify-between mb-4">
-                <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white tracking-tight">
-                  {title}
-                </h2>
+              {title ? (
+                <div className="flex items-center justify-between mb-4">
+                  <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white tracking-tight">
+                    {title}
+                  </h2>
+                  <button
+                    ref={closeButtonRef}
+                    type="button"
+                    onClick={handleDismiss}
+                    aria-label="Fermer la boîte de dialogue"
+                    className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
+                  >
+                    <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+                  </button>
+                </div>
+              ) : (
                 <button
                   ref={closeButtonRef}
                   type="button"
                   onClick={handleDismiss}
                   aria-label="Fermer la boîte de dialogue"
-                  className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
+                  className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
                 >
                   <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
                 </button>
-              </div>
-            ) : (
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={handleDismiss}
-                aria-label="Fermer la boîte de dialogue"
-                className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
-              >
-                <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-              </button>
-            )}
-            {children}
+              )}
+
+              {children}
+            </GlassPanel>
           </motion.div>
         </div>
       )}

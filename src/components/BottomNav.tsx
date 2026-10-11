@@ -9,9 +9,10 @@ import { useState, useEffect } from 'react';
 import { prefetchCreateEvent } from '@/utils/prefetchRoutes';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
+import { GlassPanel } from '@/components/glass';
 
 /**
- * GBAIGBANCE — Navigation Dock (iOS 27 Fluid Architecture)
+ * GBAIGBANCE — Navigation Dock (Liquid Glass & Architecture Fluide Apple)
  *
  * Logique de rôle & ergonomie psychologique :
  * - Participants (canCreate === false) :
@@ -21,9 +22,11 @@ import { haptic } from '@/hooks/useHaptics';
  * - Créateurs & Artistes (canCreate === true) :
  *   Dock intégré à 5 colonnes avec le joyau d'action central dédié :
  *   [Accueil] [Explorer] [  (＋) Créer  ] [Billets] [Favoris]
- *   Le bouton central n'est PLUS superposé à l'aveugle sur les autres onglets.
- *   Il possède sa propre colonne, sa propre zone tactile et une élévation
- *   organique Apple Liquid Glass.
+ *
+ * Matériau :
+ *   Intégration de Liquid Glass via <GlassPanel radius="capsule" interactive>
+ *   offrant une réfraction GPU physique sur les terminaux compatibles et un
+ *   repli CSS Apple (backdrop-filter haute saturation) sur les autres appareils.
  */
 
 export type Tab =
@@ -137,10 +140,12 @@ export function BottomNav({
         className={[
           'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-full select-none',
           'touch-manipulation transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] cursor-pointer',
+          // Zone tactile respectant la norme Apple HIG (>= 44px)
+          'min-h-[44px]',
           isPressed ? 'scale-[0.92]' : 'scale-100',
         ].join(' ')}
       >
-        {/* Capsule active & hover Apple Liquid Glass — Forme pilule harmonieuse avec la tuile */}
+        {/* Capsule active & hover — Rendu organique réactif */}
         <span
           aria-hidden="true"
           className={[
@@ -181,7 +186,7 @@ export function BottomNav({
           />
         )}
 
-        {/* Conteneur d'icône & badge */}
+        {/* Conteneur d'icône & badge dynamique */}
         <div className="relative z-10 flex items-center justify-center">
           <Icon
             className={[
@@ -205,7 +210,7 @@ export function BottomNav({
           )}
         </div>
 
-        {/* Micro-label ergonomique */}
+        {/* Micro-label ergonomique haute lisibilité */}
         <span
           className={[
             'relative z-10 mt-0.5 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
@@ -232,12 +237,18 @@ export function BottomNav({
         paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.75 + 0.25rem))',
       }}
     >
-      <nav
-        aria-label="Navigation principale"
+      {/* 
+        Enveloppe adaptative Liquid Glass :
+        - En mode WebGPU : surface physique avec réfraction optique et fluidité tactile.
+        - En mode repli CSS : verre dépoli Apple (backdrop-filter) optimisé sans latence.
+      */}
+      <GlassPanel
+        radius="capsule"
+        interactive={true}
         className={[
-          'relative w-full max-w-md h-[58px] px-0 py-0 rounded-full',
+          'relative w-full max-w-md h-[58px] px-0 py-0',
           isModalOpen ? 'pointer-events-none' : 'pointer-events-auto',
-          'flex items-center transition-all duration-500 shadow-2xl backdrop-blur-2xl',
+          'flex items-center transition-all duration-500 shadow-2xl',
         ].join(' ')}
         style={{
           background: isDark
@@ -251,76 +262,82 @@ export function BottomNav({
             : '0 12px 30px rgba(102,0,255,0.12), 0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)',
         }}
       >
-        {/* Filet de lumière supérieur */}
-        <span
-          aria-hidden="true"
-          className="absolute left-[12%] right-[12%] top-0 h-px rounded-full pointer-events-none"
-          style={{
-            background: isDark
-              ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)'
-              : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
-          }}
-        />
+        <nav
+          aria-label="Navigation principale"
+          className="w-full h-full flex items-center relative"
+        >
+          {/* Filet de lumière supérieur signature Apple */}
+          <span
+            aria-hidden="true"
+            className="absolute left-[12%] right-[12%] top-0 h-px rounded-full pointer-events-none"
+            style={{
+              background: isDark
+                ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)'
+                : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
+            }}
+          />
 
-        {/* Grille dynamique proportionnée */}
-        <div className={`w-full h-full grid ${canCreate ? 'grid-cols-5' : 'grid-cols-4'} items-center gap-0`}>
-          {NAV_ITEMS_LEFT.map(renderTabButton)}
+          {/* Grille dynamique proportionnée (4 colonnes ou 5 colonnes avec créateur) */}
+          <div className={`w-full h-full grid ${canCreate ? 'grid-cols-5' : 'grid-cols-4'} items-center gap-0`}>
+            {NAV_ITEMS_LEFT.map(renderTabButton)}
 
-          {/* Bouton Créer intégré (Uniquement si Organisateur ou Artiste) */}
-          {canCreate && (
-            <div className="flex flex-col items-center justify-center h-full px-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  haptic.light();
-                  onCreate();
-                }}
-                onMouseEnter={prefetchCreateEvent}
-                onTouchStart={prefetchCreateEvent}
-                onPointerDown={() => setPressed('create')}
-                onPointerUp={() => setPressed(null)}
-                onPointerCancel={() => setPressed(null)}
-                onPointerLeave={() => setPressed(null)}
-                aria-label={createLabel}
-                className={[
-                  'group relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer select-none',
-                  'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
-                  pressed === 'create'
-                    ? 'scale-[0.88] brightness-90'
-                    : 'scale-100 hover:scale-105 active:scale-95',
-                ].join(' ')}
-                style={{
-                  background: 'linear-gradient(135deg, #7C3AED 0%, #6600FF 55%, #4C1D95 100%)',
-                  boxShadow: isDark
-                    ? '0 6px 18px rgba(102,0,255,0.40), inset 0 1px 0 rgba(255,255,255,0.45)'
-                    : '0 6px 16px rgba(102,0,255,0.30), inset 0 1px 0 rgba(255,255,255,0.55)',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                }}
-              >
-                {/* Lueur d'ambiance */}
-                <span
-                  aria-hidden="true"
-                  className="absolute -inset-1 rounded-full pointer-events-none opacity-60 blur-md"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)',
+            {/* Bouton d'action central Créer (réservé aux organisateurs/artistes) */}
+            {canCreate && (
+              <div className="flex flex-col items-center justify-center h-full px-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic.light();
+                    onCreate();
                   }}
-                />
+                  onMouseEnter={prefetchCreateEvent}
+                  onTouchStart={prefetchCreateEvent}
+                  onPointerDown={() => setPressed('create')}
+                  onPointerUp={() => setPressed(null)}
+                  onPointerCancel={() => setPressed(null)}
+                  onPointerLeave={() => setPressed(null)}
+                  aria-label={createLabel}
+                  className={[
+                    'group relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer select-none',
+                    'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
+                    pressed === 'create'
+                      ? 'scale-[0.88] brightness-90'
+                      : 'scale-100 hover:scale-105 active:scale-95',
+                  ].join(' ')}
+                  style={{
+                    // Gradient opaque éclatant pour respecter la règle anti-superposition (zéro verre sur verre)
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #6600FF 55%, #4C1D95 100%)',
+                    boxShadow: isDark
+                      ? '0 6px 18px rgba(102,0,255,0.40), inset 0 1px 0 rgba(255,255,255,0.45)'
+                      : '0 6px 16px rgba(102,0,255,0.30), inset 0 1px 0 rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.35)',
+                  }}
+                >
+                  {/* Lueur d'ambiance violette */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute -inset-1 rounded-full pointer-events-none opacity-60 blur-md"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)',
+                    }}
+                  />
 
-                <Plus
-                  className="w-4.5 h-4.5 text-white transition-transform duration-300 group-hover:rotate-90"
-                  strokeWidth={2.6}
-                />
-              </button>
+                  <Plus
+                    className="w-4.5 h-4.5 text-white transition-transform duration-300 group-hover:rotate-90"
+                    strokeWidth={2.6}
+                  />
+                </button>
 
-              <span className="text-[9px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
-                {createLabel}
-              </span>
-            </div>
-          )}
+                <span className="text-[9px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
+                  {createLabel}
+                </span>
+              </div>
+            )}
 
-          {NAV_ITEMS_RIGHT.map(renderTabButton)}
-        </div>
-      </nav>
+            {NAV_ITEMS_RIGHT.map(renderTabButton)}
+          </div>
+        </nav>
+      </GlassPanel>
     </div>
   );
 }
