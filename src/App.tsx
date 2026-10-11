@@ -41,6 +41,8 @@ const NotificationsScreen = lazy(() => import('@/screens/NotificationsScreen').t
 const NotificationSettingsScreen = lazy(() => import('@/screens/NotificationSettingsScreen').then((module) => ({ default: module.NotificationSettingsScreen })));
 const SubscriptionsScreen = lazy(() => import('@/screens/SubscriptionsScreen').then((module) => ({ default: module.SubscriptionsScreen })));
 const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((module) => ({ default: module.AISettingsScreen })));
+// Spike de test Liquid Glass (chargé uniquement à la demande via ?spike=1)
+const GlassSpike = lazy(() => import('@/components/glass/GlassSpike'));
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
 
@@ -552,6 +554,19 @@ function AppContent() {
 }
 
 function App() {
+  // Détection du paramètre de test ?spike=1 (isolé et facilement retirable)
+  const isSpikeRequested =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('spike') === '1';
+
+  if (isSpikeRequested) {
+    return (
+      <Suspense fallback={null}>
+        <GlassSpike />
+      </Suspense>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

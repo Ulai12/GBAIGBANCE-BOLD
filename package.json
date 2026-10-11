@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@glass-sdk/liquid-glass": "~0.0.2",
     "@sentry/react": "^10.69.0",
     "@supabase/server": "^1.7.0",
     "@supabase/supabase-js": "^2.57.4",
