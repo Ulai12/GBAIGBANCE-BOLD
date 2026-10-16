@@ -42,10 +42,11 @@ function formatDate(dateString?: string | null) {
   }
 }
 
-function formatAttendees(count: number) {
-  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
-  return count.toString();
+function formatAttendees(count?: number | null) {
+  const n = typeof count === 'number' && !isNaN(count) ? Math.max(0, count) : 0;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
 }
 
 export function EventCard({ event, onClick, onShare }: EventCardProps) {

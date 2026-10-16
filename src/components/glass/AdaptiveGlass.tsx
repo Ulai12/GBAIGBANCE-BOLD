@@ -50,7 +50,7 @@ export async function hasWebGPU(): Promise<boolean> {
   try {
     const adapter = await navWithGpu.gpu.requestAdapter();
     return adapter !== null;
-  } catch (error) {
+  } catch {
     // Évite tout blocage en cas d'exception levée par les restrictions navigateur
     return false;
   }
@@ -86,7 +86,7 @@ export function useGlassLib(): GlassLib | null | undefined {
         if (!isCancelled) {
           setLib(importedLib);
         }
-      } catch (err) {
+      } catch {
         // En cas d'échec réseau ou d'incompatibilité au runtime, capture d'un avertissement télémétrique
         try {
           Sentry.captureMessage(

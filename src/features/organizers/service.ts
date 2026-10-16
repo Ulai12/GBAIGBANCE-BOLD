@@ -159,11 +159,11 @@ export async function fetchOrganizerPerformanceMetrics(
     if (eventIds.length > 0 && isSupabaseConfigured) {
       const { data: dbTickets } = await supabase
         .from('tickets')
-        .select('id, event_id, ticket_type, quantity, price_paid, status, created_at')
+        .select('id, event_id, ticket_type, price_paid, status, created_at')
         .in('event_id', eventIds)
         .neq('status', 'cancelled');
       if (dbTickets) {
-        tickets = dbTickets;
+        tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
       }
     }
 

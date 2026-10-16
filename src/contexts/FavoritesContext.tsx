@@ -162,6 +162,119 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Fonction de re-synchronisation complète et robuste depuis Supabase
+  const refreshAllFavoritesFromSupabase = useCallback(async () => {
+    if (!userId || !isSupabaseConfigured) return;
+    const likesKey = getFavoritesStorageKey('likes', userId);
+    const artistsKey = getFavoritesStorageKey('artists', userId);
+    const orgsKey = getFavoritesStorageKey('orgs', userId);
+    const usersKey = getFavoritesStorageKey('users', userId);
+
+    try {
+      const [likesRes, artRes, orgRes, usersRes] = await Promise.all([
+        supabase.from('event_likes').select('event_id').eq('user_id', userId),
+        supabase.from('artist_follows').select('artist_id').eq('user_id', userId),
+        supabase.from('organization_follows').select('organization_id').eq('user_id', userId),
+        supabase.from('user_follows').select('following_id').eq('follower_id', userId),
+      ]);
+
+      if (likesRes.data) {
+        const dbLikes = new Set(likesRes.data.map((r) => r.event_id as string));
+        setLikedEventIds(dbLikes);
+        writeStoredSet(likesKey, dbLikes);
+      }
+      if (artRes.data) {
+        const dbArtists = new Set(artRes.data.map((r) => r.artist_id as string));
+        setFollowedArtistIds(dbArtists);
+        writeStoredSet(artistsKey, dbArtists);
+      }
+      if (orgRes.data) {
+        const dbOrgs = new Set(orgRes.data.map((r) => r.organization_id as string));
+        setFollowedOrgIds(dbOrgs);
+        writeStoredSet(orgsKey, dbOrgs);
+      }
+      if (usersRes.data) {
+        const dbUsers = new Set(usersRes.data.map((r: { following_id: string }) => r.following_id));
+        setFollowedUserIds(dbUsers);
+        writeStoredSet(usersKey, dbUsers);
+      }
+    } catch {
+      // Conserver le cache local
+    }
+  }, [userId]);
+
+  // Synchronisation inter-onglets via BroadcastChannel et Storage events
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('gba_favorites_channel');
+        bc.onmessage = (event) => {
+          const msg = event.data as {
+            type: string;
+            userId?: string;
+            action?: string;
+            id?: string;
+          };
+          if (!msg || (msg.userId && msg.userId !== userId)) return;
+
+          if (msg.type === 'SYNC_ALL') {
+            refreshAllFavoritesFromSupabase();
+          } else if (msg.type === 'FAVORITE_TOGGLED' && msg.id) {
+            setLikedEventIds((prev) => {
+              const next = new Set(prev);
+              if (msg.action === 'add') next.add(msg.id!);
+              else next.delete(msg.id!);
+              return next;
+            });
+          } else if (msg.type === 'ARTIST_FOLLOW_TOGGLED' && msg.id) {
+            setFollowedArtistIds((prev) => {
+              const next = new Set(prev);
+              if (msg.action === 'add') next.add(msg.id!);
+              else next.delete(msg.id!);
+              return next;
+            });
+          } else if (msg.type === 'ORG_FOLLOW_TOGGLED' && msg.id) {
+            setFollowedOrgIds((prev) => {
+              const next = new Set(prev);
+              if (msg.action === 'add') next.add(msg.id!);
+              else next.delete(msg.id!);
+              return next;
+            });
+          } else if (msg.type === 'USER_FOLLOW_TOGGLED' && msg.id) {
+            setFollowedUserIds((prev) => {
+              const next = new Set(prev);
+              if (msg.action === 'add') next.add(msg.id!);
+              else next.delete(msg.id!);
+              return next;
+            });
+          }
+        };
+      }
+    } catch {
+      // Ignore BroadcastChannel initialization error
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (!userId || !e.key) return;
+      const likesKey = getFavoritesStorageKey('likes', userId);
+      const artistsKey = getFavoritesStorageKey('artists', userId);
+      const orgsKey = getFavoritesStorageKey('orgs', userId);
+      const usersKey = getFavoritesStorageKey('users', userId);
+
+      if (e.key === likesKey) setLikedEventIds(readStoredSet(likesKey));
+      else if (e.key === artistsKey) setFollowedArtistIds(readStoredSet(artistsKey));
+      else if (e.key === orgsKey) setFollowedOrgIds(readStoredSet(orgsKey));
+      else if (e.key === usersKey) setFollowedUserIds(readStoredSet(usersKey));
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [userId, refreshAllFavoritesFromSupabase]);
+
   // Update in-memory state when switching between guest and authenticated users
   useEffect(() => {
     const likesKey = getFavoritesStorageKey('likes', userId);
@@ -186,146 +299,107 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
     if (!isSupabaseConfigured) return;
 
-    // Fetch user event likes from Supabase
-    supabase
-      .from('event_likes')
-      .select('event_id')
-      .eq('user_id', userId)
-      .then(({ data }) => {
-        if (data) {
-          const dbLikes = new Set(data.map((r) => r.event_id as string));
-          setLikedEventIds(dbLikes);
-          writeStoredSet(likesKey, dbLikes);
-        }
-      });
-
-    // Fetch user followed artists from Supabase
-    supabase
-      .from('artist_follows')
-      .select('artist_id')
-      .eq('user_id', userId)
-      .then(({ data }) => {
-        if (data) {
-          const dbArtists = new Set(data.map((r) => r.artist_id as string));
-          setFollowedArtistIds(dbArtists);
-          writeStoredSet(artistsKey, dbArtists);
-        }
-      });
-
-    // Fetch user followed organizations from Supabase
-    supabase
-      .from('organization_follows')
-      .select('organization_id')
-      .eq('user_id', userId)
-      .then(({ data }) => {
-        if (data) {
-          const dbOrgs = new Set(data.map((r) => r.organization_id as string));
-          setFollowedOrgIds(dbOrgs);
-          writeStoredSet(orgsKey, dbOrgs);
-        }
-      });
-
-    // Fetch user followed participant/friends from Supabase
-    supabase
-      .from('user_follows')
-      .select('following_id')
-      .eq('follower_id', userId)
-      .then(({ data }) => {
-        if (data) {
-          const dbUsers = new Set(data.map((r: { following_id: string }) => r.following_id));
-          setFollowedUserIds(dbUsers);
-          writeStoredSet(usersKey, dbUsers);
-        }
-      });
+    // Initial fetch from Supabase
+    refreshAllFavoritesFromSupabase();
 
     // Supabase Realtime live sync for favorites and subscriptions
     const unsubscribe = subscribeToUserFavoritesLive(userId, {
       onLikeChange: ({ eventType, eventId }) => {
-        setLikedEventIds((prev) => {
-          const next = new Set(prev);
-          if (eventType === 'DELETE') {
-            next.delete(eventId);
-          } else {
-            next.add(eventId);
-          }
-          writeStoredSet(likesKey, next);
-          return next;
-        });
+        if (eventId) {
+          setLikedEventIds((prev) => {
+            const next = new Set(prev);
+            if (eventType === 'DELETE') next.delete(eventId);
+            else next.add(eventId);
+            writeStoredSet(likesKey, next);
+            return next;
+          });
+        }
+        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-favorites-updated', { detail: { eventId, eventType } }));
         }
       },
       onArtistFollowChange: ({ eventType, artistId }) => {
-        setFollowedArtistIds((prev) => {
-          const next = new Set(prev);
-          if (eventType === 'DELETE') {
-            next.delete(artistId);
-          } else {
-            next.add(artistId);
-          }
-          writeStoredSet(artistsKey, next);
-          return next;
-        });
+        if (artistId) {
+          setFollowedArtistIds((prev) => {
+            const next = new Set(prev);
+            if (eventType === 'DELETE') next.delete(artistId);
+            else next.add(artistId);
+            writeStoredSet(artistsKey, next);
+            return next;
+          });
+        }
+        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { artistId, eventType, type: 'artist' } }));
         }
       },
       onOrgFollowChange: ({ eventType, orgId }) => {
-        setFollowedOrgIds((prev) => {
-          const next = new Set(prev);
-          if (eventType === 'DELETE') {
-            next.delete(orgId);
-          } else {
-            next.add(orgId);
-          }
-          writeStoredSet(orgsKey, next);
-          return next;
-        });
+        if (orgId) {
+          setFollowedOrgIds((prev) => {
+            const next = new Set(prev);
+            if (eventType === 'DELETE') next.delete(orgId);
+            else next.add(orgId);
+            writeStoredSet(orgsKey, next);
+            return next;
+          });
+        }
+        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { orgId, eventType, type: 'org' } }));
         }
       },
-    });
-
-    // Realtime listener for user_follows table
-    const userFollowsChannel = supabase
-      .channel(`user-follows-live-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_follows',
-          filter: `follower_id=eq.${userId}`,
-        },
-        (payload) => {
-          const row = (payload.new || payload.old) as { following_id?: string };
-          if (!row?.following_id) return;
-          const targetId = row.following_id;
-          const isDelete = payload.eventType === 'DELETE';
+      onUserFollowChange: ({ eventType, targetUserId }) => {
+        if (targetUserId) {
           setFollowedUserIds((prev) => {
             const next = new Set(prev);
-            if (isDelete) next.delete(targetId);
-            else next.add(targetId);
+            if (eventType === 'DELETE') next.delete(targetUserId);
+            else next.add(targetUserId);
             writeStoredSet(usersKey, next);
             return next;
           });
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('gba-user-follow-changed', {
-                detail: { followerId: userId, followingId: targetId, willFollow: !isDelete },
-              })
-            );
-          }
         }
-      )
-      .subscribe();
+        refreshAllFavoritesFromSupabase();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { userId: targetUserId, eventType, type: 'user' } }));
+        }
+      },
+      onAnyChange: () => {
+        refreshAllFavoritesFromSupabase();
+      },
+    });
+
+    // Polling en arrière-plan toutes les 3 secondes max (uniquement si page active/visible)
+    const periodicSync = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshAllFavoritesFromSupabase();
+      }
+    }, 3000);
+
+    const handleFocusSync = () => {
+      refreshAllFavoritesFromSupabase();
+    };
+
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAllFavoritesFromSupabase();
+      }
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    window.addEventListener('visibilitychange', handleVisibilitySync);
+    window.addEventListener('online', handleFocusSync);
+    window.addEventListener('gba-follows-updated', handleFocusSync);
 
     return () => {
       if (unsubscribe) unsubscribe();
-      supabase.removeChannel(userFollowsChannel);
+      clearInterval(periodicSync);
+      window.removeEventListener('focus', handleFocusSync);
+      window.removeEventListener('visibilitychange', handleVisibilitySync);
+      window.removeEventListener('online', handleFocusSync);
+      window.removeEventListener('gba-follows-updated', handleFocusSync);
     };
-  }, [userId]);
+  }, [userId, refreshAllFavoritesFromSupabase]);
 
   // Synchronisation réactive bidirectionnelle via événements CustomEvent (ex: déclenché par un sous-composant)
   useEffect(() => {
@@ -373,6 +447,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       });
 
       // 3. Synchronisation réseau en arrière-plan
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('gba_favorites_channel');
+          bc.postMessage({ type: 'FAVORITE_TOGGLED', action: willBeLiked ? 'add' : 'remove', id: eventId, userId });
+          bc.close();
+        } catch {
+          // ignore
+        }
+      }
+
       if (isSupabaseConfigured && userId) {
         apiToggleEventLike(eventId, userId).catch(() => {
           // Rollback transparent en cas d'échec
@@ -424,6 +508,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         writeStoredSet(artistsKey, next);
         return next;
       });
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('gba_favorites_channel');
+          bc.postMessage({ type: 'ARTIST_FOLLOW_TOGGLED', action: willFollow ? 'add' : 'remove', id: artistId, userId });
+          bc.close();
+        } catch {
+          // ignore
+        }
+      }
 
       if (isSupabaseConfigured && userId) {
         apiToggleArtistFollow(artistId, userId).catch(() => {
@@ -483,6 +577,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         writeStoredSet(orgsKey, next);
         return next;
       });
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('gba_favorites_channel');
+          bc.postMessage({ type: 'ORG_FOLLOW_TOGGLED', action: willFollow ? 'add' : 'remove', id: orgId, userId });
+          bc.close();
+        } catch {
+          // ignore
+        }
+      }
 
       if (isSupabaseConfigured && userId) {
         apiToggleOrgFollow(orgId, userId).catch(() => {
@@ -544,6 +648,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         writeStoredSet(usersKey, next);
         return next;
       });
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('gba_favorites_channel');
+          bc.postMessage({ type: 'USER_FOLLOW_TOGGLED', action: willFollow ? 'add' : 'remove', id: targetUserId, userId });
+          bc.close();
+        } catch {
+          // ignore
+        }
+      }
 
       // Émission d'événement global pour synchroniser toutes les pages ouvertes
       if (typeof window !== 'undefined') {

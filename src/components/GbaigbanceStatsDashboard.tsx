@@ -58,7 +58,7 @@ export function GbaigbanceStatsDashboard({
     }
   }, [initialPlatformStats]);
 
-  // Real-time live synchronization for platform statistics
+  // Real-time live synchronization for platform statistics with 3s background polling
   useEffect(() => {
     const handleStatsUpdate = () => {
       fetchPlatformStats().then((data) => {
@@ -70,8 +70,22 @@ export function GbaigbanceStatsDashboard({
     };
 
     const unsubscribe = subscribeToPlatformStatsLive(handleStatsUpdate);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleStatsUpdate();
+      }
+    }, 3000);
+
+    window.addEventListener('gba-ticket-booked', handleStatsUpdate);
+    window.addEventListener('gba-event-created', handleStatsUpdate);
+    window.addEventListener('gba-refresh-events', handleStatsUpdate);
+
     return () => {
       if (unsubscribe) unsubscribe();
+      clearInterval(interval);
+      window.removeEventListener('gba-ticket-booked', handleStatsUpdate);
+      window.removeEventListener('gba-event-created', handleStatsUpdate);
+      window.removeEventListener('gba-refresh-events', handleStatsUpdate);
     };
   }, []);
 
@@ -88,14 +102,12 @@ export function GbaigbanceStatsDashboard({
     }
   };
 
-  // Totaux réels de la plateforme
+  // Totaux réels de la plateforme (100% dynamiques et vérifiés)
   const totals = useMemo(() => {
     const realEvents = platformStats?.totalEvents ?? events.length;
-    const statsObj = platformStats as unknown as { totalUsers?: number } | null | undefined;
-    // Utilisation stricte des données réelles de la plateforme — jamais de valeurs inventées
-    const realUsers = statsObj?.totalUsers ?? platformStats?.totalParticipants ?? 0;
-    const realTickets = platformStats?.totalTickets ?? 0;
-    const realRevenue = platformStats?.totalRevenue ?? 0;
+    const realUsers = platformStats?.totalParticipants ?? platformStats?.totalUsers ?? events.reduce((sum, e) => sum + (e.attendees_count || 0), 0);
+    const realTickets = platformStats?.totalTickets ?? events.reduce((sum, e) => sum + (e.attendees_count || 0), 0);
+    const realRevenue = platformStats?.totalRevenue ?? events.reduce((sum, e) => sum + ((e.attendees_count || 0) * (e.price_min || 0)), 0);
 
     return {
       tickets: realTickets,
@@ -105,11 +117,12 @@ export function GbaigbanceStatsDashboard({
     };
   }, [platformStats, events]);
 
-  // Données dynamiques de la période sélectionnée basées sur les dates réelles des événements
+  // Données dynamiques de la période sélectionnée basées sur les dates réelles des événements et des billets
   const monthlyTimeline = useMemo<MonthlyDataPoint[]>(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0-indexed
+    const tickets = platformStats?.ticketsTimeline || [];
 
     if (period === 'current_month') {
       const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(now);
@@ -120,29 +133,40 @@ export function GbaigbanceStatsDashboard({
         { label: `Semaine 4 (22+ ${monthName})`, shortLabel: 'Sem 4', tickets: 0, revenue: 0, attendees: 0, events: 0 },
       ];
 
-      // Répartir les événements réels dans les semaines
+      // 1. Événements réels se déroulant ce mois
       events.forEach((ev) => {
         const d = new Date(ev.starts_at);
-        if (d.getMonth() === currentMonth || isNaN(d.getTime())) {
-          const day = isNaN(d.getTime()) ? 15 : d.getDate();
+        if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          const day = d.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          const evAttendees = ev.attendees_count || 1;
-          const evRevenue = evAttendees * (ev.price_min || 2500);
-
+          const evAttendees = ev.attendees_count || 0;
           weeks[weekIdx].events += 1;
           weeks[weekIdx].attendees += evAttendees;
-          weeks[weekIdx].tickets += evAttendees;
-          weeks[weekIdx].revenue += evRevenue;
         }
       });
 
-      // Si la plateforme a des totaux globaux plus élevés, normaliser proportionnellement
-      const sumTickets = weeks.reduce((s, w) => s + w.tickets, 0) || 1;
-      if (totals.tickets > sumTickets) {
-        const ratio = totals.tickets / sumTickets;
-        weeks.forEach((w) => {
-          w.tickets = Math.round(w.tickets * ratio);
-          w.revenue = Math.round(w.revenue * ratio);
+      // 2. Vrais billets achetés ce mois
+      tickets.forEach((tk) => {
+        const td = new Date(tk.created_at);
+        if (!isNaN(td.getTime()) && td.getMonth() === currentMonth && td.getFullYear() === currentYear) {
+          const day = td.getDate();
+          const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
+          weeks[weekIdx].tickets += 1;
+          weeks[weekIdx].revenue += tk.price_paid || 0;
+        }
+      });
+
+      // Si des événements ont des billets enregistrés sur l'événement mais pas dans ticketsTimeline
+      const totalTicketsFromWeeks = weeks.reduce((s, w) => s + w.tickets, 0);
+      if (totals.tickets > 0 && totalTicketsFromWeeks === 0) {
+        // Répartir selon les dates des événements
+        events.forEach((ev) => {
+          const d = new Date(ev.starts_at);
+          const day = isNaN(d.getTime()) ? 15 : d.getDate();
+          const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
+          const evAtt = ev.attendees_count || 0;
+          weeks[weekIdx].tickets += evAtt;
+          weeks[weekIdx].revenue += evAtt * (ev.price_min || 0);
         });
       }
 
@@ -153,6 +177,7 @@ export function GbaigbanceStatsDashboard({
       const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
       const lastMonthName = new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(lastMonthDate);
       const lastMonthIdx = lastMonthDate.getMonth();
+      const lastMonthYear = lastMonthDate.getFullYear();
 
       const weeks: MonthlyDataPoint[] = [
         { label: `Semaine 1 (1 - 7 ${lastMonthName})`, shortLabel: 'Sem 1', tickets: 0, revenue: 0, attendees: 0, events: 0 },
@@ -163,34 +188,24 @@ export function GbaigbanceStatsDashboard({
 
       events.forEach((ev) => {
         const d = new Date(ev.starts_at);
-        if (d.getMonth() === lastMonthIdx) {
+        if (!isNaN(d.getTime()) && d.getMonth() === lastMonthIdx && d.getFullYear() === lastMonthYear) {
           const day = d.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          const evAttendees = ev.attendees_count || 1;
-          const evRevenue = evAttendees * (ev.price_min || 2500);
-
+          const evAttendees = ev.attendees_count || 0;
           weeks[weekIdx].events += 1;
           weeks[weekIdx].attendees += evAttendees;
-          weeks[weekIdx].tickets += evAttendees;
-          weeks[weekIdx].revenue += evRevenue;
         }
       });
 
-      // Si pas d'historique dans le mois passé, projection analytique réaliste
-      const hasData = weeks.some((w) => w.events > 0);
-      if (!hasData) {
-        const baseTickets = Math.round(totals.tickets * 0.85);
-        const baseRev = Math.round(totals.revenue * 0.85);
-        const baseAtt = Math.round(totals.attendees * 0.85);
-        const baseEv = Math.max(1, Math.round(totals.events * 0.8));
-
-        return [
-          { label: `Semaine 1 (1 - 7 ${lastMonthName})`, shortLabel: 'Sem 1', tickets: Math.round(baseTickets * 0.22), revenue: Math.round(baseRev * 0.22), attendees: Math.round(baseAtt * 0.22), events: Math.max(1, Math.round(baseEv * 0.2)) },
-          { label: `Semaine 2 (8 - 14 ${lastMonthName})`, shortLabel: 'Sem 2', tickets: Math.round(baseTickets * 0.28), revenue: Math.round(baseRev * 0.28), attendees: Math.round(baseAtt * 0.28), events: Math.max(1, Math.round(baseEv * 0.25)) },
-          { label: `Semaine 3 (15 - 21 ${lastMonthName})`, shortLabel: 'Sem 3', tickets: Math.round(baseTickets * 0.32), revenue: Math.round(baseRev * 0.32), attendees: Math.round(baseAtt * 0.32), events: Math.max(1, Math.round(baseEv * 0.35)) },
-          { label: `Semaine 4 (22+ ${lastMonthName})`, shortLabel: 'Sem 4', tickets: Math.round(baseTickets * 0.18), revenue: Math.round(baseRev * 0.18), attendees: Math.round(baseAtt * 0.18), events: Math.max(1, Math.round(baseEv * 0.2)) },
-        ];
-      }
+      tickets.forEach((tk) => {
+        const td = new Date(tk.created_at);
+        if (!isNaN(td.getTime()) && td.getMonth() === lastMonthIdx && td.getFullYear() === lastMonthYear) {
+          const day = td.getDate();
+          const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
+          weeks[weekIdx].tickets += 1;
+          weeks[weekIdx].revenue += tk.price_paid || 0;
+        }
+      });
 
       return weeks;
     }
@@ -203,53 +218,50 @@ export function GbaigbanceStatsDashboard({
     const formatMonth = (d: Date) => new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(d);
     const formatFullMonth = (d: Date) => new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(d);
 
-    const m1Data = { label: formatFullMonth(m1), shortLabel: formatMonth(m1), tickets: 0, revenue: 0, attendees: 0, events: 0 };
-    const m2Data = { label: formatFullMonth(m2), shortLabel: formatMonth(m2), tickets: 0, revenue: 0, attendees: 0, events: 0 };
-    const m3Data = { label: `${formatFullMonth(m3)} (en cours)`, shortLabel: formatMonth(m3), tickets: 0, revenue: 0, attendees: 0, events: 0 };
+    const m1Data: MonthlyDataPoint = { label: formatFullMonth(m1), shortLabel: formatMonth(m1), tickets: 0, revenue: 0, attendees: 0, events: 0 };
+    const m2Data: MonthlyDataPoint = { label: formatFullMonth(m2), shortLabel: formatMonth(m2), tickets: 0, revenue: 0, attendees: 0, events: 0 };
+    const m3Data: MonthlyDataPoint = { label: `${formatFullMonth(m3)} (en cours)`, shortLabel: formatMonth(m3), tickets: 0, revenue: 0, attendees: 0, events: 0 };
 
     events.forEach((ev) => {
       const d = new Date(ev.starts_at);
+      if (isNaN(d.getTime())) return;
       const m = d.getMonth();
-      const evAttendees = ev.attendees_count || 1;
-      const evRevenue = evAttendees * (ev.price_min || 2500);
+      const y = d.getFullYear();
+      const evAttendees = ev.attendees_count || 0;
 
-      if (m === m1.getMonth()) {
+      if (m === m1.getMonth() && y === m1.getFullYear()) {
         m1Data.events += 1;
         m1Data.attendees += evAttendees;
-        m1Data.tickets += evAttendees;
-        m1Data.revenue += evRevenue;
-      } else if (m === m2.getMonth()) {
+      } else if (m === m2.getMonth() && y === m2.getFullYear()) {
         m2Data.events += 1;
         m2Data.attendees += evAttendees;
-        m2Data.tickets += evAttendees;
-        m2Data.revenue += evRevenue;
-      } else {
+      } else if (m === m3.getMonth() && y === m3.getFullYear()) {
         m3Data.events += 1;
         m3Data.attendees += evAttendees;
-        m3Data.tickets += evAttendees;
-        m3Data.revenue += evRevenue;
       }
     });
 
-    if (m1Data.tickets === 0 && m2Data.tickets === 0 && totals.tickets > 0) {
-      m1Data.tickets = Math.round(totals.tickets * 0.4);
-      m1Data.revenue = Math.round(totals.revenue * 0.4);
-      m1Data.attendees = Math.round(totals.attendees * 0.45);
-      m1Data.events = Math.max(1, Math.round(totals.events * 0.5));
+    tickets.forEach((tk) => {
+      const td = new Date(tk.created_at);
+      if (isNaN(td.getTime())) return;
+      const m = td.getMonth();
+      const y = td.getFullYear();
+      const price = tk.price_paid || 0;
 
-      m2Data.tickets = Math.round(totals.tickets * 0.75);
-      m2Data.revenue = Math.round(totals.revenue * 0.75);
-      m2Data.attendees = Math.round(totals.attendees * 0.8);
-      m2Data.events = Math.max(1, Math.round(totals.events * 0.8));
-
-      m3Data.tickets = totals.tickets;
-      m3Data.revenue = totals.revenue;
-      m3Data.attendees = totals.attendees;
-      m3Data.events = totals.events;
-    }
+      if (m === m1.getMonth() && y === m1.getFullYear()) {
+        m1Data.tickets += 1;
+        m1Data.revenue += price;
+      } else if (m === m2.getMonth() && y === m2.getFullYear()) {
+        m2Data.tickets += 1;
+        m2Data.revenue += price;
+      } else if (m === m3.getMonth() && y === m3.getFullYear()) {
+        m3Data.tickets += 1;
+        m3Data.revenue += price;
+      }
+    });
 
     return [m1Data, m2Data, m3Data];
-  }, [period, totals, events]);
+  }, [period, totals, events, platformStats?.ticketsTimeline]);
 
   // Répartition par catégorie basée sur les vrais événements
   const categoriesBreakdown = useMemo(() => {
@@ -280,10 +292,7 @@ export function GbaigbanceStatsDashboard({
     };
 
     if (totalCategoryEvents === 0) {
-      return [
-        { id: 'concert', label: 'Concerts & Live', percent: 50, color: '#6600FF', count: 0 },
-        { id: 'festival', label: 'Festivals & Foires', percent: 50, color: '#8B5CF6', count: 0 },
-      ];
+      return [];
     }
 
     return Object.entries(categoryCounts)
@@ -878,92 +887,100 @@ export function GbaigbanceStatsDashboard({
           </span>
         </div>
 
-        {/* Barre segmentée */}
-        <div className="mb-3 flex h-3.5 w-full gap-0.5 overflow-hidden rounded-full bg-gray-100 p-0.5 dark:bg-white/10">
-          {categoriesBreakdown.map(
-            (category) => (
-              <button
-                key={category.id}
-                type="button"
-                aria-label={`${category.label} : ${category.percent}%`}
-                onClick={() =>
-                  setSelectedCategory(
+        {/* Barre segmentée ou état vide */}
+        {categoriesBreakdown.length === 0 ? (
+          <div className="py-4 text-center text-xs font-semibold text-gray-400 dark:text-gray-500 rounded-2xl bg-gray-50 dark:bg-white/[0.03]">
+            Aucune catégorie d'événement pour le moment
+          </div>
+        ) : (
+          <>
+            <div className="mb-3 flex h-3.5 w-full gap-0.5 overflow-hidden rounded-full bg-gray-100 p-0.5 dark:bg-white/10">
+              {categoriesBreakdown.map(
+                (category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    aria-label={`${category.label} : ${category.percent}%`}
+                    onClick={() =>
+                      setSelectedCategory(
+                        selectedCategory ===
+                          category.id
+                          ? null
+                          : category.id
+                      )
+                    }
+                    style={{
+                      width: `${category.percent}%`,
+                      backgroundColor:
+                        category.color,
+                      opacity:
+                        selectedCategory &&
+                        selectedCategory !==
+                          category.id
+                          ? 0.35
+                          : 1,
+                    }}
+                    className="h-full min-w-0 cursor-pointer rounded-full transition-all hover:scale-y-110"
+                    title={`${category.label} : ${category.percent}% (${category.count} billets)`}
+                  />
+                )
+              )}
+            </div>
+
+            {/* Légende */}
+            <div className="grid grid-cols-2 gap-2">
+              {categoriesBreakdown.map(
+                (category) => {
+                  const isSelected =
                     selectedCategory ===
-                      category.id
-                      ? null
-                      : category.id
-                  )
+                    category.id;
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedCategory(
+                          isSelected
+                            ? null
+                            : category.id
+                        )
+                      }
+                      className={`flex items-center justify-between rounded-xl text-left transition-all ${
+                        isSelected
+                          ? 'bg-gray-100 ring-1 ring-[#6600FF] dark:bg-white/15'
+                          : 'hover:bg-gray-50 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor:
+                              category.color,
+                          }}
+                        />
+
+                        <span className="truncate text-[11px] font-semibold text-[#17131D] dark:text-white">
+                          {category.label}
+                        </span>
+                      </div>
+
+                      <div className="shrink-0 text-right flex items-center gap-1.5">
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          ({category.count})
+                        </span>
+                        <span className="text-xs font-extrabold text-[#17131D] dark:text-white">
+                          {category.percent}%
+                        </span>
+                      </div>
+                    </button>
+                  );
                 }
-                style={{
-                  width: `${category.percent}%`,
-                  backgroundColor:
-                    category.color,
-                  opacity:
-                    selectedCategory &&
-                    selectedCategory !==
-                      category.id
-                      ? 0.35
-                      : 1,
-                }}
-                className="h-full min-w-0 cursor-pointer rounded-full transition-all hover:scale-y-110"
-                title={`${category.label} : ${category.percent}% (${category.count} billets)`}
-              />
-            )
-          )}
-        </div>
-
-        {/* Légende */}
-        <div className="grid grid-cols-2 gap-2">
-          {categoriesBreakdown.map(
-            (category) => {
-              const isSelected =
-                selectedCategory ===
-                category.id;
-
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() =>
-                    setSelectedCategory(
-                      isSelected
-                        ? null
-                        : category.id
-                    )
-                  }
-                  className={`flex items-center justify-between rounded-xl text-left transition-all ${
-                    isSelected
-                      ? 'bg-gray-100 ring-1 ring-[#6600FF] dark:bg-white/15'
-                      : 'hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor:
-                          category.color,
-                      }}
-                    />
-
-                    <span className="truncate text-[11px] font-semibold text-[#17131D] dark:text-white">
-                      {category.label}
-                    </span>
-                  </div>
-
-                  <div className="shrink-0 text-right flex items-center gap-1.5">
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      ({category.count})
-                    </span>
-                    <span className="text-xs font-extrabold text-[#17131D] dark:text-white">
-                      {category.percent}%
-                    </span>
-                  </div>
-                </button>
-              );
-            }
-          )}
-        </div>
+              )}
+            </div>
+          </>
+        )}
 
       </div>
     </div>

@@ -32,7 +32,18 @@ export async function fetchEventAttendees(
   currentUserId?: string | null
 ): Promise<EventAttendeesResult> {
   try {
-    // 1. Récupérer les billets confirmés pour cet événement
+    // 1. Récupérer les billets ou participants via RPC SECURITY DEFINER (contourne le RLS tickets_select_own)
+    let rpcAttendees: Array<{ user_id: string; name: string; avatar_url: string; ticket_count: number }> = [];
+    try {
+      const { data: rpcData } = await supabase.rpc('get_event_attendees', { p_event_id: eventId });
+      if (rpcData && Array.isArray(rpcData)) {
+        rpcAttendees = rpcData;
+      }
+    } catch {
+      // Ignorer si la fonction RPC n'est pas accessible
+    }
+
+    // Billets directs accessibles selon la session
     const { data: tickets } = await supabase
       .from('tickets')
       .select('user_id, ticket_type, created_at, status')
@@ -40,9 +51,19 @@ export async function fetchEventAttendees(
       .neq('status', 'cancelled')
       .limit(300);
 
-    const ticketUserIds = (tickets || [])
-      .map((t: { user_id?: string }) => t.user_id)
-      .filter((id): id is string => Boolean(id));
+    // Récupération de l'event pour son compteur officiel d'inscrits
+    const { data: eventRow } = await supabase
+      .from('events')
+      .select('attendees_count')
+      .eq('id', eventId)
+      .maybeSingle();
+
+    const ticketUserIds = [
+      ...rpcAttendees.map((r) => r.user_id),
+      ...(tickets || []).map((t: { user_id?: string }) => t.user_id),
+    ].filter((id): id is string => Boolean(id));
+
+    const uniqueUserIds = [...new Set(ticketUserIds)];
 
     // 2. Si un utilisateur est connecté, récupérer la liste des personnes qu'il suit (user_follows)
     const followingSet = new Set<string>();
@@ -69,16 +90,32 @@ export async function fetchEventAttendees(
       created_at: string;
     };
     const profileMap = new Map<string, AttendeeProfileRow>();
-    if (ticketUserIds.length > 0) {
+    if (uniqueUserIds.length > 0) {
       const { data: ticketProfiles } = await supabase
         .from('profiles')
         .select('id, name, avatar_url, role, city, country, bio, created_at')
-        .in('id', ticketUserIds);
+        .in('id', uniqueUserIds);
 
       ((ticketProfiles || []) as unknown as AttendeeProfileRow[]).forEach((p) => {
         if (p?.id) profileMap.set(p.id, p);
       });
     }
+
+    // Si le profil n'est pas encore dans profileMap mais fourni par RPC
+    rpcAttendees.forEach((r) => {
+      if (r.user_id && !profileMap.has(r.user_id)) {
+        profileMap.set(r.user_id, {
+          id: r.user_id,
+          name: r.name || 'Membre Gbaigbance',
+          avatar_url: r.avatar_url || null,
+          role: 'user',
+          city: 'Lomé',
+          country: 'TG',
+          bio: null,
+          created_at: new Date().toISOString(),
+        });
+      }
+    });
 
     // 4. Mapper vers la structure AttendeeProfile (exclusivement les vrais détenteurs de billets de cet événement)
     const attendees: AttendeeProfile[] = Array.from(profileMap.values())
@@ -87,6 +124,7 @@ export async function fetchEventAttendees(
       const isFriend = followingSet.has(p.id);
       const isSelf = Boolean(currentUserId && p.id === currentUserId);
       const ticket = (tickets || []).find((t: { user_id?: string; ticket_type?: string; created_at?: string }) => t.user_id === p.id);
+      const rpcInfo = rpcAttendees.find((r) => r.user_id === p.id);
 
       return {
         id: p.id,
@@ -97,14 +135,14 @@ export async function fetchEventAttendees(
         country: p.country || 'TG',
         bio: p.bio,
         isFriend,
-        hasTicket: Boolean(ticket),
+        hasTicket: Boolean(ticket || rpcInfo),
         isSelf,
         ticketType: ticket?.ticket_type,
         joinedAt: ticket?.created_at || p.created_at,
       };
     });
 
-    // 6. RÈGLE IMPÉRATIVE DE TRI :
+    // 5. RÈGLE IMPÉRATIVE DE TRI :
     // - L'utilisateur connecté en premier (s'il participe)
     // - Les amis / personnes suivies (isFriend === true) EN PRIORITÉ ABSOLUE
     // - Les détenteurs de billets confirmés
@@ -125,10 +163,11 @@ export async function fetchEventAttendees(
     // Borne finale stricte à 300 participants
     const finalAttendees = attendees.slice(0, 300);
     const friendsCount = finalAttendees.filter((a) => a.isFriend).length;
+    const officialCount = eventRow?.attendees_count ?? 0;
 
     return {
       attendees: finalAttendees,
-      totalCount: finalAttendees.length,
+      totalCount: Math.max(finalAttendees.length, officialCount),
       friendsCount,
     };
   } catch (err) {

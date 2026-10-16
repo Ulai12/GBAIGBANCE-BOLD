@@ -138,7 +138,7 @@ export async function fetchArtistStats(artistId: string): Promise<{ totalEvents:
   try {
     const { data: artistEvents } = await supabase.from('event_artists').select('event_id').eq('artist_id', artistId);
     const eventIds = (artistEvents || []).map((r: { event_id: string }) => r.event_id);
-    const { count: followersCount } = await supabase.from('artist_follows').select('id', { count: 'exact', head: true }).eq('artist_id', artistId);
+    const { count: followersCount } = await supabase.from('artist_follows').select('artist_id', { count: 'exact', head: true }).eq('artist_id', artistId);
     if (eventIds.length === 0) {
       return { totalEvents: 0, totalFollowers: followersCount || 0, upcomingEvents: 0, totalViews: 0 };
     }

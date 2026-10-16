@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Music2, Share2, UserCheck, UserPlus } from 'lucide-react';
 import type { Artist } from '@/types';
 import { formatNumber } from '@/utils/format';
@@ -16,11 +17,11 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
   const { language } = useApp();
   const { isFollowingArtist, toggleFollowArtist } = useFavorites();
   const following = isFollowingArtist(artist.id);
+  const initialFollowingRef = useRef<boolean>(following);
 
-  // Compteur d'abonnés en temps réel : on ajoute +1 si l'utilisateur suit (optimistic)
-  // et on soustrait -1 si la base indique qu'il suivait déjà mais qu'il ne suit plus.
-  // La valeur de base (artist.followers_count) vient toujours de la DB, on l'ajuste localement.
-  const liveFollowersCount = Math.max(0, (artist.followers_count || 0) + (following ? 1 : 0));
+  // Compteur d'abonnés dynamique précis : delta calculé par rapport à l'état initial
+  const delta = (following ? 1 : 0) - (initialFollowingRef.current ? 1 : 0);
+  const liveFollowersCount = Math.max(0, (artist.followers_count || 0) + delta);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();

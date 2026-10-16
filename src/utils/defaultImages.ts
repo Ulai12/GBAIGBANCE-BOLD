@@ -129,7 +129,8 @@ export function createDefaultEventCoverSvg(title?: string | null, subtitle?: str
 /**
  * Retourne un avatar par défaut avec initiales vectorielles (ex: JULAI -> JU, Hill blo -> HB).
  */
-export function getDefaultUserAvatar(idOrName: string, _role?: string, _entityId?: string | null): string {
+export function getDefaultUserAvatar(idOrName: string, ..._args: unknown[]): string {
+  void _args;
   return createInitialsAvatarSvg(idOrName);
 }
 

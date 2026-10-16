@@ -118,7 +118,7 @@ export async function toggleOrganizationFollow(organizationId: string, userId: s
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('organization_follows').delete().eq('id', existing.id);
+    await supabase.from('organization_follows').delete().eq('organization_id', organizationId).eq('user_id', userId);
     return false;
   }
   await supabase.from('organization_follows').insert({ organization_id: organizationId, user_id: userId });
@@ -150,7 +150,7 @@ export async function toggleArtistFollow(artistId: string, userId: string): Prom
   }
   const { data: existing } = await supabase
     .from('artist_follows')
-    .select('*')
+    .select('artist_id')
     .eq('artist_id', artistId)
     .eq('user_id', userId)
     .maybeSingle();

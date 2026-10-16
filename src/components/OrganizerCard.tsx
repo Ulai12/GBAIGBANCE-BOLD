@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Calendar, MapPin, Share2, UserCheck, UserPlus } from 'lucide-react';
 import type { Organization } from '@/types';
 import { formatNumber } from '@/utils/format';
@@ -15,9 +16,11 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
   const { isFollowingOrg, toggleFollowOrg } = useFavorites();
   const following = isFollowingOrg(organization.id);
   const isVerified = organization.verification_status === 'verified';
+  const initialFollowingRef = useRef<boolean>(following);
 
-  // Compteur d'abonnés en temps réel : +1 si l'utilisateur suit actuellement (optimistic)
-  const liveFollowersCount = Math.max(0, (organization.followers_count || 0) + (following ? 1 : 0));
+  // Compteur d'abonnés dynamique précis : delta calculé par rapport à l'état initial
+  const delta = (following ? 1 : 0) - (initialFollowingRef.current ? 1 : 0);
+  const liveFollowersCount = Math.max(0, (organization.followers_count || 0) + delta);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();

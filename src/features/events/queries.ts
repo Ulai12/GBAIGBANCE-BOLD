@@ -21,12 +21,17 @@ export interface PlatformStats {
   totalViews: number;
   totalRevenue: number;
   categories: Record<string, number>;
+  ticketsTimeline?: Array<{
+    created_at: string;
+    price_paid: number;
+    event_id: string;
+  }>;
 }
 
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTickets = getLocalStoredTickets();
   const localActiveTickets = localTickets.filter((t) => (t as { status?: string }).status !== 'cancelled');
-  const localTicketCount = localActiveTickets.reduce((sum, t) => sum + (Number((t as { quantity?: number }).quantity) || 1), 0);
+  const localTicketCount = localActiveTickets.length;
   const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number((t as { price_paid?: number }).price_paid) || 0), 0);
 
   const baselineTickets = localTicketCount;
@@ -38,60 +43,73 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalArtists: 0,
       totalOrganizers: 0,
       totalTickets: baselineTickets,
-      // 0 = aucune donnée disponible sans Supabase, jamais de valeur inventée
       totalParticipants: 0,
       totalUsers: 0,
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
+      ticketsTimeline: [],
     };
   }
 
   try {
     const [eventsRes, artistsCount, orgsCount, ticketsRes, profilesRes] = await Promise.all([
-      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status').eq('status', 'published'),
+      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status, created_at').eq('status', 'published'),
       supabase.from('artists').select('id', { count: 'exact', head: true }),
       supabase.from('organizations').select('id', { count: 'exact', head: true }),
-      supabase.from('tickets').select('id, price_paid, quantity, status').neq('status', 'cancelled'),
+      supabase.from('tickets').select('id, price_paid, status, created_at, event_id').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ]);
 
     const rawEvents = (eventsRes.data || []) as Event[];
     const events = rawEvents.filter(isRealEvent);
     const activeEvents = events.filter((e) => isEventActive(e) && !isEventTerminated(e));
-    const tickets = ticketsRes.data || [];
+    const tickets = (ticketsRes.data || []) as Array<{ id: string; price_paid?: number; status?: string; created_at?: string; event_id?: string }>;
 
     const totalEvents = activeEvents.length;
     const totalArtists = artistsCount.count ?? 0;
     const totalOrganizers = orgsCount.count ?? 0;
 
-    const dbTicketCount = tickets.reduce((sum: number, t: { quantity?: number }) => sum + (t.quantity || 1), 0);
-    const dbRevenue = tickets.reduce((sum: number, t: { price_paid?: number }) => sum + (t.price_paid || 0), 0);
+    const dbTicketCount = tickets.length;
+    const dbRevenue = tickets.reduce((sum: number, t) => sum + (Number(t.price_paid) || 0), 0);
 
     const totalTickets = dbTicketCount + localTicketCount;
     const totalRevenue = dbRevenue + localRevenue;
 
-    // Nombre réel d'utilisateurs depuis profiles, sans minimum artificiel
     const totalUsers = profilesRes.count ?? 0;
     const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0);
 
+    // Vrai total des participants ayant un billet ou inscrits
+    const totalParticipants = Math.max(
+      totalTickets,
+      events.reduce((sum, e) => sum + (e.attendees_count || 0), 0),
+      totalUsers
+    );
+
     const categories: Record<string, number> = {};
-    for (const e of activeEvents) {
+    for (const e of events) {
       if (e.category) {
         categories[e.category] = (categories[e.category] || 0) + 1;
       }
     }
+
+    const ticketsTimeline = tickets.map((t) => ({
+      created_at: t.created_at || new Date().toISOString(),
+      price_paid: Number(t.price_paid) || 0,
+      event_id: t.event_id || '',
+    }));
 
     return {
       totalEvents,
       totalArtists,
       totalOrganizers,
       totalTickets,
-      totalParticipants: totalUsers,
+      totalParticipants,
       totalUsers,
       totalViews,
       totalRevenue,
       categories,
+      ticketsTimeline,
     };
   } catch {
     return {
@@ -99,12 +117,12 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalArtists: 0,
       totalOrganizers: 0,
       totalTickets: baselineTickets,
-      // 0 = aucune donnée disponible en cas d'erreur, jamais de valeur inventée
       totalParticipants: 0,
       totalUsers: 0,
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
+      ticketsTimeline: [],
     };
   }
 }

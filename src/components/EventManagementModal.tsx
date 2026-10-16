@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Video, Award, Plus, Trash2, Radio, Upload, Globe, X, Check } from 'lucide-react';
+import { Calendar, Video, Award, Plus, Trash2, Radio, Upload, Globe, X, Check, Camera, ScanLine } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { UserAvatar } from '@/components/UserAvatar';
 import {
@@ -15,6 +15,7 @@ interface EventManagementModalProps {
   event: Event | null;
   onClose: () => void;
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void;
+  onOpenScanner?: (event: Event) => void;
 }
 
 type Tab = 'schedule' | 'live' | 'sponsors';
@@ -27,7 +28,7 @@ const TIERS: { value: SponsorTier; label: string; color: string }[] = [
   { value: 'partner', label: 'Partenaire', color: 'bg-[#6600FF]' },
 ];
 
-export function EventManagementModal({ event, onClose, onToast }: EventManagementModalProps) {
+export function EventManagementModal({ event, onClose, onToast, onOpenScanner }: EventManagementModalProps) {
   const [tab, setTab] = useState<Tab>('schedule');
   const [schedule, setSchedule] = useState<(EventScheduleSlot & { artist?: Artist })[]>([]);
   const [liveLinks, setLiveLinks] = useState<EventLiveLink[]>([]);
@@ -86,7 +87,22 @@ export function EventManagementModal({ event, onClose, onToast }: EventManagemen
   return (
     <Modal open={!!event} onClose={onClose} title={`Gérer: ${event.title}`}>
       <div className="mb-4 p-3 rounded-2xl bg-[#6600FF]/5">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Cycle de vie</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Contrôle d'accès & Cycle</p>
+          {onOpenScanner && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenScanner(event);
+              }}
+              className="px-3 py-1 rounded-xl bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold flex items-center gap-1.5 shadow-purple active:scale-95 transition-all cursor-pointer"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Scanner les billets</span>
+            </button>
+          )}
+        </div>
         <div className="flex gap-2">
           {event.status === 'paused' ? <button onClick={() => handleStatusChange('published')} className="flex-1 py-2 rounded-xl bg-[#6600FF] text-white text-xs font-bold">Reprendre les ventes</button> : <button onClick={() => handleStatusChange('paused')} disabled={event.status !== 'published'} className="flex-1 py-2 rounded-xl bg-white text-[#6600FF] text-xs font-bold disabled:opacity-40">Mettre en pause</button>}
           {event.status === 'cancelled' ? <span className="flex-1 py-2 text-center rounded-xl bg-red-100 text-red-600 text-xs font-bold">Annulé</span> : <button onClick={() => handleStatusChange('cancelled')} className="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold">Annuler</button>}

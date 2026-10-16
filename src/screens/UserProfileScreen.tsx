@@ -129,7 +129,6 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
     try {
       const willFollow = !following;
       await toggleFollowUser(userId);
-      setFollowersCount((prev) => (willFollow ? prev + 1 : Math.max(0, prev - 1)));
       onToast({
         message: willFollow
           ? (t('settings', 'userProfile.following') || 'Abonnement confirmé')

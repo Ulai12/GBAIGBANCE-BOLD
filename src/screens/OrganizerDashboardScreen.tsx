@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3, RotateCcw } from 'lucide-react';
+import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3, RotateCcw, Camera, ScanLine } from 'lucide-react';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { SmartImage } from '@/components/SmartImage';
 import { OrganizerMetricsChart, type OrganizerPerformanceData } from '@/components/OrganizerMetricsChart';
 import { OrganizerRefundsTab } from '@/components/OrganizerRefundsTab';
+import { TicketScannerModal } from '@/components/TicketScannerModal';
 import { useApp } from '@/hooks/useApp';
 import { supabase } from '@/services/supabase';
 import { EVENT_CATEGORIES } from '@/constants';
@@ -44,6 +45,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   const [deleteMode, setDeleteMode] = useState<'cancel' | 'delete'>('cancel');
   const [manageTarget, setManageTarget] = useState<Event | null>(null);
   const [activeDashboardTab, setActiveDashboardTab] = useState<'events' | 'refunds'>('events');
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerEventId, setScannerEventId] = useState<string | undefined>(undefined);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [perfData, setPerfData] = useState<OrganizerPerformanceData>({
@@ -104,8 +107,17 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       loadMetrics();
       loadEvents();
     });
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadMetrics();
+        loadEvents();
+      }
+    }, 3000);
+
     return () => {
       if (unsubscribe) unsubscribe();
+      clearInterval(interval);
     };
   }, [user, loadEvents, loadMetrics]);
 
@@ -169,9 +181,27 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
           <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>
-          <button onClick={() => setShowCreate(true)} className="w-10 h-10 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple">
-            <Plus className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setScannerEventId(undefined);
+                setScannerOpen(true);
+              }}
+              className="h-9 px-3 rounded-full bg-gradient-to-r from-[#6600FF] to-[#8B5CF6] flex items-center gap-1.5 text-white shadow-purple active:scale-95 transition-all text-xs font-bold cursor-pointer"
+              title="Scanner de billets caméra"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Scanner</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="w-9 h-9 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -183,6 +213,30 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
         />
+
+        {/* Quick Action: Scanner de Billets Caméra */}
+        <div className="card p-3.5 mb-5 bg-gradient-to-br from-[#6600FF]/10 via-purple-500/5 to-transparent border border-[#6600FF]/25 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#A855F7] flex items-center justify-center text-white shrink-0 shadow-purple">
+              <ScanLine className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">Scanner de Billets (Caméra)</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Guichet d'accès en direct & contrôle hors-ligne</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setScannerEventId(undefined);
+              setScannerOpen(true);
+            }}
+            className="btn-purple py-2 px-3 text-xs shrink-0 flex items-center gap-1.5 shadow-purple active:scale-95 transition-all cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Ouvrir</span>
+          </button>
+        </div>
 
         {/* Tab switch Mes événements / Remboursements */}
         <div className="flex bg-gray-200/70 dark:bg-white/10 p-1 rounded-2xl mb-5">

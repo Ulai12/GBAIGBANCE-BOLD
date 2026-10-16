@@ -148,14 +148,28 @@ export function SubscriptionsScreen({
     };
   }, [refreshSubscriptions]);
 
-  // Polling silencieux 30s (les mises à jour instantanées sont déjà gérées via les CustomEvents ci-dessus)
+  // Polling silencieux 3s ultra-réactif (uniquement si page active/visible)
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshSubscriptions();
       }
-    }, 30000);
-    return () => clearInterval(interval);
+    }, 3000);
+
+    const handleFocusSync = () => {
+      clearCachedSubscriptions();
+      refreshSubscriptions();
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') handleFocusSync();
+    });
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocusSync);
+    };
   }, [refreshSubscriptions]);
 
   if (!user && artists.length === 0 && orgs.length === 0 && !loading) {

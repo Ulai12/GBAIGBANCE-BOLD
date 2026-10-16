@@ -72,6 +72,20 @@ export function subscribeToEventLive(
         }
       }
     )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'tickets',
+        filter: `event_id=eq.${eventId}`,
+      },
+      () => {
+        if (callbacks.onEventUpdate) {
+          callbacks.onEventUpdate({ id: eventId } as Partial<Event>);
+        }
+      }
+    )
     .subscribe();
 
   return () => {
@@ -231,20 +245,31 @@ export function useRealtimeUserTickets(
 }
 
 /**
- * Subscribes to live changes on user favorites (event_likes) and followings (artist_follows, organization_follows).
+ * Subscribes to live changes on user favorites (event_likes) and followings (artist_follows, organization_follows, user_follows).
  * Synchronizes likes and subscriptions instantaneously across components and devices without manual refresh.
  */
 export function subscribeToUserFavoritesLive(
   userId: string,
   callbacks: {
-    onLikeChange?: (payload: { eventType: string; eventId: string }) => void;
-    onArtistFollowChange?: (payload: { eventType: string; artistId: string }) => void;
-    onOrgFollowChange?: (payload: { eventType: string; orgId: string }) => void;
+    onLikeChange?: (payload: { eventType: string; eventId?: string }) => void;
+    onArtistFollowChange?: (payload: { eventType: string; artistId?: string }) => void;
+    onOrgFollowChange?: (payload: { eventType: string; orgId?: string }) => void;
+    onUserFollowChange?: (payload: { eventType: string; targetUserId?: string }) => void;
+    onAnyChange?: () => void;
   }
 ) {
   if (!isSupabaseConfigured || !userId) return () => {};
 
   const channelId = `realtime:favorites:${userId}:${Math.random().toString(36).substring(2, 8)}`;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const triggerAnyDebounced = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if (callbacks.onAnyChange) callbacks.onAnyChange();
+    }, 200);
+  };
+
   const channel = supabase
     .channel(channelId)
     .on(
@@ -253,15 +278,17 @@ export function subscribeToUserFavoritesLive(
         event: '*',
         schema: 'public',
         table: 'event_likes',
-        filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        const record = (payload.new || payload.old) as { event_id?: string } | undefined;
-        if (record?.event_id && callbacks.onLikeChange) {
-          callbacks.onLikeChange({
-            eventType: payload.eventType,
-            eventId: record.event_id,
-          });
+        const record = (payload.new || payload.old) as { event_id?: string; user_id?: string } | undefined;
+        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+          if (record?.event_id && callbacks.onLikeChange) {
+            callbacks.onLikeChange({
+              eventType: payload.eventType,
+              eventId: record.event_id,
+            });
+          }
+          triggerAnyDebounced();
         }
       }
     )
@@ -271,15 +298,17 @@ export function subscribeToUserFavoritesLive(
         event: '*',
         schema: 'public',
         table: 'artist_follows',
-        filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        const record = (payload.new || payload.old) as { artist_id?: string } | undefined;
-        if (record?.artist_id && callbacks.onArtistFollowChange) {
-          callbacks.onArtistFollowChange({
-            eventType: payload.eventType,
-            artistId: record.artist_id,
-          });
+        const record = (payload.new || payload.old) as { artist_id?: string; user_id?: string } | undefined;
+        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+          if (record?.artist_id && callbacks.onArtistFollowChange) {
+            callbacks.onArtistFollowChange({
+              eventType: payload.eventType,
+              artistId: record.artist_id,
+            });
+          }
+          triggerAnyDebounced();
         }
       }
     )
@@ -289,21 +318,44 @@ export function subscribeToUserFavoritesLive(
         event: '*',
         schema: 'public',
         table: 'organization_follows',
-        filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        const record = (payload.new || payload.old) as { organization_id?: string } | undefined;
-        if (record?.organization_id && callbacks.onOrgFollowChange) {
-          callbacks.onOrgFollowChange({
-            eventType: payload.eventType,
-            orgId: record.organization_id,
-          });
+        const record = (payload.new || payload.old) as { organization_id?: string; user_id?: string } | undefined;
+        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+          if (record?.organization_id && callbacks.onOrgFollowChange) {
+            callbacks.onOrgFollowChange({
+              eventType: payload.eventType,
+              orgId: record.organization_id,
+            });
+          }
+          triggerAnyDebounced();
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'user_follows',
+      },
+      (payload) => {
+        const record = (payload.new || payload.old) as { follower_id?: string; following_id?: string } | undefined;
+        if (payload.eventType === 'DELETE' || !record?.follower_id || record.follower_id === userId) {
+          if (record?.following_id && callbacks.onUserFollowChange) {
+            callbacks.onUserFollowChange({
+              eventType: payload.eventType,
+              targetUserId: record.following_id,
+            });
+          }
+          triggerAnyDebounced();
         }
       }
     )
     .subscribe();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     try {
       supabase.removeChannel(channel);
     } catch {
@@ -313,8 +365,8 @@ export function subscribeToUserFavoritesLive(
 }
 
 /**
- * Subscribes to live changes on the entire public.events table (INSERT, UPDATE, DELETE).
- * Provides instantaneous real-time sync across clients without requiring manual page refresh.
+ * Subscribes to live changes on the entire public.events table (INSERT, UPDATE, DELETE),
+ * as well as tickets and event_likes for instantaneous card and list updates across clients.
  */
 export function subscribeToGlobalEventsLive(
   onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void
@@ -330,6 +382,36 @@ export function subscribeToGlobalEventsLive(
         event: '*',
         schema: 'public',
         table: 'events',
+      },
+      (payload) => {
+        onEventChange({
+          eventType: payload.eventType,
+          new: payload.new as Record<string, unknown> | undefined,
+          old: payload.old as Record<string, unknown> | undefined,
+        });
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'tickets',
+      },
+      (payload) => {
+        onEventChange({
+          eventType: payload.eventType,
+          new: payload.new as Record<string, unknown> | undefined,
+          old: payload.old as Record<string, unknown> | undefined,
+        });
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'event_likes',
       },
       (payload) => {
         onEventChange({
@@ -355,6 +437,8 @@ export function subscribeToGlobalEventsLive(
  * - Tickets (purchases, reservations, cancellations)
  * - Events (creation, status change, views, attendees)
  * - Profiles (new members registration)
+ * - Artists & Organizations (new profiles / counts)
+ * - Event likes (engagement)
  */
 export function subscribeToPlatformStatsLive(onStatsChange: () => void) {
   if (!isSupabaseConfigured) return () => {};
@@ -366,7 +450,7 @@ export function subscribeToPlatformStatsLive(onStatsChange: () => void) {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       onStatsChange();
-    }, 400);
+    }, 250);
   };
 
   const channel = supabase
@@ -384,6 +468,21 @@ export function subscribeToPlatformStatsLive(onStatsChange: () => void) {
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profiles' },
+      () => notifyDebounced()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'artists' },
+      () => notifyDebounced()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'organizations' },
+      () => notifyDebounced()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'event_likes' },
       () => notifyDebounced()
     )
     .subscribe();

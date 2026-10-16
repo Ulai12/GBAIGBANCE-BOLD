@@ -57,6 +57,11 @@ export async function toggleUserFollow(followerId: string, followingId: string):
         detail: { followerId, followingId, willFollow },
       })
     );
+    window.dispatchEvent(
+      new CustomEvent('gba-follows-updated', {
+        detail: { userId: followingId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'user' },
+      })
+    );
   }
 
   // 2. Synchronisation Supabase avec gestion d'erreur transparente
@@ -68,9 +73,9 @@ export async function toggleUserFollow(followerId: string, followingId: string):
       .eq('following_id', followingId)
       .maybeSingle();
 
-    if (existing) {
+    if (existing && !willFollow) {
       await supabase.from('user_follows').delete().eq('id', existing.id);
-    } else {
+    } else if (!existing && willFollow) {
       await supabase.from('user_follows').insert({ follower_id: followerId, following_id: followingId });
     }
   } catch {
@@ -104,8 +109,7 @@ export async function isFollowingUser(followerId: string, followingId: string): 
 }
 
 export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
-  const localIds = Array.from(getLocalFollowedUserIds(userId));
-  let dbIds: string[] = [];
+  let dbIds: string[] | null = null;
 
   try {
     const { data } = await supabase
@@ -119,14 +123,19 @@ export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
     // Fallback to local
   }
 
-  const allIds = [...new Set([...localIds, ...dbIds])];
-  if (allIds.length === 0) return [];
+  const targetIds = dbIds !== null ? dbIds : Array.from(getLocalFollowedUserIds(userId));
+  if (targetIds.length === 0) {
+    if (dbIds !== null) {
+      saveLocalFollowedUserIds(userId, new Set());
+    }
+    return [];
+  }
 
-  // Mettre à jour le cache local avec la fusion
-  saveLocalFollowedUserIds(userId, new Set(allIds));
+  // Mettre à jour le cache local avec l'état vérifié
+  saveLocalFollowedUserIds(userId, new Set(targetIds));
 
-  const profileMap = await fetchProfilesByIds(allIds);
-  return (allIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[]).filter(isRealProfile);
+  const profileMap = await fetchProfilesByIds(targetIds);
+  return (targetIds.map((id: string) => profileMap.get(id)).filter(Boolean) as Profile[]).filter(isRealProfile);
 }
 
 export async function fetchFollowersUsers(userId: string): Promise<Profile[]> {
