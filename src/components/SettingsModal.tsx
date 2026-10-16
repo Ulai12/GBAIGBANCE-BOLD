@@ -14,6 +14,7 @@ import {
 import { useApp } from '@/hooks/useApp';
 import { UserAvatar } from '@/components/UserAvatar';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
+import { DataSaverToggle } from '@/components/DataSaverToggle';
 import { COUNTRY_FLAGS } from '@/constants';
 
 interface SettingsModalProps {
@@ -202,7 +203,15 @@ export function SettingsModal({
             </div>
           </div>
 
-          {/* Groupe 3: Notifications & Application */}
+          {/* Groupe 3: Performance & Réseau */}
+          <div>
+            <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
+              Performance & Réseau
+            </h3>
+            <DataSaverToggle variant="card" />
+          </div>
+
+          {/* Groupe 4: Notifications & Application */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
               Notifications & Application

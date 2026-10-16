@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Sparkles } from 'lucide-react';
 import { buildResponsiveImageSources } from '@/utils/imageOptimizer';
 import { getDefaultEventCover } from '@/utils/defaultImages';
+import { useDataSaver } from '@/hooks/useDataSaver';
 
 interface SmartImageProps {
   src: string | null | undefined;
@@ -16,6 +17,7 @@ interface SmartImageProps {
   sizes?: string;
   loading?: 'lazy' | 'eager';
   fetchPriority?: 'high' | 'low' | 'auto';
+  forceDataSaver?: boolean;
 }
 
 // Couverture noire par défaut avec texte en extra ultra bold GBAIGBAINCE
@@ -24,7 +26,7 @@ const DEFAULT_FALLBACK = getDefaultEventCover();
 // Global memory cache of successfully loaded image URLs to prevent re-flashing on swipes or re-renders
 const LOADED_IMAGE_URLS = new Set<string>();
 
-export function SmartImage({
+export const SmartImage = memo(function SmartImage({
   src,
   alt = '',
   className = '',
@@ -37,7 +39,11 @@ export function SmartImage({
   sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
   loading = 'lazy',
   fetchPriority = 'auto',
+  forceDataSaver,
 }: SmartImageProps) {
+  const { isDataSaverActive } = useDataSaver();
+  const applyDataSaver = forceDataSaver !== undefined ? forceDataSaver : isDataSaverActive;
+
   const resolvedFallback = useMemo(() => {
     if (fallbackSrc && fallbackSrc !== DEFAULT_FALLBACK) return fallbackSrc;
     if (fallbackText || alt) {
@@ -52,8 +58,8 @@ export function SmartImage({
   const [loaded, setLoaded] = useState(() => (src ? LOADED_IMAGE_URLS.has(src) : false));
 
   const responsive = useMemo(() => {
-    return buildResponsiveImageSources(effectiveSrc, widths, sizes);
-  }, [effectiveSrc, widths, sizes]);
+    return buildResponsiveImageSources(effectiveSrc, widths, sizes, applyDataSaver);
+  }, [effectiveSrc, widths, sizes, applyDataSaver]);
 
   useEffect(() => {
     const nextSrc = (src && src.trim() !== '') ? src : resolvedFallback;
@@ -127,5 +133,5 @@ export function SmartImage({
       />
     </picture>
   );
-}
+});
 

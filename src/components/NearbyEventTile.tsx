@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Navigation,
@@ -36,7 +37,7 @@ function formatDate(dateString?: string | null) {
   }
 }
 
-export function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {
+export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {
   const prefersReducedMotion = useReducedMotion();
 
   const formattedPrice =
@@ -198,4 +199,4 @@ export function NearbyEventTile({ event, isActualLocation = false, onClick, onBo
       </div>
     </motion.article>
   );
-}
+});

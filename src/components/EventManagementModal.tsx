@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Video, Award, Plus, Trash2, Radio, Upload, Globe, X, Check, Camera, ScanLine } from 'lucide-react';
+import { Calendar, Video, Award, Plus, Trash2, Radio, Upload, Globe, X, Check, Camera } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { UserAvatar } from '@/components/UserAvatar';
 import {

@@ -98,7 +98,26 @@ export function TicketScannerModal({
     } else if (events.length > 0 && selectedEventId === 'all') {
       setSelectedEventId(events[0].id);
     }
-  }, [initialEventId, events]);
+  }, [initialEventId, events, selectedEventId]);
+
+  const loadStats = useCallback(async () => {
+    if (!selectedEventId || selectedEventId === 'all') return;
+    const res = await fetchEventGateStats(selectedEventId);
+    setStats(res);
+  }, [selectedEventId]);
+
+  const triggerSync = useCallback(async () => {
+    setIsSyncing(true);
+    const { synced, failed } = await syncOfflineGateQueue();
+    setIsSyncing(false);
+    if (synced > 0) {
+      onToast({ message: `${synced} billet(s) synchronisé(s) avec succès !`, type: 'success' });
+      loadStats();
+    }
+    if (failed > 0) {
+      onToast({ message: `${failed} billet(s) en attente de synchronisation`, type: 'info' });
+    }
+  }, [loadStats, onToast]);
 
   // Online / Offline listener
   useEffect(() => {
@@ -118,14 +137,7 @@ export function TicketScannerModal({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [onToast]);
-
-  // Load history & stats
-  const loadStats = useCallback(async () => {
-    if (!selectedEventId || selectedEventId === 'all') return;
-    const res = await fetchEventGateStats(selectedEventId);
-    setStats(res);
-  }, [selectedEventId]);
+  }, [onToast, triggerSync]);
 
   useEffect(() => {
     if (open) {
@@ -136,19 +148,6 @@ export function TicketScannerModal({
       }
     }
   }, [open, selectedEventId, loadStats]);
-
-  const triggerSync = async () => {
-    setIsSyncing(true);
-    const { synced, failed } = await syncOfflineGateQueue();
-    setIsSyncing(false);
-    if (synced > 0) {
-      onToast({ message: `${synced} billet(s) synchronisé(s) avec succès !`, type: 'success' });
-      loadStats();
-    }
-    if (failed > 0) {
-      onToast({ message: `${failed} billet(s) en attente de synchronisation`, type: 'info' });
-    }
-  };
 
   // Start Camera
   const startCamera = useCallback(async () => {
@@ -257,15 +256,27 @@ export function TicketScannerModal({
       if (result.status === 'valid') {
         gateAudio.play('valid');
         haptic.success();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([70, 40, 70]); } catch { /* ignore */ }
+        }
       } else if (result.status === 'already_used') {
         gateAudio.play('already_used');
         haptic.warning();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([120, 60, 120]); } catch { /* ignore */ }
+        }
       } else if (result.status === 'wrong_event') {
         gateAudio.play('wrong_event');
         haptic.warning();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([100, 50, 100]); } catch { /* ignore */ }
+        }
       } else {
         gateAudio.play('invalid');
         haptic.error();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([220]); } catch { /* ignore */ }
+        }
       }
 
       // Record in history
@@ -296,12 +307,12 @@ export function TicketScannerModal({
         }));
       }
 
-      // Start auto-resume countdown (2.5 seconds)
+      // Start auto-resume countdown (1.5 seconds - Fast continuous scan mode)
       setCountdownPercent(100);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
 
       const startTime = Date.now();
-      const duration = 2500;
+      const duration = 1500;
       countdownIntervalRef.current = window.setInterval(() => {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
@@ -310,7 +321,7 @@ export function TicketScannerModal({
           if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
           resumeScanning();
         }
-      }, 50);
+      }, 40);
 
       setIsProcessing(false);
     },
@@ -432,7 +443,6 @@ export function TicketScannerModal({
 
   if (!open) return null;
 
-  const currentSelectedEvent = events.find((e) => e.id === selectedEventId);
   const percentScanned =
     stats.totalTickets > 0 ? Math.round((stats.scannedCount / stats.totalTickets) * 100) : 0;
 
@@ -730,9 +740,11 @@ export function TicketScannerModal({
           {/* Torch Toggle */}
           <button
             onClick={toggleTorch}
-            disabled={!cameraActive}
-            title="Allumer / Éteindre la torche"
+            disabled={!cameraActive || !torchAvailable}
+            title={torchAvailable ? "Allumer / Éteindre la torche" : "Torche non disponible sur cette caméra"}
             className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+              !torchAvailable ? 'opacity-40 cursor-not-allowed' : ''
+            } ${
               torchOn
                 ? 'bg-amber-400 text-zinc-950 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
                 : 'text-white/80 hover:bg-white/10'

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   CalendarDays,
@@ -49,7 +49,7 @@ function formatAttendees(count?: number | null) {
   return n.toString();
 }
 
-export function EventCard({ event, onClick, onShare }: EventCardProps) {
+export const EventCard = memo(function EventCard({ event, onClick, onShare }: EventCardProps) {
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -270,4 +270,4 @@ export function EventCard({ event, onClick, onShare }: EventCardProps) {
       />
     </>
   );
-}
+});

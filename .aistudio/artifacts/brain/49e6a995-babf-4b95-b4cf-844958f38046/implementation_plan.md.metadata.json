@@ -1,0 +1,6 @@
+{
+  "summary": "Plan d'implémentation complet pour le Scanner de Billets Caméra Organisateur (mode continu, audio & haptique), le Mode Économie de Données (Data Saver adaptatif avec toggle et compression WebP/AVIF) et les Notifications Web Push PWA (rappels automatiques 24h/2h et alertes dates d'artistes).",
+  "updatedAt": "2026-10-16T02:44:33.862868268Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

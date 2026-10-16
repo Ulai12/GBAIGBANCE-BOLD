@@ -31,6 +31,7 @@ import {
   subscribeToGlobalEventsLive, subscribeToPlatformStatsLive,
   type PlatformStats,
 } from '@/services/events';
+import { checkFollowedArtistsNewDates } from '@/services/eventReminderService';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
 import {
   calculateDistanceKm,
@@ -219,6 +220,9 @@ export function HomeScreen({
       setOrganizations(cappedOrgs);
       setPlatformStats(stats);
 
+      // Vérifier si de nouveaux événements annoncés concernent des artistes suivis
+      checkFollowedArtistsNewDates(masterEvents, followedArtistIds);
+
       // Save fresh data into the 0ms synchronous cache
       saveCachedHomeData({
         featured: newFeat,
@@ -238,7 +242,7 @@ export function HomeScreen({
     } finally {
       setLoading(false);
     }
-  }, [initialCache.hasCache]);
+  }, [initialCache.hasCache, followedArtistIds]);
 
   // Initial load
   useEffect(() => {
@@ -289,20 +293,32 @@ export function HomeScreen({
     window.addEventListener('gba-event-updated', handleSyncTrigger);
     window.addEventListener('gba-ticket-booked', handleSyncTrigger);
 
-    // Auto-polling silencieux toutes les 3 secondes max (uniquement si page active/visible)
+    // Auto-polling de secours toutes les 60 secondes (les mises à jour en direct sont gérées par Supabase Realtime)
     const periodicSync = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshHomeData(true);
       }
-    }, 3000);
+    }, 60000);
 
-    // Ticker silencieux pour purger tout événement qui viendrait d'expirer
+    // Ticker silencieux pour purger les événements terminés (vérification propre toutes les 60 secondes sans re-renders inutiles)
     const pruneTicker = setInterval(() => {
-      setFeatured((prev) => prev.filter((e) => !isEventTerminated(e)));
-      setTrending((prev) => prev.filter((e) => !isEventTerminated(e)));
-      setNearby((prev) => prev.filter((e) => !isEventTerminated(e)));
-      setAllEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 3000);
+      setFeatured((prev) => {
+        const hasTerminated = prev.some((e) => isEventTerminated(e));
+        return hasTerminated ? prev.filter((e) => !isEventTerminated(e)) : prev;
+      });
+      setTrending((prev) => {
+        const hasTerminated = prev.some((e) => isEventTerminated(e));
+        return hasTerminated ? prev.filter((e) => !isEventTerminated(e)) : prev;
+      });
+      setNearby((prev) => {
+        const hasTerminated = prev.some((e) => isEventTerminated(e));
+        return hasTerminated ? prev.filter((e) => !isEventTerminated(e)) : prev;
+      });
+      setAllEvents((prev) => {
+        const hasTerminated = prev.some((e) => isEventTerminated(e));
+        return hasTerminated ? prev.filter((e) => !isEventTerminated(e)) : prev;
+      });
+    }, 60000);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibility);
@@ -502,9 +518,7 @@ export function HomeScreen({
     </div>
 
     {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
-    {/* ✅ gap-2 et boutons w-10 h-10 d'origine (avant : gap-1.5 et w-9 h-9) */}
     <div className="flex items-center gap-2">
-      {/* ✅ Appel direct, sans le wrapper haptic */}
       <NotificationBell onOpen={onOpenNotifications} />
 
       {onOpenSettings && (

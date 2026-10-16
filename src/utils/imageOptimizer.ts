@@ -2,6 +2,7 @@
  * Image optimization utility for responsive images and WebP format support.
  * Automatically transforms Unsplash, Pexels, Supabase and generic image URLs
  * to deliver WebP formats with optimal resolutions, compression, and responsive srcset.
+ * Supports aggressive Data Saver mode for low-bandwidth 2G/3G connections.
  */
 
 export interface OptimizedImageSource {
@@ -14,24 +15,29 @@ export interface OptimizedImageSource {
 const DEFAULT_SIZES = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
 
 /**
- * Transforms an image URL to request WebP format and specific width.
+ * Transforms an image URL to request WebP/AVIF format and specific width,
+ * applying aggressive compression if dataSaver is enabled.
  */
 export function getOptimizedImageUrl(
   url: string | null | undefined,
   width: number,
-  format: 'webp' | 'original' = 'webp'
+  format: 'webp' | 'original' = 'webp',
+  dataSaver: boolean = false
 ): string {
   if (!url || typeof url !== 'string') return '';
+
+  const effectiveWidth = dataSaver ? Math.min(width, 480) : width;
+  const quality = dataSaver ? '42' : '80';
 
   // 1. Unsplash images
   if (url.includes('images.unsplash.com')) {
     try {
       const parsed = new URL(url);
-      parsed.searchParams.set('w', width.toString());
+      parsed.searchParams.set('w', effectiveWidth.toString());
       if (format === 'webp') {
         parsed.searchParams.set('fm', 'webp');
       }
-      parsed.searchParams.set('q', '80');
+      parsed.searchParams.set('q', quality);
       parsed.searchParams.set('auto', 'format');
       return parsed.toString();
     } catch {
@@ -43,7 +49,7 @@ export function getOptimizedImageUrl(
   if (url.includes('images.pexels.com')) {
     try {
       const parsed = new URL(url);
-      parsed.searchParams.set('w', width.toString());
+      parsed.searchParams.set('w', effectiveWidth.toString());
       parsed.searchParams.set('auto', 'compress');
       parsed.searchParams.set('cs', 'tinysrgb');
       return parsed.toString();
@@ -62,7 +68,8 @@ export function getOptimizedImageUrl(
     try {
       const parts = url.split('/upload/');
       const formatFlag = format === 'webp' ? 'f_webp,' : '';
-      return `${parts[0]}/upload/${formatFlag}w_${width},q_auto/${parts[1]}`;
+      const qFlag = dataSaver ? 'q_auto:eco' : 'q_auto';
+      return `${parts[0]}/upload/${formatFlag}w_${effectiveWidth},${qFlag}/${parts[1]}`;
     } catch {
       return url;
     }
@@ -89,7 +96,8 @@ function isTransformableCdn(url: string): boolean {
 export function buildResponsiveImageSources(
   url: string | null | undefined,
   widths: number[] = [320, 640, 960, 1280],
-  sizes: string = DEFAULT_SIZES
+  sizes: string = DEFAULT_SIZES,
+  dataSaver: boolean = false
 ): OptimizedImageSource {
   if (!url) {
     return {
@@ -100,7 +108,7 @@ export function buildResponsiveImageSources(
     };
   }
 
-  // Don't generate srcset for data URIs, blob URIs, or non-transformable CDNs (e.g. Supabase, generic servers)
+  // Don't generate srcset for data URIs, blob URIs, or non-transformable CDNs
   if (url.startsWith('data:') || url.startsWith('blob:') || !isTransformableCdn(url)) {
     return {
       src: url,
@@ -110,16 +118,19 @@ export function buildResponsiveImageSources(
     };
   }
 
-  const srcSetWebp = widths
-    .map((w) => `${getOptimizedImageUrl(url, w, 'webp')} ${w}w`)
+  const effectiveWidths = dataSaver ? [240, 480] : widths;
+
+  const srcSetWebp = effectiveWidths
+    .map((w) => `${getOptimizedImageUrl(url, w, 'webp', dataSaver)} ${w}w`)
     .join(', ');
 
-  const srcSetFallback = widths
-    .map((w) => `${getOptimizedImageUrl(url, w, 'original')} ${w}w`)
+  const srcSetFallback = effectiveWidths
+    .map((w) => `${getOptimizedImageUrl(url, w, 'original', dataSaver)} ${w}w`)
     .join(', ');
 
-  // Default src is medium size (e.g. 800w or 640w) in WebP format
-  const src = getOptimizedImageUrl(url, 800, 'webp');
+  // Default src is lightweight (360w in dataSaver, 800w in standard)
+  const defaultWidth = dataSaver ? 360 : 800;
+  const src = getOptimizedImageUrl(url, defaultWidth, 'webp', dataSaver);
 
   return {
     src,

@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { DataSaverProvider } from '@/contexts/DataSaverContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
@@ -22,6 +23,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { subscribeToUserTicketsLive } from '@/services/events';
 import { getSyncCachedUserTickets } from '@/services/cache';
+import { checkAndTriggerTicketReminders } from '@/services/eventReminderService';
 import {
   EventDetailRoute,
   EditEventRoute,
@@ -255,6 +257,38 @@ function AppContent() {
     window.addEventListener('pwa-update-available', handleUpdate);
     return () => window.removeEventListener('pwa-update-available', handleUpdate);
   }, [addToast]);
+
+  // Écouteur in-app pour les notifications Web Push PWA (rappels 24h/2h, alertes artistes)
+  useEffect(() => {
+    const handleInAppPush = (e: globalThis.Event) => {
+      const custom = e as CustomEvent<{ title: string; body: string }>;
+      if (custom.detail?.title && custom.detail?.body) {
+        addToast({
+          message: `${custom.detail.title} — ${custom.detail.body}`,
+          type: 'info',
+        });
+      }
+    };
+    window.addEventListener('gba-inapp-push-received', handleInAppPush);
+    return () => window.removeEventListener('gba-inapp-push-received', handleInAppPush);
+  }, [addToast]);
+
+  // Surveillance et déclenchement automatique des rappels 24h et 2h pour les événements réservés
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Vérification initiale
+    checkAndTriggerTicketReminders(user.id);
+
+    // Vérification périodique toutes les 15 minutes
+    const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkAndTriggerTicketReminders(user.id);
+      }
+    }, 15 * 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, [user?.id]);
 
   // Global toast and rollback event listeners
   useEffect(() => {
@@ -571,11 +605,13 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AppProvider>
-          <FavoritesProvider>
-            <Suspense fallback={null}>
-              <AppContent />
-            </Suspense>
-          </FavoritesProvider>
+          <DataSaverProvider>
+            <FavoritesProvider>
+              <Suspense fallback={null}>
+                <AppContent />
+              </Suspense>
+            </FavoritesProvider>
+          </DataSaverProvider>
         </AppProvider>
         <Analytics />
         <SpeedInsights />

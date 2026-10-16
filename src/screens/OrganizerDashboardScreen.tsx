@@ -113,7 +113,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
         loadMetrics();
         loadEvents();
       }
-    }, 3000);
+    }, 30000);
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -322,6 +322,19 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                         {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">Reporté</span>}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setScannerEventId(event.id);
+                        setScannerOpen(true);
+                      }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#6600FF] bg-[#6600FF]/10 hover:bg-[#6600FF]/20 transition-all shrink-0 cursor-pointer"
+                      aria-label="Scanner les billets de cet événement"
+                      title="Scanner les billets au guichet"
+                    >
+                      <ScanLine className="w-4 h-4" />
+                    </button>
                     {onEditEvent && (
                       <button
                         type="button"
@@ -386,6 +399,14 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       </Modal>
 
       <EventManagementModal event={manageTarget} onClose={() => setManageTarget(null)} onToast={onToast} />
+
+      <TicketScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        events={events}
+        initialEventId={scannerEventId}
+        onToast={onToast}
+      />
     </div>
   );
 }
