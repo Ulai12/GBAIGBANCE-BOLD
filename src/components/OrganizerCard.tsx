@@ -16,6 +16,9 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
   const following = isFollowingOrg(organization.id);
   const isVerified = organization.verification_status === 'verified';
 
+  // Compteur d'abonnés en temps réel : +1 si l'utilisateur suit actuellement (optimistic)
+  const liveFollowersCount = Math.max(0, (organization.followers_count || 0) + (following ? 1 : 0));
+
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const title = `${organization.name} sur Gbaïgbancê`;
@@ -88,7 +91,7 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
             <Calendar className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA]" />
             {formatNumber(organization.events_count, language)} évts
           </span>
-          <span className="font-semibold">{formatNumber(organization.followers_count, language)} abonnés</span>
+          <span className="font-semibold">{formatNumber(liveFollowersCount, language)} abonnés</span>
         </div>
 
         <button

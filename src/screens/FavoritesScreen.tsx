@@ -82,7 +82,7 @@ export function FavoritesScreen({
   onOrganizationClick,
 }: FavoritesScreenProps) {
   const { session, t } = useApp();
-  const { likedEventIds, followedArtistIds, followedOrgIds, toggleFollowArtist, toggleFollowOrg } = useFavorites();
+  const { likedEventIds, followedArtistIds, followedOrgIds, isFollowingArtist, isFollowingOrg, toggleFollowArtist, toggleFollowOrg } = useFavorites();
 
   const [activeTab, setActiveTab] = useState<FavTab>('events');
   const [eventFilter, setEventFilter] = useState<EventStatusFilter>('all');
@@ -282,7 +282,8 @@ export function FavoritesScreen({
                   genres: ['Afrobeats', 'Live'],
                   city: p.city || 'Lomé',
                   country: p.country || 'TG',
-                  followers_count: 1,
+                  // Valeur initiale : 0 (sera enrichie via la table artist_follows ci-dessous)
+                  followers_count: 0,
                   events_count: 0,
                   is_verified: true,
                   created_at: p.created_at || new Date().toISOString(),
@@ -310,13 +311,14 @@ export function FavoritesScreen({
                     .from('artist_follows')
                     .select('artist_id', { count: 'exact', head: true })
                     .eq('artist_id', art.id);
-                  const realCount = typeof count === 'number' && count > 0 ? count : (art.followers_count || 1);
+                  // Utiliser le vrai compte DB, ou la valeur stockée, jamais de minimum artificiel
+                  const realCount = typeof count === 'number' ? count : (art.followers_count || 0);
                   return { ...art, followers_count: realCount };
                 } catch {
-                  return { ...art, followers_count: Math.max(1, art.followers_count || 1) };
+                  return { ...art, followers_count: art.followers_count || 0 };
                 }
               }
-              return { ...art, followers_count: Math.max(1, art.followers_count || 1) };
+              return { ...art, followers_count: art.followers_count || 0 };
             })
           );
 
@@ -369,7 +371,8 @@ export function FavoritesScreen({
                   city: p.city || 'Lomé',
                   country: p.country || 'TG',
                   verification_status: 'verified',
-                  followers_count: 1,
+                  // Valeur initiale : 0 (sera enrichie via la table organization_follows ci-dessous)
+                  followers_count: 0,
                   events_count: 0,
                   created_at: p.created_at || new Date().toISOString(),
                 });
@@ -396,13 +399,14 @@ export function FavoritesScreen({
                     .from('organization_follows')
                     .select('id', { count: 'exact', head: true })
                     .eq('organization_id', org.id);
-                  const realCount = typeof count === 'number' && count > 0 ? count : (org.followers_count || 1);
+                  // Utiliser le vrai compte DB, jamais de minimum artificiel
+                  const realCount = typeof count === 'number' ? count : (org.followers_count || 0);
                   return { ...org, followers_count: realCount };
                 } catch {
-                  return { ...org, followers_count: Math.max(1, org.followers_count || 1) };
+                  return { ...org, followers_count: org.followers_count || 0 };
                 }
               }
-              return { ...org, followers_count: Math.max(1, org.followers_count || 1) };
+              return { ...org, followers_count: org.followers_count || 0 };
             })
           );
 
@@ -794,7 +798,8 @@ export function FavoritesScreen({
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {art.city || 'Lomé'} · {art.followers_count ?? 1} {(art.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
+                        {/* Compteur dynamique : +1 si l'utilisateur suit actuellement (optimistic) */}
+                        {art.city || 'Lomé'} · {(art.followers_count || 0) + (isFollowingArtist(art.id) ? 1 : 0)} {((art.followers_count || 0) + (isFollowingArtist(art.id) ? 1 : 0)) > 1 ? 'abonnés' : 'abonné'} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
                       </p>
                     </div>
                   </button>
@@ -849,7 +854,8 @@ export function FavoritesScreen({
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {org.city || 'Lomé'} · {org.followers_count ?? 1} {(org.followers_count ?? 1) > 1 ? 'abonnés' : 'abonné'} · {org.events_count || 0} événement{(org.events_count || 0) > 1 ? 's' : ''}
+                        {/* Compteur dynamique : +1 si l'utilisateur suit actuellement (optimistic) */}
+                        {org.city || 'Lomé'} · {(org.followers_count || 0) + (isFollowingOrg(org.id) ? 1 : 0)} {((org.followers_count || 0) + (isFollowingOrg(org.id) ? 1 : 0)) > 1 ? 'abonnés' : 'abonné'} · {org.events_count || 0} événement{(org.events_count || 0) > 1 ? 's' : ''}
                       </p>
                     </div>
                   </button>

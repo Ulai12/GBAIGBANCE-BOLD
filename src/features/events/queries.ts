@@ -38,8 +38,9 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalArtists: 0,
       totalOrganizers: 0,
       totalTickets: baselineTickets,
-      totalParticipants: 4,
-      totalUsers: 4,
+      // 0 = aucune donnée disponible sans Supabase, jamais de valeur inventée
+      totalParticipants: 0,
+      totalUsers: 0,
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
@@ -70,7 +71,8 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     const totalTickets = dbTicketCount + localTicketCount;
     const totalRevenue = dbRevenue + localRevenue;
 
-    const totalUsers = Math.max(profilesRes.count ?? 0, 1);
+    // Nombre réel d'utilisateurs depuis profiles, sans minimum artificiel
+    const totalUsers = profilesRes.count ?? 0;
     const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0);
 
     const categories: Record<string, number> = {};
@@ -97,8 +99,9 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalArtists: 0,
       totalOrganizers: 0,
       totalTickets: baselineTickets,
-      totalParticipants: 4,
-      totalUsers: 4,
+      // 0 = aucune donnée disponible en cas d'erreur, jamais de valeur inventée
+      totalParticipants: 0,
+      totalUsers: 0,
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},

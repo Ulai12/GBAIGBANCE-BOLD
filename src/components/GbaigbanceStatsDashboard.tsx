@@ -92,9 +92,10 @@ export function GbaigbanceStatsDashboard({
   const totals = useMemo(() => {
     const realEvents = platformStats?.totalEvents ?? events.length;
     const statsObj = platformStats as unknown as { totalUsers?: number } | null | undefined;
-    const realUsers = statsObj?.totalUsers ?? platformStats?.totalParticipants ?? (events.reduce((sum, e) => sum + (e.attendees_count || 0), 0) || 4);
-    const realTickets = platformStats?.totalTickets ?? (events.reduce((sum, e) => sum + (e.attendees_count || 0), 0) || 0);
-    const realRevenue = platformStats?.totalRevenue ?? (events.reduce((sum, e) => sum + ((e.attendees_count || 0) * (e.price_min || 2500)), 0) || 0);
+    // Utilisation stricte des données réelles de la plateforme — jamais de valeurs inventées
+    const realUsers = statsObj?.totalUsers ?? platformStats?.totalParticipants ?? 0;
+    const realTickets = platformStats?.totalTickets ?? 0;
+    const realRevenue = platformStats?.totalRevenue ?? 0;
 
     return {
       tickets: realTickets,

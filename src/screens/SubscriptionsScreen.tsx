@@ -148,13 +148,13 @@ export function SubscriptionsScreen({
     };
   }, [refreshSubscriptions]);
 
-  // Polling silencieux 3s max
+  // Polling silencieux 30s (les mises à jour instantanées sont déjà gérées via les CustomEvents ci-dessus)
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshSubscriptions();
       }
-    }, 3000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [refreshSubscriptions]);
 

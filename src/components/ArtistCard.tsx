@@ -17,6 +17,11 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
   const { isFollowingArtist, toggleFollowArtist } = useFavorites();
   const following = isFollowingArtist(artist.id);
 
+  // Compteur d'abonnés en temps réel : on ajoute +1 si l'utilisateur suit (optimistic)
+  // et on soustrait -1 si la base indique qu'il suivait déjà mais qu'il ne suit plus.
+  // La valeur de base (artist.followers_count) vient toujours de la DB, on l'ajuste localement.
+  const liveFollowersCount = Math.max(0, (artist.followers_count || 0) + (following ? 1 : 0));
+
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const title = `${artist.name} sur Gbaïgbancê`;
@@ -92,7 +97,7 @@ export function ArtistCard({ artist, onClick, variant = 'default' }: ArtistCardP
               <h3 className="text-white font-black text-sm truncate">{artist.name}</h3>
             </div>
             <p className="text-white/80 text-[11px] font-medium">
-              {formatNumber(artist.followers_count, language)} followers
+              {formatNumber(liveFollowersCount, language)} followers
             </p>
           </div>
         </div>
