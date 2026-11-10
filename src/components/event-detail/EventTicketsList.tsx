@@ -120,7 +120,6 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                     <div className="flex items-center justify-end gap-1 mt-1 text-[9px] font-bold text-gray-400 dark:text-gray-400 uppercase">
                       <span className="px-1 py-0.5 rounded bg-black/[0.04] dark:bg-white/[0.06]">T-Money</span>
                       <span className="px-1 py-0.5 rounded bg-black/[0.04] dark:bg-white/[0.06]">Flooz</span>
-                      <span className="px-1 py-0.5 rounded bg-black/[0.04] dark:bg-white/[0.06]">MoMo</span>
                     </div>
                   </div>
                 </div>
@@ -167,7 +166,7 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500'
                             : 'bg-[#6600FF]'
                         }`}
-                        style={{ width: `${Math.min(100, Math.max(8, percentRemaining))}%` }}
+                        style={{ width: `${Math.min(100, Math.max(percentRemaining > 0 ? 2 : 0, percentRemaining))}%` }}
                       />
                     </div>
                   )}

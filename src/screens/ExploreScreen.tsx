@@ -121,10 +121,16 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   }, [query, selectedCategory, selectedCity, priceFilter, events.length]);
 
   const loadParticipants = useCallback(async () => {
+    const q = query.trim();
+    // « a » renvoyait n'importe quel profil dès l'ouverture de l'onglet Amis.
+    if (q.length < 2) {
+      setParticipants([]);
+      setLoadingParticipants(false);
+      return;
+    }
     setLoadingParticipants(true);
     try {
-      const results = await searchProfiles(query || 'a');
-      // Exclure l'utilisateur lui-même et les faux profils de test
+      const results = await searchProfiles(q);
       const filtered = results.filter((p) => p.id !== currentUser?.id && isRealProfile(p));
       setParticipants(filtered);
     } catch {
@@ -160,7 +166,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           loadParticipants();
         }
       }
-    }, 3000);
+    }, 20000);
 
     const unsubscribe = subscribeToGlobalEventsLive(() => {
       if (searchMode === 'events') {
@@ -170,7 +176,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
     const pruneTicker = setInterval(() => {
       setEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 3000);
+    }, 20000);
 
     return () => {
       clearInterval(periodicSync);
@@ -393,8 +399,12 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div className="mt-8">
               <EmptyState
                 icon={<Users className="w-10 h-10 text-[#6600FF]" />}
-                title="Aucun participant trouvé"
-                description="Recherchez un ami par son prénom ou nom pour visiter son profil et voir ses sorties."
+                title={query.trim().length < 2 ? 'Cherchez une personne' : 'Aucun participant trouvé'}
+                description={
+                  query.trim().length < 2
+                    ? 'Saisissez au moins 2 lettres du prénom ou du nom.'
+                    : 'Aucun profil ne correspond. Essayez une autre orthographe.'
+                }
               />
             </div>
           ) : (

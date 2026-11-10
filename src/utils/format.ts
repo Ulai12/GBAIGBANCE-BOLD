@@ -1,5 +1,5 @@
 export function formatPrice(price: number, currency: string = 'XOF'): string {
-  if (price === 0) return '';
+  if (!price || price <= 0) return 'Gratuit';
   const formatted = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 0,
   }).format(price);
@@ -87,4 +87,17 @@ export function formatNumber(num: number, lang: string = 'fr'): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}K`;
   return num.toLocaleString(locale);
+}
+
+/**
+ * Numéro WhatsApp international. Un numéro togolais à 8 chiffres sans indicatif
+ * ouvrait wa.me/90… qui ne correspond à aucun compte.
+ */
+export function toWhatsAppNumber(raw?: string | null): string {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('00228')) return digits.slice(2);
+  if (digits.startsWith('228') && digits.length >= 11) return digits;
+  if (digits.length === 8) return `228${digits}`;
+  return digits;
 }

@@ -171,14 +171,19 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     };
   }, [user, refreshTickets, onToast]);
 
-  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  // Secours si le temps réel est coupé. 3 s sur mobile vidait la batterie et
+  // relançait un fetch complet même hors de l'onglet Billets.
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible' &&
+        window.location.pathname === '/tickets'
+      ) {
         refreshTickets();
       }
-    }, 3000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [user, refreshTickets]);
 

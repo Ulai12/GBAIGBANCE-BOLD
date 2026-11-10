@@ -65,7 +65,7 @@ export function GbaigbanceStatsDashboard({
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         handleStatsUpdate();
       }
-    }, 3000);
+    }, 20000);
 
     window.addEventListener('gba-ticket-booked', handleStatsUpdate);
     window.addEventListener('gba-event-created', handleStatsUpdate);

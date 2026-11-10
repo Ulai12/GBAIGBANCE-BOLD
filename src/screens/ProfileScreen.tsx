@@ -182,7 +182,7 @@ export function ProfileScreen({
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshSilentCounts();
       }
-    }, 3000);
+    }, 20000);
 
     return () => {
       window.removeEventListener('gba-user-follow-changed', handleFollowChanged);

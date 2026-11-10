@@ -369,12 +369,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    // Polling en arrière-plan toutes les 3 secondes max (uniquement si page active/visible)
+    // Le temps réel met déjà à jour les suivis. 3 s forçait 4 requêtes en boucle.
     const periodicSync = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshAllFavoritesFromSupabase();
       }
-    }, 3000);
+    }, 20000);
 
     const handleFocusSync = () => {
       refreshAllFavoritesFromSupabase();

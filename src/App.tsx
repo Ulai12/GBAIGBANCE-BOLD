@@ -206,6 +206,14 @@ function AppContent() {
     }
   }, [navigate]);
 
+  // Un lien cadeau #claim=… doit ouvrir Mes billets, même s'il est collé sur une autre page.
+  useEffect(() => {
+    const hash = location.hash || '';
+    if (hash.includes('claim=') && location.pathname !== '/tickets') {
+      navigate({ pathname: '/tickets', hash }, { replace: true });
+    }
+  }, [location.hash, location.pathname, navigate]);
+
   // Support legacy ?event= query param deep linking
   useEffect(() => {
     const eventParam = searchParams.get('event');
@@ -538,9 +546,10 @@ function AppContent() {
         open={!!bookingEvent}
         event={bookingEvent}
         onClose={() => setBookingEvent(null)}
-        onSuccess={(qrCode) => {
-          addToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' });
+        onSuccess={() => {
+          addToast({ message: 'Billet confirmé. Retrouvez-le dans Mes billets.', type: 'success' });
           setBookingEvent(null);
+          navigate('/tickets');
         }}
       />
 

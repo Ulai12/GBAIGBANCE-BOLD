@@ -60,6 +60,9 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
   // Contrôle explicite du geste de glisser pour éviter le blocage du focus sur les inputs
   const dragControls = useDragControls();
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
@@ -85,7 +88,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
       if (event.key === 'Escape') {
         event.preventDefault();
         haptic.light();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -131,7 +134,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
         setTimeout(() => triggerElementRef.current?.focus(), 50);
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const handleDismiss = () => {
     haptic.light();
