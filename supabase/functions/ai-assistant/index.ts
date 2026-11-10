@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || Deno.env.get('NEXT_PUBLIC_SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const SUPABASE_ANON_KEY =
   Deno.env.get('SUPABASE_ANON_KEY') ||
   Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
@@ -18,39 +19,20 @@ const SUPABASE_ANON_KEY =
 // OUTILS DE JOURNALISATION STRUCTURÉE (LOGS EXPÉRIMENTÉS EDGE RUNTIME)
 // --------------------------------------------------------------------
 function maskToken(token: string | null | undefined): string {
-  if (!token) return '(empty)';
-  if (token.length <= 16) return `${token.slice(0, 4)}... [len:${token.length}]`;
-  return `${token.slice(0, 10)}...${token.slice(-4)} [len:${token.length}]`;
+  if (!token) return 'absent';
+  return 'present';
 }
 
-function log(reqId: string, tag: string, message: string, data?: unknown) {
-  const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
-  const prefix = `[${timestamp}][${reqId}][${tag}]`;
-  if (data !== undefined) {
-    console.log(`${prefix} ${message}`, typeof data === 'object' ? JSON.stringify(data) : data);
-  } else {
-    console.log(`${prefix} ${message}`);
-  }
+function log(reqId: string, tag: string, _message: string, _data?: unknown) {
+  console.log('[' + reqId + '][' + tag + '] event');
 }
 
-function warn(reqId: string, tag: string, message: string, data?: unknown) {
-  const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
-  const prefix = `[${timestamp}][${reqId}][${tag}]`;
-  if (data !== undefined) {
-    console.warn(`${prefix} ⚠️ ${message}`, typeof data === 'object' ? JSON.stringify(data) : data);
-  } else {
-    console.warn(`${prefix} ⚠️ ${message}`);
-  }
+function warn(reqId: string, tag: string, _message: string, _data?: unknown) {
+  console.warn('[' + reqId + '][' + tag + '] warning');
 }
 
-function err(reqId: string, tag: string, message: string, errorObj?: unknown) {
-  const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
-  const prefix = `[${timestamp}][${reqId}][${tag}]`;
-  if (errorObj !== undefined) {
-    console.error(`${prefix} ❌ ${message}`, errorObj);
-  } else {
-    console.error(`${prefix} ❌ ${message}`);
-  }
+function err(reqId: string, tag: string, _message: string, _errorObj?: unknown) {
+  console.error('[' + reqId + '][' + tag + '] error (details redacted)');
 }
 
 // Origines CORS autorisées
@@ -118,14 +100,12 @@ async function resolveGeminiModel(apiKey: string, reqId: string): Promise<string
 }
 
 function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
-  // Autoriser l'origine de l'appelant (navigateur, agent IA, script ou wildcard)
-  const matchedOrigin = requestOrigin || ALLOWED_ORIGINS[0] || '*';
-
+  const allowed = Boolean(requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin));
   return {
-    'Access-Control-Allow-Origin': matchedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers':
-      'authorization, apikey, content-type, x-client-info, x-gemini-api-key, x-request-id, user-agent',
+    ...(allowed ? { 'Access-Control-Allow-Origin': requestOrigin! } : {}),
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-gemini-api-key, x-request-id',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -728,26 +708,22 @@ async function executeToolCall(
 const handler = async (req: Request): Promise<Response> => {
   const reqStart = performance.now();
   const reqId =
-    req.headers.get('x-request-id') ||
-    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10));
+      : Math.random().toString(36).slice(2, 10);
 
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
-  // Pré-vol CORS
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: { 'Content-Type': 'application/json', Vary: 'Origin' } });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const clientIp = (
-    req.headers.get('x-forwarded-for')?.split(',')[0] ||
-    req.headers.get('cf-connecting-ip') ||
-    'anonymous'
-  ).trim();
-
-  log(reqId, 'REQ', `Incoming ${req.method} request from origin="${origin || 'none'}", IP="${clientIp}"`);
+  log(reqId, 'REQ', 'Incoming request');
 
   if (req.method !== 'POST') {
     warn(reqId, 'REQ', `Method ${req.method} not allowed`);
@@ -873,22 +849,23 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
 
-    // 3. Vérification du quota persistant via Postgres RPC
-    const rateLimitIdentifier = isAuthenticated && userId ? `user_${userId}` : `ip_${clientIp}`;
-    log(reqId, 'QUOTA', `Checking quota for identifier="${rateLimitIdentifier}" (isAuthenticated=${isAuthenticated})...`);
-
-    const { data: quotaCheck, error: quotaErr } = await anonClient.rpc('check_and_increment_ai_quota', {
-      p_identifier: rateLimitIdentifier,
+    // Quota is checked through a server-only RPC.
+    const clientIp = req.headers.get('cf-connecting-ip') || 'unknown';
+    const ipDigest = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientIp)))
+    ).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    const quotaResult = await createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }).rpc('check_and_increment_ai_quota', {
+      p_identifier: isAuthenticated && userId ? 'user_' + userId : 'ip_' + ipDigest,
       p_is_authenticated: isAuthenticated,
-      p_window_minutes: 10,
-      p_max_per_window: 20,
-      p_daily_max: 60,
     });
+    const quotaCheck = quotaResult.data;
+    const quotaErr = quotaResult.error;
 
-    if (quotaErr) {
-      warn(reqId, 'QUOTA', `RPC check_and_increment_ai_quota failed: ${quotaErr.message}. Allowing request.`);
+    if (quotaErr || !quotaCheck) {
+      err(reqId, 'QUOTA', 'Quota backend failed; request denied.', quotaErr);
+      return new Response(JSON.stringify({ error: 'Quota indisponible. Veuillez réessayer.' }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } else if (quotaCheck && quotaCheck.allowed === false) {
-      warn(reqId, 'QUOTA', `Rate limit exceeded for "${rateLimitIdentifier}": ${quotaCheck.message}`);
+      warn(reqId, 'QUOTA', 'Rate limit exceeded.');
       return new Response(
         JSON.stringify({
           error: quotaCheck.message || 'Quota dépassé. Veuillez patienter.',
@@ -940,7 +917,7 @@ const handler = async (req: Request): Promise<Response> => {
       const roundedLat = Number(rawLocation.lat.toFixed(2));
       const roundedLng = Number(rawLocation.lng.toFixed(2));
       locationContext = `\nPosition approximative de l'utilisateur (~1 km) : Lat ${roundedLat}, Lng ${roundedLng}.`;
-      log(reqId, 'GEO', `Appended approximate location context: Lat ${roundedLat}, Lng ${roundedLng}`);
+      log(reqId, 'GEO', 'Approximate location context added.');
     }
 
     // 5. Boucle d'outils bornée (Max 3 tours)
@@ -1166,8 +1143,8 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (errorCatch: unknown) {
     const totalDuration = Math.round(performance.now() - reqStart);
-    const errorMsg = errorCatch instanceof Error ? errorCatch.message : 'Erreur inattendue';
-    err(reqId, 'FATAL', `Request failed with error (${totalDuration}ms): ${errorMsg}`, errorCatch);
+    const errorMsg = 'Erreur interne inattendue';
+    err(reqId, 'FATAL', 'Request failed.', errorCatch);
 
     return new Response(JSON.stringify({ error: errorMsg, request_id: reqId }), {
       status: 500,
