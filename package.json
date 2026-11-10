@@ -9,7 +9,8 @@
     "build": "vite build && tsx scripts/generate-preview.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "wasm": "cargo build --manifest-path rust/gbaigbance-core/Cargo.toml --release --target wasm32-unknown-unknown && cp rust/gbaigbance-core/target/wasm32-unknown-unknown/release/gbaigbance_core.wasm public/wasm/gbaigbance-core.wasm"
   },
   "dependencies": {
     "@glass-sdk/liquid-glass": "~0.0.2",

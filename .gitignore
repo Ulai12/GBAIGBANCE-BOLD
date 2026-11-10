@@ -51,3 +51,6 @@ dev-dist/
 ehthumbs.db
 Thumbs.db
 [Dd]esktop.ini
+
+# Rust build cache (le .wasm servi est versionné dans public/wasm)
+rust/**/target/

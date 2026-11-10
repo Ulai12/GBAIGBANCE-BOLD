@@ -113,17 +113,18 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     }
 
     let isMounted = true;
+    let networkDone = false;
     getCachedUserTickets(user.id).then((storedTickets) => {
-      if (isMounted && storedTickets && storedTickets.length > 0) {
-        setCachedTicketsMemory(user.id, storedTickets);
-        setTickets(storedTickets);
-        setLoading(false);
-      }
+      if (!isMounted || networkDone || !storedTickets || storedTickets.length === 0) return;
+      setCachedTicketsMemory(user.id, storedTickets);
+      setTickets(storedTickets);
+      setLoading(false);
     });
 
     fetchUserTickets(user.id, user.phone, user.name)
       .then((data) => {
         if (!isMounted) return;
+        networkDone = true;
         const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
         setTickets(list);
         setCachedTicketsMemory(user.id, list);

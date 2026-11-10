@@ -37,6 +37,7 @@ import { getPublicEventCache, setPublicEventCache } from '@/infrastructure/cache
 import { shareEventNative } from '@/utils/share';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchEventAttendees, type AttendeeProfile } from '@/services/attendeesService';
+import { submitEventReport } from '@/features/events/reports';
 import { getDefaultEventCover } from '@/utils/defaultImages';
 
 // Subcomponents
@@ -1122,12 +1123,11 @@ export function EventDetailScreen({
         isOpen={showReportModal}
         eventTitle={displayEvent.title}
         onClose={() => setShowReportModal(false)}
-        onReportSubmitted={() => {
+        onReportSubmitted={async (reason, comment) => {
+          const result = await submitEventReport(displayEvent.id, reason, comment);
           haptic.success();
-          onToast({
-            message: 'Signalement transmis à l’équipe de modération (TODO / Démonstration)',
-            type: 'info',
-          });
+          onToast({ message: result.message, type: result.remote ? 'success' : 'info' });
+          return result;
         }}
       />
 

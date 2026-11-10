@@ -462,7 +462,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">1. Catégorie de pass</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {options.map((opt) => {
-                  const optAvailable = opt.quantity_total - opt.quantity_sold;
+                  const optAvailable = Math.max(0, (Number(opt.quantity_total) || 0) - (Number(opt.quantity_sold) || 0));
                   const isSelected = selectedOption?.id === opt.id;
                   return (
                     <button

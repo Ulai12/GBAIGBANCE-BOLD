@@ -5,7 +5,7 @@ interface EventReportModalProps {
   isOpen: boolean;
   eventTitle: string;
   onClose: () => void;
-  onReportSubmitted: (reason: string) => void;
+  onReportSubmitted: (reason: string, comment: string) => Promise<{ remote: boolean; message: string }>;
 }
 
 const REPORT_REASONS = [
@@ -25,17 +25,29 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<string>('fake_scam');
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [resultText, setResultText] = useState('');
+  const [sentRemote, setSentRemote] = useState(true);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      onReportSubmitted(selectedReason);
-      setSubmitted(false);
-      onClose();
-    }, 1200);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await onReportSubmitted(selectedReason, comment);
+      setSentRemote(result.remote);
+      setResultText(result.message);
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setComment('');
+        onClose();
+      }, 1400);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -67,7 +79,7 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center text-gray-500 dark:text-gray-300 transition-colors"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center text-gray-500 dark:text-gray-300 transition-colors"
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
@@ -79,7 +91,7 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
         <div className="mx-6 mt-4 p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
           <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed font-medium">
-            Vos signalements sont transmis directement à l'équipe de modération. Ils contribuent à maintenir un environnement sûr et fiable pour toute la communauté Gbaïgbancê.
+            Le motif est enregistré et transmis à la modération ainsi qu’à l’organisateur.
           </p>
         </div>
 
@@ -89,10 +101,10 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               <CheckCircle2 className="w-7 h-7" />
             </div>
             <h4 className="text-lg font-black text-[#1A1A2E] dark:text-white">
-              Signalement transmis
+              {sentRemote ? 'Signalement transmis' : 'Signalement conservé'}
             </h4>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              Merci pour votre vigilance. Notre équipe étudiera cette alerte dans les plus brefs délais.
+              {resultText || 'Merci pour votre vigilance.'}
             </p>
           </div>
         ) : (
@@ -148,10 +160,11 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex-1 min-h-[46px] rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-lg shadow-[#6600FF]/25 flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="flex-1 min-h-[46px] rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-lg shadow-[#6600FF]/25 flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <ShieldAlert className="w-4 h-4" />
-                <span>Confirmer l'alerte</span>
+                <span>{submitting ? 'Envoi…' : "Confirmer l'alerte"}</span>
               </button>
             </div>
           </form>

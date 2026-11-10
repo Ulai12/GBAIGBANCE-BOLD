@@ -1,6 +1,6 @@
 // ExploreScreen.tsx - Écran de découverte et de recherche enrichi (Événements & Participants/Amis),
 // synchronisation silencieuse 3s en arrière-plan, filtres dynamiques et responsive layout Apple HIG (mobile, tablette, PC).
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SlidersHorizontal,
   MapPin,
@@ -41,6 +41,7 @@ import {
 import { getCachedHomeData } from '@/services/cache';
 import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories, COUNTRY_FLAGS } from '@/constants';
 import type { Event, EventCategory, Profile } from '@/types';
+import { coreSearchIds } from '@/lib/rust-core';
 
 interface ExploreScreenProps {
   onEventClick: (event: Event) => void;
@@ -93,22 +94,52 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
+  const eventsCountRef = useRef(events.length);
+  eventsCountRef.current = events.length;
 
   // Participants trouvés lors de la recherche
   const [participants, setParticipants] = useState<Profile[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   const loadEvents = useCallback(async (isDefault = false) => {
-    setLoading((prev) => (events.length === 0 ? true : prev));
+    setLoading((prev) => (eventsCountRef.current === 0 ? true : prev));
     try {
-      const rawResult = query ? await searchEvents(query) : await fetchUpcomingEvents();
-      let result = rawResult
-        .map(hydrateEventCategories)
-        .filter((e) => isRealEvent(e) && !isEventTerminated(e));
-      if (selectedCategory) result = result.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
-      if (selectedCity) result = result.filter((e) => e.city === selectedCity);
-      if (priceFilter === 'free') result = result.filter((e) => e.price_min === 0);
-      if (priceFilter === 'paid') result = result.filter((e) => e.price_min > 0);
+      const q = query.trim();
+      const rawSql = q ? await searchEvents(q) : await fetchUpcomingEvents();
+      // Le SQL ne plie pas les accents : on croise aussi le catalogue déjà chargé.
+      const catalog = q.length >= 2 ? (exploreCache && exploreCache.length > 0 ? exploreCache : await fetchUpcomingEvents()) : [];
+      const merged = new Map<string, Event>();
+      for (const event of [...catalog, ...rawSql]) {
+        if (event?.id) merged.set(event.id, event);
+      }
+      const applyFilters = (list: Event[]) => {
+        let next = list.map(hydrateEventCategories).filter((e) => isRealEvent(e) && !isEventTerminated(e));
+        if (selectedCategory) next = next.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
+        if (selectedCity) next = next.filter((e) => e.city === selectedCity);
+        if (priceFilter === 'free') next = next.filter((e) => e.price_min === 0 || e.is_free);
+        if (priceFilter === 'paid') next = next.filter((e) => (e.price_min || 0) > 0 && !e.is_free);
+        return next;
+      };
+      let result = applyFilters(q.length >= 2 ? [...merged.values()] : rawSql);
+      if (q.length >= 2) {
+        const ranked = await coreSearchIds(
+          q,
+          result.map((event) => ({
+            id: event.id,
+            title: event.title,
+            city: event.city,
+            category: event.category,
+            description: event.description || '',
+            location: event.location_name,
+          }))
+        );
+        if (ranked) {
+          const byId = new Map(result.map((event) => [event.id, event]));
+          result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
+        } else {
+          result = applyFilters(rawSql);
+        }
+      }
       setEvents(result);
       if (isDefault) {
         exploreCache = result;
@@ -118,7 +149,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     } finally {
       setLoading(false);
     }
-  }, [query, selectedCategory, selectedCity, priceFilter, events.length]);
+  }, [query, selectedCategory, selectedCity, priceFilter]);
 
   const loadParticipants = useCallback(async () => {
     const q = query.trim();

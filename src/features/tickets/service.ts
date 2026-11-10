@@ -8,6 +8,7 @@ import type {
   Event,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
+import { coreMergeIds } from '@/lib/rust-core';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
 
@@ -562,15 +563,22 @@ export async function fetchUserTickets(userId: string, userPhone?: string | null
 
   const seen = new Set<string>();
   const merged: Ticket[] = [];
-
-  // La base gagne sur le cache local : un billet annulé côté serveur ne restait
-  // « valide » à l'écran parce que la copie locale était lue en premier.
-  for (const t of [...dbTickets, ...localTickets, ...friendGifts]) {
-    const id = t.id || '';
-    if (id && !seen.has(id)) {
-      seen.add(id);
-      merged.push(t);
-    }
+  const pool = new Map<string, Ticket>();
+  for (const ticket of [...dbTickets, ...localTickets, ...friendGifts]) {
+    if (ticket?.id && !pool.has(ticket.id)) pool.set(ticket.id, ticket);
+  }
+  // Le serveur passe devant le cache. Rust retire les doublons d'id.
+  const order = await coreMergeIds(
+    dbTickets.map((ticket) => ticket.id),
+    [...localTickets, ...friendGifts].map((ticket) => ticket.id),
+    []
+  );
+  const ordered = order && order.length > 0 ? order : [...pool.keys()];
+  for (const id of ordered) {
+    const ticket = pool.get(id);
+    if (!ticket || seen.has(id)) continue;
+    seen.add(id);
+    merged.push(ticket);
   }
 
   if (isSupabaseConfigured) {
