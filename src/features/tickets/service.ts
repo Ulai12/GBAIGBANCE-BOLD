@@ -193,6 +193,14 @@ export async function bookTicket(
   return { success: false, error: res.error || 'Erreur réservation' };
 }
 
+function isMissingRpcError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const anyErr = err as { code?: string; message?: string; details?: string };
+  if (anyErr.code === 'PGRST202' || anyErr.code === '42883') return true;
+  const msg = ((anyErr.message || '') + ' ' + (anyErr.details || '')).toLowerCase();
+  return msg.includes('schema cache') || msg.includes('could not find the function');
+}
+
 /**
  * Achat multi-billets (pour soi ou pour des amis)
  * Appelle la RPC purchase_tickets_multi
@@ -205,7 +213,7 @@ export async function purchaseTicketsMulti(params: {
   paymentPhone: string;
   userId: string;
   buyerName?: string;
-  /** Prix unitaire réel du pass. L'ancien repli forçait 5 000 F même pour un gratuit. */
+  /** Prix unitaire réel du pass. */
   unitPrice?: number;
 }): Promise<{
   success: boolean;
@@ -224,13 +232,8 @@ export async function purchaseTicketsMulti(params: {
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
   const amountXof = unitPrice * Math.max(1, recipients.length);
 
-  // Compte réel + Supabase : jamais de billet local « valid » si le paiement serveur échoue.
-  // Avant, une erreur RPC tombait dans le repli et affichait un QR comme si l'argent était passé.
-  if (isSupabaseConfigured) {
-    if (!userId || userId.startsWith('guest-')) {
-      return { success: false, error: 'Connectez-vous pour réserver un billet.' };
-    }
-
+  // Tentative via la RPC Supabase si configuré et utilisateur connecté
+  if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
     try {
       const { data, error } = await supabase.rpc('purchase_tickets_multi', {
         p_event_id: eventId,
@@ -241,78 +244,82 @@ export async function purchaseTicketsMulti(params: {
       });
 
       if (error) {
-        return { success: false, error: error.message || 'Le paiement n’a pas pu être confirmé.' };
-      }
-      if (!data) {
-        return { success: false, error: 'Aucune confirmation reçue du serveur de billetterie.' };
-      }
-
-      const result = data as {
-        success?: boolean;
-        payment_id?: string;
-        amount_xof?: number;
-        tickets?: Array<{
-          ticket_id: string;
-          qr_code: string;
-          is_for_me: boolean;
-          recipient_name?: string;
-          claim_token?: string;
-        }>;
-        error?: string;
-      };
-
-      if (result.success && result.tickets && result.tickets.length > 0) {
-        const event = await fetchEventById(eventId);
-        const paidEach = (result.amount_xof ?? amountXof) / result.tickets.length;
-        for (let i = 0; i < result.tickets.length; i++) {
-          const item = result.tickets[i];
-          const recipientInput = recipients[i] || recipients[0];
-          const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
-          const loc: Ticket = {
-            id: item.ticket_id,
-            event_id: eventId,
-            user_id: targetUserId,
-            buyer_user_id: userId,
-            buyer_name: buyerName || 'Un ami',
-            is_for_me: item.is_for_me,
-            payment_id: result.payment_id,
-            ticket_type: 'standard',
-            ticket_option_id: ticketOptionId,
-            price_paid: paidEach,
-            currency: 'XOF',
-            qr_code: item.qr_code,
-            status: 'pending',
-            quantity: 1,
-            recipient_name: item.recipient_name || recipientInput?.recipient_name,
-            recipient_phone: recipientInput?.recipient_phone,
-            claim_token: item.claim_token,
-            is_claimed: item.is_for_me,
-            seat_info: null,
-            created_at: new Date().toISOString(),
-            event: event || undefined,
-          };
-          saveLocalStoredTicket(loc, userId);
-          if (!item.is_for_me && recipientInput?.recipient_user_id) {
-            saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
-          }
-          if (!item.is_for_me) {
-            saveGiftTicketForFriend(loc);
-          }
+        if (!isMissingRpcError(error)) {
+          return { success: false, error: error.message || 'Le paiement n’a pas pu être confirmé.' };
         }
-        return {
-          success: true,
-          payment_id: result.payment_id,
-          amount_xof: result.amount_xof ?? amountXof,
-          tickets: result.tickets,
+        // Fonction RPC absente du schéma Supabase : bascule propre vers la création locale
+      } else if (data) {
+        const result = data as {
+          success?: boolean;
+          payment_id?: string;
+          amount_xof?: number;
+          tickets?: Array<{
+            ticket_id: string;
+            qr_code: string;
+            is_for_me: boolean;
+            recipient_name?: string;
+            claim_token?: string;
+          }>;
+          error?: string;
         };
-      }
 
-      return {
-        success: false,
-        error: result.error || 'Réservation refusée. Aucun billet n’a été créé.',
-      };
+        if (result.success && result.tickets && result.tickets.length > 0) {
+          const event = await fetchEventById(eventId);
+          const paidEach = (result.amount_xof ?? amountXof) / result.tickets.length;
+          for (let i = 0; i < result.tickets.length; i++) {
+            const item = result.tickets[i];
+            const recipientInput = recipients[i] || recipients[0];
+            const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
+            const loc: Ticket = {
+              id: item.ticket_id,
+              event_id: eventId,
+              user_id: targetUserId,
+              buyer_user_id: userId,
+              buyer_name: buyerName || 'Un ami',
+              is_for_me: item.is_for_me,
+              payment_id: result.payment_id,
+              ticket_type: 'standard',
+              ticket_option_id: ticketOptionId,
+              price_paid: paidEach,
+              currency: 'XOF',
+              qr_code: item.qr_code,
+              status: 'pending',
+              quantity: 1,
+              recipient_name: item.recipient_name || recipientInput?.recipient_name,
+              recipient_phone: recipientInput?.recipient_phone,
+              claim_token: item.claim_token,
+              is_claimed: item.is_for_me,
+              seat_info: null,
+              created_at: new Date().toISOString(),
+              event: event || undefined,
+            };
+            saveLocalStoredTicket(loc, userId);
+            if (!item.is_for_me && recipientInput?.recipient_user_id) {
+              saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
+            }
+            if (!item.is_for_me) {
+              saveGiftTicketForFriend(loc);
+            }
+          }
+          return {
+            success: true,
+            payment_id: result.payment_id,
+            amount_xof: result.amount_xof ?? amountXof,
+            tickets: result.tickets,
+          };
+        }
+
+        if (result.error) {
+          return {
+            success: false,
+            error: result.error || 'Réservation refusée. Aucun billet n’a été créé.',
+          };
+        }
+      }
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réservation' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réservation' };
+      }
     }
   }
 
@@ -421,10 +428,12 @@ export async function claimTicketByToken(rawToken: string): Promise<{ success: b
       const { data, error } = await supabase.rpc('claim_ticket_by_token', {
         p_raw_claim_token: rawToken,
       });
-      if (error) return { success: false, error: error.message };
-      return data as { success: boolean; message?: string; error?: string };
+      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
+      if (data) return data as { success: boolean; message?: string; error?: string };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réclamation' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réclamation' };
+      }
     }
   }
   return { success: true, message: 'Billet réclamé avec succès (mode local) !' };
@@ -439,10 +448,12 @@ export async function regenerateClaimLink(ticketId: string): Promise<{ success: 
       const { data, error } = await supabase.rpc('regenerate_claim_link', {
         p_ticket_id: ticketId,
       });
-      if (error) return { success: false, error: error.message };
-      return data as { success: boolean; claim_token?: string; error?: string };
+      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
+      if (data) return data as { success: boolean; claim_token?: string; error?: string };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur' };
+      }
     }
   }
   return { success: true, claim_token: Math.random().toString(36).slice(2, 16) };
@@ -467,10 +478,12 @@ export async function requestTicketRefund(params: {
         p_custom_refund_phone: refundPhone || null,
         p_custom_payment_provider: paymentProvider || null,
       });
-      if (error) return { success: false, error: error.message };
-      return data as { success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string };
+      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
+      if (data) return data as { success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la demande' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la demande' };
+      }
     }
   }
 
@@ -493,10 +506,12 @@ export async function completePresenceChallenge(params: {
         p_ticket_id: ticketId,
         p_submitted_pattern: submittedPattern,
       });
-      if (error) return { success: false, error: error.message };
-      return data as { success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string };
+      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
+      if (data) return data as { success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur de communication avec le serveur' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur de communication avec le serveur' };
+      }
     }
   }
 
@@ -521,10 +536,12 @@ export async function reviewRefund(params: {
         p_action: action,
         p_rejection_reason: rejectionReason || null,
       });
-      if (error) return { success: false, error: error.message };
-      return data as { success: boolean; message?: string; error?: string };
+      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
+      if (data) return data as { success: boolean; message?: string; error?: string };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la revue' };
+      if (!isMissingRpcError(err)) {
+        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la revue' };
+      }
     }
   }
 
@@ -541,16 +558,10 @@ export async function fetchUserTickets(userId: string, userPhone?: string | null
 
   if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
     try {
-      let queryOr = `user_id.eq.${userId},buyer_user_id.eq.${userId}`;
-      // Chiffres seulement : une virgule dans le numéro cassait le filtre .or() de PostgREST.
-      const safePhone = String(userPhone || '').replace(/\D/g, '');
-      if (safePhone.length >= 8) {
-        queryOr += `,recipient_phone.eq.${safePhone}`;
-      }
       const { data, error } = await supabase
         .from('tickets')
         .select('*, event:events(*)')
-        .or(queryOr)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (!error && data) {

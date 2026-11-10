@@ -35,11 +35,12 @@ L'assistant intelligent de Gbaigbance fonctionne selon un principe de **véracit
 
 ## 2. Emplacements du System Prompt
 
-Pour garantir la synchronisation parfaite quel que soit le mode d'exécution :
+Pour garantir la synchronisation parfaite :
+- **Serveur d'API Gbaigbance** : `/server.ts` (routes `/api/ai/*` & pont WebSocket `/live`)
+- **Constante Partagée** : `/src/constants/aiSystemPrompt.ts` (constante `AI_SYSTEM_INSTRUCTION`)
 - **Edge Function Supabase** : `/supabase/functions/ai-assistant/index.ts` (constante `SYSTEM_INSTRUCTION`)
-- **Repli Client Direct (BYOK / 404 fallback)** : `/src/services/aiAssistantDirect.ts` (constante `SYSTEM_INSTRUCTION`)
 
-Veillez à toujours maintenir ces deux définitions strictement alignées lors de modifications futures.
+Veillez à toujours maintenir ces définitions strictement alignées lors de modifications futures.
 
 ---
 

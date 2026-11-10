@@ -1,8 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams, useNavigationType, Navigate } from 'react-router-dom';
 import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
@@ -626,8 +624,6 @@ function App() {
             </FavoritesProvider>
           </DataSaverProvider>
         </AppProvider>
-        <Analytics />
-        <SpeedInsights />
       </BrowserRouter>
     </ErrorBoundary>
   );

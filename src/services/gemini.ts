@@ -1,19 +1,11 @@
 /**
- * GBAIGBANCE — Service IA Cloud & Hybrid Key Facade
+ * GBAIGBANCE — Service IA Serveur & Façade Gemini
  * 
- * L'assistant IA fonctionne en mode hybride :
- * 1. Mode Serveur Cloud (Supabase Edge Function) :
- *    - Si l'Edge Function est déployée, elle traite la requête côté serveur.
- *    - Si l'utilisateur fournit sa propre clé (BYOK), celle-ci est envoyée via l'en-tête `x-gemini-api-key`
- *      pour utiliser son quota personnel sur le serveur.
- * 2. Mode Direct (Secours / Sans serveur) :
- *    - Si l'Edge Function n'est pas encore déployée (HTTP 404), le client utilise
- *      la clé API Gemini fournie par l'utilisateur directement avec les outils en lecture seule.
+ * Toutes les requêtes Gemini (textes, streaming, Live audio) sont exécutées
+ * côté serveur via le SDK officiel @google/genai et relayées aux clients.
  */
 
-import { streamAIAssistant } from '@/services/aiAssistantService';
 import type { Event } from '@/types';
-import { safeFetch } from '@/utils/safeFetch';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -33,60 +25,39 @@ export interface GeminiModelOption {
 
 export const GEMINI_AVAILABLE_MODELS: GeminiModelOption[] = [
   {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    badge: 'Recommandé',
-    description: 'Modèle ultra-rapide optimisé pour la billetterie et le streaming',
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    badge: 'Serveur Actif',
+    description: 'Modèle officiel ultra-rapide optimisé pour le concierge et la billetterie',
     recommended: true,
+  },
+  {
+    id: 'gemini-3.8-live',
+    name: 'Gemini 3.8 Live',
+    badge: 'Voix Temps Réel',
+    description: 'Mode conversation vocale interactive basse latence via WebSocket',
   },
 ];
 
-const API_KEY_KEY = 'gbaigbance_gemini_api_key';
-
 export function getUserGeminiApiKey(): string {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(API_KEY_KEY);
-      if (stored && stored.trim()) return stored.trim();
-    } catch {
-      // Ignorer
-    }
-  }
-  return (
-    (import.meta.env.VITE_GEMINI_API_KEY as string) ||
-    (import.meta.env.NEXT_PUBLIC_GEMINI_API_KEY as string) ||
-    (import.meta.env.GEMINI_API_KEY as string) ||
-    ''
-  );
+  return '';
 }
 
-export function setUserGeminiApiKey(key: string): void {
-  if (typeof window !== 'undefined') {
-    try {
-      if (key && key.trim()) {
-        localStorage.setItem(API_KEY_KEY, key.trim());
-      } else {
-        localStorage.removeItem(API_KEY_KEY);
-      }
-      window.dispatchEvent(new CustomEvent('gbaigbance_gemini_config_updated'));
-    } catch {
-      // Ignorer
-    }
-  }
+export function setUserGeminiApiKey(..._args: unknown[]): void {
+  void _args;
+  // L'authentification et les clés sont gérées côté serveur
 }
 
 export function removeUserGeminiApiKey(): void {
-  setUserGeminiApiKey('');
+  // Géré côté serveur
 }
 
 export function hasUserGeminiApiKey(): boolean {
-  return Boolean(getUserGeminiApiKey());
+  return false;
 }
 
 /**
- * L'assistant IA est toujours actif grâce au fonctionnement hybride :
- * soit via l'Edge Function Supabase (backend par défaut),
- * soit via le mode direct client si une clé BYOK est configurée.
+ * L'assistant IA est toujours actif grâce à l'infrastructure serveur dédiée.
  */
 export function isGeminiActive(): boolean {
   return true;
@@ -94,20 +65,18 @@ export function isGeminiActive(): boolean {
 
 export function getGeminiConfig(): GeminiConfig {
   return {
-    apiKey: getUserGeminiApiKey(),
+    apiKey: '',
     enabled: true,
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.8-flash',
     enableMapsGrounding: true,
     temperature: 0.7,
   };
 }
 
 export async function saveGeminiConfigToAccount(
-  partial: Partial<GeminiConfig>
+  ..._args: unknown[]
 ): Promise<GeminiConfig> {
-  if (partial.apiKey !== undefined) {
-    setUserGeminiApiKey(partial.apiKey);
-  }
+  void _args;
   return getGeminiConfig();
 }
 
@@ -115,171 +84,41 @@ export async function loadGeminiConfigFromAccount(): Promise<GeminiConfig> {
   return getGeminiConfig();
 }
 
-/**
- * Synchronise la clé API Gemini depuis le profil ou les métadonnées utilisateur
- * si aucune clé locale n'est encore configurée sur l'appareil.
- */
 export async function syncGeminiConfigFromAccount(
-  userMetadata?: Record<string, unknown>,
-  profileGeminiConfig?: Record<string, unknown> | null
+  ..._args: unknown[]
 ): Promise<void> {
-  const remoteApiKey =
-    (profileGeminiConfig?.apiKey as string) ||
-    (profileGeminiConfig?.api_key as string) ||
-    (userMetadata?.gemini_api_key as string) ||
-    (userMetadata?.geminiApiKey as string);
-
-  if (remoteApiKey && typeof remoteApiKey === 'string' && remoteApiKey.trim()) {
-    const currentKey = getUserGeminiApiKey();
-    if (!currentKey) {
-      setUserGeminiApiKey(remoteApiKey.trim());
-    }
-  }
+  void _args;
+  // Pas d'action requise : gestion serveur
 }
 
 export function clearGeminiLocalConfig(): void {
-  removeUserGeminiApiKey();
+  // Géré côté serveur
 }
 
-const resolvedModelsMap = new Map<string, string>();
-
-/**
- * Détecte dynamiquement le modèle Gemini disponible et supporté par la clé API de l'utilisateur.
- * Évite les erreurs 404 (Requested entity was not found) lorsque certains modèles ne sont pas activés sur la clé.
- */
-export async function resolveAvailableGeminiModel(apiKey: string): Promise<string> {
-  const trimmed = apiKey.trim();
-  if (resolvedModelsMap.has(trimmed)) {
-    return resolvedModelsMap.get(trimmed)!;
-  }
-
-  const candidateModels = [
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash-exp',
-  ];
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
-
-    const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${trimmed}`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timeout);
-
-    if (listRes.ok) {
-      const data = await listRes.json();
-      const models = data.models || [];
-      const supported = models
-        .filter((m: { supportedGenerationMethods?: string[] }) =>
-          Array.isArray(m.supportedGenerationMethods) &&
-          m.supportedGenerationMethods.includes('generateContent')
-        )
-        .map((m: { name: string }) => m.name.replace(/^models\//, ''));
-
-      for (const cand of candidateModels) {
-        if (supported.includes(cand)) {
-          resolvedModelsMap.set(trimmed, cand);
-          return cand;
-        }
-      }
-
-      const anyFlash = supported.find((n: string) => n.includes('flash'));
-      if (anyFlash) {
-        resolvedModelsMap.set(trimmed, anyFlash);
-        return anyFlash;
-      }
-
-      if (supported.length > 0) {
-        resolvedModelsMap.set(trimmed, supported[0]);
-        return supported[0];
-      }
-    }
-  } catch {
-    // Si l'endpoint de liste n'est pas accessible, on teste directement les modèles candidats
-  }
-
-  for (const cand of candidateModels) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2500);
-
-      const testRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${cand}:generateContent?key=${trimmed}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'ping' }] }],
-            generationConfig: { maxOutputTokens: 1 },
-          }),
-          signal: controller.signal,
-        }
-      );
-      clearTimeout(timeout);
-
-      if (testRes.ok) {
-        resolvedModelsMap.set(trimmed, cand);
-        return cand;
-      }
-    } catch {
-      // Suivant
-    }
-  }
-
-  // Modèle le plus largement déployé par défaut
-  const fallback = 'gemini-1.5-flash';
-  resolvedModelsMap.set(trimmed, fallback);
-  return fallback;
+export async function resolveAvailableGeminiModel(): Promise<string> {
+  return 'gemini-3.8-flash';
 }
 
-export async function testGeminiApiKey(key?: string): Promise<{ success: boolean; message: string; model?: string }> {
-  const activeKey = key?.trim() || getUserGeminiApiKey();
-  if (!activeKey) {
-    return {
-      success: false,
-      message: 'Veuillez saisir une clé API Gemini pour tester.',
-    };
-  }
-
+export async function testGeminiApiKey(): Promise<{ success: boolean; message: string; model?: string }> {
   try {
-    resolvedModelsMap.delete(activeKey);
-    const model = await resolveAvailableGeminiModel(activeKey);
-
-    const res = await safeFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Bonjour' }] }],
-          generationConfig: { maxOutputTokens: 5 },
-        }),
-        timeoutMs: 8000,
-        retries: 0,
-      }
-    );
-
+    const res = await fetch('/api/ai/status');
     if (res.ok) {
+      const data = await res.json();
       return {
         success: true,
-        message: `Clé API validée avec succès avec le modèle ${model} !`,
-        model,
+        message: `Service IA serveur opérationnel avec ${data.model} !`,
+        model: data.model,
       };
     }
-
-    const err = await res.json().catch(() => ({}));
     return {
       success: false,
-      message: err.error?.message || `Erreur Google AI (${res.status})`,
+      message: 'Service IA temporairement indisponible',
     };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Impossible de contacter Google AI';
-    return { success: false, message: msg };
+  } catch {
+    return {
+      success: false,
+      message: 'Impossible de joindre le serveur IA',
+    };
   }
 }
 
@@ -291,38 +130,33 @@ export interface AskAssistantOptions {
 }
 
 /**
- * Appelle l'assistant IA et retourne la réponse complète.
+ * Appelle l'assistant IA serveur et retourne la réponse complète.
  */
 export async function askGeminiAssistant(
   options: AskAssistantOptions
 ): Promise<{ text: string }> {
-  return new Promise((resolve, reject) => {
-    let fullText = '';
-    const location = options.userLocation
-      ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
-      : null;
+  try {
+    const res = await fetch('/api/ai/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: options.prompt,
+        currentEvent: options.currentEvent,
+        userLocation: options.userLocation
+          ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
+          : null,
+      }),
+    });
 
-    let userPrompt = options.prompt;
-    if (options.currentEvent) {
-      userPrompt = `À propos de l'événement "${options.currentEvent.title}" (${options.currentEvent.location_name || ''}, ${options.currentEvent.city || 'Lomé'}) : ${options.prompt}`;
+    if (res.ok) {
+      const data = await res.json();
+      return { text: data.text || 'Aucune réponse reçue de l’assistant.' };
     }
 
-    streamAIAssistant(
-      {
-        messages: [{ role: 'user', text: userPrompt }],
-        userLocation: location,
-      },
-      {
-        onChunk: (chunk) => {
-          fullText += chunk;
-        },
-        onDone: () => {
-          resolve({ text: fullText || 'Aucune réponse reçue de l’assistant.' });
-        },
-        onError: (err) => {
-          reject(new Error(err));
-        },
-      }
-    ).catch(reject);
-  });
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Erreur serveur (${res.status})`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erreur de communication avec l’assistant';
+    return { text: `Désolé, une erreur est survenue : ${msg}` };
+  }
 }

@@ -12,23 +12,18 @@ import {
   ChevronRight,
   LogIn,
   AlertCircle,
-  Key,
-  CheckCircle2,
-  ExternalLink,
+  Mic,
+  MicOff,
+  Volume2,
 } from 'lucide-react';
 import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
 import { useAIAssistant, type ChatMessage } from '@/hooks/useAIAssistant';
 import { useApp } from '@/hooks/useApp';
-import {
-  getUserGeminiApiKey,
-  setUserGeminiApiKey,
-  testGeminiApiKey,
-  hasUserGeminiApiKey,
-} from '@/services/gemini';
+import { liveAudioClient } from '@/services/liveAudio';
 import type { Event } from '@/types';
 
 // ====================================================================
-// GBAIGBANCE — COMPOSANT AIAssistantModal (SÉCURISÉ & HYBRIDE BYOK)
+// GBAIGBANCE — COMPOSANT AIAssistantModal (SERVEUR STREAMING & LIVE API)
 // ====================================================================
 
 interface AIAssistantModalProps {
@@ -67,11 +62,10 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   } = useAIAssistant();
 
   const [input, setInput] = useState('');
-  const [showKeyConfig, setShowKeyConfig] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(getUserGeminiApiKey);
-  const [isTestingKey, setIsTestingKey] = useState(false);
-  const [keyTestFeedback, setKeyTestFeedback] = useState<{ success: boolean; message: string } | null>(null);
-  const [hasCustomKey, setHasCustomKey] = useState(hasUserGeminiApiKey);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [isVoiceConnecting, setIsVoiceConnecting] = useState(false);
+  const [isModelTalking, setIsModelTalking] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -81,12 +75,15 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }
   }, [messages, isStreaming, isOpen]);
 
-  // Si une erreur signale que l'Edge Function n'est pas trouvée ou qu'aucune clé n'est fournie, suggérer la saisie
+  // Nettoyage de la session vocale si la modale est fermée
   useEffect(() => {
-    if (error && (error.includes('404') || error.includes('clé') || error.includes('inaccessible'))) {
-      setShowKeyConfig(true);
+    if (!isOpen && isVoiceActive) {
+      liveAudioClient.stop();
+      setIsVoiceActive(false);
+      setIsModelTalking(false);
+      setVoiceError(null);
     }
-  }, [error]);
+  }, [isOpen, isVoiceActive]);
 
   if (!isOpen) return null;
 
@@ -104,29 +101,45 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }
   };
 
-  const handleSaveAndTestKey = async () => {
-    const trimmed = apiKeyInput.trim();
-    if (!trimmed) {
-      setUserGeminiApiKey('');
-      setHasCustomKey(false);
-      setKeyTestFeedback({ success: false, message: 'Clé effacée.' });
+  const handleToggleVoice = async () => {
+    if (isVoiceActive) {
+      liveAudioClient.stop();
+      setIsVoiceActive(false);
+      setIsModelTalking(false);
+      setVoiceError(null);
       return;
     }
 
-    setIsTestingKey(true);
-    setKeyTestFeedback(null);
-    const res = await testGeminiApiKey(trimmed);
-    setIsTestingKey(false);
-    setKeyTestFeedback(res);
+    setVoiceError(null);
+    setIsVoiceConnecting(true);
 
-    if (res.success) {
-      setUserGeminiApiKey(trimmed);
-      setHasCustomKey(true);
-      setTimeout(() => setShowKeyConfig(false), 1400);
+    try {
+      await liveAudioClient.start({
+        onConnected: () => {
+          setIsVoiceConnecting(false);
+          setIsVoiceActive(true);
+        },
+        onTalking: (talking) => {
+          setIsModelTalking(talking);
+        },
+        onError: (err) => {
+          setIsVoiceConnecting(false);
+          setIsVoiceActive(false);
+          setVoiceError(err);
+        },
+        onClosed: () => {
+          setIsVoiceConnecting(false);
+          setIsVoiceActive(false);
+          setIsModelTalking(false);
+        },
+      });
+    } catch {
+      setIsVoiceConnecting(false);
+      setIsVoiceActive(false);
+      setVoiceError("Impossible d'accéder au micro ou d'établir la connexion vocale.");
     }
   };
 
-  // Rendu sécurisé en texte brut (pas d'injection de liens externes ni d'images pirates)
   const renderPlainText = (content: string) => {
     return content.split('\n').map((line, idx) => (
       <span key={idx} className="block leading-relaxed min-h-[1.25rem]">
@@ -157,8 +170,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                 <h2 className="text-sm font-extrabold text-[#17131D] dark:text-white tracking-tight">
                   Concierge Gbaigbance IA
                 </h2>
-                <span className="px-1.5 py-0.5 rounded-full bg-[#6600FF]/15 border border-[#6600FF]/30 text-[9px] font-bold text-[#6600FF] dark:text-[#A855F7]">
-                  {hasCustomKey ? 'Clé Perso' : 'Cloud'}
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  En ligne
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-zinc-400 flex items-center gap-1">
@@ -173,21 +186,29 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Bouton bascule Mode Vocal Live */}
             <button
               type="button"
-              onClick={() => setShowKeyConfig(!showKeyConfig)}
-              title="Configurer votre propre clé API Gemini"
-              className={`p-2 rounded-full transition-colors relative ${
-                showKeyConfig
-                  ? 'bg-[#6600FF] text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
+              onClick={handleToggleVoice}
+              disabled={isVoiceConnecting}
+              title={isVoiceActive ? 'Désactiver la voix en direct' : 'Activer la conversation vocale en direct'}
+              className={`p-2 rounded-full transition-all relative ${
+                isVoiceActive
+                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse'
+                  : isVoiceConnecting
+                  ? 'bg-purple-100 text-[#6600FF] dark:bg-purple-950/40'
+                  : 'text-gray-500 hover:text-[#6600FF] dark:text-zinc-400 dark:hover:text-purple-400 hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
-              <Key className="w-4 h-4" />
-              {hasCustomKey && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500" />
+              {isVoiceConnecting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isVoiceActive ? (
+                <MicOff className="w-4 h-4" />
+              ) : (
+                <Mic className="w-4 h-4" />
               )}
             </button>
+
             <button
               type="button"
               onClick={clearHistory}
@@ -206,61 +227,44 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
         </div>
 
-        {/* Panneau dépliant : Configuration de sa propre clé API (BYOK) */}
-        {showKeyConfig && (
-          <div className="p-4 bg-gradient-to-b from-[#6600FF]/10 to-transparent border-b border-black/[0.06] dark:border-white/10 text-xs space-y-3 animate-in slide-in-from-top duration-200">
-            <div className="flex items-start justify-between gap-2">
+        {/* Bannière Mode Vocal Live interactif */}
+        {isVoiceActive && (
+          <div className="px-4 py-3 bg-gradient-to-r from-[#6600FF]/15 via-[#9333EA]/10 to-[#6600FF]/15 border-b border-[#6600FF]/20 flex items-center justify-between text-xs animate-in slide-in-from-top duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping shrink-0" />
               <div>
-                <h3 className="font-extrabold text-gray-900 dark:text-white text-xs flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-[#6600FF]" />
-                  <span>Utiliser votre propre clé API Gemini (Google AI Studio)</span>
-                </h3>
-                <p className="text-gray-500 dark:text-zinc-400 text-[11px] mt-0.5 leading-relaxed">
-                  Votre clé active instantanément l'assistant avec recherche d'événements en direct, sans dépendre du serveur.
+                <p className="font-extrabold text-[#6600FF] dark:text-[#C084FC] flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Conversation vocale active (Gemini Live)</span>
+                </p>
+                <p className="text-[11px] text-gray-600 dark:text-zinc-400">
+                  {isModelTalking ? "L'IA vous répond de vive voix..." : 'Parlez librement au micro'}
                 </p>
               </div>
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 inline-flex items-center gap-1 text-[10px] text-[#6600FF] dark:text-[#A855F7] font-bold hover:underline"
-              >
-                <span>Obtenir une clé gratuite</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
             </div>
+            <button
+              type="button"
+              onClick={handleToggleVoice}
+              className="px-3 py-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-[11px] shadow-xs transition-colors shrink-0"
+            >
+              Arrêter
+            </button>
+          </div>
+        )}
 
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="Collez votre clé API (ex: AIzaSy...)"
-                className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-[#121218] border border-black/10 dark:border-white/10 text-xs font-mono text-gray-900 dark:text-white placeholder-gray-400 focus:outline-hidden focus:border-[#6600FF]"
-              />
-              <button
-                type="button"
-                onClick={handleSaveAndTestKey}
-                disabled={isTestingKey}
-                className="px-3 py-2 rounded-xl bg-[#6600FF] hover:bg-[#5500DD] text-white font-bold text-xs flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-50"
-              >
-                {isTestingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>{isTestingKey ? 'Test...' : 'Valider'}</span>
-              </button>
-            </div>
-
-            {keyTestFeedback && (
-              <div
-                className={`p-2 rounded-lg text-[11px] font-medium flex items-center gap-1.5 ${
-                  keyTestFeedback.success
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                }`}
-              >
-                {keyTestFeedback.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
-                <span>{keyTestFeedback.message}</span>
-              </div>
-            )}
+        {voiceError && (
+          <div className="px-4 py-2 bg-rose-50 dark:bg-rose-950/50 border-b border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{voiceError}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setVoiceError(null)}
+              className="text-[10px] font-bold underline hover:opacity-80"
+            >
+              Ignorer
+            </button>
           </div>
         )}
 
@@ -387,16 +391,6 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
               <div className="flex-1 space-y-1.5">
                 <p className="font-semibold leading-relaxed">{error}</p>
-                {!hasCustomKey && (
-                  <button
-                    type="button"
-                    onClick={() => setShowKeyConfig(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#6600FF] text-white text-[11px] font-bold hover:bg-[#5500dd] transition-colors shadow-xs"
-                  >
-                    <Key className="w-3 h-3" />
-                    <span>Renseigner ma clé API Gemini</span>
-                  </button>
-                )}
                 {quotaExceeded && isGuest && (
                   <button
                     type="button"
@@ -404,7 +398,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                       onClose();
                       onAuthRequired?.();
                     }}
-                    className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black text-[11px] font-bold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black text-[11px] font-bold transition-colors"
                   >
                     <LogIn className="w-3.5 h-3.5" />
                     <span>Se connecter</span>

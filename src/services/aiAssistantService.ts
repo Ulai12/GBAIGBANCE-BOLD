@@ -1,10 +1,7 @@
-import { supabase, supabaseUrl as canonicalSupabaseUrl, supabaseAnonKey as canonicalSupabaseAnonKey } from '@/infrastructure/supabase';
-import { getUserGeminiApiKey } from '@/services/gemini';
-import { streamGeminiDirect } from '@/services/aiAssistantDirect';
-import { safeFetch } from '@/utils/safeFetch';
+import { supabase } from '@/infrastructure/supabase';
 
 // ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA EDGE FUNCTION & HYBRIDE
+// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA SERVEUR & STREAMING
 // ====================================================================
 
 export interface AIAssistantMessage {
@@ -24,8 +21,8 @@ export interface SendMessageOptions {
 }
 
 /**
- * Envoie la conversation à l'Edge Function Supabase `ai-assistant` ou bascule
- * de manière transparente sur le client direct si la fonction n'est pas encore déployée (404).
+ * Envoie la conversation au service serveur `/api/ai/assistant/stream`
+ * avec streaming SSE en temps réel et résolution des outils sur la base d'événements.
  */
 export async function streamAIAssistant(
   options: SendMessageOptions,
@@ -39,10 +36,6 @@ export async function streamAIAssistant(
   }
 
   (async () => {
-    // 0. Clé API Gemini (BYOK ou variable d'environnement Vercel/Vite)
-    const userApiKey = getUserGeminiApiKey();
-
-    // Arrondi GPS à ~1 km pour préserver la vie privée
     let sanitizedLocation = null;
     if (
       options.userLocation &&
@@ -56,97 +49,35 @@ export async function streamAIAssistant(
     }
 
     try {
-      // 1. Récupération de la session utilisateur Supabase pour propager le JWT
+      // Récupération de la session utilisateur pour contexte
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      // 2. Détermination des endpoints et credentials Supabase avec résolution canonique
-      const supabaseUrl = canonicalSupabaseUrl;
-      const functionUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-      const supabaseAnonKey = canonicalSupabaseAnonKey;
+      const userId = session?.user?.id;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${accessToken || supabaseAnonKey}`,
       };
-
-      if (userApiKey) {
-        headers['x-gemini-api-key'] = userApiKey;
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      let response: Response;
-      try {
-        response = await safeFetch(functionUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            apiKey: userApiKey || undefined,
-            messages: options.messages.map((m) => ({
-              role: m.role,
-              text: m.text.slice(0, 1000),
-            })),
-            userLocation: sanitizedLocation,
-          }),
-          signal: controller.signal,
-          timeoutMs: 35_000,
-          retries: 1,
-        });
-      } catch (fetchErr) {
-        // En cas d'erreur de connexion réseau vers l'Edge Function, si l'utilisateur a une clé BYOK, basculer sur le direct
-        if (userApiKey) {
-          if (import.meta.env.DEV) {
-            console.warn('[AIAssistantService] Edge Function unreachable. Falling back to direct client execution with BYOK.', fetchErr);
-          }
-          await streamGeminiDirect(
-            userApiKey,
-            options.messages,
-            sanitizedLocation,
-            callbacks,
-            controller.signal
-          );
-          return;
-        }
+      const response = await fetch('/api/ai/assistant/stream', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          messages: options.messages.map((m) => ({
+            role: m.role,
+            text: m.text.slice(0, 1000),
+          })),
+          userLocation: sanitizedLocation,
+          userId,
+        }),
+        signal: controller.signal,
+      });
 
-        callbacks.onError(
-          'L’Edge Function Supabase n’est pas joignable. Renseignez votre clé API Google Gemini dans les réglages (icône clé en haut) pour activer l’assistant immédiatement.'
-        );
-        return;
-      }
-
-      // 3. Gestion spécifique du 404 (Edge Function non déployée sur Supabase)
-      if (response.status === 404) {
-        if (userApiKey) {
-          await streamGeminiDirect(
-            userApiKey,
-            options.messages,
-            sanitizedLocation,
-            callbacks,
-            controller.signal
-          );
-          return;
-        }
-
-        callbacks.onError(
-          'L’Edge Function Supabase n’est pas trouvée (HTTP 404). Renseignez votre clé API Google Gemini via l’icône clé en haut à droite pour utiliser l’assistant tout de suite !'
-        );
-        return;
-      }
-
-      // Autres erreurs HTTP
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || errorData.message || `Erreur serveur (${response.status})`;
-        const isQuota = response.status === 429 || errorData.reason === 'window_limit' || errorData.reason === 'daily_limit';
-        
-        // Si l'erreur est un manque de clé sur le serveur
-        if (response.status === 400 && errorMessage.toLowerCase().includes('gemini')) {
-          callbacks.onError(
-            'La variable GEMINI_API_KEY n’est pas encore configurée dans Supabase Secrets. Ajoutez-la dans Supabase ou renseignez votre clé dans les réglages de l’application.'
-          );
-          return;
-        }
-
+        const isQuota = response.status === 429;
         callbacks.onError(errorMessage, isQuota);
         return;
       }
@@ -156,7 +87,7 @@ export async function streamAIAssistant(
         return;
       }
 
-      // 5. Lecture du flux Server-Sent Events (SSE)
+      // Lecture du flux Server-Sent Events (SSE)
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -179,30 +110,24 @@ export async function streamAIAssistant(
               const dataStr = trimmed.slice(5).trim();
               if (!dataStr) continue;
 
-              if (dataStr === '[DONE]' || dataStr === '"[DONE]"') {
-                break;
-              }
-
               try {
                 const data = JSON.parse(dataStr);
-                // Support du format Supabase Edge Function { chunk: "..." } ou { type: "chunk", text: "..." }
-                if (typeof data.chunk === 'string') {
-                  callbacks.onChunk(data.chunk);
-                } else if (data.type === 'chunk' && typeof data.text === 'string') {
+                if (typeof data.text === 'string') {
                   callbacks.onChunk(data.text);
-                } else if (Array.isArray(data.eventIds)) {
-                  verifiedEventIds = data.eventIds;
-                } else if (data.type === 'done') {
-                  if (Array.isArray(data.verified_event_ids)) {
-                    verifiedEventIds = data.verified_event_ids;
-                  }
-                } else if (data.type === 'error' || data.error) {
-                  callbacks.onError(data.error || 'Erreur inconnue dans le flux.');
+                } else if (typeof data.chunk === 'string') {
+                  callbacks.onChunk(data.chunk);
+                }
+
+                if (Array.isArray(data.verifiedEventIds)) {
+                  verifiedEventIds = data.verifiedEventIds;
+                }
+
+                if (data.error) {
+                  callbacks.onError(data.error);
                   return;
                 }
               } catch {
-                // Si la ligne data: contient directement du texte brut
-                if (dataStr !== '[DONE]' && !dataStr.startsWith('{')) {
+                if (!dataStr.startsWith('{')) {
                   callbacks.onChunk(dataStr);
                 }
               }
