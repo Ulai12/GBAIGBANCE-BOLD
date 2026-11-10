@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const DEFAULT_SUPABASE_URL = 'https://qbngqstyhusndngkours.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://lwwiolbofrqakvrdvbbj.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibmdxc3R5aHVzbmRuZ2tvdXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDk2MjEsImV4cCI6MjEwMDUyNTYyMX0.FjxlwhFLJe9rgio0FmP48ae8maMNuWwn3yZv2g_p8dM';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3d2lvbGJvZnJxYWt2cmR2YmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNTIzNjIsImV4cCI6MjEwNDcyODM2Mn0.TCCj8D-K_CmVwlFK1yiE2WL6kQRcjvPR_Bq3QrCLalw';
 
 function getJwtProjectRef(token?: string): string | null {
   if (!token || !token.includes('.')) return null;
@@ -41,8 +41,8 @@ function resolveSupabaseCredentials(): { url: string; anonKey: string } {
   const url = (rawUrl || DEFAULT_SUPABASE_URL).replace(/\/+$/, '');
   const keyRef = getJwtProjectRef(rawKey);
 
-  // If the target project is qbngqstyhusndngkours and the key belongs to a different project ref, use the valid matching key
-  if (url.includes('qbngqstyhusndngkours') && keyRef !== 'qbngqstyhusndngkours') {
+  // Une clé d'un autre projet ne doit pas être envoyée à GBAIGBANCE EVENTS.
+  if (url.includes('lwwiolbofrqakvrdvbbj') && keyRef !== 'lwwiolbofrqakvrdvbbj') {
     return {
       url: DEFAULT_SUPABASE_URL,
       anonKey: DEFAULT_SUPABASE_ANON_KEY,

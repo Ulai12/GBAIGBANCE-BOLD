@@ -1,4 +1,66 @@
--- Signalements réellement enregistrés (plus une alerte locale de démonstration).
+-- Signalements réellement enregistrés, plus la table notifications
+-- absente du projet GBAIGBANCE EVENTS.
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  type text NOT NULL,
+  entity_type text,
+  entity_id uuid,
+  title text NOT NULL,
+  body text,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+  CHECK (type IN (
+    'comment_reply','new_comment','new_question','question_answered',
+    'new_follower','event_invite','invite_accepted','event_report'
+  ));
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_notifications" ON notifications;
+CREATE POLICY "select_own_notifications" ON notifications FOR SELECT
+  TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_notifications" ON notifications;
+CREATE POLICY "insert_own_notifications" ON notifications FOR INSERT
+  TO authenticated WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_notifications" ON notifications;
+CREATE POLICY "update_own_notifications" ON notifications FOR UPDATE
+  TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_notifications" ON notifications;
+CREATE POLICY "delete_own_notifications" ON notifications FOR DELETE
+  TO authenticated USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION create_notification(
+  p_user_id uuid,
+  p_actor_id uuid,
+  p_type text,
+  p_title text,
+  p_body text DEFAULT NULL,
+  p_entity_type text DEFAULT NULL,
+  p_entity_id uuid DEFAULT NULL
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_actor_id IS NOT NULL AND p_actor_id = p_user_id THEN RETURN; END IF;
+  INSERT INTO notifications (user_id, actor_id, type, title, body, entity_type, entity_id)
+  VALUES (p_user_id, p_actor_id, p_type, p_title, p_body, p_entity_type, p_entity_id);
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS event_reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -32,13 +94,6 @@ CREATE POLICY "event_reports_select_involved" ON event_reports
       WHERE p.id = auth.uid() AND p.role = 'admin'
     )
   );
-
-ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
-ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
-  CHECK (type IN (
-    'comment_reply','new_comment','new_question','question_answered',
-    'new_follower','event_invite','invite_accepted','event_report'
-  ));
 
 CREATE OR REPLACE FUNCTION submit_event_report(
   p_event_id uuid,
@@ -93,3 +148,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION submit_event_report(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_notification(uuid, uuid, text, text, text, text, uuid) TO authenticated;
