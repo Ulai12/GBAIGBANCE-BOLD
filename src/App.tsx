@@ -481,7 +481,8 @@ function AppContent() {
                   onBack={() => handleSmartBack('/profile')}
                   onArtistClick={handleArtistClick}
                   onOrganizationClick={handleOrganizationClick}
-                  onToast={addToast}
+                  onUserClick={(p) => navigate(`/users/${p.id}`)}
+                  onLogin={() => navigate('/login')}
                 />
               }
             />
@@ -491,7 +492,7 @@ function AppContent() {
                 <OrganizerDashboardScreen
                   onBack={() => handleSmartBack('/profile')}
                   onEventClick={handleEventClick}
-                  onCreateEvent={() => navigate('/create')}
+                  onEditEvent={(e) => navigate(`/events/${e.id}/edit`)}
                   onToast={addToast}
                 />
               }
@@ -499,16 +500,18 @@ function AppContent() {
             <Route
               path="/create"
               element={
-                <UnauthorizedCreateGate>
+                user?.role === 'organizer' || user?.role === 'artist' ? (
                   <CreateEventScreen
                     onBack={() => handleSmartBack('/')}
-                    onSuccess={() => {
+                    onCreated={(event) => {
                       addToast({ message: 'Événement créé avec succès !', type: 'success' });
-                      navigate('/organizer/dashboard');
+                      navigate(`/events/${event.id}`);
                     }}
                     onToast={addToast}
                   />
-                </UnauthorizedCreateGate>
+                ) : (
+                  <UnauthorizedCreateGate onBack={() => handleSmartBack('/')} />
+                )
               }
             />
             <Route
@@ -516,7 +519,7 @@ function AppContent() {
               element={
                 <AISettingsScreen
                   onBack={() => handleSmartBack('/')}
-                  onToast={addToast}
+                  onToast={(t) => addToast({ message: t.message, type: t.type || 'info' })}
                 />
               }
             />
