@@ -502,7 +502,7 @@ export function ProfileScreen({
               {/* Abonnements */}
               <button
                 type="button"
-                onClick={onOpenSubscriptions}
+                onClick={() => onOpenSubscriptions()}
                 className="w-full p-4 flex items-center justify-between hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors text-left"
               >
                 <div className="flex items-center gap-3">

@@ -8,20 +8,11 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import type { Event } from '@/types';
-import { subscribeToPlatformStatsLive, fetchPlatformStats } from '@/services/events';
+import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
 
 export interface GbaigbanceStatsDashboardProps {
   events?: Event[];
-  platformStats?: {
-    totalEvents: number;
-    totalArtists: number;
-    totalOrganizers: number;
-    totalTickets: number;
-    totalParticipants: number;
-    totalViews?: number;
-    totalRevenue?: number;
-    categories?: Record<string, number>;
-  };
+  platformStats?: PlatformStats;
 }
 
 type Period = 'current_month' | 'last_month' | 'quarter';
