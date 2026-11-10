@@ -33,7 +33,7 @@ const defaultContextValue: DataSaverContextValue = {
 
 const DataSaverContext = createContext<DataSaverContextValue>(defaultContextValue);
 
-function getNetworkConnection(): NetworkConnectionInfo | null {
+function getNetworkConnection(): (NetworkConnectionInfo & EventTarget) | null {
   if (typeof navigator === 'undefined') return null;
   const nav = navigator as unknown as {
     connection?: NetworkConnectionInfo & EventTarget;
