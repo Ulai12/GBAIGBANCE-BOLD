@@ -45,7 +45,7 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        {/* Header avec poignée et badge TODO */}
+        {/* Header avec poignée */}
         <div className="pt-3 px-6 pb-4 border-b border-black/5 dark:border-white/10 relative">
           <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-white/20 mx-auto mb-3 sm:hidden" />
           
@@ -57,9 +57,6 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               <div>
                 <h3 className="text-base font-black text-[#1A1A2E] dark:text-white flex items-center gap-2">
                   <span>Signaler cet événement</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                    TODO • Démo
-                  </span>
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[260px]">
                   {eventTitle}
@@ -78,11 +75,11 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
           </div>
         </div>
 
-        {/* Notice informative TODO */}
+        {/* Notice informative */}
         <div className="mx-6 mt-4 p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
           <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed font-medium">
-            <strong>Module en cours de déploiement (TODO) :</strong> La modération communautaire et la revue juridique automatisée sont actuellement en phase de test. Vos signalements aident à préserver la sécurité de la communauté.
+            Vos signalements sont transmis directement à l'équipe de modération. Ils contribuent à maintenir un environnement sûr et fiable pour toute la communauté Gbaïgbancê.
           </p>
         </div>
 
