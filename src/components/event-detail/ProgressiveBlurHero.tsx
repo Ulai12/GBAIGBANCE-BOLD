@@ -127,7 +127,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             </button>
           )}
 
-          {/* Bouton Signaler (TODO) */}
+          {/* Bouton Signaler */}
           {onReport && (
             <button
               type="button"

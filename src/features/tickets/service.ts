@@ -4,9 +4,11 @@ import type {
   TicketOption, 
   TicketType, 
   EventStatus, 
-  PaymentProvider
+  PaymentProvider,
+  Event,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
+import { coreMergeIds } from '@/lib/rust-core';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
 
@@ -36,8 +38,10 @@ export function clearLocalUserTickets(userId?: string | null): void {
   }
 }
 
-export function generateFallbackTicketOptions(eventId: string, priceMin: number = 5000): TicketOption[] {
-  const isFree = priceMin === 0;
+export function generateFallbackTicketOptions(eventId: string, priceMin: number = 0): TicketOption[] {
+  // Hors-ligne uniquement : un seul pass, stock stable (jamais aléatoire).
+  // Un stock tiré au hasard faisait « sauter » les places restantes à chaque rechargement.
+  const isFree = !priceMin || priceMin <= 0;
   return [
     {
       id: `fallback-opt-std-${eventId}`,
@@ -46,34 +50,22 @@ export function generateFallbackTicketOptions(eventId: string, priceMin: number 
       label: isFree ? 'Accès Libre (Gratuit)' : 'Billet Standard',
       price: isFree ? 0 : priceMin,
       quantity_total: isFree ? 500 : 250,
-      quantity_sold: Math.floor(Math.random() * 20) + 5,
+      quantity_sold: 0,
       description: isFree ? 'Entrée 100% libre et gratuite' : "Accès standard à l'événement",
       created_at: new Date().toISOString(),
     },
-    ...(!isFree
-      ? [
-          {
-            id: `fallback-opt-vip-${eventId}`,
-            event_id: eventId,
-            ticket_type: 'vip' as TicketType,
-            label: 'Billet VIP Privilège',
-            price: Math.max(10000, Math.round(priceMin * 2.2)),
-            quantity_total: 50,
-            quantity_sold: Math.floor(Math.random() * 8) + 2,
-            description: 'Accès coupe-file, place réservée et accueil privilégié',
-            created_at: new Date().toISOString(),
-          },
-        ]
-      : []),
   ];
 }
 
-export async function fetchTicketOptions(eventId: string, priceMin: number = 5000): Promise<TicketOption[]> {
-  if (!isSupabaseConfigured || !eventId) {
+export async function fetchTicketOptions(eventId: string, priceMin: number = 0): Promise<TicketOption[]> {
+  if (!eventId) return [];
+
+  // Catalogue démo seulement si Supabase n'est pas branché.
+  // En production, inventer des pass VIP factices permettait de payer un billet inexistant.
+  if (!isSupabaseConfigured) {
     return generateFallbackTicketOptions(eventId, priceMin);
   }
 
-  let options: TicketOption[] = [];
   try {
     const { data, error } = await supabase
       .from('ticket_options')
@@ -81,30 +73,11 @@ export async function fetchTicketOptions(eventId: string, priceMin: number = 500
       .eq('event_id', eventId)
       .order('price', { ascending: true });
 
-    if (!error && data && data.length > 0) {
-      options = data as TicketOption[];
-    }
+    if (error || !data) return [];
+    return data as TicketOption[];
   } catch {
-    // Fallback to offline / mock ticket options
+    return [];
   }
-
-  if (options.length === 0) {
-    try {
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('price_min')
-        .eq('id', eventId)
-        .maybeSingle();
-      if (eventData && typeof eventData.price_min === 'number') {
-        priceMin = eventData.price_min;
-      }
-    } catch {
-      // Fallback
-    }
-    options = generateFallbackTicketOptions(eventId, priceMin);
-  }
-
-  return options;
 }
 
 export async function createTicketOption(
@@ -232,6 +205,8 @@ export async function purchaseTicketsMulti(params: {
   paymentPhone: string;
   userId: string;
   buyerName?: string;
+  /** Prix unitaire réel du pass. L'ancien repli forçait 5 000 F même pour un gratuit. */
+  unitPrice?: number;
 }): Promise<{
   success: boolean;
   payment_id?: string;
@@ -246,8 +221,16 @@ export async function purchaseTicketsMulti(params: {
   error?: string;
 }> {
   const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId, buyerName } = params;
+  const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
+  const amountXof = unitPrice * Math.max(1, recipients.length);
 
-  if (isSupabaseConfigured && !userId.startsWith('guest-')) {
+  // Compte réel + Supabase : jamais de billet local « valid » si le paiement serveur échoue.
+  // Avant, une erreur RPC tombait dans le repli et affichait un QR comme si l'argent était passé.
+  if (isSupabaseConfigured) {
+    if (!userId || userId.startsWith('guest-')) {
+      return { success: false, error: 'Connectez-vous pour réserver un billet.' };
+    }
+
     try {
       const { data, error } = await supabase.rpc('purchase_tickets_multi', {
         p_event_id: eventId,
@@ -257,79 +240,83 @@ export async function purchaseTicketsMulti(params: {
         p_payment_phone: paymentPhone,
       });
 
-      if (!error && data) {
-        const result = data as {
-          success?: boolean;
-          payment_id?: string;
-          amount_xof?: number;
-          tickets?: Array<{
-            ticket_id: string;
-            qr_code: string;
-            is_for_me: boolean;
-            recipient_name?: string;
-            claim_token?: string;
-          }>;
-          error?: string;
-        };
-
-        if (result.success && result.tickets) {
-          // Sauvegarde locale de secours pour chaque ticket
-          const event = await fetchEventById(eventId);
-          for (let i = 0; i < result.tickets.length; i++) {
-            const item = result.tickets[i];
-            const recipientInput = recipients[i] || recipients[0];
-            const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
-            const loc: Ticket = {
-              id: item.ticket_id,
-              event_id: eventId,
-              user_id: targetUserId,
-              buyer_user_id: userId,
-              buyer_name: buyerName || 'Un ami',
-              is_for_me: item.is_for_me,
-              payment_id: result.payment_id,
-              ticket_type: 'standard',
-              ticket_option_id: ticketOptionId,
-              price_paid: (result.amount_xof || 0) / recipients.length,
-              currency: 'XOF',
-              qr_code: item.qr_code,
-              status: 'pending',
-              quantity: 1,
-              recipient_name: item.recipient_name || recipientInput?.recipient_name,
-              recipient_phone: recipientInput?.recipient_phone,
-              claim_token: item.claim_token,
-              is_claimed: item.is_for_me,
-              seat_info: null,
-              created_at: new Date().toISOString(),
-              event: event || undefined,
-            };
-            // 1. Sauvegarder chez l'acheteur (section dédiée "Billets offerts")
-            saveLocalStoredTicket(loc, userId);
-            // 2. Si le compte de l'ami est identifié, sauvegarder aussi directement chez l'ami
-            if (!item.is_for_me && recipientInput?.recipient_user_id) {
-              saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
-            }
-            // 3. Sauvegarder dans le registre des cadeaux partagés
-            if (!item.is_for_me) {
-              saveGiftTicketForFriend(loc);
-            }
-          }
-          return {
-            success: true,
-            payment_id: result.payment_id,
-            amount_xof: result.amount_xof,
-            tickets: result.tickets,
-          };
-        }
-        if (result.error) {
-          return { success: false, error: result.error };
-        }
+      if (error) {
+        return { success: false, error: error.message || 'Le paiement n’a pas pu être confirmé.' };
       }
+      if (!data) {
+        return { success: false, error: 'Aucune confirmation reçue du serveur de billetterie.' };
+      }
+
+      const result = data as {
+        success?: boolean;
+        payment_id?: string;
+        amount_xof?: number;
+        tickets?: Array<{
+          ticket_id: string;
+          qr_code: string;
+          is_for_me: boolean;
+          recipient_name?: string;
+          claim_token?: string;
+        }>;
+        error?: string;
+      };
+
+      if (result.success && result.tickets && result.tickets.length > 0) {
+        const event = await fetchEventById(eventId);
+        const paidEach = (result.amount_xof ?? amountXof) / result.tickets.length;
+        for (let i = 0; i < result.tickets.length; i++) {
+          const item = result.tickets[i];
+          const recipientInput = recipients[i] || recipients[0];
+          const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
+          const loc: Ticket = {
+            id: item.ticket_id,
+            event_id: eventId,
+            user_id: targetUserId,
+            buyer_user_id: userId,
+            buyer_name: buyerName || 'Un ami',
+            is_for_me: item.is_for_me,
+            payment_id: result.payment_id,
+            ticket_type: 'standard',
+            ticket_option_id: ticketOptionId,
+            price_paid: paidEach,
+            currency: 'XOF',
+            qr_code: item.qr_code,
+            status: 'pending',
+            quantity: 1,
+            recipient_name: item.recipient_name || recipientInput?.recipient_name,
+            recipient_phone: recipientInput?.recipient_phone,
+            claim_token: item.claim_token,
+            is_claimed: item.is_for_me,
+            seat_info: null,
+            created_at: new Date().toISOString(),
+            event: event || undefined,
+          };
+          saveLocalStoredTicket(loc, userId);
+          if (!item.is_for_me && recipientInput?.recipient_user_id) {
+            saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
+          }
+          if (!item.is_for_me) {
+            saveGiftTicketForFriend(loc);
+          }
+        }
+        return {
+          success: true,
+          payment_id: result.payment_id,
+          amount_xof: result.amount_xof ?? amountXof,
+          tickets: result.tickets,
+        };
+      }
+
+      return {
+        success: false,
+        error: result.error || 'Réservation refusée. Aucun billet n’a été créé.',
+      };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réservation' };
     }
   }
 
-  // Fallback hors-ligne local
+  // Démo hors-ligne : prix réel, et un pass payant reste « en attente » tant qu'il n'y a pas de caisse.
   const event = await fetchEventById(eventId);
   const fakePaymentId = 'pay_' + Math.random().toString(36).slice(2, 10);
   const createdList = [];
@@ -351,10 +338,10 @@ export async function purchaseTicketsMulti(params: {
       payment_id: fakePaymentId,
       ticket_type: 'standard',
       ticket_option_id: ticketOptionId,
-      price_paid: 5000,
+      price_paid: unitPrice,
       currency: 'XOF',
       qr_code: qr,
-      status: 'valid',
+      status: unitPrice === 0 ? 'valid' : 'pending',
       quantity: 1,
       recipient_name: r.recipient_name,
       recipient_phone: r.recipient_phone,
@@ -384,7 +371,7 @@ export async function purchaseTicketsMulti(params: {
   return {
     success: true,
     payment_id: fakePaymentId,
-    amount_xof: 5000 * recipients.length,
+    amount_xof: amountXof,
     tickets: createdList,
   };
 }
@@ -555,8 +542,10 @@ export async function fetchUserTickets(userId: string, userPhone?: string | null
   if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
     try {
       let queryOr = `user_id.eq.${userId},buyer_user_id.eq.${userId}`;
-      if (userPhone && userPhone.length >= 8) {
-        queryOr += `,recipient_phone.eq.${userPhone.trim()}`;
+      // Chiffres seulement : une virgule dans le numéro cassait le filtre .or() de PostgREST.
+      const safePhone = String(userPhone || '').replace(/\D/g, '');
+      if (safePhone.length >= 8) {
+        queryOr += `,recipient_phone.eq.${safePhone}`;
       }
       const { data, error } = await supabase
         .from('tickets')
@@ -574,20 +563,42 @@ export async function fetchUserTickets(userId: string, userPhone?: string | null
 
   const seen = new Set<string>();
   const merged: Ticket[] = [];
+  const pool = new Map<string, Ticket>();
+  for (const ticket of [...dbTickets, ...localTickets, ...friendGifts]) {
+    if (ticket?.id && !pool.has(ticket.id)) pool.set(ticket.id, ticket);
+  }
+  // Le serveur passe devant le cache. Rust retire les doublons d'id.
+  const order = await coreMergeIds(
+    dbTickets.map((ticket) => ticket.id),
+    [...localTickets, ...friendGifts].map((ticket) => ticket.id),
+    []
+  );
+  const ordered = order && order.length > 0 ? order : [...pool.keys()];
+  for (const id of ordered) {
+    const ticket = pool.get(id);
+    if (!ticket || seen.has(id)) continue;
+    seen.add(id);
+    merged.push(ticket);
+  }
 
-  for (const t of [...localTickets, ...friendGifts, ...dbTickets]) {
-    const id = t.id || '';
-    if (id && !seen.has(id)) {
-      seen.add(id);
-      if (!t.event && t.event_id) {
-        try {
-          const { data: realE } = await supabase.from('events').select('*').eq('id', t.event_id).maybeSingle();
-          if (realE) t.event = realE;
-        } catch {
-          // ignore
+  if (isSupabaseConfigured) {
+    const missingIds = Array.from(
+      new Set(merged.filter((t) => !t.event && t.event_id).map((t) => t.event_id))
+    ).slice(0, 40);
+    if (missingIds.length > 0) {
+      try {
+        const { data: events } = await supabase.from('events').select('*').in('id', missingIds);
+        if (events && events.length > 0) {
+          const byId = new Map(events.map((eventRow) => [eventRow.id as string, eventRow as Event]));
+          for (const t of merged) {
+            if (!t.event && t.event_id && byId.has(t.event_id)) {
+              t.event = byId.get(t.event_id);
+            }
+          }
         }
+      } catch {
+        // ignore
       }
-      merged.push(t);
     }
   }
 

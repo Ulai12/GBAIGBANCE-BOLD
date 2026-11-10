@@ -154,7 +154,7 @@ export function SubscriptionsScreen({
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshSubscriptions();
       }
-    }, 3000);
+    }, 20000);
 
     const handleFocusSync = () => {
       clearCachedSubscriptions();

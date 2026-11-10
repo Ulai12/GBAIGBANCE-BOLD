@@ -206,6 +206,14 @@ function AppContent() {
     }
   }, [navigate]);
 
+  // Un lien cadeau #claim=… doit ouvrir Mes billets, même s'il est collé sur une autre page.
+  useEffect(() => {
+    const hash = location.hash || '';
+    if (hash.includes('claim=') && location.pathname !== '/tickets') {
+      navigate({ pathname: '/tickets', hash }, { replace: true });
+    }
+  }, [location.hash, location.pathname, navigate]);
+
   // Support legacy ?event= query param deep linking
   useEffect(() => {
     const eventParam = searchParams.get('event');
@@ -474,6 +482,7 @@ function AppContent() {
                   onArtistClick={handleArtistClick}
                   onOrganizationClick={handleOrganizationClick}
                   onUserClick={(p) => navigate(`/users/${p.id}`)}
+                  onLogin={() => navigate('/login')}
                 />
               }
             />
@@ -483,7 +492,7 @@ function AppContent() {
                 <OrganizerDashboardScreen
                   onBack={() => handleSmartBack('/profile')}
                   onEventClick={handleEventClick}
-                  onEditEvent={(ev) => navigate(`/events/${ev.id}/edit`, { state: { event: ev } })}
+                  onEditEvent={(e) => navigate(`/events/${e.id}/edit`)}
                   onToast={addToast}
                 />
               }
@@ -491,14 +500,17 @@ function AppContent() {
             <Route
               path="/create"
               element={
-                !canCreate ? (
-                  <UnauthorizedCreateGate onBack={() => handleSmartBack('/')} />
-                ) : (
+                user?.role === 'organizer' || user?.role === 'artist' ? (
                   <CreateEventScreen
                     onBack={() => handleSmartBack('/')}
-                    onCreated={(event) => navigate(`/events/${event.id}`, { state: { event } })}
+                    onCreated={(event) => {
+                      addToast({ message: 'Événement créé avec succès !', type: 'success' });
+                      navigate(`/events/${event.id}`);
+                    }}
                     onToast={addToast}
                   />
+                ) : (
+                  <UnauthorizedCreateGate onBack={() => handleSmartBack('/')} />
                 )
               }
             />
@@ -537,9 +549,10 @@ function AppContent() {
         open={!!bookingEvent}
         event={bookingEvent}
         onClose={() => setBookingEvent(null)}
-        onSuccess={(qrCode) => {
-          addToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' });
+        onSuccess={() => {
+          addToast({ message: 'Billet confirmé. Retrouvez-le dans Mes billets.', type: 'success' });
           setBookingEvent(null);
+          navigate('/tickets');
         }}
       />
 
@@ -556,7 +569,7 @@ function AppContent() {
         }}
         onAuthRequired={() => {
           setAiAssistantOpen(false);
-          navigate('/auth');
+          navigate('/login');
         }}
       />
 

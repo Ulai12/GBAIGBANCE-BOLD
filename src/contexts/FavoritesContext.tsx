@@ -313,8 +313,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(likesKey, next);
             return next;
           });
+        } else {
+          // Pas d'id précis : on relit la base, sinon une synchro complète écrase l'optimistic update.
+          refreshAllFavoritesFromSupabase();
         }
-        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-favorites-updated', { detail: { eventId, eventType } }));
         }
@@ -328,8 +330,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(artistsKey, next);
             return next;
           });
+        } else {
+          refreshAllFavoritesFromSupabase();
         }
-        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { artistId, eventType, type: 'artist' } }));
         }
@@ -343,8 +346,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(orgsKey, next);
             return next;
           });
+        } else {
+          refreshAllFavoritesFromSupabase();
         }
-        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { orgId, eventType, type: 'org' } }));
         }
@@ -358,23 +362,25 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             writeStoredSet(usersKey, next);
             return next;
           });
+        } else {
+          refreshAllFavoritesFromSupabase();
         }
-        refreshAllFavoritesFromSupabase();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gba-follows-updated', { detail: { userId: targetUserId, eventType, type: 'user' } }));
         }
       },
       onAnyChange: () => {
-        refreshAllFavoritesFromSupabase();
+        // Les handlers précis ont déjà appliqué le delta. Une relecture immédiate
+        // revenait souvent avec l'ancien état et annulait le cœur à l'écran.
       },
     });
 
-    // Polling en arrière-plan toutes les 3 secondes max (uniquement si page active/visible)
+    // Le temps réel met déjà à jour les suivis. 3 s forçait 4 requêtes en boucle.
     const periodicSync = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshAllFavoritesFromSupabase();
       }
-    }, 3000);
+    }, 20000);
 
     const handleFocusSync = () => {
       refreshAllFavoritesFromSupabase();
@@ -389,7 +395,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', handleFocusSync);
     window.addEventListener('visibilitychange', handleVisibilitySync);
     window.addEventListener('online', handleFocusSync);
-    window.addEventListener('gba-follows-updated', handleFocusSync);
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -397,7 +402,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', handleFocusSync);
       window.removeEventListener('visibilitychange', handleVisibilitySync);
       window.removeEventListener('online', handleFocusSync);
-      window.removeEventListener('gba-follows-updated', handleFocusSync);
     };
   }, [userId, refreshAllFavoritesFromSupabase]);
 

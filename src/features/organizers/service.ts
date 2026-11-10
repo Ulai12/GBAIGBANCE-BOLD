@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import type { Event, Organization, Ticket } from '@/types';
 import { isRealEvent, isRealOrganization, isEventActive } from '@/features/events/status';
 import { getLocalStoredTickets } from '@/services/tickets';
+import { coreOrganizerSeries, corePlatformStats, type RustTicket } from '@/lib/rust-core';
 
 export interface PerformanceTimePoint {
   date: string;
@@ -31,6 +32,54 @@ export interface OrganizerPerformanceData {
     activeEvents: number;
     totalEvents: number;
   };
+}
+
+const DEAD_TICKET = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
+
+async function fetchTicketsForEvents(eventIds: string[]) {
+  const rows: Array<{
+    id: string;
+    event_id: string;
+    ticket_type: string;
+    price_paid?: number;
+    status?: string;
+    created_at: string;
+  }> = [];
+  if (!isSupabaseConfigured || eventIds.length === 0) return rows;
+  const pageSize = 1000;
+  for (let i = 0; i < eventIds.length; i += 80) {
+    const slice = eventIds.slice(i, i + 80);
+    for (let from = 0; from < 8000; from += pageSize) {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id, event_id, ticket_type, price_paid, status, created_at')
+        .in('event_id', slice)
+        .range(from, from + pageSize - 1);
+      if (error || !data) break;
+      rows.push(...(data as typeof rows));
+      if (data.length < pageSize) break;
+    }
+  }
+  return rows;
+}
+
+function toRustTickets(tickets: Array<{
+  id: string;
+  event_id: string;
+  ticket_type?: string;
+  price_paid?: number;
+  status?: string;
+  created_at?: string;
+}>): RustTicket[] {
+  return tickets.map((ticket) => ({
+    id: ticket.id,
+    price_paid: Number(ticket.price_paid) || 0,
+    status: ticket.status || 'valid',
+    created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
+    event_id: ticket.event_id,
+    ticket_type: ticket.ticket_type,
+    source: ticket.id.startsWith('tkt_') ? 'local' as const : 'server' as const,
+  }));
 }
 
 export async function fetchOrganizationById(id: string): Promise<Organization | null> {
@@ -145,7 +194,7 @@ export async function fetchOrganizerPerformanceMetrics(
     const totalViews = events.reduce((s, e) => s + (e.views_count || 0), 0);
     const activeEvents = events.filter((e) => e.status === 'published' && isEventActive(e)).length;
 
-    // 2. Fetch tickets for these events
+    // 2. Billets serveur (au-delà de 1000) + cache local. Rust retire les annulations.
     let tickets: Array<{
       id: string;
       event_id: string;
@@ -156,18 +205,11 @@ export async function fetchOrganizerPerformanceMetrics(
       created_at: string;
     }> = [];
 
-    if (eventIds.length > 0 && isSupabaseConfigured) {
-      const { data: dbTickets } = await supabase
-        .from('tickets')
-        .select('id, event_id, ticket_type, price_paid, status, created_at')
-        .in('event_id', eventIds)
-        .neq('status', 'cancelled');
-      if (dbTickets) {
-        tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
-      }
+    if (eventIds.length > 0) {
+      const dbTickets = await fetchTicketsForEvents(eventIds);
+      tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
     }
 
-    // Also include any locally booked tickets for these events
     const localTickets = getLocalStoredTickets();
     localTickets.forEach((lt: Ticket) => {
       const eId = lt.event_id || '';
@@ -185,77 +227,16 @@ export async function fetchOrganizerPerformanceMetrics(
       }
     });
 
-    // 3. Build time points based on timeRange
-    const now = new Date();
     const daysCount = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 60;
-    const timePointsMap = new Map<string, { label: string; date: string; ticketsSold: number; revenue: number }>();
+    const rustTickets = toRustTickets(tickets);
+    const series = await coreOrganizerSeries(daysCount, rustTickets);
 
-    for (let i = daysCount - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const isoDate = d.toISOString().split('T')[0];
-      const label = d.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: daysCount > 14 ? 'numeric' : 'short',
-      });
-      timePointsMap.set(isoDate, { date: isoDate, label, ticketsSold: 0, revenue: 0 });
-    }
-
-    // 4. Populate tickets into date buckets and categories
-    const categoryTotals: Record<string, { count: number; revenue: number }> = {
-      standard: { count: 0, revenue: 0 },
-      vip: { count: 0, revenue: 0 },
-      vvip: { count: 0, revenue: 0 },
-      free: { count: 0, revenue: 0 },
-    };
-
-    let totalTickets = 0;
-    let totalRevenue = 0;
-
-    tickets.forEach((t) => {
-      const qty = t.quantity || 1;
-      const price = t.price_paid || 0;
-      totalTickets += qty;
-      totalRevenue += price;
-
-      // Group by date
-      const dateKey = (t.created_at || '').split('T')[0];
-      if (timePointsMap.has(dateKey)) {
-        const bucket = timePointsMap.get(dateKey)!;
-        bucket.ticketsSold += qty;
-        bucket.revenue += price;
-      }
-
-      // Group by ticket type
-      const typeKey = (t.ticket_type || 'standard').toLowerCase();
-      if (!categoryTotals[typeKey]) {
-        categoryTotals[typeKey] = { count: 0, revenue: 0 };
-      }
-      categoryTotals[typeKey].count += qty;
-      categoryTotals[typeKey].revenue += price;
-    });
-
-    // 5. Build cumulative curve
-    let cumTickets = 0;
-    let cumRev = 0;
-    const timeSeries: PerformanceTimePoint[] = Array.from(timePointsMap.values()).map((pt) => {
-      cumTickets += pt.ticketsSold;
-      cumRev += pt.revenue;
-      return {
-        ...pt,
-        cumulativeTickets: cumTickets,
-        cumulativeRevenue: cumRev,
-      };
-    });
-
-    // 6. Category breakdown formatting
     const categoryColors: Record<string, string> = {
       standard: '#6600FF',
       vip: '#A855F7',
       vvip: '#EC4899',
       free: '#10B981',
     };
-
     const categoryLabels: Record<string, string> = {
       standard: 'Standard',
       vip: 'VIP',
@@ -263,13 +244,29 @@ export async function fetchOrganizerPerformanceMetrics(
       free: 'Gratuit',
     };
 
-    const categoryBreakdown: TicketTypeBreakdown[] = Object.entries(categoryTotals)
-      .filter(([, val]) => val.count > 0)
-      .map(([key, val]) => ({
-        name: categoryLabels[key] || key.toUpperCase(),
-        count: val.count,
-        revenue: val.revenue,
-        color: categoryColors[key] || '#6600FF',
+    const timeSeries: PerformanceTimePoint[] = series
+      ? series.points.map((point) => ({
+          date: `${point.year}-${String(point.month).padStart(2, '0')}-${String(point.day).padStart(2, '0')}`,
+          label: new Date(point.year, point.month - 1, point.day).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: daysCount > 14 ? 'numeric' : 'short',
+          }),
+          ticketsSold: point.tickets_sold,
+          revenue: point.revenue,
+          cumulativeTickets: point.cumulative_tickets,
+          cumulativeRevenue: point.cumulative_revenue,
+        }))
+      : fallbackSeries(daysCount, rustTickets);
+
+    const counted = series ? null : tallyTickets(rustTickets);
+    const totalTickets = series?.tickets ?? counted?.tickets ?? 0;
+    const totalRevenue = series?.revenue ?? counted?.revenue ?? 0;
+    const categoryBreakdown: TicketTypeBreakdown[] = (series?.by_type || fallbackByType(rustTickets))
+      .map((entry) => ({
+        name: categoryLabels[entry.key] || entry.key.toUpperCase(),
+        count: entry.count,
+        revenue: entry.revenue,
+        color: categoryColors[entry.key] || '#6600FF',
       }));
 
     const conversionRate = totalViews > 0 ? (totalTickets / totalViews) * 100 : 0;
@@ -292,6 +289,84 @@ export async function fetchOrganizerPerformanceMetrics(
     console.error('Error fetching organizer performance metrics:', error);
     return emptyResult;
   }
+}
+
+function keptTickets(tickets: RustTicket[]): RustTicket[] {
+  const map = new Map<string, RustTicket>();
+  for (const ticket of tickets) {
+    if (!ticket.id) continue;
+    const prev = map.get(ticket.id);
+    if (!prev || (prev.source !== 'server' && ticket.source === 'server')) map.set(ticket.id, ticket);
+  }
+  return [...map.values()].filter((ticket) => !DEAD_TICKET.has(ticket.status || ''));
+}
+
+function tallyTickets(tickets: RustTicket[]): { tickets: number; revenue: number } {
+  const kept = keptTickets(tickets);
+  return {
+    tickets: kept.length,
+    revenue: Math.round(kept.reduce((sum, ticket) => sum + Math.max(0, ticket.price_paid || 0), 0)),
+  };
+}
+
+function fallbackByType(tickets: RustTicket[]): Array<{ key: string; count: number; revenue: number }> {
+  const map = new Map<string, { count: number; revenue: number }>();
+  for (const ticket of keptTickets(tickets)) {
+    const key = (ticket.ticket_type || 'standard').toLowerCase() || 'standard';
+    const entry = map.get(key) || { count: 0, revenue: 0 };
+    entry.count += 1;
+    entry.revenue += Math.max(0, ticket.price_paid || 0);
+    map.set(key, entry);
+  }
+  return [...map.entries()].map(([key, entry]) => ({ key, count: entry.count, revenue: Math.round(entry.revenue) }));
+}
+
+function fallbackSeries(days: number, tickets: RustTicket[]): PerformanceTimePoint[] {
+  const kept = keptTickets(tickets);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (days - 1));
+  const points = Array.from({ length: days }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return { date, tickets: 0, revenue: 0 };
+  });
+  let total = 0;
+  let revenue = 0;
+  let windowTickets = 0;
+  let windowRevenue = 0;
+  for (const ticket of kept) {
+    const price = Math.max(0, ticket.price_paid || 0);
+    total += 1;
+    revenue += price;
+    if (!ticket.created_at_ms) continue;
+    const created = new Date(ticket.created_at_ms);
+    const day = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const index = Math.round((day.getTime() - start.getTime()) / 86_400_000);
+    if (index >= 0 && index < points.length) {
+      points[index].tickets += 1;
+      points[index].revenue += price;
+      windowTickets += 1;
+      windowRevenue += price;
+    }
+  }
+  let cumulativeTickets = total - windowTickets;
+  let cumulativeRevenue = revenue - windowRevenue;
+  return points.map((point) => {
+    cumulativeTickets += point.tickets;
+    cumulativeRevenue += point.revenue;
+    const y = point.date.getFullYear();
+    const m = String(point.date.getMonth() + 1).padStart(2, '0');
+    const d = String(point.date.getDate()).padStart(2, '0');
+    return {
+      date: `${y}-${m}-${d}`,
+      label: point.date.toLocaleDateString('fr-FR', { day: 'numeric', month: days > 14 ? 'numeric' : 'short' }),
+      ticketsSold: point.tickets,
+      revenue: Math.round(point.revenue),
+      cumulativeTickets,
+      cumulativeRevenue: Math.round(cumulativeRevenue),
+    };
+  });
 }
 
 function sanitizeSearchInput(input: string): string {
@@ -390,9 +465,23 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
       totalRevenue: 0,
     };
     if (eventIds.length === 0) return baseStats;
-    const { data: tickets } = await supabase.from('tickets').select('price_paid, status').in('event_id', eventIds).neq('status', 'cancelled');
-    baseStats.totalTickets = tickets?.length || 0;
-    baseStats.totalRevenue = tickets?.reduce((s, t) => s + (t.price_paid || 0), 0) || 0;
+    const rows = await fetchTicketsForEvents(eventIds);
+    const local = getLocalStoredTickets().filter((ticket) => eventIds.includes(ticket.event_id || '') && !rows.some((row) => row.id === ticket.id));
+    const rustTickets = toRustTickets([
+      ...rows,
+      ...local.map((ticket) => ({
+        id: ticket.id,
+        event_id: ticket.event_id || '',
+        ticket_type: ticket.ticket_type || 'standard',
+        price_paid: ticket.price_paid,
+        status: ticket.status,
+        created_at: ticket.created_at,
+      })),
+    ]);
+    const core = await corePlatformStats({ tickets: rustTickets, events: [], users: 0 });
+    const fallback = core ? null : tallyTickets(rustTickets);
+    baseStats.totalTickets = core?.total_tickets ?? fallback?.tickets ?? 0;
+    baseStats.totalRevenue = core?.total_revenue ?? fallback?.revenue ?? 0;
     return baseStats;
   } catch {
     return defaultStats;

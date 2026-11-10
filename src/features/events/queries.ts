@@ -3,6 +3,7 @@ import type { Event, EventWithRelations, EventCategory } from '@/types';
 import { hydrateEventCategories, eventMatchesCategoryFilter } from '@/constants/categories';
 import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded } from './status';
 import { getLocalStoredTickets } from '@/features/tickets/service';
+import { corePlatformStats, coreRankIds, coreTrendIds, type RustEvent, type RustTicket } from '@/lib/rust-core';
 
 function sanitizeSearchInput(input: string): string {
   if (!input) return '';
@@ -21,16 +22,36 @@ export interface PlatformStats {
   totalViews: number;
   totalRevenue: number;
   categories: Record<string, number>;
+  categoryBasis: 'revenue' | 'events';
+  categoryShares: Array<{ id: string; count: number; amount: number; percent: number }>;
   ticketsTimeline?: Array<{
     created_at: string;
+    created_at_ms: number;
     price_paid: number;
     event_id: string;
   }>;
 }
 
+async function selectPages<T>(
+  queryPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+): Promise<T[]> {
+  const pageSize = 1000;
+  const rows: T[] = [];
+  // Au-delà de 1000 lignes Supabase tronque : les totaux étaient faux.
+  for (let from = 0; from < 8000; from += pageSize) {
+    const { data, error } = await queryPage(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const chunk = (data || []) as T[];
+    rows.push(...chunk);
+    if (chunk.length < pageSize) break;
+  }
+  return rows;
+}
+
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTickets = getLocalStoredTickets();
-  const localActiveTickets = localTickets.filter((t) => (t as { status?: string }).status !== 'cancelled');
+  const dead = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
+  const localActiveTickets = localTickets.filter((t) => !dead.has(String((t as { status?: string }).status || '')));
   const localTicketCount = localActiveTickets.length;
   const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number((t as { price_paid?: number }).price_paid) || 0), 0);
 
@@ -48,67 +69,91 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
+      categoryBasis: 'events',
+      categoryShares: [],
       ticketsTimeline: [],
     };
   }
 
   try {
-    const [eventsRes, artistsCount, orgsCount, ticketsRes, profilesRes] = await Promise.all([
-      supabase.from('events').select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status, created_at').eq('status', 'published'),
+    const [rawEvents, artistsCount, orgsCount, rawTickets, profilesRes] = await Promise.all([
+      selectPages<Event>((from, to) =>
+        supabase
+          .from('events')
+          .select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status, created_at')
+          .eq('status', 'published')
+          .range(from, to)
+      ),
       supabase.from('artists').select('id', { count: 'exact', head: true }),
       supabase.from('organizations').select('id', { count: 'exact', head: true }),
-      supabase.from('tickets').select('id, price_paid, status, created_at, event_id').neq('status', 'cancelled'),
+      selectPages<{ id: string; price_paid?: number; status?: string; created_at?: string; event_id?: string }>((from, to) =>
+        supabase
+          .from('tickets')
+          .select('id, price_paid, status, created_at, event_id')
+          .range(from, to)
+      ),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ]);
 
-    const rawEvents = (eventsRes.data || []) as Event[];
     const events = rawEvents.filter(isRealEvent);
-    const activeEvents = events.filter((e) => isEventActive(e) && !isEventTerminated(e));
-    const tickets = (ticketsRes.data || []) as Array<{ id: string; price_paid?: number; status?: string; created_at?: string; event_id?: string }>;
+    const activeIds = new Set(events.filter((e) => isEventActive(e) && !isEventTerminated(e)).map((e) => e.id));
+    const users = profilesRes.count ?? 0;
 
-    const totalEvents = activeEvents.length;
-    const totalArtists = artistsCount.count ?? 0;
-    const totalOrganizers = orgsCount.count ?? 0;
+    const rustTickets: RustTicket[] = [
+      ...rawTickets.map((ticket) => ({
+        id: ticket.id,
+        price_paid: Number(ticket.price_paid) || 0,
+        status: ticket.status || 'valid',
+        created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
+        event_id: ticket.event_id || '',
+        source: 'server' as const,
+      })),
+      ...localActiveTickets.map((ticket) => ({
+        id: ticket.id,
+        price_paid: Number(ticket.price_paid) || 0,
+        status: ticket.status || 'valid',
+        created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
+        event_id: ticket.event_id || '',
+        source: 'local' as const,
+      })),
+    ];
 
-    const dbTicketCount = tickets.length;
-    const dbRevenue = tickets.reduce((sum: number, t) => sum + (Number(t.price_paid) || 0), 0);
+    const rustEvents: RustEvent[] = events.map((event) => ({
+      id: event.id,
+      category: event.category,
+      attendees: event.attendees_count || 0,
+      views: event.views_count || 0,
+      likes: event.likes_count || 0,
+      featured: !!event.is_featured,
+      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+      active: activeIds.has(event.id),
+    }));
 
-    const totalTickets = dbTicketCount + localTicketCount;
-    const totalRevenue = dbRevenue + localRevenue;
-
-    const totalUsers = profilesRes.count ?? 0;
-    const totalViews = events.reduce((sum: number, e: { views_count?: number }) => sum + (e.views_count || 0), 0);
-
-    // Vrai total des participants ayant un billet ou inscrits
-    const totalParticipants = Math.max(
-      totalTickets,
-      events.reduce((sum, e) => sum + (e.attendees_count || 0), 0),
-      totalUsers
-    );
-
+    const core = await corePlatformStats({ tickets: rustTickets, events: rustEvents, users });
     const categories: Record<string, number> = {};
-    for (const e of events) {
-      if (e.category) {
-        categories[e.category] = (categories[e.category] || 0) + 1;
-      }
+    for (const share of core?.category_shares || []) {
+      categories[share.id] = share.count;
     }
 
-    const ticketsTimeline = tickets.map((t) => ({
-      created_at: t.created_at || new Date().toISOString(),
-      price_paid: Number(t.price_paid) || 0,
-      event_id: t.event_id || '',
+    const ticketsTimeline = (core?.timeline || []).map((ticket) => ({
+      created_at: new Date(ticket.created_at_ms).toISOString(),
+      created_at_ms: ticket.created_at_ms,
+      price_paid: ticket.price_paid,
+      event_id: ticket.event_id,
     }));
 
     return {
-      totalEvents,
-      totalArtists,
-      totalOrganizers,
-      totalTickets,
-      totalParticipants,
-      totalUsers,
-      totalViews,
-      totalRevenue,
+      totalEvents: core?.total_events ?? activeIds.size,
+      totalArtists: artistsCount.count ?? 0,
+      totalOrganizers: orgsCount.count ?? 0,
+      totalTickets: core?.total_tickets ?? rawTickets.length,
+      totalParticipants: users,
+      totalUsers: users,
+      totalViews: core?.total_views ?? 0,
+      totalRevenue: core?.total_revenue ?? 0,
       categories,
+      categoryBasis: core?.category_basis ?? 'events',
+      categoryShares: core?.category_shares ?? [],
       ticketsTimeline,
     };
   } catch {
@@ -122,6 +167,8 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       totalViews: 0,
       totalRevenue: baselineRevenue,
       categories: {},
+      categoryBasis: 'events',
+      categoryShares: [],
       ticketsTimeline: [],
     };
   }
@@ -142,20 +189,19 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
     if (!error && data && data.length > 0) {
       // La section "À la une" doit EXCLUSIVEMENT afficher des événements actifs (non terminés)
       const activeList = (data as Event[]).filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
-
-      const sorted = [...activeList].sort((a, b) => {
-        const scoreA =
-          (a.is_featured ? 500 : 0) +
-          (a.attendees_count || 0) * 4 +
-          (a.views_count || 0) * 1.5 +
-          (a.likes_count || 0) * 3;
-        const scoreB =
-          (b.is_featured ? 500 : 0) +
-          (b.attendees_count || 0) * 4 +
-          (b.views_count || 0) * 1.5 +
-          (b.likes_count || 0) * 3;
-        return scoreB - scoreA;
-      });
+      const rankedIds = await coreRankIds(
+        activeList.map((event) => ({
+          id: event.id,
+          featured: !!event.is_featured,
+          attendees: event.attendees_count || 0,
+          views: event.views_count || 0,
+          likes: event.likes_count || 0,
+        }))
+      );
+      const byId = new Map(activeList.map((event) => [event.id, event]));
+      const sorted = (rankedIds || activeList.map((event) => event.id))
+        .map((id) => byId.get(id))
+        .filter((event): event is Event => !!event);
 
       return sorted.slice(0, 10);
     }
@@ -197,13 +243,21 @@ export async function fetchTrendingEvents(): Promise<Event[]> {
       .order('starts_at', { ascending: true })
       .limit(30);
     if (!error && data && data.length > 0) {
-      const published = (data as Event[]).filter((e) => isRealEvent(e) && e.status === 'published');
-      const sorted = [...published].sort((a, b) => {
-        const endedA = hasEventEnded(a);
-        const endedB = hasEventEnded(b);
-        if (endedA !== endedB) return endedA ? 1 : -1;
-        return (b.views_count || 0) - (a.views_count || 0);
-      });
+      const published = (data as Event[]).filter((e) => isRealEvent(e) && e.status === 'published' && !isEventTerminated(e));
+      const rankedIds = await coreTrendIds(
+        published.map((event) => ({
+          id: event.id,
+          likes: event.likes_count || 0,
+          attendees: event.attendees_count || 0,
+          views: event.views_count || 0,
+          starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+          terminated: false,
+        }))
+      );
+      const byId = new Map(published.map((event) => [event.id, event]));
+      const sorted = (rankedIds && rankedIds.length > 0 ? rankedIds : published.map((event) => event.id))
+        .map((id) => byId.get(id))
+        .filter((event): event is Event => !!event);
       return sorted.slice(0, 8);
     }
     return [];

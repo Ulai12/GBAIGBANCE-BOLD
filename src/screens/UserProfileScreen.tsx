@@ -100,7 +100,7 @@ export function UserProfileScreen({ userId, onBack, onEventClick, onToast }: Use
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         refreshSilentData();
       }
-    }, 3000);
+    }, 20000);
 
     return () => clearInterval(interval);
   }, [refreshSilentData]);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronDown,
@@ -19,7 +20,7 @@ import {
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { useScrollGlass } from '@/hooks/useScrollGlass';
-import { formatFullDate, formatTime } from '@/utils/format';
+import { formatFullDate, formatTime, toWhatsAppNumber } from '@/utils/format';
 import { COUNTRY_FLAGS } from '@/constants';
 import type { Event, EventWithRelations, Artist, EventCollaborator, TicketOption, Profile } from '@/types';
 import {
@@ -36,6 +37,7 @@ import { getPublicEventCache, setPublicEventCache } from '@/infrastructure/cache
 import { shareEventNative } from '@/utils/share';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchEventAttendees, type AttendeeProfile } from '@/services/attendeesService';
+import { submitEventReport } from '@/features/events/reports';
 import { getDefaultEventCover } from '@/utils/defaultImages';
 
 // Subcomponents
@@ -148,12 +150,12 @@ export function EventDetailScreen({
   event,
   onBack,
   onArtistClick,
-  onBook,
   onEditEvent,
   onOpenAISettings,
   onToast,
   onUserClick,
 }: EventDetailScreenProps) {
+  const navigate = useNavigate();
   const { user, theme, language } = useApp();
   const { isLiked, toggleLike, toggleFollowUser, isFollowingUser } = useFavorites();
   const liked = isLiked(event.id);
@@ -227,7 +229,8 @@ export function EventDetailScreen({
     }
   };
 
-  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (statut, billets restants, vues, participants)
+  // Le temps réel couvre déjà le stock. Un poll toutes les 3 s regénérait
+  // l'inventaire et faisait clignoter les places restantes.
   useEffect(() => {
     let isMounted = true;
     const interval = setInterval(async () => {
@@ -253,7 +256,7 @@ export function EventDetailScreen({
           // Polling silencieux sans perturbation visuelle
         }
       }
-    }, 3000);
+    }, 20000);
 
     return () => {
       isMounted = false;
@@ -445,8 +448,9 @@ export function EventDetailScreen({
   const handleSelectPass = (optionId: string) => {
     haptic.selection();
     setSelectedTicketOptionId(optionId);
+    // Une seule modale : appeler aussi onBook ouvrait une deuxième réservation
+    // par-dessus, verrouillait le scroll et faisait payer deux fois la même place.
     setShowBooking(true);
-    onBook?.(displayEvent as Event);
   };
 
   // Formatage ultra-robuste de la date et de l'heure (Haute lisibilité, zéro chevauchement)
@@ -744,9 +748,9 @@ export function EventDetailScreen({
                 )}
               </div>
 
-              {displayEvent.whatsapp_number && (
+              {toWhatsAppNumber(displayEvent.whatsapp_number).length >= 11 && (
                 <a
-                  href={`https://wa.me/${displayEvent.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(
+                  href={`https://wa.me/${toWhatsAppNumber(displayEvent.whatsapp_number)}?text=${encodeURIComponent(
                     displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
                   )}`}
                   target="_blank"
@@ -1068,9 +1072,9 @@ export function EventDetailScreen({
           </p>
         </div>
 
-        {displayEvent.access_type === 'whatsapp' ? (
+        {displayEvent.access_type === 'whatsapp' && toWhatsAppNumber(displayEvent.whatsapp_number).length >= 11 ? (
           <a
-            href={`https://wa.me/${(displayEvent.whatsapp_number || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+            href={`https://wa.me/${toWhatsAppNumber(displayEvent.whatsapp_number)}?text=${encodeURIComponent(
               displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
             )}`}
             target="_blank"
@@ -1081,9 +1085,9 @@ export function EventDetailScreen({
             <MessageCircle className="w-4 h-4" />
             <span>Réserver sur WhatsApp</span>
           </a>
-        ) : displayEvent.access_type === 'external' ? (
+        ) : displayEvent.access_type === 'external' && displayEvent.external_ticket_url ? (
           <a
-            href={displayEvent.external_ticket_url || '#'}
+            href={displayEvent.external_ticket_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => haptic.selection()}
@@ -1105,7 +1109,6 @@ export function EventDetailScreen({
               haptic.selection();
               setSelectedTicketOptionId(null);
               setShowBooking(true);
-              onBook?.(displayEvent as Event);
             }}
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
@@ -1120,12 +1123,11 @@ export function EventDetailScreen({
         isOpen={showReportModal}
         eventTitle={displayEvent.title}
         onClose={() => setShowReportModal(false)}
-        onReportSubmitted={() => {
+        onReportSubmitted={async (reason, comment) => {
+          const result = await submitEventReport(displayEvent.id, reason, comment);
           haptic.success();
-          onToast({
-            message: 'Signalement transmis à l’équipe de modération (TODO / Démonstration)',
-            type: 'info',
-          });
+          onToast({ message: result.message, type: result.remote ? 'success' : 'info' });
+          return result;
         }}
       />
 
@@ -1144,8 +1146,10 @@ export function EventDetailScreen({
         event={displayEvent as Event}
         initialOptionId={selectedTicketOptionId}
         onClose={() => setShowBooking(false)}
-        onSuccess={(qrCode) => {
-          onToast({ message: `Billet réservé ! Code: ${qrCode}`, type: 'success' });
+        onSuccess={() => {
+          onToast({ message: 'Billet confirmé. Retrouvez-le dans Mes billets.', type: 'success' });
+          setShowBooking(false);
+          navigate('/tickets');
         }}
       />
 

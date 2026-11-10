@@ -225,7 +225,7 @@ export function FavoritesScreen({
             );
         }
       }
-    }, 3000);
+    }, 20000);
 
     return () => {
       if (unsub) unsub();

@@ -33,7 +33,7 @@ const defaultContextValue: DataSaverContextValue = {
 
 const DataSaverContext = createContext<DataSaverContextValue>(defaultContextValue);
 
-function getNetworkConnection(): NetworkConnectionInfo | null {
+function getNetworkConnection(): (NetworkConnectionInfo & EventTarget) | null {
   if (typeof navigator === 'undefined') return null;
   const nav = navigator as unknown as {
     connection?: NetworkConnectionInfo & EventTarget;
@@ -49,10 +49,10 @@ export const DataSaverProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved === 'enabled' || saved === 'disabled' || saved === 'auto') {
-        return saved as DataSaverPreference;
+        return saved;
       }
     } catch {
-      // Ignore
+      // Ignore storage errors
     }
     return 'auto';
   });
@@ -100,17 +100,6 @@ export const DataSaverProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return isSaveDataHeaderDetected || isRestrictedConnection;
   }, [preference, isSaveDataHeaderDetected, isRestrictedConnection]);
 
-  // Sync HTML root class for global styling and pausing heavy background animations
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    if (isDataSaverActive) {
-      root.classList.add('gba-data-saver');
-    } else {
-      root.classList.remove('gba-data-saver');
-    }
-  }, [isDataSaverActive]);
-
   const setPreference = useCallback((pref: DataSaverPreference) => {
     setPreferenceState(pref);
     try {
@@ -121,26 +110,30 @@ export const DataSaverProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const toggleDataSaver = useCallback(() => {
-    // Si actif, on bascule vers 'disabled', sinon vers 'enabled'
-    setPreference(isDataSaverActive ? 'disabled' : 'enabled');
-  }, [isDataSaverActive, setPreference]);
+    setPreference(preference === 'enabled' ? 'disabled' : 'enabled');
+  }, [preference, setPreference]);
 
-  const value = useMemo(
-    () => ({
-      isDataSaverActive,
-      preference,
-      setPreference,
-      toggleDataSaver,
-      effectiveType: networkInfo.effectiveType || '4g',
-      isRestrictedConnection,
-      isSaveDataHeaderDetected,
-    }),
-    [isDataSaverActive, preference, setPreference, toggleDataSaver, networkInfo.effectiveType, isRestrictedConnection, isSaveDataHeaderDetected]
+  const value = useMemo<DataSaverContextValue>(() => ({
+    isDataSaverActive,
+    preference,
+    setPreference,
+    toggleDataSaver,
+    effectiveType: networkInfo.effectiveType ?? '4g',
+    isRestrictedConnection,
+    isSaveDataHeaderDetected,
+  }), [isDataSaverActive, preference, setPreference, toggleDataSaver, networkInfo.effectiveType, isRestrictedConnection, isSaveDataHeaderDetected]);
+
+  return (
+    <DataSaverContext.Provider value={value}>
+      {children}
+    </DataSaverContext.Provider>
   );
-
-  return <DataSaverContext.Provider value={value}>{children}</DataSaverContext.Provider>;
 };
 
 export function useDataSaver(): DataSaverContextValue {
-  return useContext(DataSaverContext);
+  const context = useContext(DataSaverContext);
+  if (!context) {
+    throw new Error('useDataSaver must be used within a DataSaverProvider');
+  }
+  return context;
 }

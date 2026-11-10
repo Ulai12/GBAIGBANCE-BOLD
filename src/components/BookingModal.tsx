@@ -19,6 +19,7 @@ import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, isEventTerminated, hasEventEnded, subscribeToTicketInventory } from '@/services/events';
 import { purchaseTicketsMulti, type TicketRecipientInput } from '@/features/tickets/service';
+import { toWhatsAppNumber } from '@/utils/format';
 import { fetchFollowingUsers } from '@/features/users/follows';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, TicketOption, PaymentProvider, Profile } from '@/types';
@@ -214,25 +215,70 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     return () => unsub();
   }, [open, event?.id]);
 
-  const available = selectedOption ? selectedOption.quantity_total - selectedOption.quantity_sold : 0;
-  const soldOut = options.length > 0 && options.every((o) => o.quantity_sold >= o.quantity_total);
+  // L'option sélectionnée doit suivre l'inventaire temps réel, sinon le stock
+  // affiché et le plafond de quantité restent figés sur l'ancienne copie.
+  const liveOption = selectedOption
+    ? options.find((o) => o.id === selectedOption.id) ?? selectedOption
+    : null;
+  const available = liveOption
+    ? Math.max(0, (liveOption.quantity_total || 0) - (liveOption.quantity_sold || 0))
+    : 0;
+  const soldOut = options.length > 0 && options.every((o) => (o.quantity_sold || 0) >= (o.quantity_total || 0));
   const eventUnavailable = isEventTerminated(event) || hasEventEnded(event);
-  const unitPrice = selectedOption ? selectedOption.price : 0;
+  const unitPrice = liveOption ? Number(liveOption.price) || 0 : 0;
   const totalPrice = unitPrice * quantity;
+  const isFreeCheckout = unitPrice === 0;
 
   const handleBook = async () => {
-    if (!selectedOption || !event) return;
+    if (!liveOption || !event) return;
     if (quantity > available) {
       setError('Quantité demandée supérieure au stock disponible.');
       return;
     }
 
-    if (purchaseTarget === 'friend' && !friendName.trim()) {
-      setError('Veuillez renseigner le nom ou prénom de votre ami(e).');
-      return;
+    if (purchaseTarget === 'friend') {
+      if (friendName.trim().length < 2) {
+        setError('Veuillez renseigner le nom ou prénom de votre ami(e).');
+        return;
+      }
+      if (toWhatsAppNumber(friendPhone).length < 11) {
+        setError('Indiquez le numéro WhatsApp de votre ami (8 chiffres, ex. 90 12 34 56).');
+        return;
+      }
     }
 
-    if (!paymentPhone.trim() || paymentPhone.trim().length < 8) {
+    const finalRecipients: TicketRecipientInput[] = recipients.map((r, i) => {
+      if (purchaseTarget === 'friend') {
+        const primary = i === 0;
+        return {
+          recipient_name: (primary ? friendName.trim() : (r.recipient_name || '').trim()) || `Invité #${i + 1}`,
+          recipient_phone: (primary ? friendPhone.trim() : (r.recipient_phone || friendPhone).trim()) || '',
+          // Sans cet identifiant, le pass offert n’atterrissait jamais sur le compte de l’ami choisi.
+          recipient_user_id: primary ? (selectedFriendId || r.recipient_user_id) : r.recipient_user_id,
+          is_for_me: false,
+        };
+      }
+      return {
+        ...r,
+        recipient_name: (r.recipient_name || '').trim() || (i === 0 ? (user?.name || 'Moi-même') : ''),
+        recipient_phone: r.recipient_phone || user?.phone || '',
+        is_for_me: i === 0,
+      };
+    });
+
+    if (quantity > 1) {
+      const unnamed = finalRecipients.some((r, i) => {
+        if (purchaseTarget === 'self' && i === 0) return false;
+        return (r.recipient_name || '').trim().length < 2;
+      });
+      if (unnamed) {
+        setError('Indiquez le nom de chaque titulaire (2 caractères minimum).');
+        return;
+      }
+    }
+
+    const buyerDigits = paymentPhone.replace(/\D/g, '');
+    if (!isFreeCheckout && buyerDigits.length < 8) {
       setError('Veuillez renseigner un numéro de téléphone Mobile Money valide.');
       return;
     }
@@ -243,27 +289,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
     try {
       const callerUserId = user?.id || `guest-${Date.now()}`;
-      
-      // Préparation finale des bénéficiaires
-      const finalRecipients = recipients.map((r, i) => {
-        if (purchaseTarget === 'friend') {
-          return {
-            recipient_name: (i === 0 ? friendName.trim() : r.recipient_name) || `Ami #${i + 1}`,
-            recipient_phone: (i === 0 ? friendPhone.trim() : r.recipient_phone) || '',
-            is_for_me: false,
-          };
-        }
-        return r;
-      });
 
       const res = await purchaseTicketsMulti({
         eventId: event.id,
-        ticketOptionId: selectedOption.id,
+        ticketOptionId: liveOption.id,
         recipients: finalRecipients,
         paymentProvider,
-        paymentPhone: paymentPhone.trim(),
+        paymentPhone: isFreeCheckout ? (user?.phone || '00000000') : paymentPhone.trim(),
         userId: callerUserId,
         buyerName: user?.name || 'Un ami',
+        unitPrice,
       });
 
       if (!res.success) {
@@ -276,16 +311,14 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       setSuccess(true);
       setBooking(false);
 
-      // Met à jour l'inventaire en local
       setOptions((prev) =>
         prev.map((o) =>
-          o.id === selectedOption.id
-            ? { ...o, quantity_sold: o.quantity_sold + quantity }
+          o.id === liveOption.id
+            ? { ...o, quantity_sold: (o.quantity_sold || 0) + quantity }
             : o
         )
       );
 
-      // Notifie les autres écrans
       window.dispatchEvent(new CustomEvent('gba-ticket-booked'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Une erreur inattendue est survenue');
@@ -332,10 +365,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <button
                   type="button"
                   onClick={() => {
+                    const waNumber = toWhatsAppNumber(friendPhone);
                     const eventTitle = event.title;
                     const text = `Salut ${friendName || 'l\'ami'} ! Je t'ai offert un billet pour ${eventTitle} sur Gbaïgbancê 🎟️. Voici ton pass : ${claimLink}`;
-                    const waUrl = `https://wa.me/${friendPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
-                    window.open(waUrl, '_blank');
+                    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+                    if (waNumber) window.open(waUrl, '_blank');
                   }}
                   className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
                 >
@@ -428,7 +462,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">1. Catégorie de pass</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {options.map((opt) => {
-                  const optAvailable = opt.quantity_total - opt.quantity_sold;
+                  const optAvailable = Math.max(0, (Number(opt.quantity_total) || 0) - (Number(opt.quantity_sold) || 0));
                   const isSelected = selectedOption?.id === opt.id;
                   return (
                     <button
@@ -591,16 +625,18 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     type="button"
                     onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
-                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
+                    aria-label="Diminuer la quantité"
+                    className="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-bold text-xs w-4 text-center">{quantity}</span>
+                  <span className="font-bold text-sm min-w-[1.5rem] text-center tabular-nums">{quantity}</span>
                   <button
                     type="button"
                     onClick={() => handleQuantityChange(Math.min(available, quantity + 1))}
                     disabled={quantity >= available || quantity >= 10}
-                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
+                    aria-label="Augmenter la quantité"
+                    className="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -631,8 +667,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               </div>
             )}
 
-            {/* 4. Paiement Mobile Money (T-Money et Flooz uniquement, MTN MoMo supprimé) */}
-            {selectedOption && available > 0 && (
+            {/* 4. Paiement Mobile Money — inutile pour un pass gratuit */}
+            {selectedOption && available > 0 && !isFreeCheckout && (
               <div className="space-y-2.5 pt-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5" /> 3. Règlement Mobile Money
@@ -701,10 +737,12 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 block">Total à payer</span>
-                    <span className="text-[10px] text-gray-400">15 min de réservation de stock</span>
+                    <span className="text-[10px] text-gray-400">
+                      {isFreeCheckout ? 'Confirmation immédiate, sans débit' : 'Débit Mobile Money sur le numéro indiqué'}
+                    </span>
                   </div>
                   <span className="text-xl font-black text-[#1A1A2E]">
-                    {totalPrice.toLocaleString('fr-FR')} F CFA
+                    {isFreeCheckout ? 'Gratuit' : `${totalPrice.toLocaleString('fr-FR')} F CFA`}
                   </span>
                 </div>
 
@@ -723,7 +761,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     <>
                       {purchaseTarget === 'friend' ? <Gift className="w-4 h-4" /> : <Ticket className="w-4 h-4" />}
                       {purchaseTarget === 'friend'
-                        ? `Offrir à ${friendName || 'mon ami'} (${totalPrice.toLocaleString('fr-FR')} F)`
+                        ? `Offrir à ${friendName || 'mon ami'} (${isFreeCheckout ? 'Gratuit' : `${totalPrice.toLocaleString('fr-FR')} F`})`
+                        : isFreeCheckout
+                        ? `Confirmer ${quantity} billet${quantity > 1 ? 's' : ''} gratuit${quantity > 1 ? 's' : ''}`
                         : `Payer et valider (${quantity} billet${quantity > 1 ? 's' : ''})`}
                     </>
                   )}

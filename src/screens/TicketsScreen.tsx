@@ -113,17 +113,18 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     }
 
     let isMounted = true;
+    let networkDone = false;
     getCachedUserTickets(user.id).then((storedTickets) => {
-      if (isMounted && storedTickets && storedTickets.length > 0) {
-        setCachedTicketsMemory(user.id, storedTickets);
-        setTickets(storedTickets);
-        setLoading(false);
-      }
+      if (!isMounted || networkDone || !storedTickets || storedTickets.length === 0) return;
+      setCachedTicketsMemory(user.id, storedTickets);
+      setTickets(storedTickets);
+      setLoading(false);
     });
 
     fetchUserTickets(user.id, user.phone, user.name)
       .then((data) => {
         if (!isMounted) return;
+        networkDone = true;
         const list = (data as unknown as (Ticket & { event?: Event })[]) || [];
         setTickets(list);
         setCachedTicketsMemory(user.id, list);
@@ -171,14 +172,19 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     };
   }, [user, refreshTickets, onToast]);
 
-  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  // Secours si le temps réel est coupé. 3 s sur mobile vidait la batterie et
+  // relançait un fetch complet même hors de l'onglet Billets.
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible' &&
+        window.location.pathname === '/tickets'
+      ) {
         refreshTickets();
       }
-    }, 3000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [user, refreshTickets]);
 

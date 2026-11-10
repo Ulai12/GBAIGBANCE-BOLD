@@ -33,6 +33,7 @@ import {
 } from '@/services/events';
 import { checkFollowedArtistsNewDates } from '@/services/eventReminderService';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
+import { coreTrendIds } from '@/lib/rust-core';
 import {
   calculateDistanceKm,
   getCurrentUserLocation,
@@ -201,9 +202,19 @@ export function HomeScreen({
 
       // Algorithme tendances : tri par score pondéré et plafonnement strict à 5 pour éviter tout flux infini
       const poolForTrending = masterEvents.filter((e) => !isEventTerminated(e));
-      const sortedTrending = [...poolForTrending].sort(
-        (a, b) => calculateTrendingScore(b) - calculateTrendingScore(a)
+      const rankedIds = await coreTrendIds(
+        poolForTrending.map((event) => ({
+          id: event.id,
+          likes: event.likes_count || 0,
+          attendees: event.attendees_count || 0,
+          views: event.views_count || 0,
+          starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+        }))
       );
+      const trendById = new Map(poolForTrending.map((event) => [event.id, event]));
+      const sortedTrending = rankedIds && rankedIds.length > 0
+        ? rankedIds.map((id) => trendById.get(id)).filter((event): event is Event => !!event)
+        : [...poolForTrending].sort((a, b) => calculateTrendingScore(b) - calculateTrendingScore(a));
       const newTrend = sortedTrending.slice(0, 5);
 
       // Proximité / sorties : plafonnement à 6 cartes maximum

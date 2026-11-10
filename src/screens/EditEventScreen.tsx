@@ -51,6 +51,7 @@ import {
 import type { Artist, Event, EventCategory, EventStatus, EventCollaborator } from '@/types';
 import type { ToastData } from '@/components/Toast';
 import { formatNumber } from '@/utils/format';
+import { coreStock } from '@/lib/rust-core';
 
 interface EditEventScreenProps {
   eventId: string;
@@ -263,18 +264,20 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
       return new Date(endsAt).getTime() < Date.now();
     }
     if (startsAt) {
-      // If startsAt was more than 8 hours ago and no endsAt specified
-      return new Date(startsAt).getTime() + 8 * 3600 * 1000 < Date.now();
+      // Même fenêtre que la fiche publique (6 h si l'événement n'a pas d'heure de fin).
+      return new Date(startsAt).getTime() + 6 * 3600 * 1000 < Date.now();
     }
     return false;
   }, [status, rawEvent, endsAt, startsAt]);
+
+  const [rustSoldPercent, setRustSoldPercent] = useState<number | null>(null);
 
   // Statistics calculation for Header KPI
   const stats = useMemo(() => {
     const totalTicketsSold = tickets.reduce((acc, t) => acc + (t.quantity_sold || 0), 0);
     const totalCapacity = Number(capacity) || tickets.reduce((acc, t) => acc + (Number(t.quantity_total) || 0), 0);
     const estimatedRevenue = tickets.reduce((acc, t) => acc + (t.quantity_sold || 0) * (Number(t.price) || 0), 0);
-    const progressPercent = totalCapacity > 0 ? Math.min(100, Math.round((totalTicketsSold / totalCapacity) * 100)) : 0;
+    const progressPercent = rustSoldPercent ?? (totalCapacity > 0 ? Math.min(100, Math.round((totalTicketsSold / totalCapacity) * 100)) : 0);
 
     return {
       views: rawEvent?.views_count || 0,
@@ -284,7 +287,19 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
       progressPercent,
       revenue: estimatedRevenue,
     };
-  }, [tickets, capacity, rawEvent]);
+  }, [tickets, capacity, rawEvent, rustSoldPercent]);
+
+  useEffect(() => {
+    const sold = tickets.reduce((acc, ticket) => acc + (ticket.quantity_sold || 0), 0);
+    const cap = Number(capacity) || tickets.reduce((acc, ticket) => acc + (Number(ticket.quantity_total) || 0), 0);
+    let cancelled = false;
+    coreStock(sold, cap).then((result) => {
+      if (!cancelled && result) setRustSoldPercent(result.percent_sold);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tickets, capacity]);
 
   const handleCityChange = (cityName: string) => {
     setCity(cityName);

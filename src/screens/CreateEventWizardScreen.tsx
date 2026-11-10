@@ -229,7 +229,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     }
     setSearching(true);
     const timer = window.setTimeout(() => {
-      if (collabRole === 'artist') {
+      if (collabRole === 'performer') {
         searchArtists(collabSearch)
           .then((artists) => setResults({ artists: artists.filter((a) => Boolean(a.user_id)), orgs: [] }))
           .catch(() => setResults({ artists: [], orgs: [] }))
@@ -1465,14 +1465,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 className={`${fieldClass} pl-11`}
                 value={collabSearch}
                 onChange={(e) => setCollabSearch(e.target.value)}
-                placeholder={collabRole === 'artist' ? 'Rechercher un artiste...' : 'Rechercher un co-organisateur...'}
+                placeholder={collabRole === 'performer' ? 'Rechercher un artiste...' : 'Rechercher un co-organisateur...'}
               />
             </div>
 
             {searching && <p className="text-xs text-gray-500 text-center">Recherche en cours...</p>}
 
             <div className="space-y-2">
-              {collabRole === 'artist' &&
+              {collabRole === 'performer' &&
                 results.artists.map((artist) => (
                   <button
                     type="button"
@@ -1499,11 +1499,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 ))}
 
               {collabSearch.trim() && !searching && (
-                (collabRole === 'artist' && results.artists.length === 0) ||
+                (collabRole === 'performer' && results.artists.length === 0) ||
                 (collabRole === 'co_organizer' && results.orgs.length === 0)
               ) && (
                 <p className="text-xs text-gray-500 text-center py-2">
-                  Aucun {collabRole === 'artist' ? 'artiste' : 'co-organisateur'} trouvé pour &ldquo;{collabSearch}&rdquo;
+                  Aucun {collabRole === 'performer' ? 'artiste' : 'co-organisateur'} trouvé pour &ldquo;{collabSearch}&rdquo;
                 </p>
               )}
             </div>

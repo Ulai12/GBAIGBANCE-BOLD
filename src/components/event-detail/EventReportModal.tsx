@@ -5,7 +5,7 @@ interface EventReportModalProps {
   isOpen: boolean;
   eventTitle: string;
   onClose: () => void;
-  onReportSubmitted: (reason: string) => void;
+  onReportSubmitted: (reason: string, comment: string) => Promise<{ remote: boolean; message: string }>;
 }
 
 const REPORT_REASONS = [
@@ -25,17 +25,29 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<string>('fake_scam');
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [resultText, setResultText] = useState('');
+  const [sentRemote, setSentRemote] = useState(true);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      onReportSubmitted(selectedReason);
-      setSubmitted(false);
-      onClose();
-    }, 1200);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await onReportSubmitted(selectedReason, comment);
+      setSentRemote(result.remote);
+      setResultText(result.message);
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setComment('');
+        onClose();
+      }, 1400);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -45,7 +57,7 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        {/* Header avec poignée et badge TODO */}
+        {/* Header avec poignée */}
         <div className="pt-3 px-6 pb-4 border-b border-black/5 dark:border-white/10 relative">
           <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-white/20 mx-auto mb-3 sm:hidden" />
           
@@ -57,9 +69,6 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               <div>
                 <h3 className="text-base font-black text-[#1A1A2E] dark:text-white flex items-center gap-2">
                   <span>Signaler cet événement</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                    TODO • Démo
-                  </span>
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[260px]">
                   {eventTitle}
@@ -70,7 +79,7 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center text-gray-500 dark:text-gray-300 transition-colors"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center text-gray-500 dark:text-gray-300 transition-colors"
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
@@ -78,11 +87,11 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
           </div>
         </div>
 
-        {/* Notice informative TODO */}
+        {/* Notice informative */}
         <div className="mx-6 mt-4 p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
           <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed font-medium">
-            <strong>Module en cours de déploiement (TODO) :</strong> La modération communautaire et la revue juridique automatisée sont actuellement en phase de test. Vos signalements aident à préserver la sécurité de la communauté.
+            Le motif est enregistré et transmis à la modération ainsi qu’à l’organisateur.
           </p>
         </div>
 
@@ -92,10 +101,10 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               <CheckCircle2 className="w-7 h-7" />
             </div>
             <h4 className="text-lg font-black text-[#1A1A2E] dark:text-white">
-              Signalement transmis
+              {sentRemote ? 'Signalement transmis' : 'Signalement conservé'}
             </h4>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              Merci pour votre vigilance. Notre équipe étudiera cette alerte dans les plus brefs délais.
+              {resultText || 'Merci pour votre vigilance.'}
             </p>
           </div>
         ) : (
@@ -151,10 +160,11 @@ export const EventReportModal: React.FC<EventReportModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex-1 min-h-[46px] rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-lg shadow-[#6600FF]/25 flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="flex-1 min-h-[46px] rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-lg shadow-[#6600FF]/25 flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <ShieldAlert className="w-4 h-4" />
-                <span>Confirmer l'alerte</span>
+                <span>{submitting ? 'Envoi…' : "Confirmer l'alerte"}</span>
               </button>
             </div>
           </form>
