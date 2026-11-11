@@ -49,9 +49,7 @@ export async function streamAIAssistant(
     }
 
     try {
-      // Récupération de la session utilisateur pour contexte
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -69,7 +67,6 @@ export async function streamAIAssistant(
             text: m.text.slice(0, 1000),
           })),
           userLocation: sanitizedLocation,
-          userId,
         }),
         signal: controller.signal,
       });

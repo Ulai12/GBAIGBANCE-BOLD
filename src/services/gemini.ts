@@ -6,6 +6,7 @@
  */
 
 import type { Event } from '@/types';
+import { supabase } from '@/infrastructure/supabase';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -136,9 +137,13 @@ export async function askGeminiAssistant(
   options: AskAssistantOptions
 ): Promise<{ text: string }> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
     const res = await fetch('/api/ai/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         prompt: options.prompt,
         currentEvent: options.currentEvent,

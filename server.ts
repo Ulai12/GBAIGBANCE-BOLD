@@ -7,7 +7,16 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type, Modality } from '@google/genai';
 import type { LiveServerMessage } from '@google/genai';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  catalogDateWindow,
+  clampLimit,
+  clampRadiusKm,
+  formatEventPrice,
+  normalizeCategory,
+  sanitizeSearchTerm,
+  withinRadius,
+} from './src/server/aiCatalog.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,10 +35,36 @@ const DEFAULT_SUPABASE_URL = 'https://qbngqstyhusndngkours.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibmdxc3R5aHVzbmRuZ2tvdXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDk2MjEsImV4cCI6MjEwMDUyNTYyMX0.FjxlwhFLJe9rgio0FmP48ae8maMNuWwn3yZv2g_p8dM';
 
-const supabaseServer = createClient(
-  process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
+const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+
+type DbClient = SupabaseClient;
+
+function bearerToken(req: Request): string | null {
+  const header = req.headers.authorization;
+  const raw = Array.isArray(header) ? header[0] : header;
+  const match = raw?.match(/^Bearer\s+(\S+)/i);
+  return match?.[1] ?? null;
+}
+
+/** L'identité vient uniquement du JWT Supabase, jamais du corps de la requête. */
+async function resolveRequestActor(req: Request): Promise<{ userId: string | null; client: DbClient }> {
+  const token = bearerToken(req);
+  if (!token) return { userId: null, client: supabaseServer };
+
+  const { data, error } = await supabaseServer.auth.getUser(token);
+  if (error || !data.user) return { userId: null, client: supabaseServer };
+
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return { userId: data.user.id, client: userClient };
+}
 
 const AI_SYSTEM_INSTRUCTION = `Tu es l'assistant concierge intelligent officiel de Gbaigbance, l'application de billetterie d'événements leader en Afrique de l'Ouest (Togo, Bénin, Côte d'Ivoire).
 Tu aides chaleureusement, avec précision et rigueur, les utilisateurs à découvrir leurs sorties et à gérer leurs réservations.
@@ -137,51 +172,52 @@ async function executeToolCall(
   name: string,
   args: Record<string, unknown>,
   context: {
-    userId?: string | null;
+    userId: string | null;
+    client: DbClient;
     userLocation?: { lat: number; lng: number } | null;
     turnEventIds: Set<string>;
   }
 ): Promise<unknown> {
-  const { turnEventIds, userId } = context;
+  const { turnEventIds, userId, client } = context;
 
   switch (name) {
     case 'search_events': {
-      const query = String(args.query || '').trim();
-      const category = args.category ? String(args.category).trim() : null;
+      const query = sanitizeSearchTerm(args.query);
+      const category = normalizeCategory(args.category);
       const freeOnly = Boolean(args.free_only);
-      const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 8);
+      const limit = clampLimit(args.limit);
+      const window = catalogDateWindow(args.date_range);
 
       let dbQuery = supabaseServer
         .from('events')
-        .select('id, title, category, starts_at, location_name, city, price_min, currency, cover_url')
+        .select('id, title, category, starts_at, location_name, city, price_min, currency')
         .eq('status', 'published')
+        .gte('starts_at', window.from)
         .order('starts_at', { ascending: true })
-        .limit(limit * 2);
+        .limit(limit);
 
+      if (window.to) dbQuery = dbQuery.lte('starts_at', window.to);
       if (query) {
-        dbQuery = dbQuery.or(`title.ilike.%${query}%,description.ilike.%${query}%,location_name.ilike.%${query}%,city.ilike.%${query}%`);
+        const pattern = `%${query}%`;
+        dbQuery = dbQuery.or(
+          `title.ilike."${pattern}",description.ilike."${pattern}",location_name.ilike."${pattern}",city.ilike."${pattern}"`
+        );
       }
-      if (category) {
-        dbQuery = dbQuery.eq('category', category);
-      }
-      if (freeOnly) {
-        dbQuery = dbQuery.eq('price_min', 0);
-      }
+      if (category) dbQuery = dbQuery.eq('category', category);
+      if (freeOnly) dbQuery = dbQuery.eq('price_min', 0);
 
       const { data, error } = await dbQuery;
-      if (error || !data) {
-        return { count: 0, events: [] };
-      }
+      if (error || !data) return { count: 0, events: [] };
 
-      const eventsList = data.slice(0, limit).map((ev) => {
+      const eventsList = data.map((ev) => {
         turnEventIds.add(ev.id);
         return {
           id: ev.id,
           title: ev.title,
           category: ev.category,
           starts_at: ev.starts_at,
-          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-          price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
+          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.replace(/^, /, ''),
+          price: formatEventPrice(ev.price_min, ev.currency),
         };
       });
 
@@ -190,18 +226,16 @@ async function executeToolCall(
 
     case 'get_event_details': {
       const eventId = String(args.event_id || '').trim();
-      if (!eventId) return { error: 'Identifiant d’événement manquant.' };
+      if (!/^[0-9a-f-]{36}$/i.test(eventId)) return { error: 'Identifiant d’événement manquant.' };
 
       const { data, error } = await supabaseServer
         .from('events')
-        .select('id, title, description, category, starts_at, ends_at, location_name, location_address, city, country, price_min, price_max, currency, cover_url, capacity, attendees_count')
+        .select('id, title, description, category, starts_at, ends_at, location_name, location_address, city, country, price_min, price_max, currency, capacity')
         .eq('id', eventId)
         .eq('status', 'published')
         .maybeSingle();
 
-      if (error || !data) {
-        return { error: 'Événement introuvable ou non publié.' };
-      }
+      if (error || !data) return { error: 'Événement introuvable ou non publié.' };
 
       turnEventIds.add(data.id);
       return {
@@ -213,88 +247,164 @@ async function executeToolCall(
         location_name: data.location_name,
         location_address: data.location_address,
         city: data.city,
-        price_range: data.price_min === 0 ? 'Gratuit' : `${data.price_min} FCFA`,
+        price_range:
+          data.price_min === 0 && !data.price_max
+            ? 'Gratuit'
+            : `${data.price_min || 0} - ${data.price_max || data.price_min || 0} ${data.currency || 'FCFA'}`,
         description: (data.description || '').slice(0, 350),
       };
     }
 
     case 'get_nearby_events': {
-      const lat = Number(args.lat);
-      const lng = Number(args.lng);
-      const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 8);
+      const lat = Number(args.lat ?? context.userLocation?.lat);
+      const lng = Number(args.lng ?? context.userLocation?.lng);
+      const radiusKm = clampRadiusKm(args.radius_km);
+      const limit = clampLimit(args.limit);
 
-      if (isNaN(lat) || isNaN(lng)) return { error: 'Coordonnées GPS invalides.' };
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { error: 'Coordonnées GPS invalides.' };
 
-      // Recherche les événements publiés dans le secteur
-      const { data } = await supabaseServer
+      const { data, error } = await supabaseServer.rpc('get_nearby_events_rpc', {
+        p_lat: lat,
+        p_lng: lng,
+        p_radius_km: radiusKm,
+        p_limit: limit,
+      });
+
+      if (!error && Array.isArray(data)) {
+        const eventsList = data.map((ev) => {
+          turnEventIds.add(ev.id);
+          return {
+            id: ev.id,
+            title: ev.title,
+            category: ev.category,
+            starts_at: ev.starts_at,
+            location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.replace(/^, /, ''),
+            price: formatEventPrice(ev.price_min, ev.currency),
+            distance: `${ev.distance_km} km`,
+          };
+        });
+        return { count: eventsList.length, events: eventsList, radius_km: radiusKm };
+      }
+
+      const { data: fallback } = await supabaseServer
         .from('events')
         .select('id, title, category, starts_at, location_name, city, price_min, currency, latitude, longitude')
         .eq('status', 'published')
-        .order('starts_at', { ascending: true })
-        .limit(limit);
+        .gte('starts_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+        .limit(80);
 
-      if (!data || data.length === 0) {
-        return { count: 0, events: [] };
-      }
-
-      const eventsList = data.map((ev) => {
+      const nearby = withinRadius(fallback || [], lat, lng, radiusKm, limit);
+      const eventsList = nearby.map((ev) => {
         turnEventIds.add(ev.id);
         return {
           id: ev.id,
           title: ev.title,
           category: ev.category,
           starts_at: ev.starts_at,
-          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-          price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
+          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.replace(/^, /, ''),
+          price: formatEventPrice(ev.price_min, ev.currency),
+          distance: `${ev.distance_km} km`,
         };
       });
-
-      return { count: eventsList.length, events: eventsList };
+      return { count: eventsList.length, events: eventsList, radius_km: radiusKm };
     }
 
     case 'get_my_tickets': {
-      if (!userId || userId.startsWith('guest-')) {
-        return { authenticated: false, message: 'Utilisateur non connecté' };
-      }
-      const { data } = await supabaseServer
-        .from('tickets')
-        .select('id, event_id, ticket_type, price_paid, qr_code, status, event:events(title, starts_at, location_name, city)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      if (!userId) return { authenticated: false, message: 'Connectez-vous pour consulter vos billets.' };
 
-      return { count: data?.length || 0, tickets: data || [] };
+      const { data, error } = await client
+        .from('tickets')
+        .select('ticket_type, quantity, price_paid, currency, status, events(id, title, starts_at, location_name, city)')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'valid', 'used'])
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) return { count: 0, tickets: [], error: 'Impossible de récupérer les billets.' };
+
+      const tickets = (data || []).map((ticket) => {
+        const event = firstRelation(ticket.events);
+        if (event?.id) turnEventIds.add(event.id);
+        return {
+          event_title: event?.title || 'Événement',
+          ticket_type: ticket.ticket_type,
+          quantity: ticket.quantity || 1,
+          status: ticketStatusLabel(ticket.status),
+          starts_at: event?.starts_at || 'Date à confirmer',
+          location: event ? `${event.location_name || ''}, ${event.city || 'Lomé'}`.replace(/^, /, '') : 'Lomé',
+          price_paid: `${ticket.price_paid} ${ticket.currency || 'FCFA'}`,
+        };
+      });
+      return { count: tickets.length, tickets };
     }
 
     case 'get_my_favorites': {
-      if (!userId || userId.startsWith('guest-')) {
-        return { authenticated: false, message: 'Utilisateur non connecté' };
-      }
-      const { data } = await supabaseServer
-        .from('user_favorites')
-        .select('event_id, event:events(id, title, category, starts_at, city)')
-        .eq('user_id', userId)
-        .limit(5);
+      if (!userId) return { authenticated: false, message: 'Connectez-vous pour accéder à vos favoris.' };
 
-      return { count: data?.length || 0, favorites: data || [] };
+      const { data, error } = await client
+        .from('event_likes')
+        .select('event_id, events(id, title, category, starts_at, location_name, city, price_min, currency)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) return { count: 0, favorites: [], error: 'Impossible de récupérer les favoris.' };
+
+      const favorites = (data || []).flatMap((row) => {
+        const ev = firstRelation(row.events);
+        if (!ev?.id) return [];
+        turnEventIds.add(ev.id);
+        return [{
+          id: ev.id,
+          title: ev.title,
+          category: ev.category,
+          starts_at: ev.starts_at,
+          location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.replace(/^, /, ''),
+          price: formatEventPrice(ev.price_min, ev.currency),
+        }];
+      });
+      return { count: favorites.length, favorites };
     }
 
     case 'get_my_profile_lite': {
-      if (!userId || userId.startsWith('guest-')) {
-        return { authenticated: false, message: 'Invité' };
-      }
-      const { data } = await supabaseServer
+      if (!userId) return { authenticated: false, message: 'L’utilisateur n’est pas connecté (mode invité).' };
+
+      const { data, error } = await client
         .from('profiles')
-        .select('id, name, city, country, role')
+        .select('name, city, country, role, bio')
         .eq('id', userId)
         .maybeSingle();
 
-      return data || { id: userId };
+      if (error || !data) {
+        return { authenticated: true, first_name: 'Participant', role: 'participant', city: 'Lomé' };
+      }
+
+      const firstName = data.name ? String(data.name).trim().split(/\s+/)[0] : 'Participant';
+      return {
+        authenticated: true,
+        first_name: firstName,
+        role: data.role || 'participant',
+        city: data.city || 'Lomé',
+        country: data.country || 'TG',
+        preferences: data.bio ? String(data.bio).slice(0, 150) : null,
+      };
     }
 
     default:
       return { error: `Outil ${name} non reconnu.` };
   }
+}
+
+function ticketStatusLabel(status: string): string {
+  if (status === 'valid') return 'Valide';
+  if (status === 'used') return 'Utilisé';
+  if (status === 'pending') return 'En attente de paiement';
+  return status;
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 }
 
 const app = express();
@@ -324,7 +434,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const { messages = [], userLocation, userId } = req.body;
+  const { messages = [], userLocation } = req.body ?? {};
+  const actor = await resolveRequestActor(req);
   const turnEventIds = new Set<string>();
 
   try {
@@ -389,7 +500,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
       if (functionCallFound) {
         const { name, args } = functionCallFound;
         const toolResult = await executeToolCall(name, args, {
-          userId,
+          userId: actor.userId,
+          client: actor.client,
           userLocation,
           turnEventIds,
         });
@@ -424,7 +536,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
 
 // Endpoint synchrone non-streaming
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
-  const { prompt, currentEvent, userLocation, userId } = req.body;
+  const { prompt, currentEvent, userLocation } = req.body ?? {};
+  const actor = await resolveRequestActor(req);
   const turnEventIds = new Set<string>();
 
   try {
@@ -448,7 +561,8 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
     if (response.functionCalls && response.functionCalls.length > 0) {
       const fc = response.functionCalls[0];
       const toolResult = await executeToolCall(fc.name, (fc.args as Record<string, unknown>) || {}, {
-        userId,
+        userId: actor.userId,
+        client: actor.client,
         userLocation,
         turnEventIds,
       });
