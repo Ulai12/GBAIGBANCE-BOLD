@@ -1,5 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
+import {
+  catalogDateWindow,
+  clampLimit,
+  formatEventPrice,
+  normalizeCategory,
+  sanitizeSearchTerm,
+  ticketStatusLabel,
+  VISIBLE_TICKET_STATUSES,
+} from '../_shared/aiCatalog.ts';
 
 // ====================================================================
 // GBAIGBANCE — EDGE FUNCTION: ASSISTANT IA CONTEXTUEL & SÉCURISÉ
@@ -271,31 +280,29 @@ async function executeToolCall(
   try {
     switch (name) {
       case 'search_events': {
-        const query = typeof args.query === 'string' ? args.query.trim().slice(0, 80) : '';
-        const category = typeof args.category === 'string' ? args.category : null;
+        const query = sanitizeSearchTerm(args.query);
+        const category = normalizeCategory(args.category);
         const freeOnly = Boolean(args.free_only);
-        const dateRange = typeof args.date_range === 'string' ? args.date_range : null;
-        const limit = Math.min(Math.max(Number(args.limit) || 6, 1), 8);
+        const limit = clampLimit(args.limit);
+        const window = catalogDateWindow(args.date_range);
 
-        log(reqId, 'TOOL:search_events', `Building query: term="${query}", category=${category || 'all'}, freeOnly=${freeOnly}, dateRange=${dateRange || 'all'}, limit=${limit}`);
+        log(reqId, 'TOOL:search_events', `Building query: term="${query}", category=${category || 'all'}, freeOnly=${freeOnly}, dateRange=${String(args.date_range || 'upcoming')}, limit=${limit}`);
 
         let dbQuery = userClient
           .from('events')
           .select(
-            'id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency, cover_url'
+            'id, title, category, starts_at, location_name, city, price_min, currency'
           )
           .eq('status', 'published')
+          .gte('starts_at', window.from)
           .order('starts_at', { ascending: true })
           .limit(limit);
 
-        // Filtre événements non terminés
-        const nowIso = new Date().toISOString();
-        const sixHoursAgoIso = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
-        dbQuery = dbQuery.or(`ends_at.gte.${nowIso},and(ends_at.is.null,starts_at.gte.${sixHoursAgoIso})`);
-
+        if (window.to) dbQuery = dbQuery.lte('starts_at', window.to);
         if (query) {
+          const pattern = `%${query}%`;
           dbQuery = dbQuery.or(
-            `title.ilike.%${query}%,description.ilike.%${query}%,location_name.ilike.%${query}%,city.ilike.%${query}%`
+            `title.ilike."${pattern}",description.ilike."${pattern}",location_name.ilike."${pattern}",city.ilike."${pattern}"`
           );
         }
         if (category) {
@@ -303,21 +310,6 @@ async function executeToolCall(
         }
         if (freeOnly) {
           dbQuery = dbQuery.eq('price_min', 0);
-        }
-
-        // Filtres temporels
-        if (dateRange === 'today') {
-          const endOfDay = new Date();
-          endOfDay.setHours(23, 59, 59, 999);
-          dbQuery = dbQuery.lte('starts_at', endOfDay.toISOString());
-        } else if (dateRange === 'this_weekend') {
-          const now = new Date();
-          const day = now.getDay();
-          const diffToSunday = (7 - day) % 7;
-          const endOfWeekend = new Date(now);
-          endOfWeekend.setDate(now.getDate() + diffToSunday);
-          endOfWeekend.setHours(23, 59, 59, 999);
-          dbQuery = dbQuery.lte('starts_at', endOfWeekend.toISOString());
         }
 
         const { data, error } = await dbQuery;
@@ -328,19 +320,7 @@ async function executeToolCall(
           return { success: false, error: 'Erreur lors de la recherche des événements.' };
         }
 
-        const nowMs = Date.now();
         const eventsList = (data || [])
-          .filter((ev: { id: string; starts_at?: string; ends_at?: string | null }) => {
-            if (ev.ends_at) {
-              const endMs = new Date(ev.ends_at).getTime();
-              if (!Number.isNaN(endMs)) return endMs >= nowMs;
-            }
-            if (ev.starts_at) {
-              const startMs = new Date(ev.starts_at).getTime();
-              if (!Number.isNaN(startMs)) return (startMs + 6 * 3600 * 1000) >= nowMs;
-            }
-            return true;
-          })
           .slice(0, limit)
           .map(
           (ev: {
@@ -360,7 +340,7 @@ async function executeToolCall(
               category: ev.category,
               starts_at: ev.starts_at,
               location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-              price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
+              price: formatEventPrice(ev.price_min, ev.currency),
             };
           }
         );
@@ -648,7 +628,7 @@ async function executeToolCall(
             'id, event_id, ticket_type, quantity, price_paid, currency, status, created_at, events(id, title, starts_at, location_name, city)'
           )
           .eq('user_id', userId)
-          .in('status', ['active', 'used'])
+          .in('status', [...VISIBLE_TICKET_STATUSES])
           .order('created_at', { ascending: false })
           .limit(limit);
 
@@ -674,7 +654,7 @@ async function executeToolCall(
               event_title: t.events?.title || 'Événement',
               ticket_type: t.ticket_type,
               quantity: t.quantity || 1,
-              status: t.status === 'active' ? 'Valide' : 'Utilisé',
+              status: ticketStatusLabel(t.status),
               starts_at: t.events?.starts_at || 'Date à confirmer',
               location: t.events ? `${t.events.location_name || ''}, ${t.events.city || 'Lomé'}`.trim() : 'Lomé',
               price_paid: `${t.price_paid} ${t.currency || 'FCFA'}`,

@@ -15,7 +15,9 @@ import {
   formatEventPrice,
   normalizeCategory,
   sanitizeSearchTerm,
+  ticketStatusLabel,
   withinRadius,
+  VISIBLE_TICKET_STATUSES,
 } from './src/server/aiCatalog.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -316,7 +318,7 @@ async function executeToolCall(
         .from('tickets')
         .select('ticket_type, quantity, price_paid, currency, status, events(id, title, starts_at, location_name, city)')
         .eq('user_id', userId)
-        .in('status', ['pending', 'valid', 'used'])
+        .in('status', [...VISIBLE_TICKET_STATUSES])
         .order('created_at', { ascending: false })
         .limit(8);
 
@@ -393,13 +395,6 @@ async function executeToolCall(
     default:
       return { error: `Outil ${name} non reconnu.` };
   }
-}
-
-function ticketStatusLabel(status: string): string {
-  if (status === 'valid') return 'Valide';
-  if (status === 'used') return 'Utilisé';
-  if (status === 'pending') return 'En attente de paiement';
-  return status;
 }
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {

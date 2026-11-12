@@ -4,6 +4,7 @@ import {
   catalogDateWindow,
   haversineKm,
   sanitizeSearchTerm,
+  ticketStatusLabel,
   withinRadius,
 } from './aiCatalog.ts';
 
@@ -42,6 +43,14 @@ describe('catalogDateWindow', () => {
   });
 });
 
+describe('ticketStatusLabel', () => {
+  it('nomme les statuts réels et ignore l’ancien active', () => {
+    assert.equal(ticketStatusLabel('valid'), 'Valide');
+    assert.equal(ticketStatusLabel('used'), 'Utilisé');
+    assert.equal(ticketStatusLabel('pending'), 'En attente de paiement');
+    assert.equal(ticketStatusLabel('active'), 'active');
+  });
+});
 describe('withinRadius', () => {
   it('garde Lomé et écarte Accra', () => {
     const rows = withinRadius(
