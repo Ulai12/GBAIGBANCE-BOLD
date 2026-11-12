@@ -359,25 +359,39 @@ export function HomeScreen({
   useEffect(() => {
     if (!selectedCategory) {
       setCategoryEvents([]);
+      setCategoryLoading(false);
       return;
     }
-    const immediateMatches = allActiveEvents.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
-    if (immediateMatches.length > 0) {
-      setCategoryEvents(immediateMatches);
-    } else {
-      setCategoryLoading(true);
-    }
+
+    let isCurrentRequest = true;
+    const immediateMatches = allActiveEvents.filter((event) =>
+      eventMatchesCategoryFilter(event, selectedCategory)
+    );
+
+    // Afficher immédiatement les correspondances déjà chargées, sans conserver
+    // les résultats de la catégorie précédemment sélectionnée.
+    setCategoryEvents(immediateMatches);
+    setCategoryLoading(true);
+
     fetchEventsByCategory(selectedCategory)
-      .then((res) => {
-        const active = res.filter((e) => e.status === 'published' && !isEventTerminated(e));
-        if (active.length > 0 || immediateMatches.length === 0) {
-          setCategoryEvents(active);
-        }
+      .then((results) => {
+        if (!isCurrentRequest) return;
+        const merged = new Map(immediateMatches.map((event) => [event.id, event]));
+        results
+          .filter((event) => event.status === 'published' && !isEventTerminated(event))
+          .forEach((event) => merged.set(event.id, event));
+        setCategoryEvents(Array.from(merged.values()));
       })
       .catch(() => {
-        if (immediateMatches.length === 0) setCategoryEvents([]);
+        if (isCurrentRequest) setCategoryEvents(immediateMatches);
       })
-      .finally(() => setCategoryLoading(false));
+      .finally(() => {
+        if (isCurrentRequest) setCategoryLoading(false);
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [selectedCategory, allActiveEvents]);
 
   // Spatial enrichment: compute exact distance from user ONLY when GPS is real/actual!
