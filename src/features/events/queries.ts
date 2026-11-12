@@ -196,12 +196,17 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       const exact = totalCategoryWeight > 0 ? (weight / totalCategoryWeight) * 100 : 0;
       return { ...item, percent: Math.floor(exact), remainder: exact - Math.floor(exact) };
     });
-    let remainingPercent = 100 - categoryShares.reduce((sum, item) => sum + item.percent, 0);
+    const remainingPercent = 100 - categoryShares.reduce((sum, item) => sum + item.percent, 0);
     const remainderOrder = [...categoryShares].sort((a, b) => b.remainder - a.remainder);
     for (let index = 0; index < remainingPercent && index < remainderOrder.length; index++) {
       remainderOrder[index].percent += 1;
     }
-    const fallbackCategoryShares = categoryShares.map(({ remainder: _remainder, ...item }) => item);
+    const fallbackCategoryShares = categoryShares.map((item) => ({
+      id: item.id,
+      count: item.count,
+      amount: item.amount,
+      percent: item.percent,
+    }));
 
     const categories: Record<string, number> = {};
     const resolvedCategoryShares = core?.category_shares ?? fallbackCategoryShares;
