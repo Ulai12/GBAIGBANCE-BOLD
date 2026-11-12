@@ -47,3 +47,8 @@
   - Fichiers : `src/constants/categories.ts`, `src/screens/ExploreScreen.tsx`, `src/components/GbaigbanceStatsDashboard.tsx`.
   - Sentry : aucun diagnostic Sentry n'a été exécuté faute de jeton d'accès configuré dans l'environnement ; ne jamais demander au user de coller le jeton dans le chat.
   - Vérification en attente : build/typecheck et validation visuelle responsive après les derniers commits ; pas de test Supabase réel effectué.
+
+- 2026-11-12 — Vérification post-correctif :
+  - Le premier build Vercel a détecté un import `Heart` dupliqué dans `ExploreScreen.tsx`; le doublon a été supprimé immédiatement.
+  - Le déploiement Preview du commit `36191b7` sur `FRONTED-iA` est confirmé `READY`.
+  - Le polling d'Explore a été supprimé et le chargement protège désormais contre les réponses réseau obsolètes ; les mises à jour Realtime restent actives.
