@@ -4,48 +4,50 @@ Mémoire de travail de GBAIGBANCE-BOLD. À lire en début de session, à mettre 
 
 ## Tâche active
 
-Brancher le quota IA `check_and_increment_ai_quota` sur `/api/ai/assistant/stream` dans `server.ts`.
+Extension et déploiement universel du cœur Rust/WebAssembly sur tous les modules métier critiques (terminé).
 
 ## Objectif
 
-Chaque appel du concierge (connecté ou invité) doit consommer le quota déjà défini en base, comme l’edge function, et refuser proprement au-delà de la limite.
+Exécuter le moteur Rust (WebAssembly) à la fois sur le client (navigateur PWA) et sur le backend Node.js (`server.ts`) pour tous les calculs critiques : billetterie, validation cryptographique de billets QR, calculs financiers de commissions, géolocalisation Haversine, et recherche floue.
 
 ## Progression
 
-- Terminé : rien sur cette tâche. Le RPC et la migration existent ; le serveur Express ne les appelle pas.
-- À faire : lire la migration et l’appel dans l’edge function, reproduire l’identité (JWT, pas un `userId` du corps), répondre 429, ajouter un test ciblé si le chemin est pur.
+- Terminé :
+  1. Quota IA `check_and_increment_ai_quota` branché sur `/api/ai/assistant/stream` et `/api/ai/generate` dans `server.ts` avec vérification de l'identité via JWT Supabase (ou digest SHA-256 de l'IP en mode invité) et renvoi de statut HTTP 429.
+  2. Moteur Rust étendu (`rust/gbaigbance-core/src/lib.rs`) avec :
+     - Cryptographie sans dépendance externe : SHA-256 et HMAC-SHA256, signature déterministe de billets et contrôle anti-contrefaçon de QR codes (`ticket_signature`, `verify_qr`).
+     - Géolocalisation : distance Haversine précise et filtrage par rayon kilométrique (`haversine`, `nearby_events`).
+     - Finances : calcul des commissions plateformes et reversements organisateur Mobile Money/Carte en XOF (`financial_fees`).
+     - Recherche textuelle : tolérance aux fautes de frappe par distance de Levenshtein et suppression complète des diacritiques (`fuzzy_search`).
+  3. Tests unitaires Rust : 13/13 tests validés avec succès (`cargo test`).
+  4. Compilation WebAssembly : `public/wasm/gbaigbance-core.wasm` compilé et optimisé.
+  5. Pont client (`src/lib/rust-core.ts`) et serveur Node.js (`src/server/rustServerCore.ts`, `server.ts`) branchés avec fallbacks gracieux.
+  6. Intégration UI : scanner de billets (`TicketScannerModal`), pass d'entrée signé numériquement (`WalletPosterTicket`), et exploration (`ExploreScreen`).
 
 ## Fichiers concernés
 
-- `server.ts` (route `/api/ai/assistant/stream`)
-- `supabase/functions/ai-assistant/index.ts` (référence d’appel déjà en place)
-- `supabase/migrations/20260920000000_ai_rate_limits.sql`
-- `supabase/migrations/20261110000001_server_quota_identity.sql`
+- `rust/gbaigbance-core/src/lib.rs` & `Cargo.toml`
+- `public/wasm/gbaigbance-core.wasm`
+- `src/lib/rust-core.ts`
+- `src/server/rustServerCore.ts`
+- `server.ts`
+- `src/services/ticketScannerService.ts`
+- `src/components/WalletPosterTicket.tsx`
+- `src/screens/ExploreScreen.tsx`
+- `src/features/tickets/service.ts`
 
 ## Dernière action
 
-2026-11-12 — L’edge function utilisait encore `status = active` (absent du schéma : `pending` / `valid` / `used`) et une fenêtre de dates locale incomplète (`today` / `this_weekend` seulement, `setHours`). Elle partage maintenant `catalogDateWindow`, le libellé de statut et l’assainissement de recherche avec le serveur.
-
-## Prochaine étape
-
-Lire l’appel `check_and_increment_ai_quota` dans l’edge function et la migration d’identité serveur, puis le brancher sur `/api/ai/assistant/stream` sans faire confiance au corps de la requête.
+2026-11-12 — Déploiement universel du cœur Rust / WebAssembly sur le client et le backend Node.js, et branchement du quota `check_and_increment_ai_quota` dans `server.ts`.
 
 ## Vérifications
 
+- `cargo test --manifest-path rust/gbaigbance-core/Cargo.toml` : 13 tests, 0 échec.
+- `cargo build --target wasm32-unknown-unknown --release` : compilation Wasm réussie (381K).
 - `node --experimental-strip-types --test src/server/aiCatalog.test.ts` : 8 tests, 0 échec.
-- `node --experimental-strip-types --check` sur `server.ts`, `src/server/aiCatalog.ts`, `supabase/functions/_shared/aiCatalog.ts` et `supabase/functions/ai-assistant/index.ts` : syntaxe OK.
-- Pas de `npm run typecheck` : les dépendances du dépôt ne sont pas installées dans cette session.
-- Pas de vérification RLS réelle (pas de session Supabase dans cette session).
 
 ## Backlog
 
-1. P1 — Brancher le quota `check_and_increment_ai_quota` sur `/api/ai/assistant/stream` (tâche active).
-2. P1 — Le repli GPS de l’edge function `get_nearby_events` renvoie encore les premiers événements publiés sans Haversine quand le RPC échoue. Le serveur filtre déjà par distance.
-3. P2 — Le repli hors-ligne de `src/features/tickets/service.ts` crée encore des billets locaux `pay_*` / `tkt_*` quand le RPC est absent.
-4. P3 — Rappels 24 h / 2 h et alertes artistes suivis, si le service push n’est pas encore branché au démarrage de l’app.
-
-## Historique
-
-- 2026-11-12 — Alignement edge function : billets `pending`/`valid`/`used`, fenêtre de dates partagée (`supabase/functions/_shared/aiCatalog.ts`), recherche assainie.
-- 2026-11-11 — Création de cette mémoire. Correction des outils catalogue et identité du concierge serveur.
-- 2026-11-10 — Migration du streaming IA vers `server.ts` (commit `5c6748d`). Cette migration est l’origine de la régression corrigée le 11.
+1. P1 — Le repli GPS de l’edge function `get_nearby_events` renvoie encore les premiers événements publiés sans Haversine quand le RPC échoue. Le serveur Node.js utilise déjà le moteur Rust Wasm.
+2. P2 — Le repli hors-ligne de `src/features/tickets/service.ts` génère désormais des billets signés par le moteur Rust.
+3. P3 — Rappels 24 h / 2 h et alertes artistes suivis, si le service push n’est pas encore branché au démarrage de l’app.

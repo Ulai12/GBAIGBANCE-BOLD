@@ -26,6 +26,7 @@ import {
 import type { Ticket, EventStatus } from '@/types';
 import { haptic } from '@/hooks/useHaptics';
 import { getDefaultEventCover } from '@/utils/defaultImages';
+import { coreSignTicket } from '@/lib/rust-core';
 
 interface WalletPosterTicketProps {
   ticket: Ticket;
@@ -54,6 +55,19 @@ export const WalletPosterTicket: React.FC<WalletPosterTicketProps> = ({
   const [showFullscreenQr, setShowFullscreenQr] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [signedInfo, setSignedInfo] = useState<{ short_code: string; signature: string } | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    coreSignTicket(ticket.id, ticket.event_id || '', ticket.ticket_type || 'standard').then((res) => {
+      if (active && res) {
+        setSignedInfo(res);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [ticket.id, ticket.event_id, ticket.ticket_type]);
 
   // Statuts dérivés
   const isCancelled = eventStatus === 'cancelled';
@@ -400,6 +414,17 @@ export const WalletPosterTicket: React.FC<WalletPosterTicketProps> = ({
                 <span className="mt-2 font-mono text-xs font-bold text-zinc-900 tracking-wider">
                   {ticket.qr_code}
                 </span>
+                <div className="flex items-center justify-between w-full mt-2 pt-1.5 border-t border-gray-100 text-[10px] text-emerald-600 font-semibold px-1">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Signature Rust
+                  </span>
+                  {signedInfo?.short_code && (
+                    <span className="font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] border border-emerald-200">
+                      {signedInfo.short_code}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-[#6600FF] font-semibold mt-1 flex items-center gap-1 group-hover:underline">
                   <Maximize2 className="w-3 h-3" /> Touchez pour afficher en plein écran
                 </span>

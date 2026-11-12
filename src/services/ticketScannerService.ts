@@ -1,5 +1,6 @@
 import { supabase } from '@/services/supabase';
 import { validateTicketQr } from '@/features/tickets/service';
+import { coreVerifyQr } from '@/lib/rust-core';
 import { get, set } from 'idb-keyval';
 import type { Ticket, Event } from '@/types';
 
@@ -211,6 +212,18 @@ export async function processTicketGateValidation(params: {
     return {
       status: 'invalid',
       message: 'Code QR vide ou illisible',
+    };
+  }
+
+  // Vérification cryptographique immédiate par le cœur Rust
+  const qrCheck = await coreVerifyQr(
+    code,
+    params.selectedEventId && params.selectedEventId !== 'all' ? params.selectedEventId : undefined
+  );
+  if (!qrCheck.valid) {
+    return {
+      status: qrCheck.reason?.includes('autre événement') ? 'wrong_event' : 'invalid',
+      message: qrCheck.reason || 'Billet invalide ou contrefait (Moteur Rust)',
     };
   }
 

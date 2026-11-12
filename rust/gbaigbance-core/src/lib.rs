@@ -587,6 +587,425 @@ fn stock(input: &Value) -> Value {
     })
 }
 
+fn sha256_bytes(data: &[u8]) -> [u8; 32] {
+    let mut h: [u32; 8] = [
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    ];
+    let k: [u32; 64] = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+
+    let bit_len = (data.len() as u64) * 8;
+    let mut msg = Vec::with_capacity(data.len() + 1 + 8 + 64);
+    msg.extend_from_slice(data);
+    msg.push(0x80);
+    while (msg.len() % 64) != 56 {
+        msg.push(0x00);
+    }
+    msg.extend_from_slice(&bit_len.to_be_bytes());
+
+    for chunk in msg.chunks_exact(64) {
+        let mut w = [0u32; 64];
+        for i in 0..16 {
+            w[i] = u32::from_be_bytes([
+                chunk[i * 4],
+                chunk[i * 4 + 1],
+                chunk[i * 4 + 2],
+                chunk[i * 4 + 3],
+            ]);
+        }
+        for i in 16..64 {
+            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
+            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
+            w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
+        }
+
+        let mut a = h[0];
+        let mut b = h[1];
+        let mut c = h[2];
+        let mut d = h[3];
+        let mut e = h[4];
+        let mut f = h[5];
+        let mut g = h[6];
+        let mut hh = h[7];
+
+        for i in 0..64 {
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let ch = (e & f) ^ ((!e) & g);
+            let temp1 = hh
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(k[i])
+                .wrapping_add(w[i]);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let maj = (a & b) ^ (a & c) ^ (b & c);
+            let temp2 = s0.wrapping_add(maj);
+
+            hh = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(temp1);
+            d = c;
+            c = b;
+            b = a;
+            a = temp1.wrapping_add(temp2);
+        }
+
+        h[0] = h[0].wrapping_add(a);
+        h[1] = h[1].wrapping_add(b);
+        h[2] = h[2].wrapping_add(c);
+        h[3] = h[3].wrapping_add(d);
+        h[4] = h[4].wrapping_add(e);
+        h[5] = h[5].wrapping_add(f);
+        h[6] = h[6].wrapping_add(g);
+        h[7] = h[7].wrapping_add(hh);
+    }
+
+    let mut out = [0u8; 32];
+    for (i, val) in h.iter().enumerate() {
+        out[i * 4..i * 4 + 4].copy_from_slice(&val.to_be_bytes());
+    }
+    out
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        use std::fmt::Write;
+        let _ = write!(s, "{:02x}", b);
+    }
+    s
+}
+
+fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    let mut key_block = [0u8; 64];
+    if key.len() > 64 {
+        let hashed = sha256_bytes(key);
+        key_block[..32].copy_from_slice(&hashed);
+    } else {
+        key_block[..key.len()].copy_from_slice(key);
+    }
+
+    let mut o_key_pad = [0x5cu8; 64];
+    let mut i_key_pad = [0x36u8; 64];
+    for i in 0..64 {
+        o_key_pad[i] ^= key_block[i];
+        i_key_pad[i] ^= key_block[i];
+    }
+
+    let mut inner_msg = Vec::with_capacity(64 + message.len());
+    inner_msg.extend_from_slice(&i_key_pad);
+    inner_msg.extend_from_slice(message);
+    let inner_hash = sha256_bytes(&inner_msg);
+
+    let mut outer_msg = Vec::with_capacity(64 + 32);
+    outer_msg.extend_from_slice(&o_key_pad);
+    outer_msg.extend_from_slice(&inner_hash);
+    sha256_bytes(&outer_msg)
+}
+
+const DEFAULT_SALT: &str = "gbaigbance-sec-2026";
+
+fn sign_ticket(ticket_id: &str, event_id: &str, tier: &str, created_at_ms: i64, secret: &str) -> String {
+    let salt = if secret.is_empty() { DEFAULT_SALT } else { secret };
+    let msg = format!("{}:{}:{}:{}", ticket_id, event_id, tier, created_at_ms);
+    let hmac = hmac_sha256(salt.as_bytes(), msg.as_bytes());
+    to_hex(&hmac[..12])
+}
+
+fn ticket_signature_op(input: &Value) -> Value {
+    let ticket_id = input["ticket_id"].as_str().unwrap_or("").trim();
+    let event_id = input["event_id"].as_str().unwrap_or("").trim();
+    let tier = input["tier"].as_str().unwrap_or("standard").trim();
+    let created_at_ms = input["created_at_ms"].as_i64().unwrap_or(0);
+    let salt = input["secret_salt"].as_str().unwrap_or(DEFAULT_SALT);
+
+    let sig = sign_ticket(ticket_id, event_id, tier, created_at_ms, salt);
+    let qr_payload = format!("GBA-1:{}:{}:{}:{}:{}", ticket_id, event_id, tier, created_at_ms, sig);
+    let short_code = if ticket_id.len() >= 8 {
+        format!("{}-{}", &ticket_id[..4].to_uppercase(), &sig[..4].to_uppercase())
+    } else {
+        format!("GBA-{}", &sig[..6].to_uppercase())
+    };
+
+    json!({
+        "signature": sig,
+        "qr_payload": qr_payload,
+        "short_code": short_code,
+        "valid": true,
+    })
+}
+
+fn verify_qr_op(input: &Value) -> Value {
+    let raw = input["payload"].as_str().unwrap_or("").trim();
+    let expected_event_id = input["event_id"].as_str().map(|s| s.trim()).filter(|s| !s.is_empty());
+    let salt = input["secret_salt"].as_str().unwrap_or(DEFAULT_SALT);
+
+    if !raw.starts_with("GBA-1:") {
+        if raw.len() >= 8 {
+            return json!({
+                "valid": true,
+                "ticket_id": raw,
+                "event_id": expected_event_id.unwrap_or(""),
+                "tier": "standard",
+                "legacy": true,
+                "reason": null,
+            });
+        }
+        return json!({
+            "valid": false,
+            "reason": "Format de QR code non reconnu",
+        });
+    }
+
+    let parts: Vec<&str> = raw.split(':').collect();
+    if parts.len() < 6 {
+        return json!({
+            "valid": false,
+            "reason": "Payload QR code incomplet",
+        });
+    }
+
+    let ticket_id = parts[1];
+    let event_id = parts[2];
+    let tier = parts[3];
+    let created_at_ms: i64 = parts[4].parse().unwrap_or(0);
+    let provided_sig = parts[5];
+
+    if let Some(exp_event) = expected_event_id {
+        if exp_event != event_id {
+            return json!({
+                "valid": false,
+                "ticket_id": ticket_id,
+                "event_id": event_id,
+                "reason": "Ce billet appartient à un autre événement",
+            });
+        }
+    }
+
+    let expected_sig = sign_ticket(ticket_id, event_id, tier, created_at_ms, salt);
+    if provided_sig != expected_sig {
+        return json!({
+            "valid": false,
+            "ticket_id": ticket_id,
+            "event_id": event_id,
+            "reason": "Signature cryptographique invalide (contrefaçon détectée)",
+        });
+    }
+
+    json!({
+        "valid": true,
+        "ticket_id": ticket_id,
+        "event_id": event_id,
+        "tier": tier,
+        "created_at_ms": created_at_ms,
+        "signature": expected_sig,
+        "reason": null,
+    })
+}
+
+fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+    let d_lat = (lat2 - lat1).to_radians();
+    let d_lng = (lng2 - lng1).to_radians();
+    let lat1_rad = lat1.to_radians();
+    let lat2_rad = lat2.to_radians();
+    let a = (d_lat / 2.0).sin().powi(2)
+        + lat1_rad.cos() * lat2_rad.cos() * (d_lng / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+    let km = 6371.0 * c;
+    (km * 10.0).round() / 10.0
+}
+
+fn haversine_op(input: &Value) -> Value {
+    let lat1 = input["lat1"].as_f64().unwrap_or(0.0);
+    let lng1 = input["lng1"].as_f64().unwrap_or(0.0);
+    let lat2 = input["lat2"].as_f64().unwrap_or(0.0);
+    let lng2 = input["lng2"].as_f64().unwrap_or(0.0);
+    let km = haversine_km(lat1, lng1, lat2, lng2);
+    json!({ "distance_km": km })
+}
+
+#[derive(Debug, Deserialize)]
+struct GeoEventIn {
+    id: String,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    city: String,
+    #[serde(default)]
+    category: String,
+    #[serde(default)]
+    starts_at: String,
+    #[serde(default)]
+    location_name: String,
+    #[serde(default)]
+    price_min: Option<f64>,
+    #[serde(default)]
+    currency: Option<String>,
+}
+
+fn nearby_events_op(input: &Value) -> Value {
+    let lat = input["lat"].as_f64().unwrap_or(0.0);
+    let lng = input["lng"].as_f64().unwrap_or(0.0);
+    let radius_km = input["radius_km"].as_f64().unwrap_or(25.0).clamp(0.5, 500.0);
+    let limit = input["limit"].as_u64().unwrap_or(10).clamp(1, 100) as usize;
+    let events: Vec<GeoEventIn> = serde_json::from_value(input["events"].clone()).unwrap_or_default();
+
+    let mut nearby = Vec::new();
+    for ev in events {
+        let (Some(e_lat), Some(e_lng)) = (ev.latitude, ev.longitude) else {
+            continue;
+        };
+        let dist = haversine_km(lat, lng, e_lat, e_lng);
+        if dist <= radius_km {
+            nearby.push((dist, ev));
+        }
+    }
+
+    nearby.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    nearby.truncate(limit);
+
+    let result: Vec<Value> = nearby
+        .into_iter()
+        .map(|(dist, ev)| {
+            json!({
+                "id": ev.id,
+                "distance_km": dist,
+                "title": ev.title,
+                "city": ev.city,
+                "category": ev.category,
+                "starts_at": ev.starts_at,
+                "location_name": ev.location_name,
+                "price_min": ev.price_min,
+                "currency": ev.currency,
+            })
+        })
+        .collect();
+
+    json!({
+        "count": result.len(),
+        "radius_km": radius_km,
+        "events": result,
+    })
+}
+
+fn financial_fees_op(input: &Value) -> Value {
+    let price_paid = input["price_paid"].as_f64().unwrap_or(0.0).max(0.0);
+    let quantity = input["quantity"].as_u64().unwrap_or(1).max(1) as f64;
+    let total_amount = price_paid * quantity;
+    let method = input["payment_method"].as_str().unwrap_or("mobile_money");
+
+    let (pct, fixed) = match method {
+        "card" | "stripe" => (0.035, 100.0),
+        "free" => (0.0, 0.0),
+        _ => (0.025, 50.0),
+    };
+
+    let operator_fee = if total_amount > 0.0 { (total_amount * 0.012).round() } else { 0.0 };
+    let platform_fee = if total_amount > 0.0 {
+        ((total_amount * pct) + fixed).round()
+    } else {
+        0.0
+    };
+    let organizer_payout = (total_amount - platform_fee).max(0.0);
+
+    json!({
+        "total_amount": total_amount.round(),
+        "platform_fee": platform_fee,
+        "operator_fee": operator_fee,
+        "organizer_payout": organizer_payout.round(),
+        "fee_percent": (pct * 100.0).round(),
+        "fixed_fee": fixed,
+        "currency": "XOF",
+    })
+}
+
+fn levenshtein_dist(a: &str, b: &str) -> usize {
+    let b_len = b.chars().count();
+    let mut prev: Vec<usize> = (0..=b_len).collect();
+    let mut curr = vec![0; b_len + 1];
+    for (i, ca) in a.chars().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.chars().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (prev[j + 1] + 1)
+                .min(curr[j] + 1)
+                .min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b_len]
+}
+
+fn fuzzy_search_op(input: &Value) -> Value {
+    let query_raw = input["query"].as_str().unwrap_or("").trim();
+    let query = fold(query_raw);
+    let events: Vec<EventIn> = serde_json::from_value(input["events"].clone()).unwrap_or_default();
+
+    if query.chars().count() < 2 {
+        return json!({ "ids": events.into_iter().map(|e| e.id).collect::<Vec<_>>() });
+    }
+
+    let q_words: Vec<&str> = query.split_whitespace().collect();
+    let mut scored = Vec::new();
+
+    for ev in events {
+        if ev.id.is_empty() {
+            continue;
+        }
+        let t = fold(&ev.title);
+        let c = fold(&ev.city);
+        let cat = fold(&ev.category);
+        let loc = fold(&ev.location);
+        let desc = fold(&ev.description);
+
+        let mut score = 0i64;
+
+        if t.contains(&query) { score += 40; }
+        if c.contains(&query) { score += 20; }
+        if loc.contains(&query) { score += 15; }
+        if cat.contains(&query) { score += 15; }
+        if desc.contains(&query) { score += 10; }
+
+        let ev_text = format!("{} {} {} {}", t, c, loc, cat);
+        let ev_words: Vec<&str> = ev_text.split_whitespace().collect();
+
+        for qw in &q_words {
+            let qw_len = qw.chars().count();
+            for ew in &ev_words {
+                let ew_len = ew.chars().count();
+                if qw_len >= 3 && ew_len >= 3 {
+                    let d = levenshtein_dist(qw, ew);
+                    if d == 0 {
+                        score += 25;
+                    } else if d == 1 && qw_len >= 4 {
+                        score += 15;
+                    } else if d == 2 && qw_len >= 6 {
+                        score += 8;
+                    }
+                }
+            }
+        }
+
+        if score > 0 {
+            scored.push((score, ev.id));
+        }
+    }
+
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    json!({ "ids": scored.into_iter().map(|(_, id)| id).collect::<Vec<_>>() })
+}
+
 fn dispatch_value(input: &Value) -> Value {
     match input["op"].as_str().unwrap_or("") {
         "platform_stats" => platform_stats(input),
@@ -597,6 +1016,12 @@ fn dispatch_value(input: &Value) -> Value {
         "organizer_series" => organizer_series(input),
         "stock" => stock(input),
         "trend" => trend(input),
+        "haversine" => haversine_op(input),
+        "nearby_events" => nearby_events_op(input),
+        "ticket_signature" => ticket_signature_op(input),
+        "verify_qr" => verify_qr_op(input),
+        "financial_fees" => financial_fees_op(input),
+        "fuzzy_search" => fuzzy_search_op(input),
         _ => json!({ "error": "operation inconnue" }),
     }
 }
@@ -759,5 +1184,90 @@ mod tests {
         let value: Value = serde_json::from_str(&dispatch_json(r#"{"op":"stock","sold":12,"capacity":10}"#)).unwrap();
         assert_eq!(value["percent_sold"], 100);
         assert_eq!(value["remaining"], 0);
+    }
+
+    #[test]
+    fn haversine_measures_lome_correctly() {
+        let raw = r#"{"op":"haversine","lat1":6.1375,"lng1":1.2123,"lat2":6.1700,"lng2":1.2300}"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        let dist = value["distance_km"].as_f64().unwrap();
+        assert!(dist > 0.0 && dist < 10.0);
+    }
+
+    #[test]
+    fn nearby_events_filters_and_sorts_by_radius() {
+        let raw = r#"{
+            "op":"nearby_events",
+            "lat": 6.1375,
+            "lng": 1.2123,
+            "radius_km": 20.0,
+            "events": [
+                {"id":"accra", "latitude": 5.60, "longitude": -0.19, "title":"Concert Accra"},
+                {"id":"lome", "latitude": 6.17, "longitude": 1.23, "title":"Festival Lomé"}
+            ]
+        }"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        assert_eq!(value["count"], 1);
+        assert_eq!(value["events"][0]["id"], "lome");
+    }
+
+    #[test]
+    fn ticket_signature_and_verification_cycle() {
+        let sign_raw = r#"{
+            "op": "ticket_signature",
+            "ticket_id": "tkt-12345678",
+            "event_id": "ev-888",
+            "tier": "vip",
+            "created_at_ms": 1700000000000
+        }"#;
+        let signed: Value = serde_json::from_str(&dispatch_json(sign_raw)).unwrap();
+        let qr_payload = signed["qr_payload"].as_str().unwrap();
+
+        // 1. Validation réussie
+        let verify_raw = format!(r#"{{"op":"verify_qr","payload":"{qr_payload}","event_id":"ev-888"}}"#);
+        let verified: Value = serde_json::from_str(&dispatch_json(&verify_raw)).unwrap();
+        assert_eq!(verified["valid"], true);
+        assert_eq!(verified["ticket_id"], "tkt-12345678");
+
+        // 2. Mauvais événement
+        let wrong_event = format!(r#"{{"op":"verify_qr","payload":"{qr_payload}","event_id":"ev-999"}}"#);
+        let wrong_res: Value = serde_json::from_str(&dispatch_json(&wrong_event)).unwrap();
+        assert_eq!(wrong_res["valid"], false);
+
+        // 3. Falsification du payload
+        let tampered = qr_payload.replace("vip", "pass");
+        let tampered_raw = format!(r#"{{"op":"verify_qr","payload":"{tampered}","event_id":"ev-888"}}"#);
+        let tampered_res: Value = serde_json::from_str(&dispatch_json(&tampered_raw)).unwrap();
+        assert_eq!(tampered_res["valid"], false);
+    }
+
+    #[test]
+    fn financial_fees_calculates_mobile_money_and_payout() {
+        let raw = r#"{
+            "op": "financial_fees",
+            "price_paid": 5000,
+            "quantity": 2,
+            "payment_method": "mobile_money"
+        }"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        assert_eq!(value["total_amount"], 10000.0);
+        // 10000 * 2.5% + 50 = 250 + 50 = 300 FCFA
+        assert_eq!(value["platform_fee"], 300.0);
+        assert_eq!(value["organizer_payout"], 9700.0);
+        assert_eq!(value["currency"], "XOF");
+    }
+
+    #[test]
+    fn fuzzy_search_handles_typos_and_african_names() {
+        let raw = r#"{
+            "op": "fuzzy_search",
+            "query": "Koffi",
+            "events": [
+                {"id":"1", "title":"Concert de Kofi Olomide", "city":"Lomé"},
+                {"id":"2", "title":"Soirée Jazz", "city":"Cotonou"}
+            ]
+        }"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        assert_eq!(value["ids"][0], "1");
     }
 }

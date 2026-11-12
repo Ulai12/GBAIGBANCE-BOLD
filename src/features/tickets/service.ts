@@ -8,7 +8,8 @@ import type {
   Event,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
-import { coreMergeIds } from '@/lib/rust-core';
+import { coreMergeIds, coreSignTicket } from '@/lib/rust-core';
+export { coreFinancialFees, coreStock } from '@/lib/rust-core';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
 
@@ -331,7 +332,8 @@ export async function purchaseTicketsMulti(params: {
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i];
     const tId = 'tkt_' + Math.random().toString(36).slice(2, 11);
-    const qr = 'GBC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const signed = await coreSignTicket(tId, eventId, 'standard', Date.now());
+    const qr = signed.qr_payload;
     const token = r.is_for_me ? undefined : Math.random().toString(36).slice(2, 16);
 
     const targetUserId = r.is_for_me ? userId : (r.recipient_user_id || '');

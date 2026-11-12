@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type, Modality } from '@google/genai';
 import type { LiveServerMessage } from '@google/genai';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'node:crypto';
 import {
   catalogDateWindow,
   clampLimit,
@@ -19,6 +20,12 @@ import {
   withinRadius,
   VISIBLE_TICKET_STATUSES,
 } from './src/server/aiCatalog.ts';
+import {
+  initServerRustCore,
+  serverVerifyQr,
+  execRustServer,
+  serverNearbyEvents,
+} from './src/server/rustServerCore.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +73,48 @@ async function resolveRequestActor(req: Request): Promise<{ userId: string | nul
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return { userId: data.user.id, client: userClient };
+}
+
+async function checkAiQuota(
+  actor: { userId: string | null },
+  req: Request
+): Promise<{ allowed: boolean; message?: string; reason?: string }> {
+  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return { allowed: true };
+
+  try {
+    const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    const ipDigest = crypto.createHash('sha256').update(rawIp).digest('hex');
+    const isAuthenticated = Boolean(actor.userId);
+    const identifier = isAuthenticated ? `user_${actor.userId}` : `ip_${ipDigest}`;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+
+    const { data, error } = await adminClient.rpc('check_and_increment_ai_quota', {
+      p_identifier: identifier,
+      p_is_authenticated: isAuthenticated,
+    });
+
+    if (error || !data) {
+      console.warn('[server.ts] Quota check warning:', error?.message || 'null data');
+      return { allowed: true };
+    }
+
+    if (data.allowed === false) {
+      return {
+        allowed: false,
+        message: data.message || 'Quota de requêtes concierge dépassé. Veuillez patienter.',
+        reason: data.reason,
+      };
+    }
+
+    return { allowed: true };
+  } catch (err) {
+    console.warn('[server.ts] Quota check exception:', err);
+    return { allowed: true };
+  }
 }
 
 const AI_SYSTEM_INSTRUCTION = `Tu es l'assistant concierge intelligent officiel de Gbaigbance, l'application de billetterie d'événements leader en Afrique de l'Ouest (Togo, Bénin, Côte d'Ivoire).
@@ -295,7 +344,10 @@ async function executeToolCall(
         .gte('starts_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
         .limit(80);
 
-      const nearby = withinRadius(fallback || [], lat, lng, radiusKm, limit);
+      let nearby = await serverNearbyEvents(lat, lng, radiusKm, limit, fallback || []);
+      if (!nearby || nearby.length === 0) {
+        nearby = withinRadius(fallback || [], lat, lng, radiusKm, limit);
+      }
       const eventsList = nearby.map((ev) => {
         turnEventIds.add(ev.id);
         return {
@@ -431,6 +483,12 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
 
   const { messages = [], userLocation } = req.body ?? {};
   const actor = await resolveRequestActor(req);
+  const quota = await checkAiQuota(actor, req);
+  if (!quota.allowed) {
+    res.write(`event: error\ndata: ${JSON.stringify({ error: quota.message, reason: quota.reason })}\n\n`);
+    res.end();
+    return;
+  }
   const turnEventIds = new Set<string>();
 
   try {
@@ -533,6 +591,11 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
   const { prompt, currentEvent, userLocation } = req.body ?? {};
   const actor = await resolveRequestActor(req);
+  const quota = await checkAiQuota(actor, req);
+  if (!quota.allowed) {
+    res.status(429).json({ error: quota.message, reason: quota.reason });
+    return;
+  }
   const turnEventIds = new Set<string>();
 
   try {
@@ -585,6 +648,40 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
     console.error('[Gemini Generate Error]:', err);
     res.status(500).json({ error: errorMsg });
   }
+});
+
+// ====================================================================
+// ENDPOINTS HAUTE PERFORMANCE DU CŒUR RUST / WEBASSEMBLY
+// ====================================================================
+
+app.post('/api/tickets/verify-qr', async (req: Request, res: Response) => {
+  const { payload, eventId } = req.body ?? {};
+  if (!payload) {
+    res.status(400).json({ valid: false, reason: 'Payload QR code manquant' });
+    return;
+  }
+  const result = await serverVerifyQr(String(payload), eventId ? String(eventId) : undefined);
+  res.json(result);
+});
+
+app.post('/api/finance/calculate-fees', async (req: Request, res: Response) => {
+  const { pricePaid, quantity, paymentMethod } = req.body ?? {};
+  const result = await execRustServer({
+    op: 'financial_fees',
+    price_paid: Number(pricePaid) || 0,
+    quantity: Number(quantity) || 1,
+    payment_method: paymentMethod || 'mobile_money',
+  });
+  res.json(result || { error: 'Calcul de commissions indisponible' });
+});
+
+app.get('/api/health/rust', async (_req: Request, res: Response) => {
+  const wasm = await initServerRustCore();
+  res.json({
+    status: 'ok',
+    engine: wasm ? 'rust-wasm' : 'fallback-js',
+    timestamp: Date.now(),
+  });
 });
 
 // WebSocket Live API pour streaming voix temps réel
@@ -663,6 +760,7 @@ wss.on('connection', async (clientWs: WebSocket) => {
 
 // Montage de Vite en mode middleware pour le dev ou distribution statique en production
 async function startServer() {
+  await initServerRustCore();
   const distDir = path.resolve(__dirname, 'dist');
   const hasDist = fs.existsSync(path.resolve(distDir, 'index.html'));
   const isProd = process.env.NODE_ENV === 'production' || hasDist;

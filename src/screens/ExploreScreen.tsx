@@ -41,7 +41,7 @@ import {
 import { getCachedHomeData } from '@/services/cache';
 import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories, COUNTRY_FLAGS } from '@/constants';
 import type { Event, EventCategory, Profile } from '@/types';
-import { coreSearchIds } from '@/lib/rust-core';
+import { coreSearchIds, coreFuzzySearch } from '@/lib/rust-core';
 
 interface ExploreScreenProps {
   onEventClick: (event: Event) => void;
@@ -122,18 +122,16 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       };
       let result = applyFilters(q.length >= 2 ? [...merged.values()] : rawSql);
       if (q.length >= 2) {
-        const ranked = await coreSearchIds(
-          q,
-          result.map((event) => ({
-            id: event.id,
-            title: event.title,
-            city: event.city,
-            category: event.category,
-            description: event.description || '',
-            location: event.location_name,
-          }))
-        );
-        if (ranked) {
+        const eventsForRust = result.map((event) => ({
+          id: event.id,
+          title: event.title,
+          city: event.city,
+          category: event.category,
+          description: event.description || '',
+          location: event.location_name,
+        }));
+        const ranked = (await coreFuzzySearch(q, eventsForRust)) || (await coreSearchIds(q, eventsForRust));
+        if (ranked && ranked.length > 0) {
           const byId = new Map(result.map((event) => [event.id, event]));
           result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
         } else {

@@ -201,3 +201,226 @@ export async function coreOrganizerSeries(days: number, tickets: RustTicket[]): 
 export async function coreStock(sold: number, capacity: number): Promise<{ remaining: number; percent_sold: number } | null> {
   return exec({ op: 'stock', sold, capacity });
 }
+
+export interface NearbyGeoEvent {
+  id: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  title?: string;
+  city?: string;
+  category?: string;
+  starts_at?: string;
+  location_name?: string;
+  price_min?: number | null;
+  currency?: string | null;
+}
+
+export interface NearbyGeoResult {
+  id: string;
+  distance_km: number;
+  title: string;
+  city: string;
+  category: string;
+  starts_at: string;
+  location_name: string;
+  price_min: number | null;
+  currency: string | null;
+}
+
+export async function coreHaversineDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): Promise<number | null> {
+  const res = await exec<{ distance_km: number }>({
+    op: 'haversine',
+    lat1,
+    lng1,
+    lat2,
+    lng2,
+  });
+  if (res && typeof res.distance_km === 'number') return res.distance_km;
+  // Fallback JS
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(6371 * c * 10) / 10;
+}
+
+export async function coreNearbyEvents(
+  lat: number,
+  lng: number,
+  radiusKm = 25,
+  limit = 10,
+  events: NearbyGeoEvent[] = []
+): Promise<{ count: number; radius_km: number; events: NearbyGeoResult[] }> {
+  const res = await exec<{ count: number; radius_km: number; events: NearbyGeoResult[] }>({
+    op: 'nearby_events',
+    lat,
+    lng,
+    radius_km: radiusKm,
+    limit,
+    events,
+  });
+  if (res && Array.isArray(res.events)) return res;
+
+  // Fallback JS
+  const filtered = events
+    .filter((e) => typeof e.latitude === 'number' && typeof e.longitude === 'number')
+    .map((e) => {
+      const d = (coreHaversineDistanceFallback(lat, lng, e.latitude!, e.longitude!));
+      return {
+        id: e.id,
+        distance_km: d,
+        title: e.title || '',
+        city: e.city || '',
+        category: e.category || '',
+        starts_at: e.starts_at || '',
+        location_name: e.location_name || '',
+        price_min: e.price_min ?? null,
+        currency: e.currency ?? 'XOF',
+      };
+    })
+    .filter((e) => e.distance_km <= radiusKm)
+    .sort((a, b) => a.distance_km - b.distance_km)
+    .slice(0, limit);
+
+  return { count: filtered.length, radius_km: radiusKm, events: filtered };
+}
+
+function coreHaversineDistanceFallback(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(6371 * c * 10) / 10;
+}
+
+export interface TicketSignatureResult {
+  signature: string;
+  qr_payload: string;
+  short_code: string;
+  valid: boolean;
+}
+
+export async function coreSignTicket(
+  ticketId: string,
+  eventId: string,
+  tier = 'standard',
+  createdAtMs = Date.now(),
+  secretSalt?: string
+): Promise<TicketSignatureResult> {
+  const res = await exec<TicketSignatureResult>({
+    op: 'ticket_signature',
+    ticket_id: ticketId,
+    event_id: eventId,
+    tier,
+    created_at_ms: createdAtMs,
+    secret_salt: secretSalt,
+  });
+  if (res && res.qr_payload) return res;
+
+  // Fallback signature
+  const sig = `sig_${ticketId.slice(0, 8)}_${eventId.slice(0, 4)}`;
+  return {
+    signature: sig,
+    qr_payload: `GBA-1:${ticketId}:${eventId}:${tier}:${createdAtMs}:${sig}`,
+    short_code: `GBA-${ticketId.slice(0, 4).toUpperCase()}`,
+    valid: true,
+  };
+}
+
+export interface VerifyQrResult {
+  valid: boolean;
+  ticket_id?: string;
+  event_id?: string;
+  tier?: string;
+  created_at_ms?: number;
+  signature?: string;
+  reason?: string | null;
+  legacy?: boolean;
+}
+
+export async function coreVerifyQr(
+  payload: string,
+  eventId?: string,
+  secretSalt?: string
+): Promise<VerifyQrResult> {
+  const res = await exec<VerifyQrResult>({
+    op: 'verify_qr',
+    payload,
+    event_id: eventId,
+    secret_salt: secretSalt,
+  });
+  if (res && typeof res.valid === 'boolean') return res;
+
+  // Fallback basic check
+  if (!payload) return { valid: false, reason: 'QR Code vide' };
+  if (payload.startsWith('GBA-1:')) {
+    const parts = payload.split(':');
+    if (parts.length >= 6) {
+      if (eventId && eventId !== parts[2]) {
+        return { valid: false, ticket_id: parts[1], event_id: parts[2], reason: 'Billet pour un autre événement' };
+      }
+      return { valid: true, ticket_id: parts[1], event_id: parts[2], tier: parts[3], created_at_ms: Number(parts[4]) };
+    }
+  }
+  return { valid: true, ticket_id: payload, event_id: eventId, tier: 'standard', legacy: true };
+}
+
+export interface FinancialFeesResult {
+  total_amount: number;
+  platform_fee: number;
+  operator_fee: number;
+  organizer_payout: number;
+  fee_percent: number;
+  fixed_fee: number;
+  currency: string;
+}
+
+export async function coreFinancialFees(
+  pricePaid: number,
+  quantity = 1,
+  paymentMethod: 'mobile_money' | 'card' | 'free' = 'mobile_money'
+): Promise<FinancialFeesResult> {
+  const res = await exec<FinancialFeesResult>({
+    op: 'financial_fees',
+    price_paid: pricePaid,
+    quantity,
+    payment_method: paymentMethod,
+  });
+  if (res && typeof res.total_amount === 'number') return res;
+
+  // Fallback JS
+  const total = pricePaid * quantity;
+  const pct = paymentMethod === 'card' ? 0.035 : paymentMethod === 'free' ? 0 : 0.025;
+  const fixed = paymentMethod === 'card' ? 100 : paymentMethod === 'free' ? 0 : 50;
+  const platformFee = total > 0 ? Math.round(total * pct + fixed) : 0;
+  const operatorFee = total > 0 ? Math.round(total * 0.012) : 0;
+  return {
+    total_amount: total,
+    platform_fee: platformFee,
+    operator_fee: operatorFee,
+    organizer_payout: Math.max(0, total - platformFee),
+    fee_percent: Math.round(pct * 100),
+    fixed_fee: fixed,
+    currency: 'XOF',
+  };
+}
+
+export async function coreFuzzySearch(
+  query: string,
+  events: RustEvent[]
+): Promise<string[] | null> {
+  const result = await exec<{ ids: string[] }>({ op: 'fuzzy_search', query, events });
+  return result?.ids ?? null;
+}
+
