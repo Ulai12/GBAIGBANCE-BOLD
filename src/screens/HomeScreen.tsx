@@ -995,7 +995,6 @@ export function HomeScreen({
             </p>
           </div>
         <GbaigbanceStatsDashboard
-          events={allActiveEvents}
           platformStats={platformStats || undefined}
         />
       </section>
