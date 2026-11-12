@@ -1,5 +1,5 @@
-// ExploreScreen.tsx - Écran de découverte et de recherche enrichi (Événements & Participants/Amis),
-// synchronisation silencieuse 3s en arrière-plan, filtres dynamiques et responsive layout Apple HIG (mobile, tablette, PC).
+// ExploreScreen.tsx - Découverte et recherche d'événements et de participants.
+// Les mises à jour de la liste reposent sur Supabase Realtime, sans polling périodique.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SlidersHorizontal,
@@ -22,7 +22,6 @@ import {
   Briefcase,
   Flame,
   Trophy,
-  Heart,
   type LucideIcon,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
