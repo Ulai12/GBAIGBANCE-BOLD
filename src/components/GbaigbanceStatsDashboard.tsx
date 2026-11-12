@@ -7,12 +7,10 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
-import type { Event } from '@/types';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
 import { coreTimeline, statsEngine, type TimelineBucket } from '@/lib/rust-core';
 
 export interface GbaigbanceStatsDashboardProps {
-  events?: Event[];
   platformStats?: PlatformStats;
 }
 
@@ -29,7 +27,6 @@ interface MonthlyDataPoint {
 }
 
 export function GbaigbanceStatsDashboard({
-  events = [],
   platformStats: initialPlatformStats,
 }: GbaigbanceStatsDashboardProps) {
   const [period, setPeriod] = useState<Period>('current_month');
@@ -43,13 +40,11 @@ export function GbaigbanceStatsDashboard({
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [rustBuckets, setRustBuckets] = useState<TimelineBucket[] | null>(null);
   const syncSeq = useRef(0);
+  // Ne jamais tracer les quelques événements de découverte comme s'ils représentaient
+  // toute la plateforme : le graphique attend exclusivement l'agrégat complet du service.
   const timelineEvents = useMemo(
-    () => platformStats?.eventsTimeline ?? events.map((event) => ({
-      id: event.id,
-      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
-      attendees: event.attendees_count || 0,
-    })),
-    [platformStats?.eventsTimeline, events]
+    () => platformStats?.eventsTimeline ?? [],
+    [platformStats?.eventsTimeline]
   );
 
   // Keep state updated if props change
