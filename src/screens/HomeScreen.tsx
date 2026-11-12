@@ -371,7 +371,7 @@ export function HomeScreen({
     // Afficher immédiatement les correspondances déjà chargées, sans conserver
     // les résultats de la catégorie précédemment sélectionnée.
     setCategoryEvents(immediateMatches);
-    setCategoryLoading(true);
+    setCategoryLoading(immediateMatches.length === 0);
 
     fetchEventsByCategory(selectedCategory)
       .then((results) => {
