@@ -339,7 +339,9 @@ function AppContent() {
   const handleBookEvent = useCallback((event: Event, initialOptionId?: string | null) => {
     if (!session) {
       addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
-      navigate('/login', { state: { returnTo: location.pathname } });
+      navigate('/login', {
+        state: { returnTo: location.pathname, pendingBooking: { event, initialOptionId: initialOptionId || null } },
+      });
       return;
     }
     setBookingInitialOptionId(initialOptionId || null);
@@ -347,7 +349,22 @@ function AppContent() {
   }, [session, addToast, navigate, location.pathname]);
 
   const handleAuthSuccess = () => {
-    const authState = location.state as { returnTo?: string } | null;
+    const authState = location.state as {
+      returnTo?: string;
+      pendingBooking?: { event: Event; initialOptionId?: string | null };
+    } | null;
+    const pendingBooking = authState?.pendingBooking;
+
+    if (pendingBooking?.event) {
+      setBookingInitialOptionId(pendingBooking.initialOptionId || null);
+      setBookingEvent(pendingBooking.event);
+      navigate(authState.returnTo || `/events/${pendingBooking.event.id}`, {
+        replace: true,
+        state: { event: pendingBooking.event },
+      });
+      return;
+    }
+
     navigate(authState?.returnTo || '/', { replace: true });
   };
 
