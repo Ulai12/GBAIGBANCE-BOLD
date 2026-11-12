@@ -19,7 +19,16 @@
   - Impact visé : empêcher la création locale d'un faux succès de réservation pour les visiteurs non connectés ; un utilisateur authentifié passe par un seul flux de réservation.
 - Correctif JSX précédent : `src/components/EventCard.tsx`. Aucun fichier backend, Supabase, API, lockfile ou configuration de dépendances modifié pendant les chantiers UI.
  
+
+- 2026-11-12 — Audit fonctionnel de l'accueil et des statistiques :
+  - Catégories accueil : la requête serveur limitait les résultats aux 60 premiers événements publiés avant filtrage, ce qui pouvait masquer des événements plus anciens ; les réponses asynchrones pouvaient aussi remplacer les résultats d'une catégorie sélectionnée ensuite. La requête utilise maintenant la pagination existante (`selectPages`) et l'effet ignore les réponses obsolètes ; les correspondances déjà chargées restent visibles sans flash de chargement.
+  - Billetterie/statistiques : les états `pending`, `frozen`, `refunded` et `expired` ne sont pas des ventes confirmées. Le flux paiement crée des billets `pending`, puis les passe à `valid` après confirmation ; les agrégats plateforme et organisateur comptent désormais uniquement `valid` et `used`.
+  - Graphiques accueil : la courbe utilisait un échantillon limité d'événements issus des flux de découverte (accueil), pas l'ensemble des événements actifs. `fetchPlatformStats` fournit désormais une timeline complète des événements actifs, consommée directement par le graphique. Les clés de timeline billets sont uniques même lorsque plusieurs billets partagent le même événement et la même milliseconde.
+  - Mode sans WASM : ajout d'un calcul TypeScript de repli pour dédoublonner les billets confirmés, totaliser les ventes, répartir les catégories et alimenter la timeline au lieu de retomber sur des comptes incomplets ou nuls.
+  - Fichiers fonctionnels : `src/features/events/queries.ts`, `src/features/organizers/service.ts`, `src/screens/HomeScreen.tsx`, `src/components/GbaigbanceStatsDashboard.tsx`.
+  - Aucun changement de schéma Supabase, RPC, migration, API, dépendance ou lockfile.
+
 ## État courant
-- Vérifications : Vercel a confirmé READY pour le correctif de garde d'authentification précédent (commit `bf47f09`). Le build de cette amélioration de reprise automatique doit encore être confirmé. Typecheck, lint, tests locaux et validation visuelle responsive non exécutés.
-- Problèmes ouverts : la réservation sans compte n'est pas prise en charge par le service de production ; il faudra concevoir un vrai flux invité serveur (identité, paiement, attribution et récupération) avant de l'activer.
-- Prochaine priorité : vérifier le déploiement du correctif de garde d'authentification, puis tester le retour depuis connexion vers le détail d'événement et le passage authentifié à la réservation.
+- Vérifications : le build Vercel du correctif de reprise de réservation (`e177174`) a été confirmé READY. Pour l'audit catégories/statistiques, un déploiement intermédiaire (`54dbd78`) est READY ; le déploiement du dernier commit (`23fed96`) était encore QUEUED lors du dernier contrôle. Aucun test d'interaction réel avec Supabase, typecheck séparé, lint, tests locaux ni validation visuelle responsive n'a été exécuté.
+- Problèmes ouverts : la réservation sans compte n'est pas prise en charge par le service de production ; il faudra concevoir un vrai flux invité serveur (identité, paiement, attribution et récupération) avant de l'activer. Les catégories et statistiques doivent encore être exercées avec un jeu de données Supabase réel pour confirmer les chiffres affichés.
+- Prochaine priorité : confirmer le dernier build Vercel, puis tester la sélection rapide de plusieurs catégories et comparer les KPI/graphes aux billets `valid`/`used` et aux événements actifs réels.
