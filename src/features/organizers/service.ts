@@ -227,12 +227,13 @@ export async function fetchOrganizerPerformanceMetrics(
       }
     });
 
-    const daysCount = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 60;
+    const daysCount = timeRange === '7d' ? 7 : 30;
     const countedTickets = tickets.filter((ticket) =>
       COUNTED_TICKET_STATUSES.has((ticket.status || 'valid').toLowerCase())
     );
     const rustTickets = toRustTickets(countedTickets);
-    const series = await coreOrganizerSeries(daysCount, rustTickets);
+    // « Tout » doit couvrir tout l'historique disponible, pas une fenêtre arbitraire de 60 jours.
+    const series = timeRange === 'all' ? null : await coreOrganizerSeries(daysCount, rustTickets);
 
     const categoryColors: Record<string, string> = {
       standard: '#6600FF',
@@ -247,19 +248,21 @@ export async function fetchOrganizerPerformanceMetrics(
       free: 'Gratuit',
     };
 
-    const timeSeries: PerformanceTimePoint[] = series
-      ? series.points.map((point) => ({
-          date: `${point.year}-${String(point.month).padStart(2, '0')}-${String(point.day).padStart(2, '0')}`,
-          label: new Date(point.year, point.month - 1, point.day).toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: daysCount > 14 ? 'numeric' : 'short',
-          }),
-          ticketsSold: point.tickets_sold,
-          revenue: point.revenue,
-          cumulativeTickets: point.cumulative_tickets,
-          cumulativeRevenue: point.cumulative_revenue,
-        }))
-      : fallbackSeries(daysCount, rustTickets);
+    const timeSeries: PerformanceTimePoint[] = timeRange === 'all'
+      ? allTimeMonthlySeries(rustTickets)
+      : series
+        ? series.points.map((point) => ({
+            date: `${point.year}-${String(point.month).padStart(2, '0')}-${String(point.day).padStart(2, '0')}`,
+            label: new Date(point.year, point.month - 1, point.day).toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: daysCount > 14 ? 'numeric' : 'short',
+            }),
+            ticketsSold: point.tickets_sold,
+            revenue: point.revenue,
+            cumulativeTickets: point.cumulative_tickets,
+            cumulativeRevenue: point.cumulative_revenue,
+          }))
+        : fallbackSeries(daysCount, rustTickets);
 
     const counted = series ? null : tallyTickets(rustTickets);
     const totalTickets = series?.tickets ?? counted?.tickets ?? 0;
@@ -374,6 +377,51 @@ function fallbackSeries(days: number, tickets: RustTicket[]): PerformanceTimePoi
   });
 }
 
+function allTimeMonthlySeries(tickets: RustTicket[]): PerformanceTimePoint[] {
+  const kept = keptTickets(tickets).filter((ticket) =>
+    ticket.created_at_ms > 0 && ticket.created_at_ms <= Date.now()
+  );
+  if (kept.length === 0) return [];
+
+  const firstTicketDate = new Date(Math.min(...kept.map((ticket) => ticket.created_at_ms)));
+  const now = new Date();
+  const firstMonth = new Date(firstTicketDate.getFullYear(), firstTicketDate.getMonth(), 1);
+  const monthCount =
+    (now.getFullYear() - firstMonth.getFullYear()) * 12 +
+    now.getMonth() - firstMonth.getMonth() + 1;
+
+  const months = Array.from({ length: monthCount }, (_, index) => {
+    const date = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
+    return { date, tickets: 0, revenue: 0 };
+  });
+
+  for (const ticket of kept) {
+    const date = new Date(ticket.created_at_ms);
+    const index =
+      (date.getFullYear() - firstMonth.getFullYear()) * 12 +
+      date.getMonth() - firstMonth.getMonth();
+    if (index < 0 || index >= months.length) continue;
+    months[index].tickets += 1;
+    months[index].revenue += Math.max(0, ticket.price_paid || 0);
+  }
+
+  let cumulativeTickets = 0;
+  let cumulativeRevenue = 0;
+  return months.map((month) => {
+    cumulativeTickets += month.tickets;
+    cumulativeRevenue += month.revenue;
+    const year = month.date.getFullYear();
+    const monthNumber = String(month.date.getMonth() + 1).padStart(2, '0');
+    return {
+      date: `${year}-${monthNumber}-01`,
+      label: month.date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+      ticketsSold: month.tickets,
+      revenue: Math.round(month.revenue),
+      cumulativeTickets,
+      cumulativeRevenue: Math.round(cumulativeRevenue),
+    };
+  });
+}
 function sanitizeSearchInput(input: string): string {
   if (!input) return '';
   return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
