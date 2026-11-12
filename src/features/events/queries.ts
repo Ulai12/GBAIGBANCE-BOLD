@@ -56,7 +56,6 @@ async function selectPages<T>(
 
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTickets = getLocalStoredTickets();
-  const dead = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
   const countedTicketStatuses = new Set(['valid', 'used']);
   const localActiveTickets = localTickets.filter((t) =>
     countedTicketStatuses.has(String((t as { status?: string }).status || 'valid').toLowerCase())
@@ -237,19 +236,20 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
 export async function fetchEventsByCategory(category: EventCategory | string): Promise<Event[]> {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .eq('status', 'published')
-      .order('starts_at', { ascending: true })
-      .limit(60);
-    if (!error && data && data.length > 0) {
-      const hydrated = (data as Event[])
-        .map(hydrateEventCategories)
-        .filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
-      return hydrated.filter((e) => eventMatchesCategoryFilter(e, category));
-    }
-    return [];
+    // Parcourir les pages plutôt que filtrer seulement les 60 premiers événements :
+    // une catégorie moins récente ne doit pas disparaître des résultats.
+    const data = await selectPages<Event>((from, to) =>
+      supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'published')
+        .order('starts_at', { ascending: true })
+        .range(from, to)
+    );
+    const hydrated = data
+      .map(hydrateEventCategories)
+      .filter((event) => isRealEvent(event) && isEventActive(event) && !isEventTerminated(event));
+    return hydrated.filter((event) => eventMatchesCategoryFilter(event, category));
   } catch {
     return [];
   }
