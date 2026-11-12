@@ -34,7 +34,7 @@ export interface OrganizerPerformanceData {
   };
 }
 
-const DEAD_TICKET = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
+const COUNTED_TICKET_STATUSES = new Set(['valid', 'used']);
 
 async function fetchTicketsForEvents(eventIds: string[]) {
   const rows: Array<{
@@ -228,7 +228,10 @@ export async function fetchOrganizerPerformanceMetrics(
     });
 
     const daysCount = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 60;
-    const rustTickets = toRustTickets(tickets);
+    const countedTickets = tickets.filter((ticket) =>
+      COUNTED_TICKET_STATUSES.has((ticket.status || 'valid').toLowerCase())
+    );
+    const rustTickets = toRustTickets(countedTickets);
     const series = await coreOrganizerSeries(daysCount, rustTickets);
 
     const categoryColors: Record<string, string> = {
@@ -298,7 +301,9 @@ function keptTickets(tickets: RustTicket[]): RustTicket[] {
     const prev = map.get(ticket.id);
     if (!prev || (prev.source !== 'server' && ticket.source === 'server')) map.set(ticket.id, ticket);
   }
-  return [...map.values()].filter((ticket) => !DEAD_TICKET.has(ticket.status || ''));
+  return [...map.values()].filter((ticket) =>
+    COUNTED_TICKET_STATUSES.has((ticket.status || 'valid').toLowerCase())
+  );
 }
 
 function tallyTickets(tickets: RustTicket[]): { tickets: number; revenue: number } {
