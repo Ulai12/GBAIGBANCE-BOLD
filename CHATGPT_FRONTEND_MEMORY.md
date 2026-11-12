@@ -12,14 +12,14 @@
 - 2026-11-12 — Correctif P1 du checkout multi-billets dans `src/components/BookingModal.tsx` : le changement de destinataire conserve un tableau aligné sur la quantité choisie ; les ajouts de quantité créent des bénéficiaires distincts ; garde-fou avant achat pour normaliser le nombre de destinataires ; synchronisation du premier nom cadeau.
   - Impact visé : empêcher une divergence entre montant affiché et nombre de billets créés.
   - Vérification statique : cohérence avec `purchaseTicketsMulti`, qui calcule le montant et génère les billets depuis `recipients.length`.
-- 2026-11-12 — Correctif P0 du build dans `src/components/EventCard.tsx` : fermeture manquante du conteneur « CONTENT LAYER » avant le bouton de superposition. L'erreur JSX a été signalée par le build Vercel de la branche.
-  - Le fichier était inchangé par le correctif de réservation ; la compilation était bloquée par cette erreur de structure JSX déjà présente sur la branche.
-  - Commit distinct pour isoler le déblocage du build.
-- Aucun fichier backend, Supabase, API, lockfile ou configuration de dépendances modifié.
-
+- 2026-11-12 — Correctif P0 du build dans `src/components/EventCard.tsx` : fermeture manquante du conteneur « CONTENT LAYER » avant le bouton de superposition. Le fichier était inchangé par le correctif réservation ; l'erreur JSX a été signalée par Vercel.
+- 2026-11-12 — Audit P1 du parcours invité : constat confirmé, le CTA de la page détail ouvrait directement sa modale locale sans utiliser le garde d'authentification global. Le service traite `guest-*` en mode local de démonstration au lieu d'appeler la RPC Supabase ; les billets ne constituent donc pas des commandes serveur réelles. Décision : ne pas ouvrir une réservation invitée tant que le backend ne la prend pas explicitement en charge.
+- 2026-11-12 — Correction du parcours d'accès à la réservation : les CTA de la page détail et la sélection d'une catégorie de billet délèguent désormais au gestionnaire global `onBook`. Celui-ci impose une session, transmet l'option choisie à la modale globale et conserve la route de retour pendant la connexion. Suppression de la modale locale concurrente de la page détail.
+  - Fichiers fonctionnels : `src/App.tsx`, `src/screens/EventDetailScreen.tsx`.
+  - Impact visé : empêcher la création locale d'un faux succès de réservation pour les visiteurs non connectés ; un utilisateur authentifié passe par un seul flux de réservation.
+- Correctif JSX précédent : `src/components/EventCard.tsx`. Aucun fichier backend, Supabase, API, lockfile ou configuration de dépendances modifié pendant les chantiers UI.
+ 
 ## État courant
-- Chantiers : cohérence quantité / destinataires dans la réservation ; correction de la fermeture JSX bloquant la compilation.
-- Vérifications : contrôle statique des deux modifications. Build, typecheck, lint et tests locaux non exécutés dans cette session. Le nouveau déploiement Vercel doit confirmer le build après le correctif JSX.
-- Validation visuelle navigateur / responsive non effectuée.
-- Problèmes ouverts : parcours invité à auditer séparément ; ergonomie générale de la modale de réservation à évaluer.
-- Prochaine priorité recommandée : vérifier le build et auditer l'accès invité à la réservation et la récupération des billets sans modifier le backend sans preuve de nécessité.
+- Vérifications : revue statique du routage et du flux d'achat ; le nouveau build Vercel doit confirmer les modifications. Typecheck, lint, tests locaux et validation visuelle responsive non exécutés.
+- Problèmes ouverts : la réservation sans compte n'est pas prise en charge par le service de production ; il faudra concevoir un vrai flux invité serveur (identité, paiement, attribution et récupération) avant de l'activer.
+- Prochaine priorité : vérifier le déploiement du correctif de garde d'authentification, puis tester le retour depuis connexion vers le détail d'événement et le passage authentifié à la réservation.

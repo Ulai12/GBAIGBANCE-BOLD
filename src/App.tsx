@@ -72,6 +72,7 @@ function AppContent() {
 
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [bookingEvent, setBookingEvent] = useState<Event | null>(null);
+  const [bookingInitialOptionId, setBookingInitialOptionId] = useState<string | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [liveTicketCount, setLiveTicketCount] = useState<number>(() => {
@@ -335,14 +336,20 @@ function AppContent() {
     navigate(`/organizers/${org.id}`, { state: { organization: org } });
   };
 
-  const handleBookEvent = useCallback((event: Event) => {
+  const handleBookEvent = useCallback((event: Event, initialOptionId?: string | null) => {
     if (!session) {
       addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
-      navigate('/login');
+      navigate('/login', { state: { returnTo: location.pathname } });
       return;
     }
+    setBookingInitialOptionId(initialOptionId || null);
     setBookingEvent(event);
-  }, [session, addToast, navigate]);
+  }, [session, addToast, navigate, location.pathname]);
+
+  const handleAuthSuccess = () => {
+    const authState = location.state as { returnTo?: string } | null;
+    navigate(authState?.returnTo || '/', { replace: true });
+  };
 
   const handleTabChange = (tab: Tab) => {
     if (tab === 'home') navigate('/');
@@ -432,7 +439,7 @@ function AppContent() {
               element={
                 <AuthScreen
                   mode="login"
-                  onSuccess={() => navigate('/')}
+                  onSuccess={handleAuthSuccess}
                   onToggleMode={() => navigate('/signup')}
                   onForgotPassword={() => navigate('/forgot-password')}
                   onToast={addToast}
@@ -546,10 +553,15 @@ function AppContent() {
       <BookingModal
         open={!!bookingEvent}
         event={bookingEvent}
-        onClose={() => setBookingEvent(null)}
+        initialOptionId={bookingInitialOptionId}
+        onClose={() => {
+          setBookingEvent(null);
+          setBookingInitialOptionId(null);
+        }}
         onSuccess={() => {
           addToast({ message: 'Billet confirmé. Retrouvez-le dans Mes billets.', type: 'success' });
           setBookingEvent(null);
+          setBookingInitialOptionId(null);
           navigate('/tickets');
         }}
       />
