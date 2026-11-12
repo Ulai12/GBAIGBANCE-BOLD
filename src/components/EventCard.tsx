@@ -249,6 +249,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
             </div>
           </div>
         </div>
+        </div>
 
         {onClick && (
           <button
