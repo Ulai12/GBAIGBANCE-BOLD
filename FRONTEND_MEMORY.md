@@ -21,6 +21,19 @@ Mémoire indépendante du travail frontend de ChatGPT pour GBAIGBANCE-BOLD. Ne j
 - Tests build/typecheck/lint : non exécutés dans cette intervention distante.
 - Validation visuelle et responsive navigateur : non exécutée; aucun rendu/capture n'a été vérifié.
 
+
+
+### 2026-11-12 — P2/P3 : lisibilité et accessibilité du dock mobile
+- Tâche active : améliorer le dock inférieur (BottomNav), prioritairement sur les largeurs mobiles étroites et l'accessibilité des annonces de billets.
+- Objectif : augmenter la lisibilité des labels et de l'action Créer, préserver les cibles tactiles, annoncer le nombre de billets à voix accessible quand un badge est affiché.
+- Progression : labels principaux 10px → 11px; dock 58px → 62px; bouton Créer 36px → 40px; label Créer 9px → 10px; aria-label dynamique inclut le compte et la pluralisation française/anglaise du badge billets.
+- Fichier : `src/components/BottomNav.tsx`.
+- Taille distante avant/après : 12 742 → 12 903 octets; 344 → 344 lignes (pas de réduction; contrôlé après relecture GitHub).
+- Commit : `59bae5d627bcbc1b33e7d58b40b73b3050430a3d` sur `Frontend-IA`; relecture distante du fichier, contenu et métadonnées du commit confirmés.
+- Build, lint, tests et vérification navigateur aux largeurs 320, 375, 414, 768, 1024, 1440px : non exécutés depuis le connecteur distant; rendu visuel non vérifié.
+- Incident d'écriture : aucun observé.
+- Prochaine étape : valider build/lint/tests et rendu du dock à tailles et orientation variées, vérifier la navigation avec agrandissement de texte; corriger si truncature ou débordement avéré.
+
 ## Problèmes ouverts et prochaine priorité
 - Vérifier le comportement réel du thème sombre avec l'option système « Réduire la transparence » activée, notamment les surfaces GlassPanel et la navigation.
 - Ensuite, poursuivre l'audit ciblé du dock de navigation sur petits écrans et tailles de texte agrandies.
