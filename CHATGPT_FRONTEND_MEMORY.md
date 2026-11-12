@@ -32,3 +32,18 @@
 - Vérifications : le build Vercel du correctif de reprise de réservation (`e177174`) a été confirmé READY. Pour l'audit catégories/statistiques, un déploiement intermédiaire (`54dbd78`) est READY ; le déploiement du dernier commit (`23fed96`) était encore QUEUED lors du dernier contrôle. Aucun test d'interaction réel avec Supabase, typecheck séparé, lint, tests locaux ni validation visuelle responsive n'a été exécuté.
 - Problèmes ouverts : la réservation sans compte n'est pas prise en charge par le service de production ; il faudra concevoir un vrai flux invité serveur (identité, paiement, attribution et récupération) avant de l'activer. Les catégories et statistiques doivent encore être exercées avec un jeu de données Supabase réel pour confirmer les chiffres affichés.
 - Prochaine priorité : confirmer le dernier build Vercel, puis tester la sélection rapide de plusieurs catégories et comparer les KPI/graphes aux billets `valid`/`used` et aux événements actifs réels.
+
+- 2026-11-12 — Refonte de la classification dans l'exploration :
+  - L'exploration utilise désormais les 5 catégories parentes et expose les sous-catégories de la catégorie sélectionnée ; un filtre parent inclut ses enfants, un filtre enfant reste strictement limité à cette sous-catégorie.
+  - La sous-catégorie connue est la source de vérité pour le parent ; les correspondances par mots-clés du titre (ex. « fest », « expo », « conf ») ont été retirées pour éviter les faux positifs.
+  - Les événements historiques sans métadonnées enrichies conservent le filtre de catégorie historique.
+- 2026-11-12 — Stabilisation de l'exploration et des statistiques :
+  - Suppression du polling périodique de l'écran Explore ; les chargements viennent de l'ouverture/changement de filtres et des notifications Supabase Realtime.
+  - Le skeleton d'événements n'est affiché que pendant le premier chargement sans cache ; les réponses obsolètes sont ignorées et les résultats existants restent visibles lors des synchronisations silencieuses.
+  - Suppression du bouton d'actualisation et du polling 60 s du tableau de statistiques ; les événements Realtime et les événements applicatifs restent les déclencheurs de mise à jour.
+  - Suppression de l'étiquette technique Rust/calcul dans l'interface ; le moteur de calcul interne est conservé et n'est plus exposé à l'utilisateur.
+  - Correction du contrat timeline : les statistiques utilisent maintenant `starts_at_ms` et `attendees` ; les chemins de repli lisent aussi les bons champs et n'accèdent plus à une variable `events` inexistante.
+  - Ajustements de densité, de rythme et d'interactions des KPI sans toucher à l'en-tête « Gbaigbance en chiffres ».
+  - Fichiers : `src/constants/categories.ts`, `src/screens/ExploreScreen.tsx`, `src/components/GbaigbanceStatsDashboard.tsx`.
+  - Sentry : aucun diagnostic Sentry n'a été exécuté faute de jeton d'accès configuré dans l'environnement ; ne jamais demander au user de coller le jeton dans le chat.
+  - Vérification en attente : build/typecheck et validation visuelle responsive après les derniers commits ; pas de test Supabase réel effectué.
