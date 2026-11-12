@@ -102,15 +102,16 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
-  const eventsCountRef = useRef(events.length);
-  eventsCountRef.current = events.length;
+  const hasLoadedEventsRef = useRef(events.length > 0);
+  const eventRequestRef = useRef(0);
 
   // Participants trouvés lors de la recherche
   const [participants, setParticipants] = useState<Profile[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   const loadEvents = useCallback(async (isDefault = false) => {
-    setLoading((prev) => (eventsCountRef.current === 0 ? true : prev));
+    const requestId = ++eventRequestRef.current;
+    if (!hasLoadedEventsRef.current) setLoading(true);
     try {
       const q = query.trim();
       const rawSql = q ? await searchEvents(q) : await fetchUpcomingEvents();
@@ -146,14 +147,19 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           result = applyFilters(rawSql);
         }
       }
+      if (requestId !== eventRequestRef.current) return;
       setEvents(result);
+      hasLoadedEventsRef.current = true;
       if (isDefault) {
         exploreCache = result;
       }
     } catch {
-      // Retain warm cache on network failure
+      // Conserve les résultats déjà affichés en cas de perte réseau.
     } finally {
-      setLoading(false);
+      if (requestId === eventRequestRef.current) {
+        hasLoadedEventsRef.current = true;
+        setLoading(false);
+      }
     }
   }, [query, selectedCategory, selectedCity, priceFilter]);
 
@@ -192,35 +198,17 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     }
   }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
-  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  // Synchronisation initiale et notifications Realtime uniquement.
+  // Aucun polling ne relance les recherches ni ne réaffiche les skeletons.
   useEffect(() => {
-    const periodicSync = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        if (searchMode === 'events') {
-          const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
-          loadEvents(isDefault);
-        } else if (query.trim()) {
-          loadParticipants();
-        }
-      }
-    }, 20000);
-
     const unsubscribe = subscribeToGlobalEventsLive(() => {
-      if (searchMode === 'events') {
-        loadEvents(false);
-      }
+      if (searchMode === 'events') loadEvents(false);
     });
 
-    const pruneTicker = setInterval(() => {
-      setEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 20000);
-
     return () => {
-      clearInterval(periodicSync);
-      clearInterval(pruneTicker);
       if (unsubscribe) unsubscribe();
     };
-  }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
+  }, [searchMode, loadEvents]);
 
   const resetFilters = () => {
     setSelectedCategory(null);
