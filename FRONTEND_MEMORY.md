@@ -39,5 +39,13 @@ Mémoire indépendante du travail frontend de ChatGPT pour GBAIGBANCE-BOLD. Ne j
 - Ensuite, poursuivre l'audit ciblé du dock de navigation sur petits écrans et tailles de texte agrandies.
 - Ne considérer aucun contrôle visuel, test automatisé ou build comme réussi sans exécution effective.
 
+### 2026-11-12 — Poursuite : validation du dock bloquée côté navigateur
+- Reprise : tâche précédente, aucun nouveau chantier sélectionné.
+- Contrôle statique supplémentaire : relu le rendu JSX du dock et la logique du badge/aria-label; grille dynamique 4 ou 5 colonnes, labels truncate, safe-area bottom et cible tactile minimale 44px présents dans le code.
+- Validation navigateur : tentative de lecture des onglets du navigateur connectée échouée, car le contexte navigateur d'origine n'est pas disponible. Pas de navigation, capture ou contrôle visuel possible.
+- Build/lint/tests : toujours non exécutés. Recherche de runs Actions associés aux commits précédents : aucun run trouvé; outil Vercel de preview n'a pas pu être invoqué dans cette session.
+- PR #6 vérifiée via API GitHub : ouverte, base main, head Frontend-IA, mergeable=true; non fusionnée.
+- Aucun fichier applicatif modifié dans cette poursuite. Le chantier reste incomplet; prochaine étape impérative : exécuter localement ou dans un environnement preview les tests/build et le contrôle responsive aux six largeurs demandées avant de déclarer la tâche terminée.
+
 ## Règle de continuité
 À chaque exécution, lire intégralement ce fichier avant toute intervention. Le code et l'état Git réels priment sur cette mémoire; corriger cette mémoire si elle diverge. Un seul chantier principal par session.
