@@ -52,3 +52,8 @@
   - Le premier build Vercel a détecté un import `Heart` dupliqué dans `ExploreScreen.tsx`; le doublon a été supprimé immédiatement.
   - Le déploiement Preview du commit `36191b7` sur `FRONTED-iA` est confirmé `READY`.
   - Le polling d'Explore a été supprimé et le chargement protège désormais contre les réponses réseau obsolètes ; les mises à jour Realtime restent actives.
+
+- 2026-11-12 — Alignement de la section d'accueil « Explorer par catégorie » :
+  - Remplacement des 8 anciens filtres ambigus par les 5 catégories parentes et leurs sous-catégories affichées après sélection.
+  - La requête distante d'une catégorie est désormais déclenchée uniquement au changement de sélection ; les mises à jour globales/realtime fusionnent les nouveaux événements localement sans relancer la requête ni réafficher le skeleton.
+  - Le déploiement Preview du commit `0af15ae` sur `FRONTED-iA` est confirmé `READY` ; build Vite réussi.
