@@ -135,7 +135,7 @@ export function BottomNav({
         onPointerUp={() => setPressed(null)}
         onPointerCancel={() => setPressed(null)}
         onPointerLeave={() => setPressed(null)}
-        aria-label={label}
+        aria-label={showTicketBadge ? `${label}, ${ticketCount} ${language === 'en' ? (ticketCount === 1 ? 'ticket' : 'tickets') : (ticketCount === 1 ? 'billet' : 'billets')}` : label}
         aria-current={isActive ? 'page' : undefined}
         className={[
           'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-full select-none',
@@ -213,7 +213,7 @@ export function BottomNav({
         {/* Micro-label ergonomique haute lisibilité */}
         <span
           className={[
-            'relative z-10 mt-0.5 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
+            'relative z-10 mt-0.5 text-[11px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
             isActive
               ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
               : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300',
@@ -246,7 +246,7 @@ export function BottomNav({
         radius="capsule"
         interactive={true}
         className={[
-          'relative w-full max-w-md h-[58px] px-0 py-0',
+          'relative w-full max-w-md h-[62px] px-0 py-0',
           isModalOpen ? 'pointer-events-none' : 'pointer-events-auto',
           'flex items-center transition-all duration-500 shadow-2xl',
         ].join(' ')}
@@ -298,7 +298,7 @@ export function BottomNav({
                   onPointerLeave={() => setPressed(null)}
                   aria-label={createLabel}
                   className={[
-                    'group relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer select-none',
+                    'group relative w-10 h-10 rounded-full flex items-center justify-center cursor-pointer select-none',
                     'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
                     pressed === 'create'
                       ? 'scale-[0.88] brightness-90'
@@ -328,7 +328,7 @@ export function BottomNav({
                   />
                 </button>
 
-                <span className="text-[9px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
+                <span className="text-[10px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
                   {createLabel}
                 </span>
               </div>
