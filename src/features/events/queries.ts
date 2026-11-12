@@ -25,10 +25,16 @@ export interface PlatformStats {
   categoryBasis: 'revenue' | 'events';
   categoryShares: Array<{ id: string; count: number; amount: number; percent: number }>;
   ticketsTimeline?: Array<{
+    id: string;
     created_at: string;
     created_at_ms: number;
     price_paid: number;
     event_id: string;
+  }>;
+  eventsTimeline?: Array<{
+    id: string;
+    starts_at_ms: number;
+    attendees: number;
   }>;
 }
 
@@ -51,7 +57,10 @@ async function selectPages<T>(
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTickets = getLocalStoredTickets();
   const dead = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
-  const localActiveTickets = localTickets.filter((t) => !dead.has(String((t as { status?: string }).status || '')));
+  const countedTicketStatuses = new Set(['valid', 'used']);
+  const localActiveTickets = localTickets.filter((t) =>
+    countedTicketStatuses.has(String((t as { status?: string }).status || 'valid').toLowerCase())
+  );
   const localTicketCount = localActiveTickets.length;
   const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number((t as { price_paid?: number }).price_paid) || 0), 0);
 
@@ -72,6 +81,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryBasis: 'events',
       categoryShares: [],
       ticketsTimeline: [],
+      eventsTimeline: [],
     };
   }
 
@@ -100,7 +110,9 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     const users = profilesRes.count ?? 0;
 
     const rustTickets: RustTicket[] = [
-      ...rawTickets.map((ticket) => ({
+      ...rawTickets.filter((ticket) =>
+        countedTicketStatuses.has(String(ticket.status || 'valid').toLowerCase())
+      ).map((ticket) => ({
         id: ticket.id,
         price_paid: Number(ticket.price_paid) || 0,
         status: ticket.status || 'valid',
@@ -135,12 +147,22 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categories[share.id] = share.count;
     }
 
-    const ticketsTimeline = (core?.timeline || []).map((ticket) => ({
+    const ticketsTimeline = (core?.timeline || []).map((ticket, index) => ({
+      // Le moteur Rust renvoie les billets sans leur identifiant : l'index garantit
+      // une clé distincte même si plusieurs achats partagent la même milliseconde.
+      id: `${ticket.event_id}-${ticket.created_at_ms}-${index}`,
       created_at: new Date(ticket.created_at_ms).toISOString(),
       created_at_ms: ticket.created_at_ms,
       price_paid: ticket.price_paid,
       event_id: ticket.event_id,
     }));
+    const eventsTimeline = events
+      .filter((event) => activeIds.has(event.id))
+      .map((event) => ({
+        id: event.id,
+        starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+        attendees: event.attendees_count || 0,
+      }));
 
     return {
       totalEvents: core?.total_events ?? activeIds.size,
@@ -155,6 +177,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryBasis: core?.category_basis ?? 'events',
       categoryShares: core?.category_shares ?? [],
       ticketsTimeline,
+      eventsTimeline,
     };
   } catch {
     return {
