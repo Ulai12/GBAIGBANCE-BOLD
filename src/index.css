@@ -139,6 +139,14 @@
       --glass-tint: rgba(255, 255, 255, 0.94);
       --glass-border: rgba(255, 255, 255, 0.8);
     }
+
+    /* Préserve une surface sombre lorsque la transparence est réduite. */
+    .dark {
+      --glass-tint: rgba(22, 18, 35, 0.96);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --glass-highlight: rgba(255, 255, 255, 0.16);
+      --glass-highlight-soft: rgba(255, 255, 255, 0.08);
+    }
   }
   :focus-visible {
     outline: 3px solid rgba(102, 0, 255, 0.55);
