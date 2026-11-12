@@ -62,7 +62,7 @@ interface EventDetailScreenProps {
   event: Event;
   onBack: () => void;
   onArtistClick: (artist: Artist) => void;
-  onBook: (event: Event) => void;
+  onBook: (event: Event, initialOptionId?: string | null) => void;
   onEditEvent?: (event: Event) => void;
   onOpenAISettings?: () => void;
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void;
