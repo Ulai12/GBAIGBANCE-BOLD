@@ -43,6 +43,14 @@ export function GbaigbanceStatsDashboard({
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [rustBuckets, setRustBuckets] = useState<TimelineBucket[] | null>(null);
   const syncSeq = useRef(0);
+  const timelineEvents = useMemo(
+    () => platformStats?.eventsTimeline ?? events.map((event) => ({
+      id: event.id,
+      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+      attendees: event.attendees_count || 0,
+    })),
+    [platformStats?.eventsTimeline, events]
+  );
 
   // Keep state updated if props change
   useEffect(() => {
@@ -110,24 +118,20 @@ export function GbaigbanceStatsDashboard({
   // Données dynamiques de la période sélectionnée basées sur les dates réelles des événements et des billets
   useEffect(() => {
     let cancelled = false;
+    setRustBuckets(null);
     const tickets = (platformStats?.ticketsTimeline || []).map((ticket, index) => ({
-      id: `${ticket.event_id}-${ticket.created_at_ms || index}`,
+      id: ticket.id || `${ticket.event_id}-${ticket.created_at_ms || index}-${index}`,
       created_at_ms: ticket.created_at_ms || Date.parse(ticket.created_at),
       price_paid: ticket.price_paid || 0,
       status: 'valid',
     }));
-    const markers = events.map((event) => ({
-      id: event.id,
-      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
-      attendees: event.attendees_count || 0,
-    }));
-    coreTimeline({ period, nowMs: Date.now(), tickets, events: markers }).then((buckets) => {
+    coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
       if (!cancelled) setRustBuckets(buckets);
     });
     return () => {
       cancelled = true;
     };
-  }, [period, platformStats, events]);
+  }, [period, platformStats, timelineEvents]);
 
   const monthlyTimeline = useMemo<MonthlyDataPoint[]>(() => {
     if (rustBuckets && rustBuckets.length > 0) {
@@ -173,7 +177,7 @@ export function GbaigbanceStatsDashboard({
       ];
 
       // 1. Événements réels se déroulant ce mois
-      events.forEach((ev) => {
+      timelineEvents.forEach((ev) => {
         const d = new Date(ev.starts_at);
         if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
           const day = d.getDate();
@@ -286,7 +290,7 @@ export function GbaigbanceStatsDashboard({
     });
 
     return [m1Data, m2Data, m3Data];
-  }, [period, totals, events, platformStats?.ticketsTimeline, rustBuckets]);
+  }, [period, totals, timelineEvents, platformStats?.ticketsTimeline, rustBuckets]);
 
   // Répartition par catégorie basée sur les vrais événements
   const categoriesBreakdown = useMemo(() => {
@@ -301,6 +305,7 @@ export function GbaigbanceStatsDashboard({
       private: { label: 'Événements Privés', color: '#6366F1' },
       sport: { label: 'Sport & Bien-être', color: '#EF4444' },
       exhibition: { label: 'Expositions & Art', color: '#D946EF' },
+      exposition: { label: 'Expositions & Art', color: '#D946EF' },
     };
 
     const shares = platformStats?.categoryShares || [];
