@@ -451,7 +451,7 @@ function AppContent() {
               element={
                 <AuthScreen
                   mode="signup"
-                  onSuccess={() => navigate('/')}
+                  onSuccess={handleAuthSuccess}
                   onToggleMode={() => navigate('/login')}
                   onForgotPassword={() => navigate('/forgot-password')}
                   onToast={addToast}
