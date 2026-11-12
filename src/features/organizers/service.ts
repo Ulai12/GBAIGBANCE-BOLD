@@ -383,7 +383,11 @@ function allTimeMonthlySeries(tickets: RustTicket[]): PerformanceTimePoint[] {
   );
   if (kept.length === 0) return [];
 
-  const firstTicketDate = new Date(Math.min(...kept.map((ticket) => ticket.created_at_ms)));
+  const earliestTimestamp = kept.reduce(
+    (earliest, ticket) => Math.min(earliest, ticket.created_at_ms),
+    Number.POSITIVE_INFINITY
+  );
+  const firstTicketDate = new Date(earliestTimestamp);
   const now = new Date();
   const firstMonth = new Date(firstTicketDate.getFullYear(), firstTicketDate.getMonth(), 1);
   const monthCount =
