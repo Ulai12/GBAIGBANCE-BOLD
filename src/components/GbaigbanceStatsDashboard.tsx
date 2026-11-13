@@ -565,11 +565,13 @@ Données synchronisées en direct
           </div>
 
           <p className="truncate text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {totals.revenue >= 1000000
-              ? `${(totals.revenue / 1000000).toFixed(1)}M`
-              : totals.revenue > 0
-                ? totals.revenue.toLocaleString('fr-FR')
-                : '0'}{' '}
+            {platformStats?.isAvailable === false || !platformStats
+              ? '—'
+              : totals.revenue >= 1000000
+                ? `${(totals.revenue / 1000000).toFixed(1)}M`
+                : totals.revenue > 0
+                  ? totals.revenue.toLocaleString('fr-FR')
+                  : '0'}{' '}
             <span className="text-xs font-bold text-gray-400">
               FCFA
             </span>
@@ -592,7 +594,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {{platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
