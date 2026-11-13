@@ -49,6 +49,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   const [scannerEventId, setScannerEventId] = useState<string | undefined>(undefined);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [perfData, setPerfData] = useState<OrganizerPerformanceData>({
     timeSeries: [],
     categoryBreakdown: [],
@@ -66,11 +67,12 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   const loadMetrics = useCallback(async () => {
     if (!user) return;
     setMetricsLoading(true);
+    setMetricsError(null);
     try {
       const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
       setPerfData(data);
-    } catch {
-      // Keep previous
+    } catch (error) {
+      setMetricsError(error instanceof Error ? error.message : 'Impossible de charger les statistiques.');
     } finally {
       setMetricsLoading(false);
     }
@@ -210,6 +212,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
         <OrganizerMetricsChart
           data={perfData}
           loading={metricsLoading}
+          error={metricsError}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
         />
