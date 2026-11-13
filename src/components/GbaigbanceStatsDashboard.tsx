@@ -447,7 +447,7 @@ export function GbaigbanceStatsDashboard({
       : null;
 
   return (
-    <div className="w-full overflow-hidden relative isolate rounded-[2rem] border border-white/75 border-t-white/90 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.48)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)]">
+    <div className="w-full overflow-hidden relative isolate rounded-[2rem] border border-white/75 border-t-white/90 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.48)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_34%,rgba(139,92,246,0.07)_72%,transparent)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between mb-2 px-1">
