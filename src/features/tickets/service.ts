@@ -229,7 +229,7 @@ export async function purchaseTicketsMulti(params: {
   }>;
   error?: string;
 }> {
-  const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId, buyerName } = params;
+  const { eventId, ticketOptionId, recipients, userId, buyerName } = params;
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
   const amountXof = unitPrice * Math.max(1, recipients.length);
 

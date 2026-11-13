@@ -44,7 +44,7 @@ const MEMORY_CACHE: {
   profiles: new Map(),
 };
 
-const HOME_CACHE_KEY = 'gba_idb_home_v7';
+const HOME_CACHE_KEY = 'gba_idb_home_v8';
 const EVENT_CACHE_PREFIX = 'gba_idb_event_';
 const PROFILE_CACHE_PREFIX = 'gba_idb_profile_';
 export const TICKETS_CACHE_PREFIX = 'gba_my_tickets_';

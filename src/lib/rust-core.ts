@@ -117,16 +117,34 @@ async function load(): Promise<WasmExports | null> {
 async function exec<T>(payload: unknown): Promise<T | null> {
   const wasm = await load();
   if (!wasm) return null;
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  const ptr = wasm.gba_alloc(bytes.length);
-  new Uint8Array(wasm.memory.buffer, ptr, bytes.length).set(bytes);
-  const outPtr = wasm.gba_exec(ptr, bytes.length);
-  const outLen = wasm.gba_last_len();
-  wasm.gba_free(ptr, bytes.length);
-  const copy = new Uint8Array(outLen);
-  copy.set(new Uint8Array(wasm.memory.buffer, outPtr, outLen));
-  wasm.gba_free(outPtr, outLen);
-  return JSON.parse(new TextDecoder().decode(copy)) as T;
+  let ptr = 0;
+  let inLen = 0;
+  let outPtr = 0;
+  let outLen = 0;
+  try {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    inLen = bytes.length;
+    ptr = wasm.gba_alloc(inLen);
+    new Uint8Array(wasm.memory.buffer, ptr, inLen).set(bytes);
+    outPtr = wasm.gba_exec(ptr, inLen);
+    outLen = wasm.gba_last_len();
+    wasm.gba_free(ptr, inLen);
+    ptr = 0;
+    const copy = new Uint8Array(outLen);
+    copy.set(new Uint8Array(wasm.memory.buffer, outPtr, outLen));
+    wasm.gba_free(outPtr, outLen);
+    outPtr = 0;
+    return JSON.parse(new TextDecoder().decode(copy)) as T;
+  } catch {
+    return null;
+  } finally {
+    if (ptr !== 0 && inLen > 0) {
+      try { wasm.gba_free(ptr, inLen); } catch { /* ignore */ }
+    }
+    if (outPtr !== 0 && outLen > 0) {
+      try { wasm.gba_free(outPtr, outLen); } catch { /* ignore */ }
+    }
+  }
 }
 
 export function tzOffsetMin(): number {
@@ -179,8 +197,7 @@ export async function coreSearchIds(query: string, events: RustEvent[]): Promise
 }
 
 export async function coreTrendIds(events: RustEvent[], nowMs = Date.now()): Promise<string[] | null> {
-  // Évite de démarrer WASM pour les listes courtes (30 événements dans le flux tendance).
-  if (events.length < 100) return null;
+  if (events.length === 0) return null;
   const result = await exec<{ ids: string[] }>({ op: 'trend', now_ms: nowMs, events });
   return result?.ids ?? null;
 }
@@ -220,6 +237,8 @@ export interface NearbyGeoEvent {
 export interface NearbyGeoResult {
   id: string;
   distance_km: number;
+  road_distance_km?: number;
+  travel_minutes?: number | null;
   title: string;
   city: string;
   category: string;
@@ -229,29 +248,47 @@ export interface NearbyGeoResult {
   currency: string | null;
 }
 
-export async function coreHaversineDistance(
+export async function coreHaversineDetails(
   lat1: number,
   lng1: number,
   lat2: number,
   lng2: number
-): Promise<number | null> {
-  const res = await exec<{ distance_km: number }>({
+): Promise<{ distance_km: number; road_distance_km: number; travel_minutes: number | null }> {
+  const res = await exec<{ distance_km: number; road_distance_km?: number; travel_minutes?: number | null }>({
     op: 'haversine',
     lat1,
     lng1,
     lat2,
     lng2,
   });
-  if (res && typeof res.distance_km === 'number') return res.distance_km;
-  // Fallback JS
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(6371 * c * 10) / 10;
+  if (res && typeof res.distance_km === 'number') {
+    const roadKm =
+      typeof res.road_distance_km === 'number'
+        ? res.road_distance_km
+        : Math.round(res.distance_km * (res.distance_km < 35 ? 1.28 : 1.15) * 10) / 10;
+    return {
+      distance_km: res.distance_km,
+      road_distance_km: roadKm,
+      travel_minutes: res.travel_minutes ?? null,
+    };
+  }
+  const distKm = coreHaversineDistanceFallback(lat1, lng1, lat2, lng2);
+  const roadKm = Math.round(distKm * (distKm < 35 ? 1.28 : 1.15) * 10) / 10;
+  return {
+    distance_km: distKm,
+    road_distance_km: roadKm,
+    travel_minutes: roadKm <= 60 ? Math.max(2, Math.round((roadKm / 24) * 60 + 4)) : null,
+  };
+}
+
+export async function coreHaversineDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): Promise<number | null> {
+  const details = await coreHaversineDetails(lat1, lng1, lat2, lng2);
+  return details.distance_km;
 }
 
 export async function coreNearbyEvents(
@@ -365,17 +402,39 @@ export async function coreVerifyQr(
   if (res && typeof res.valid === 'boolean') return res;
 
   // Fallback basic check
-  if (!payload) return { valid: false, reason: 'QR Code vide' };
-  if (payload.startsWith('GBA-1:')) {
-    const parts = payload.split(':');
-    if (parts.length >= 6) {
-      if (eventId && eventId !== parts[2]) {
-        return { valid: false, ticket_id: parts[1], event_id: parts[2], reason: 'Billet pour un autre événement' };
-      }
-      return { valid: true, ticket_id: parts[1], event_id: parts[2], tier: parts[3], created_at_ms: Number(parts[4]) };
+  const trimmed = (payload || '').trim();
+  if (!trimmed) return { valid: false, legacy: false, reason: 'QR Code vide' };
+  if (trimmed.startsWith('GBA-1:')) {
+    const parts = trimmed.split(':');
+    if (parts.length !== 6) {
+      return { valid: false, legacy: false, reason: 'Payload QR code invalide ou incomplet' };
     }
+    const ticketId = parts[1].trim();
+    const payloadEventId = parts[2].trim();
+    const tier = parts[3].trim();
+    const ts = Number(parts[4].trim());
+    const sig = parts[5].trim();
+    if (!ticketId || !payloadEventId || !Number.isFinite(ts)) {
+      return { valid: false, legacy: false, reason: 'Payload QR code corrompu' };
+    }
+    if (!/^[a-f0-9]{24}$/i.test(sig) && !sig.startsWith('sig_')) {
+      return { valid: false, legacy: false, reason: 'Format de signature invalide' };
+    }
+    if (eventId && eventId.trim() && eventId.trim() !== payloadEventId) {
+      return {
+        valid: false,
+        legacy: false,
+        ticket_id: ticketId,
+        event_id: payloadEventId,
+        reason: 'Ce billet appartient à un autre événement',
+      };
+    }
+    return { valid: true, legacy: false, ticket_id: ticketId, event_id: payloadEventId, tier, created_at_ms: ts };
   }
-  return { valid: true, ticket_id: payload, event_id: eventId, tier: 'standard', legacy: true };
+  if (trimmed.length < 8) {
+    return { valid: false, legacy: false, reason: 'Format de QR code non reconnu' };
+  }
+  return { valid: true, ticket_id: trimmed, event_id: eventId, tier: 'standard', legacy: true };
 }
 
 export interface FinancialFeesResult {

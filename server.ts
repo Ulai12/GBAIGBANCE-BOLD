@@ -30,22 +30,86 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialisation officielle du SDK Google GenAI côté serveur
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
+// Initialisation paresseuse du SDK Google GenAI côté serveur (évite tout avertissement au démarrage si la clé est absente)
+let aiInstance: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY non configurée sur le serveur.');
+    }
+    aiInstance = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return aiInstance;
+}
 
 const DEFAULT_SUPABASE_URL = 'https://qbngqstyhusndngkours.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibmdxc3R5aHVzbmRuZ2tvdXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDk2MjEsImV4cCI6MjEwMDUyNTYyMX0.FjxlwhFLJe9rgio0FmP48ae8maMNuWwn3yZv2g_p8dM';
 
-const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+function getUrlProjectRef(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/^https?:\/\/([a-z0-9-]+)\.supabase\.co/i);
+  return match?.[1] ?? null;
+}
+
+function getJwtProjectRef(token?: string): string | null {
+  if (!token || !token.includes('.')) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const parsed = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return parsed?.ref || null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveServerSupabaseCredentials(): { url: string; anonKey: string; serviceKey: string | null } {
+  const url = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    DEFAULT_SUPABASE_URL
+  ).replace(/\/+$/, '');
+
+  const urlRef = getUrlProjectRef(url);
+  const candidateKeys = [
+    process.env.VITE_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    DEFAULT_SUPABASE_ANON_KEY,
+  ].filter((k): k is string => Boolean(k && k.trim()));
+
+  const matchedAnonKey =
+    (urlRef ? candidateKeys.find((k) => getJwtProjectRef(k) === urlRef) : undefined) ||
+    candidateKeys[0] ||
+    DEFAULT_SUPABASE_ANON_KEY;
+
+  const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || null;
+  const serviceRef = rawServiceKey ? getJwtProjectRef(rawServiceKey) : null;
+  const matchedServiceKey =
+    rawServiceKey &&
+    ((serviceRef && urlRef && serviceRef === urlRef) ||
+      (!serviceRef && urlRef && getUrlProjectRef(process.env.SUPABASE_URL) === urlRef))
+      ? rawServiceKey
+      : null;
+
+  return { url, anonKey: matchedAnonKey, serviceKey: matchedServiceKey };
+}
+
+const {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
+  serviceKey: supabaseServiceKey,
+} = resolveServerSupabaseCredentials();
 
 const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -79,7 +143,7 @@ async function checkAiQuota(
   actor: { userId: string | null },
   req: Request
 ): Promise<{ allowed: boolean; message?: string; reason?: string }> {
-  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = supabaseServiceKey;
   if (!serviceRoleKey) return { allowed: true };
 
   try {
@@ -521,6 +585,7 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
     while (iterations < maxIterations) {
       iterations++;
 
+      const ai = getAiClient();
       const responseStream = await ai.models.generateContentStream({
         model: 'gemini-3.8-flash',
         contents,
@@ -604,6 +669,7 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
       fullPrompt = `À propos de l'événement "${currentEvent.title}" (${currentEvent.location_name || ''}, ${currentEvent.city || 'Lomé'}) : ${prompt}`;
     }
 
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: fullPrompt,
@@ -666,13 +732,62 @@ app.post('/api/tickets/verify-qr', async (req: Request, res: Response) => {
 
 app.post('/api/finance/calculate-fees', async (req: Request, res: Response) => {
   const { pricePaid, quantity, paymentMethod } = req.body ?? {};
+  const price = Math.max(0, Number(pricePaid) || 0);
+  const qty = Math.max(1, Math.trunc(Number(quantity) || 1));
+  const method = typeof paymentMethod === 'string' ? paymentMethod : 'mobile_money';
   const result = await execRustServer({
     op: 'financial_fees',
-    price_paid: Number(pricePaid) || 0,
-    quantity: Number(quantity) || 1,
-    payment_method: paymentMethod || 'mobile_money',
+    price_paid: price,
+    quantity: qty,
+    payment_method: method,
   });
-  res.json(result || { error: 'Calcul de commissions indisponible' });
+  if (result) {
+    res.json(result);
+    return;
+  }
+  const total = price * qty;
+  const pct = method === 'card' || method === 'stripe' ? 0.035 : method === 'free' ? 0 : 0.025;
+  const fixed = method === 'card' || method === 'stripe' ? 100 : method === 'free' ? 0 : 50;
+  const platformFee = total > 0 ? Math.round(total * pct + fixed) : 0;
+  const operatorFee = total > 0 ? Math.round(total * 0.012) : 0;
+  res.json({
+    total_amount: Math.round(total),
+    platform_fee: platformFee,
+    operator_fee: operatorFee,
+    organizer_payout: Math.max(0, Math.round(total - platformFee)),
+    fee_percent: Math.round(pct * 100),
+    fixed_fee: fixed,
+    currency: 'XOF',
+  });
+});
+
+app.get('/api/events/nearby', async (req: Request, res: Response) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    res.status(400).json({ error: 'Paramètres lat et lng requis.' });
+    return;
+  }
+  const radiusKm = clampRadiusKm(req.query.radius_km);
+  const limit = clampLimit(req.query.limit, 12, 50);
+
+  const { data, error } = await supabaseServer
+    .from('events')
+    .select('id, title, category, starts_at, location_name, city, price_min, currency, latitude, longitude')
+    .eq('status', 'published')
+    .gte('starts_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+    .limit(120);
+
+  if (error) {
+    res.status(500).json({ error: 'Impossible de charger les événements à proximité.' });
+    return;
+  }
+
+  let nearby = await serverNearbyEvents(lat, lng, radiusKm, limit, data || []);
+  if (!nearby || nearby.length === 0) {
+    nearby = withinRadius(data || [], lat, lng, radiusKm, limit);
+  }
+  res.json({ count: nearby.length, radius_km: radiusKm, events: nearby });
 });
 
 app.get('/api/health/rust', async (_req: Request, res: Response) => {
@@ -684,14 +799,246 @@ app.get('/api/health/rust', async (_req: Request, res: Response) => {
   });
 });
 
+const FAKE_SEED_ARTIST_NAMES = new Set([
+  'kafui mensah',
+  'aminata diallo',
+  'dj eklu',
+  'kofi & the roots',
+  'sira kone',
+  'ama rhythm',
+]);
+
+const FAKE_SEED_ORG_NAMES = new Set([
+  'afrovibe events',
+  'afrovibes events',
+  'culture bénin',
+  'culture benin',
+  'grand place productions',
+]);
+
+function isRealServerEvent(ev: { id?: string | null; title?: string | null }): boolean {
+  const id = String(ev.id || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('e1000000-')) return false;
+  return true;
+}
+
+function isRealServerArtist(a: { id?: string | null; name?: string | null }): boolean {
+  const id = String(a.id || '').trim().toLowerCase();
+  const name = String(a.name || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('b1000000-')) return false;
+  if (!name || FAKE_SEED_ARTIST_NAMES.has(name) || name.startsWith('test ') || name.startsWith('artiste démo')) return false;
+  return true;
+}
+
+function isRealServerOrg(o: { id?: string | null; name?: string | null }): boolean {
+  const id = String(o.id || '').trim().toLowerCase();
+  const name = String(o.name || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('a1000000-')) return false;
+  if (!name || FAKE_SEED_ORG_NAMES.has(name) || name.startsWith('test ') || name.startsWith('orga démo')) return false;
+  return true;
+}
+
+function isRealServerProfile(p: { id?: string | null; name?: string | null; email?: string | null }): boolean {
+  const id = String(p.id || '').trim().toLowerCase();
+  const name = String(p.name || '').trim().toLowerCase();
+  const email = String(p.email || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id === 'd0ebe334-ba93-413e-a64e-fb2787bcafaa') return false;
+  if (
+    name === 'test user' ||
+    name === 'test' ||
+    name === 'fake user' ||
+    name === 'demo user' ||
+    name === 'utilisateur test' ||
+    name.startsWith('test ') ||
+    name.startsWith('fake ')
+  ) {
+    return false;
+  }
+  if (email.includes('testuser@') || email.includes('example.com') || email.includes('test@') || email === 'test@gbaigbance.com') {
+    return false;
+  }
+  return true;
+}
+
+function isServerEventActive(ev: { status?: string | null; starts_at?: string | null; ends_at?: string | null }, now: number): boolean {
+  if (ev.status !== 'published') return false;
+  if (ev.ends_at) {
+    const endMs = Date.parse(ev.ends_at);
+    if (!Number.isNaN(endMs)) return endMs >= now;
+  }
+  if (ev.starts_at) {
+    const startMs = Date.parse(ev.starts_at);
+    if (!Number.isNaN(startMs)) return startMs + 6 * 60 * 60 * 1000 >= now;
+  }
+  return false;
+}
+
+async function handlePlatformStats(_req: Request, res: Response) {
+  try {
+    const db = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        })
+      : supabaseServer;
+
+    const [eventsRes, optionsRes, orgsRes, artistsRes, profilesRes, ticketsRes] = await Promise.all([
+      db.from('events').select('id, title, category, attendees_count, views_count, starts_at, ends_at, status, created_at').limit(1000),
+      db.from('ticket_options').select('id, event_id, price, quantity_sold').limit(2000),
+      db.from('organizations').select('id, name').limit(1000),
+      db.from('artists').select('id, name').limit(1000),
+      db.from('profiles').select('id, name, email, role').limit(2000),
+      db.from('tickets').select('id, event_id, user_id, price_paid, status, created_at').limit(2000),
+    ]);
+
+    const events = (Array.isArray(eventsRes.data) ? eventsRes.data : []).filter(isRealServerEvent);
+    const realEventIds = new Set(events.map((ev) => ev.id));
+    const ticketOptions = (Array.isArray(optionsRes.data) ? optionsRes.data : []).filter((opt) =>
+      realEventIds.has(opt.event_id)
+    );
+    const organizations = (Array.isArray(orgsRes.data) ? orgsRes.data : []).filter(isRealServerOrg);
+    const artists = (Array.isArray(artistsRes.data) ? artistsRes.data : []).filter(isRealServerArtist);
+    const profiles = (Array.isArray(profilesRes.data) ? profilesRes.data : []).filter(isRealServerProfile);
+    const realProfileIds = new Set(profiles.map((p) => p.id));
+    const tickets = (Array.isArray(ticketsRes.data) ? ticketsRes.data : []).filter(
+      (t) => realEventIds.has(t.event_id) && (!t.user_id || realProfileIds.has(t.user_id) || t.user_id !== 'd0ebe334-ba93-413e-a64e-fb2787bcafaa')
+    );
+
+    const now = Date.now();
+    const activeEvents = events.filter((ev) => isServerEventActive(ev, now));
+    const attendanceEvents = events.filter((ev) => ['published', 'completed'].includes(String(ev.status || '')));
+    const totalParticipants = attendanceEvents.reduce(
+      (sum, ev) => sum + Math.max(0, Number(ev.attendees_count) || 0),
+      0
+    );
+
+    const countedStatuses = new Set(['active', 'valid', 'used']);
+    const countedTickets = tickets.filter((t) =>
+      countedStatuses.has(String(t.status || '').toLowerCase())
+    );
+    const cancelledTickets = tickets.filter(
+      (t) => String(t.status || '').toLowerCase() === 'cancelled'
+    );
+    const refundedTickets = tickets.filter(
+      (t) => String(t.status || '').toLowerCase() === 'refunded'
+    );
+
+    const inventorySold = ticketOptions.reduce(
+      (sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0),
+      0
+    );
+    const totalTickets = inventorySold > 0 ? inventorySold : countedTickets.length;
+
+    const optionsRevenue = ticketOptions.reduce(
+      (sum, opt) =>
+        sum + Math.max(0, Number(opt.quantity_sold) || 0) * Math.max(0, Number(opt.price) || 0),
+      0
+    );
+    const ticketsRevenue = countedTickets.reduce(
+      (sum, t) => sum + Math.max(0, Number(t.price_paid) || 0),
+      0
+    );
+    const totalRevenue = Math.round(ticketsRevenue > 0 ? ticketsRevenue : optionsRevenue);
+
+    const nonParticipantRoles = new Set(['organizer', 'artist', 'admin']);
+    const totalParticipantAccounts = profiles.filter(
+      (p) => !nonParticipantRoles.has(String(p.role || 'participant').toLowerCase())
+    ).length;
+
+    const rustStats = await execRustServer<{
+      total_events: number;
+      total_views: number;
+      category_basis: 'revenue' | 'events';
+      category_shares: Array<{ id: string; count: number; amount: number; percent: number }>;
+    }>({
+      op: 'platform_stats',
+      users: profiles.length,
+      events: events.map((ev) => ({
+        id: ev.id,
+        category: ev.category || 'other',
+        active: isServerEventActive(ev, now),
+        views: Math.max(0, Number(ev.views_count) || 0),
+      })),
+      tickets: countedTickets.map((t) => ({
+        id: t.id,
+        price_paid: Math.max(0, Number(t.price_paid) || 0),
+        status: t.status || 'valid',
+        created_at_ms: t.created_at ? Date.parse(t.created_at) || 0 : 0,
+        event_id: t.event_id,
+        source: 'server',
+      })),
+    });
+
+    const categories: Record<string, number> = {};
+    for (const ev of activeEvents) {
+      const cat = String(ev.category || 'other');
+      categories[cat] = (categories[cat] || 0) + 1;
+    }
+
+    const totalViews =
+      rustStats?.total_views ??
+      events.reduce((sum, ev) => sum + Math.max(0, Number(ev.views_count) || 0), 0);
+
+    const categoryBasis = rustStats?.category_basis ?? 'events';
+    const categoryShares = rustStats?.category_shares ?? [];
+
+    const ticketsTimeline = countedTickets.map((t) => ({
+      id: t.id,
+      created_at: t.created_at || '',
+      created_at_ms: t.created_at ? Date.parse(t.created_at) || 0 : 0,
+      price_paid: Number(t.price_paid) || 0,
+      event_id: t.event_id,
+    }));
+
+    const eventsTimeline = attendanceEvents.map((ev) => ({
+      id: ev.id,
+      starts_at_ms: ev.starts_at ? Date.parse(ev.starts_at) || 0 : 0,
+      attendees: Math.max(0, Number(ev.attendees_count) || 0),
+    }));
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      totalEvents: rustStats?.total_events ?? activeEvents.length,
+      totalAllEvents: events.length,
+      totalArtists: artists.length,
+      totalOrganizers: organizations.length,
+      totalTickets,
+      totalParticipants,
+      totalParticipantAccounts,
+      totalProfiles: profiles.length,
+      totalPendingPlatformInvitations: 0,
+      totalUsers: profiles.length,
+      totalViews,
+      totalRevenue,
+      totalCancelledTickets: cancelledTickets.length,
+      totalRefundedTickets: refundedTickets.length,
+      categories,
+      categoryBasis,
+      categoryShares,
+      ticketsTimeline,
+      eventsTimeline,
+      isAvailable: true,
+    });
+  } catch (err) {
+    console.error('[api/platform-stats] error:', err);
+    res.status(500).json({ error: 'Unable to load platform statistics' });
+  }
+}
+
+app.get('/api/platform-stats', handlePlatformStats);
+app.post('/api/platform-stats', handlePlatformStats);
+
 // WebSocket Live API pour streaming voix temps réel
 const wss = new WebSocketServer({ server: httpServer, path: '/live' });
+wss.on('error', (err) => {
+  console.error('[Live API WebSocketServer Error]:', err);
+});
 
 wss.on('connection', async (clientWs: WebSocket) => {
   console.log('[Live API] Client connected');
-  let session: Awaited<ReturnType<typeof ai.live.connect>> | null = null;
+  let session: Awaited<ReturnType<GoogleGenAI['live']['connect']>> | null = null;
 
   try {
+    const ai = getAiClient();
     session = await ai.live.connect({
       model: 'gemini-3.8-live',
       config: {
@@ -762,15 +1109,67 @@ wss.on('connection', async (clientWs: WebSocket) => {
 async function startServer() {
   await initServerRustCore();
   const distDir = path.resolve(__dirname, 'dist');
-  const hasDist = fs.existsSync(path.resolve(distDir, 'index.html'));
-  const isProd = process.env.NODE_ENV === 'production' || hasDist;
+  const distIndexPath = path.resolve(distDir, 'index.html');
+  const isProd = process.env.NODE_ENV === 'production';
 
-  if (isProd && hasDist) {
+  if (isProd && fs.existsSync(distIndexPath)) {
     app.use(express.static(distDir));
     app.use((_req: Request, res: Response) => {
-      res.sendFile(path.resolve(distDir, 'index.html'));
+      if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+      } else {
+        res.status(503).send('Application en cours de compilation, veuillez patienter.');
+      }
     });
   } else {
+    // En mode développement, neutraliser tout ancien Service Worker Workbox mis en cache
+    const swCleanupScript = `self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch {}
+    try {
+      await self.clients.claim();
+    } catch {}
+    try {
+      const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      await self.registration.unregister();
+      for (const c of clients) {
+        try {
+          await c.navigate(c.url);
+        } catch {}
+      }
+    } catch {
+      try {
+        await self.registration.unregister();
+      } catch {}
+    }
+  })());
+});
+self.addEventListener('fetch', () => {});`;
+
+    app.get(['/sw.js', '/dev-sw.js'], (_req: Request, res: Response) => {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.send(swCleanupScript);
+    });
+
+    app.use((req: Request, res: Response, next) => {
+      if (
+        req.method === 'GET' &&
+        !req.path.startsWith('/api/') &&
+        !req.path.includes('.')
+      ) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      }
+      next();
+    });
+
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -779,7 +1178,10 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  const PORT = Number(process.env.PORT) || 3000;
+  // Toujours utiliser le port applicatif (3000 derrière nginx en dev) pour éviter EADDRINUSE sur le port proxy (8080)
+  const PORT =
+    Number(process.env.DEFAULT_APP_PORT) ||
+    (process.env.PORT && process.env.PORT !== process.env.NGINX_PORT ? Number(process.env.PORT) : 3000);
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[Gbaigbance Server] Listening on http://0.0.0.0:${PORT}`);
   });

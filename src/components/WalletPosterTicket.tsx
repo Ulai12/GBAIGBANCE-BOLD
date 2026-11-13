@@ -26,7 +26,7 @@ import {
 import type { Ticket, EventStatus } from '@/types';
 import { haptic } from '@/hooks/useHaptics';
 import { getDefaultEventCover } from '@/utils/defaultImages';
-import { coreSignTicket } from '@/lib/rust-core';
+import { coreSignTicket, coreVerifyQr } from '@/lib/rust-core';
 
 interface WalletPosterTicketProps {
   ticket: Ticket;
@@ -55,19 +55,46 @@ export const WalletPosterTicket: React.FC<WalletPosterTicketProps> = ({
   const [showFullscreenQr, setShowFullscreenQr] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [signedInfo, setSignedInfo] = useState<{ short_code: string; signature: string } | null>(null);
+  const [signedInfo, setSignedInfo] = useState<{
+    short_code: string;
+    signature: string;
+    qrVerified: boolean;
+    isLegacy: boolean;
+  } | null>(null);
 
   React.useEffect(() => {
     let active = true;
-    coreSignTicket(ticket.id, ticket.event_id || '', ticket.ticket_type || 'standard').then((res) => {
-      if (active && res) {
-        setSignedInfo(res);
+    const createdMs = ticket.created_at ? Date.parse(ticket.created_at) || 0 : 0;
+    const rawQr = ticket.qr_code?.trim() || '';
+
+    (async () => {
+      const signRes = await coreSignTicket(
+        ticket.id,
+        ticket.event_id || '',
+        ticket.ticket_type || 'standard',
+        createdMs
+      );
+      let qrVerified = true;
+      let isLegacy = !rawQr.startsWith('GBA-1:');
+      if (rawQr.startsWith('GBA-1:')) {
+        const verifyRes = await coreVerifyQr(rawQr, ticket.event_id || undefined);
+        qrVerified = Boolean(verifyRes.valid);
+        isLegacy = Boolean(verifyRes.legacy);
       }
-    });
+      if (active && signRes) {
+        setSignedInfo({
+          short_code: signRes.short_code,
+          signature: signRes.signature,
+          qrVerified,
+          isLegacy,
+        });
+      }
+    })();
+
     return () => {
       active = false;
     };
-  }, [ticket.id, ticket.event_id, ticket.ticket_type]);
+  }, [ticket.id, ticket.event_id, ticket.ticket_type, ticket.created_at, ticket.qr_code]);
 
   // Statuts dérivés
   const isCancelled = eventStatus === 'cancelled';
@@ -414,13 +441,34 @@ export const WalletPosterTicket: React.FC<WalletPosterTicketProps> = ({
                 <span className="mt-2 font-mono text-xs font-bold text-zinc-900 tracking-wider">
                   {ticket.qr_code}
                 </span>
-                <div className="flex items-center justify-between w-full mt-2 pt-1.5 border-t border-gray-100 text-[10px] text-emerald-600 font-semibold px-1">
+                <div
+                  className={`flex items-center justify-between w-full mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold px-1 ${
+                    signedInfo && !signedInfo.qrVerified
+                      ? 'text-rose-600'
+                      : 'text-emerald-600'
+                  }`}
+                >
                   <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    Signature Rust
+                    {signedInfo && !signedInfo.qrVerified ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                        Signature QR altérée
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        {signedInfo && !signedInfo.isLegacy ? 'Signature Rust vérifiée' : 'Signature Rust'}
+                      </>
+                    )}
                   </span>
                   {signedInfo?.short_code && (
-                    <span className="font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] border border-emerald-200">
+                    <span
+                      className={`font-mono px-1.5 py-0.5 rounded text-[9px] border ${
+                        signedInfo.qrVerified
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
                       {signedInfo.short_code}
                     </span>
                   )}

@@ -7,16 +7,38 @@ import App from './App.tsx';
 import './index.css';
 
 // Register Service Worker for PWA with prompt update
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { update: () => updateSW(true) } }));
-    },
-    onOfflineReady() {
-      console.log('[PWA] Prêt pour le mode hors ligne.');
-    },
-  });
+if ('serviceWorker' in navigator) {
+  if (import.meta.env.PROD) {
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { update: () => updateSW(true) } }));
+      },
+      onOfflineReady() {
+        console.log('[PWA] Prêt pour le mode hors ligne.');
+      },
+    });
+  } else {
+    navigator.serviceWorker.getRegistrations().then(async (regs) => {
+      let unregistered = false;
+      for (const reg of regs) {
+        const ok = await reg.unregister().catch(() => false);
+        if (ok) unregistered = true;
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys().catch(() => [] as string[]);
+        await Promise.all(
+          keys
+            .filter((k) => k.includes('workbox') || k.includes('vite') || k.includes('precache'))
+            .map((k) => caches.delete(k).catch(() => false))
+        );
+      }
+      if (unregistered && !sessionStorage.getItem('gba_sw_cleaned')) {
+        sessionStorage.setItem('gba_sw_cleaned', '1');
+        window.location.reload();
+      }
+    }).catch(() => {});
+  }
 }
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN || 'https://c2234e7544eb3870989a6695d76cb0fb@o4511833867091968.ingest.de.sentry.io/4511838676451408';

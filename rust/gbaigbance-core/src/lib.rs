@@ -714,6 +714,21 @@ fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
 
 const DEFAULT_SALT: &str = "gbaigbance-sec-2026";
 
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+fn sanitize_qr_field(val: &str) -> String {
+    val.trim().replace(':', "_")
+}
+
 fn sign_ticket(ticket_id: &str, event_id: &str, tier: &str, created_at_ms: i64, secret: &str) -> String {
     let salt = if secret.is_empty() { DEFAULT_SALT } else { secret };
     let msg = format!("{}:{}:{}:{}", ticket_id, event_id, tier, created_at_ms);
@@ -722,16 +737,18 @@ fn sign_ticket(ticket_id: &str, event_id: &str, tier: &str, created_at_ms: i64, 
 }
 
 fn ticket_signature_op(input: &Value) -> Value {
-    let ticket_id = input["ticket_id"].as_str().unwrap_or("").trim();
-    let event_id = input["event_id"].as_str().unwrap_or("").trim();
-    let tier = input["tier"].as_str().unwrap_or("standard").trim();
+    let ticket_id = sanitize_qr_field(input["ticket_id"].as_str().unwrap_or(""));
+    let event_id = sanitize_qr_field(input["event_id"].as_str().unwrap_or(""));
+    let raw_tier = sanitize_qr_field(input["tier"].as_str().unwrap_or("standard"));
+    let tier = if raw_tier.is_empty() { "standard".to_string() } else { raw_tier };
     let created_at_ms = input["created_at_ms"].as_i64().unwrap_or(0);
     let salt = input["secret_salt"].as_str().unwrap_or(DEFAULT_SALT);
 
-    let sig = sign_ticket(ticket_id, event_id, tier, created_at_ms, salt);
+    let sig = sign_ticket(&ticket_id, &event_id, &tier, created_at_ms, salt);
     let qr_payload = format!("GBA-1:{}:{}:{}:{}:{}", ticket_id, event_id, tier, created_at_ms, sig);
-    let short_code = if ticket_id.len() >= 8 {
-        format!("{}-{}", &ticket_id[..4].to_uppercase(), &sig[..4].to_uppercase())
+    let id_prefix: String = ticket_id.chars().take(4).collect();
+    let short_code = if ticket_id.chars().count() >= 8 {
+        format!("{}-{}", id_prefix.to_uppercase(), &sig[..4].to_uppercase())
     } else {
         format!("GBA-{}", &sig[..6].to_uppercase())
     };
@@ -740,7 +757,7 @@ fn ticket_signature_op(input: &Value) -> Value {
         "signature": sig,
         "qr_payload": qr_payload,
         "short_code": short_code,
-        "valid": true,
+        "valid": !ticket_id.is_empty(),
     })
 }
 
@@ -762,23 +779,41 @@ fn verify_qr_op(input: &Value) -> Value {
         }
         return json!({
             "valid": false,
+            "legacy": false,
             "reason": "Format de QR code non reconnu",
         });
     }
 
     let parts: Vec<&str> = raw.split(':').collect();
-    if parts.len() < 6 {
+    if parts.len() != 6 {
         return json!({
             "valid": false,
-            "reason": "Payload QR code incomplet",
+            "legacy": false,
+            "reason": "Payload QR code invalide ou incomplet",
         });
     }
 
-    let ticket_id = parts[1];
-    let event_id = parts[2];
-    let tier = parts[3];
-    let created_at_ms: i64 = parts[4].parse().unwrap_or(0);
-    let provided_sig = parts[5];
+    let ticket_id = parts[1].trim();
+    let event_id = parts[2].trim();
+    let tier = parts[3].trim();
+    let Ok(created_at_ms) = parts[4].trim().parse::<i64>() else {
+        return json!({
+            "valid": false,
+            "ticket_id": ticket_id,
+            "event_id": event_id,
+            "legacy": false,
+            "reason": "Horodatage du QR code invalide",
+        });
+    };
+    let provided_sig = parts[5].trim();
+
+    if ticket_id.is_empty() || event_id.is_empty() {
+        return json!({
+            "valid": false,
+            "legacy": false,
+            "reason": "Identifiants de billet manquants dans le QR code",
+        });
+    }
 
     if let Some(exp_event) = expected_event_id {
         if exp_event != event_id {
@@ -786,17 +821,30 @@ fn verify_qr_op(input: &Value) -> Value {
                 "valid": false,
                 "ticket_id": ticket_id,
                 "event_id": event_id,
+                "legacy": false,
                 "reason": "Ce billet appartient à un autre événement",
             });
         }
     }
 
-    let expected_sig = sign_ticket(ticket_id, event_id, tier, created_at_ms, salt);
-    if provided_sig != expected_sig {
+    if provided_sig.len() != 24 || !provided_sig.bytes().all(|b| b.is_ascii_hexdigit()) {
         return json!({
             "valid": false,
             "ticket_id": ticket_id,
             "event_id": event_id,
+            "legacy": false,
+            "reason": "Signature cryptographique invalide (format altéré)",
+        });
+    }
+
+    let expected_sig = sign_ticket(ticket_id, event_id, tier, created_at_ms, salt);
+    let provided_lower = provided_sig.to_ascii_lowercase();
+    if !ct_eq(provided_lower.as_bytes(), expected_sig.as_bytes()) {
+        return json!({
+            "valid": false,
+            "ticket_id": ticket_id,
+            "event_id": event_id,
+            "legacy": false,
             "reason": "Signature cryptographique invalide (contrefaçon détectée)",
         });
     }
@@ -808,11 +856,30 @@ fn verify_qr_op(input: &Value) -> Value {
         "tier": tier,
         "created_at_ms": created_at_ms,
         "signature": expected_sig,
+        "legacy": false,
         "reason": null,
     })
 }
 
-fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+fn road_distance_from_haversine(km: f64) -> f64 {
+    let factor = if km < 35.0 { 1.28 } else { 1.15 };
+    ((km * factor) * 10.0).round() / 10.0
+}
+
+fn travel_minutes_from_road(road_km: f64) -> Option<u32> {
+    if road_km > 60.0 || road_km.is_nan() {
+        return None;
+    }
+    if road_km <= 1.1 {
+        Some(((road_km / 4.5) * 60.0 + 1.0).round().max(2.0) as u32)
+    } else if road_km <= 3.5 {
+        Some(((road_km / 22.0) * 60.0 + 3.0).round().max(5.0) as u32)
+    } else {
+        Some(((road_km / 24.0) * 60.0 + 4.0).round() as u32)
+    }
+}
+
+fn haversine_km_raw(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let d_lat = (lat2 - lat1).to_radians();
     let d_lng = (lng2 - lng1).to_radians();
     let lat1_rad = lat1.to_radians();
@@ -820,8 +887,7 @@ fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let a = (d_lat / 2.0).sin().powi(2)
         + lat1_rad.cos() * lat2_rad.cos() * (d_lng / 2.0).sin().powi(2);
     let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
-    let km = 6371.0 * c;
-    (km * 10.0).round() / 10.0
+    6371.0 * c
 }
 
 fn haversine_op(input: &Value) -> Value {
@@ -829,8 +895,15 @@ fn haversine_op(input: &Value) -> Value {
     let lng1 = input["lng1"].as_f64().unwrap_or(0.0);
     let lat2 = input["lat2"].as_f64().unwrap_or(0.0);
     let lng2 = input["lng2"].as_f64().unwrap_or(0.0);
-    let km = haversine_km(lat1, lng1, lat2, lng2);
-    json!({ "distance_km": km })
+    let raw = haversine_km_raw(lat1, lng1, lat2, lng2);
+    let km = (raw * 10.0).round() / 10.0;
+    let road_km = road_distance_from_haversine(raw);
+    let travel_minutes = travel_minutes_from_road(road_km);
+    json!({
+        "distance_km": km,
+        "road_distance_km": road_km,
+        "travel_minutes": travel_minutes,
+    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -866,9 +939,14 @@ fn nearby_events_op(input: &Value) -> Value {
         let (Some(e_lat), Some(e_lng)) = (ev.latitude, ev.longitude) else {
             continue;
         };
-        let dist = haversine_km(lat, lng, e_lat, e_lng);
+        if e_lat.is_nan() || e_lng.is_nan() {
+            continue;
+        }
+        let raw = haversine_km_raw(lat, lng, e_lat, e_lng);
+        let dist = (raw * 10.0).round() / 10.0;
+        let road_km = road_distance_from_haversine(raw);
         if dist <= radius_km {
-            nearby.push((dist, ev));
+            nearby.push((dist, road_km, ev));
         }
     }
 
@@ -877,10 +955,12 @@ fn nearby_events_op(input: &Value) -> Value {
 
     let result: Vec<Value> = nearby
         .into_iter()
-        .map(|(dist, ev)| {
+        .map(|(dist, road_km, ev)| {
             json!({
                 "id": ev.id,
                 "distance_km": dist,
+                "road_distance_km": road_km,
+                "travel_minutes": travel_minutes_from_road(road_km),
                 "title": ev.title,
                 "city": ev.city,
                 "category": ev.category,
@@ -947,6 +1027,12 @@ fn levenshtein_dist(a: &str, b: &str) -> usize {
     prev[b_len]
 }
 
+fn tokenize_folded(text: &str) -> Vec<&str> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
 fn fuzzy_search_op(input: &Value) -> Value {
     let query_raw = input["query"].as_str().unwrap_or("").trim();
     let query = fold(query_raw);
@@ -956,7 +1042,7 @@ fn fuzzy_search_op(input: &Value) -> Value {
         return json!({ "ids": events.into_iter().map(|e| e.id).collect::<Vec<_>>() });
     }
 
-    let q_words: Vec<&str> = query.split_whitespace().collect();
+    let q_words = tokenize_folded(&query);
     let mut scored = Vec::new();
 
     for ev in events {
@@ -978,7 +1064,7 @@ fn fuzzy_search_op(input: &Value) -> Value {
         if desc.contains(&query) { score += 10; }
 
         let ev_text = format!("{} {} {} {}", t, c, loc, cat);
-        let ev_words: Vec<&str> = ev_text.split_whitespace().collect();
+        let ev_words = tokenize_folded(&ev_text);
 
         for qw in &q_words {
             let qw_len = qw.chars().count();
@@ -1269,5 +1355,49 @@ mod tests {
         }"#;
         let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
         assert_eq!(value["ids"][0], "1");
+    }
+
+    #[test]
+    fn verify_qr_rejects_malformed_and_extra_parts() {
+        let bad_ts = r#"{"op":"verify_qr","payload":"GBA-1:t1:e1:vip:notanumber:0123456789abcdef01234567"}"#;
+        let res_ts: Value = serde_json::from_str(&dispatch_json(bad_ts)).unwrap();
+        assert_eq!(res_ts["valid"], false);
+
+        let extra_part = r#"{"op":"verify_qr","payload":"GBA-1:t1:e1:vip:1700:0123456789abcdef01234567:extra"}"#;
+        let res_extra: Value = serde_json::from_str(&dispatch_json(extra_part)).unwrap();
+        assert_eq!(res_extra["valid"], false);
+
+        let sign_colon = r#"{"op":"ticket_signature","ticket_id":"t:1","event_id":"e:2","tier":"vip:gold","created_at_ms":1700}"#;
+        let signed: Value = serde_json::from_str(&dispatch_json(sign_colon)).unwrap();
+        let payload = signed["qr_payload"].as_str().unwrap();
+        assert_eq!(payload.split(':').count(), 6);
+        let verify: Value = serde_json::from_str(&dispatch_json(&format!(r#"{{"op":"verify_qr","payload":"{payload}","event_id":"e_2"}}"#))).unwrap();
+        assert_eq!(verify["valid"], true);
+        assert_eq!(verify["legacy"], false);
+    }
+
+    #[test]
+    fn fuzzy_search_tokenizes_apostrophes_and_hyphens() {
+        let raw = r#"{
+            "op": "fuzzy_search",
+            "query": "Abidjan",
+            "events": [
+                {"id":"1", "title":"Nuit d'Abidjan Afro-Pop", "city":"Côte d'Ivoire"},
+                {"id":"2", "title":"Gala Lomé", "city":"Lomé"}
+            ]
+        }"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        assert_eq!(value["ids"], json!(["1"]));
+    }
+
+    #[test]
+    fn haversine_includes_road_distance_and_travel_minutes() {
+        let raw = r#"{"op":"haversine","lat1":6.1375,"lng1":1.2123,"lat2":6.1700,"lng2":1.2300}"#;
+        let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
+        let dist = value["distance_km"].as_f64().unwrap();
+        let road = value["road_distance_km"].as_f64().unwrap();
+        let mins = value["travel_minutes"].as_u64().unwrap();
+        assert!(road >= dist);
+        assert!(mins >= 2);
     }
 }

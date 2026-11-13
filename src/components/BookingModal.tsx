@@ -18,7 +18,13 @@ import { Modal } from '@/components/Modal';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, isEventTerminated, hasEventEnded, subscribeToTicketInventory } from '@/services/events';
-import { purchaseTicketsMulti, type TicketRecipientInput } from '@/features/tickets/service';
+import {
+  purchaseTicketsMulti,
+  coreFinancialFees,
+  coreStock,
+  type TicketRecipientInput,
+} from '@/features/tickets/service';
+import type { FinancialFeesResult } from '@/lib/rust-core';
 import { toWhatsAppNumber } from '@/utils/format';
 import { fetchFollowingUsers } from '@/features/users/follows';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -69,6 +75,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     recipient_name?: string;
     claim_token?: string;
   }>>([]);
+  const [feeBreakdown, setFeeBreakdown] = useState<FinancialFeesResult | null>(null);
+  const [stockMeta, setStockMeta] = useState<{ remaining: number; percent_sold: number } | null>(null);
 
   // Pré-chargement immédiat des profils amis dès l'ouverture de la modale pour éviter tout saut de mise en page
   useEffect(() => {
@@ -243,6 +251,32 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const unitPrice = liveOption ? Number(liveOption.price) || 0 : 0;
   const totalPrice = unitPrice * quantity;
   const isFreeCheckout = unitPrice === 0;
+
+  useEffect(() => {
+    if (!open || !liveOption) {
+      setFeeBreakdown(null);
+      setStockMeta(null);
+      return;
+    }
+    let active = true;
+    const totalCap = Number(liveOption.quantity_total) || 0;
+    const soldCap = Number(liveOption.quantity_sold) || 0;
+
+    Promise.all([
+      coreFinancialFees(unitPrice, quantity, isFreeCheckout ? 'free' : 'mobile_money'),
+      coreStock(soldCap, totalCap),
+    ])
+      .then(([fees, st]) => {
+        if (!active) return;
+        setFeeBreakdown(fees);
+        setStockMeta(st);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [open, liveOption, unitPrice, quantity, isFreeCheckout]);
 
   const handleBook = async () => {
     if (!liveOption || !event) return;
@@ -765,12 +799,22 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 block">Total à payer</span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-gray-400 block">
                       {isFreeCheckout ? 'Confirmation immédiate, sans débit' : 'Débit Mobile Money sur le numéro indiqué'}
                     </span>
+                    {!isFreeCheckout && feeBreakdown && feeBreakdown.total_amount > 0 && (
+                      <span className="text-[10px] text-[#6600FF]/80 font-medium block mt-0.5">
+                        Inclut {feeBreakdown.platform_fee.toLocaleString('fr-FR')} F frais de service ({feeBreakdown.fee_percent}% + {feeBreakdown.fixed_fee} F)
+                      </span>
+                    )}
+                    {stockMeta && stockMeta.percent_sold >= 80 && stockMeta.percent_sold < 100 && (
+                      <span className="text-[10px] text-amber-600 font-bold block mt-0.5">
+                        Places limitées : {stockMeta.percent_sold}% vendues ({stockMeta.remaining} restantes)
+                      </span>
+                    )}
                   </div>
                   <span className="text-xl font-black text-[#1A1A2E]">
-                    {isFreeCheckout ? 'Gratuit' : `${totalPrice.toLocaleString('fr-FR')} F CFA`}
+                    {isFreeCheckout ? 'Gratuit' : `${(feeBreakdown?.total_amount ?? totalPrice).toLocaleString('fr-FR')} F CFA`}
                   </span>
                 </div>
 

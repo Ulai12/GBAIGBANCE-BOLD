@@ -40,23 +40,38 @@ export async function execRustServer<T>(payload: unknown): Promise<T | null> {
   const wasm = await initServerRustCore();
   if (!wasm) return null;
 
+  let ptr = 0;
+  let inLen = 0;
+  let outPtr = 0;
+  let outLen = 0;
+
   try {
     const bytes = Buffer.from(JSON.stringify(payload), 'utf8');
-    const ptr = wasm.gba_alloc(bytes.length);
-    new Uint8Array(wasm.memory.buffer, ptr, bytes.length).set(bytes);
-    const outPtr = wasm.gba_exec(ptr, bytes.length);
-    const outLen = wasm.gba_last_len();
-    wasm.gba_free(ptr, bytes.length);
+    inLen = bytes.length;
+    ptr = wasm.gba_alloc(inLen);
+    new Uint8Array(wasm.memory.buffer, ptr, inLen).set(bytes);
+    outPtr = wasm.gba_exec(ptr, inLen);
+    outLen = wasm.gba_last_len();
+    wasm.gba_free(ptr, inLen);
+    ptr = 0;
 
     const copy = new Uint8Array(outLen);
     copy.set(new Uint8Array(wasm.memory.buffer, outPtr, outLen));
     wasm.gba_free(outPtr, outLen);
+    outPtr = 0;
 
     const text = Buffer.from(copy).toString('utf8');
     return JSON.parse(text) as T;
   } catch (err) {
     console.error('[RustServerCore] Error executing wasm operation:', err);
     return null;
+  } finally {
+    if (ptr !== 0 && inLen > 0) {
+      try { wasm.gba_free(ptr, inLen); } catch { /* ignore */ }
+    }
+    if (outPtr !== 0 && outLen > 0) {
+      try { wasm.gba_free(outPtr, outLen); } catch { /* ignore */ }
+    }
   }
 }
 
@@ -65,6 +80,7 @@ export async function serverVerifyQr(payload: string, eventId?: string): Promise
   ticket_id?: string;
   event_id?: string;
   tier?: string;
+  legacy?: boolean;
   reason?: string | null;
 }> {
   const res = await execRustServer<{
@@ -72,6 +88,7 @@ export async function serverVerifyQr(payload: string, eventId?: string): Promise
     ticket_id?: string;
     event_id?: string;
     tier?: string;
+    legacy?: boolean;
     reason?: string | null;
   }>({
     op: 'verify_qr',
@@ -82,17 +99,30 @@ export async function serverVerifyQr(payload: string, eventId?: string): Promise
   if (res && typeof res.valid === 'boolean') return res;
 
   // Fallback
-  if (!payload) return { valid: false, reason: 'QR Code manquant' };
-  if (payload.startsWith('GBA-1:')) {
-    const parts = payload.split(':');
-    if (parts.length >= 6) {
-      if (eventId && eventId !== parts[2]) {
-        return { valid: false, ticket_id: parts[1], event_id: parts[2], reason: 'Billet pour un autre événement' };
-      }
-      return { valid: true, ticket_id: parts[1], event_id: parts[2], tier: parts[3] };
+  const trimmed = (payload || '').trim();
+  if (!trimmed) return { valid: false, legacy: false, reason: 'QR Code manquant' };
+  if (trimmed.startsWith('GBA-1:')) {
+    const parts = trimmed.split(':');
+    if (parts.length !== 6) {
+      return { valid: false, legacy: false, reason: 'Payload QR code invalide ou incomplet' };
     }
+    const ticketId = parts[1].trim();
+    const payloadEventId = parts[2].trim();
+    const tier = parts[3].trim();
+    const ts = Number(parts[4].trim());
+    const sig = parts[5].trim();
+    if (!ticketId || !payloadEventId || !Number.isFinite(ts) || !/^[a-f0-9]{24}$/i.test(sig)) {
+      return { valid: false, legacy: false, reason: 'Payload ou signature QR invalide' };
+    }
+    if (eventId && eventId.trim() && eventId.trim() !== payloadEventId) {
+      return { valid: false, legacy: false, ticket_id: ticketId, event_id: payloadEventId, reason: 'Billet pour un autre événement' };
+    }
+    return { valid: true, legacy: false, ticket_id: ticketId, event_id: payloadEventId, tier };
   }
-  return { valid: true, ticket_id: payload, event_id: eventId, tier: 'standard' };
+  if (trimmed.length < 8) {
+    return { valid: false, legacy: false, reason: 'Format de QR code non reconnu' };
+  }
+  return { valid: true, legacy: true, ticket_id: trimmed, event_id: eventId, tier: 'standard' };
 }
 
 export async function serverNearbyEvents(
@@ -115,6 +145,8 @@ export async function serverNearbyEvents(
 ): Promise<Array<{
   id: string;
   distance_km: number;
+  road_distance_km?: number;
+  travel_minutes?: number | null;
   title: string;
   city: string;
   category: string;
@@ -128,6 +160,8 @@ export async function serverNearbyEvents(
     events: Array<{
       id: string;
       distance_km: number;
+      road_distance_km?: number;
+      travel_minutes?: number | null;
       title: string;
       city: string;
       category: string;

@@ -38,6 +38,7 @@ import {
   calculateDistanceKm,
   getCurrentUserLocation,
   getEventCoordinates,
+  rankNearbyEventsWithRust,
   LOME_CENTER,
   type UserLocationState,
 } from '@/utils/geo';
@@ -75,7 +76,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user, t } = useApp();
+  const { user } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -445,6 +446,26 @@ export function HomeScreen({
     });
   }, [allActiveEvents, userLocation]);
 
+  const [rustNearbyEvents, setRustNearbyEvents] = useState<Array<Event & { distanceKm: number }> | null>(null);
+
+  useEffect(() => {
+    if (!userLocation.isActual || allActiveEvents.length === 0) {
+      setRustNearbyEvents(null);
+      return;
+    }
+    let active = true;
+    rankNearbyEventsWithRust(userLocation.latitude, userLocation.longitude, allActiveEvents, 50, 12)
+      .then((ranked) => {
+        if (active && ranked.length > 0) {
+          setRustNearbyEvents(ranked);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [allActiveEvents, userLocation]);
+
   // Section: Proximité / Sorties locales adaptées (uniquement si l'utilisateur a autorisé la localisation)
   const nearbySectionData = useMemo(() => {
     // Ne pas afficher la section de lieu si l'utilisateur n'a pas autorisé la géolocalisation
@@ -457,12 +478,15 @@ export function HomeScreen({
       };
     }
 
-    const sorted = [...allEventsWithDistance]
-      .filter((e) => typeof e.distanceKm === 'number')
-      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+    const source =
+      rustNearbyEvents && rustNearbyEvents.length > 0
+        ? rustNearbyEvents
+        : [...allEventsWithDistance]
+            .filter((e) => typeof e.distanceKm === 'number')
+            .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
 
-    const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
-    const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : sorted;
+    const strictlyUnder10 = source.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
+    const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : source;
 
     // Plafonnement strict à 12 événements max pour garder le flux fini et performant
     return {
@@ -471,7 +495,7 @@ export function HomeScreen({
       events: selected.slice(0, 12),
       isActual: true,
     };
-  }, [allEventsWithDistance, userLocation]);
+  }, [allEventsWithDistance, rustNearbyEvents, userLocation]);
 
   // Section: Recommandations personnalisées (Algorithme fondé sur les préférences, abonnements, favoris et popularité)
   const recommendedEvents = useMemo(() => {

@@ -30,6 +30,7 @@ export interface GateValidationResult {
 }
 
 const OFFLINE_TICKETS_KEY_PREFIX = 'gba_gate_tickets_';
+const OFFLINE_SCANNED_IDS_KEY = 'gba_gate_offline_scanned_ids';
 const OFFLINE_QUEUE_KEY = 'gba_gate_offline_queue';
 const GATE_HISTORY_KEY = 'gba_gate_scan_history';
 
@@ -346,7 +347,7 @@ export async function processTicketGateValidation(params: {
   // 2. MODE HORS-LIGNE (RÉSEAU COUPE / SALLE DE CONCERT EN SOUS-SOL)
   const targetId = params.selectedEventId && params.selectedEventId !== 'all'
     ? params.selectedEventId
-    : params.availableEvents[0]?.id;
+    : qrCheck.event_id || params.availableEvents[0]?.id;
 
   if (targetId) {
     const cachedTickets = await get<Array<{
@@ -360,7 +361,9 @@ export async function processTicketGateValidation(params: {
     }>>(`${OFFLINE_TICKETS_KEY_PREFIX}${targetId}`);
 
     if (cachedTickets && cachedTickets.length > 0) {
-      const match = cachedTickets.find((t) => t.qr_code === code);
+      const match = cachedTickets.find(
+        (t) => t.qr_code === code || (qrCheck.ticket_id && t.id === qrCheck.ticket_id)
+      );
       if (match) {
         if (match.status === 'used') {
           return {
@@ -398,6 +401,35 @@ export async function processTicketGateValidation(params: {
           isOffline: true,
         };
       }
+    }
+
+    // Admission cryptographique hors-ligne pour les billets signés GBA-1 non encore préchargés
+    if (qrCheck.valid && !qrCheck.legacy && qrCheck.ticket_id) {
+      const scannedIds = (await get<string[]>(OFFLINE_SCANNED_IDS_KEY)) || [];
+      const dedupeKey = `${targetId}:${qrCheck.ticket_id}`;
+      if (scannedIds.includes(dedupeKey)) {
+        return {
+          status: 'already_used',
+          message: 'Pass cryptographique déjà scanné hors-ligne à ce guichet !',
+          ticketType: (qrCheck.tier || 'standard').toUpperCase(),
+          isOffline: true,
+        };
+      }
+
+      scannedIds.push(dedupeKey);
+      await set(OFFLINE_SCANNED_IDS_KEY, scannedIds);
+
+      const queue = (await get<Array<{ qrCode: string; eventId: string; scannedAt: string }>>(OFFLINE_QUEUE_KEY)) || [];
+      queue.push({ qrCode: code, eventId: targetId, scannedAt: new Date().toISOString() });
+      await set(OFFLINE_QUEUE_KEY, queue);
+
+      return {
+        status: 'valid',
+        message: 'Pass vérifié hors-ligne par signature Rust 🔐 (Sync auto en attente)',
+        participantName: 'Participant vérifié',
+        ticketType: (qrCheck.tier || 'standard').toUpperCase(),
+        isOffline: true,
+      };
     }
   }
 

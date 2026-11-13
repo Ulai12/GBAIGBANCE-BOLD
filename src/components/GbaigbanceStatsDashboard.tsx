@@ -274,6 +274,7 @@ export function GbaigbanceStatsDashboard({
       festival: { label: 'Festivals & Foires', color: '#8B5CF6' },
       party: { label: 'Soirées & Nightlife', color: '#EC4899' },
       theatre: { label: 'Culture & Théâtre', color: '#10B981' },
+      cultural: { label: 'Culture & Arts', color: '#10B981' },
       conference: { label: 'Conférences & Talks', color: '#3B82F6' },
       spectacle: { label: 'Spectacles & Humour', color: '#F59E0B' },
       formation: { label: 'Formations & Workshops', color: '#14B8A6' },

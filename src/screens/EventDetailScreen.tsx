@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronDown,
@@ -155,7 +154,6 @@ export function EventDetailScreen({
   onToast,
   onUserClick,
 }: EventDetailScreenProps) {
-  const navigate = useNavigate();
   const { user, theme, language } = useApp();
   const { isLiked, toggleLike, toggleFollowUser, isFollowingUser } = useFavorites();
   const liked = isLiked(event.id);
