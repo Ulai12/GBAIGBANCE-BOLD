@@ -272,7 +272,7 @@ export const MAIN_CATEGORIES: MainCategoryDefinition[] = [
         description: 'Tournois de jeux vidéo, rencontres gaming et compétitions e-sport.',
         defaultLegacyCategory: 'cultural',
         iconName: 'Gamepad2',
-        tags: ['Gaming', 'Jeux vidéo', 'E-sport', 'Tournoi', 'LAN'],
+        tags: ['Call of Duty', 'FPS', 'Gaming', 'Jeux vidéo', 'E-sport', 'Tournoi gaming', 'LAN'],
       },
       {
         id: 'loisirs_sorties',
@@ -451,6 +451,36 @@ export function hydrateEventCategories<T extends {
   let resolvedSub = event.subcategory || meta.subcategory;
   let resolvedMain = event.main_category || meta.main_category;
 
+  // Les anciens événements n'ont pas toujours de sous-catégorie enregistrée.
+  // On utilise alors les tags explicites du catalogue (ex. Call of Duty → Gaming),
+  // sans déduire une catégorie à partir d'un simple alias historique trop large.
+  if (!resolvedSub) {
+    const sourceText = `${event.title || ''} ${meta.description || event.description || ''}`
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .toLocaleLowerCase('fr')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+    const inferred = ALL_SUBCATEGORIES
+      .map((sub) => ({
+        sub,
+        score: sub.tags.reduce((best, tag) => {
+          const normalizedTag = tag
+            .normalize('NFD')
+            .replace(/[\\u0300-\\u036f]/g, '')
+            .toLocaleLowerCase('fr')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+          return normalizedTag.length >= 4 && sourceText.includes(normalizedTag)
+            ? Math.max(best, normalizedTag.length)
+            : best;
+        }, 0),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+    if (inferred) resolvedSub = inferred.sub.id;
+  }
+
   if (!resolvedSub) {
     switch (event.category) {
       case 'concert':
@@ -474,13 +504,13 @@ export function hydrateEventCategories<T extends {
         resolvedSub = 'concerts_spectacles';
         resolvedMain = 'cultural_artistic';
         break;
+      // Les anciennes catégories "cultural" et "private" sont trop larges
+      // pour leur attribuer arbitrairement une sous-catégorie précise.
       case 'cultural':
-        resolvedSub = 'fetes_carnavals';
         resolvedMain = 'cultural_artistic';
         break;
       case 'private':
-        resolvedSub = 'clubbing_soirees';
-        resolvedMain = 'festive_nightlife';
+        resolvedMain = 'private_family';
         break;
     }
   }
