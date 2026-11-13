@@ -48,7 +48,7 @@ async function fetchTicketsForEvents(eventIds: string[]) {
   const pageSize = 1000;
   for (let i = 0; i < eventIds.length; i += 80) {
     const slice = eventIds.slice(i, i + 80);
-    for (let from = 0; from < 8000; from += pageSize) {
+    for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from('tickets')
         .select('id, event_id, ticket_type, price_paid, status, created_at')
@@ -185,7 +185,7 @@ export async function fetchOrganizerPerformanceMetrics(
     const { data: rawEvents } = await supabase
       .from('events')
       .select('id, title, views_count, attendees_count, status, created_at, starts_at')
-      .eq('organizer_user_id', userId);
+      .or(`organizer_user_id.eq.${userId},organizer_id.eq.${userId}`);
 
     const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     const eventIds = events.map((e) => e.id);
