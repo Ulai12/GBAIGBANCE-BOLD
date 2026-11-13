@@ -66,7 +66,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
   const isHot = (event.attendees_count || 0) >= 500 || (event.likes_count || 0) >= 200;
   const coverSrc = event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title);
   // Les PNG conservent leur canal alpha : on les affiche en entier sur un fond dédié.
-  const isTransparentAsset = /\\.png(?:$|[?#])/i.test(coverSrc);
+  const isTransparentAsset = /\.png(?:$|[?#])/i.test(coverSrc);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,7 +89,6 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
         whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         onMouseEnter={prefetchEventDetail}
-        onTouchStart={prefetchEventDetail}
         className="
           group relative isolate w-full
           aspect-[0.78] sm:aspect-[0.82]
