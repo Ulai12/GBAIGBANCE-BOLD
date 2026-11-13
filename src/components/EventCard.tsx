@@ -84,26 +84,15 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
         whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-        onClick={onClick}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick?.();
-          }
-        }}
-        role="button"
-        tabIndex={0}
         onMouseEnter={prefetchEventDetail}
         onTouchStart={prefetchEventDetail}
         className="
           group relative isolate w-full
-          aspect-[0.78] sm:aspect-[0.82] min-h-[full]
+          aspect-[0.78] sm:aspect-[0.82]
           overflow-hidden rounded-[1.5rem]
-          bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
+          bg-neutral-100 dark:bg-[#1E172E] text-white
           shadow-[0_8px_30px_rgba(0,0,0,0.12)]
-          focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2
         "
-        aria-label={`Découvrir ${event.title}`}
       >
         {/* IMAGE */}
         <motion.div
@@ -145,7 +134,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
               </div>
 
               {/* ACTION BUTTONS: SHARE + FAVORITE */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="relative z-20 flex items-center gap-1.5 shrink-0">
                 {/* SHARE */}
                 <motion.button
                   type="button"
@@ -260,8 +249,16 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
             </div>
           </div>
         </div>
+        </div>
 
-      </div>
+        {onClick && (
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label={`Découvrir ${event.title}`}
+            className="absolute inset-0 z-10 cursor-pointer rounded-[1.5rem] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-[#6600FF]"
+          />
+        )}
       </motion.article>
       <ShareModal
         isOpen={showShareModal}

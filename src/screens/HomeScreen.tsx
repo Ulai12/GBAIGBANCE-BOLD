@@ -3,7 +3,7 @@ import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
   Landmark, Lock, Sparkles, ChevronRight,
-  Settings, Gift, Navigation, Flame, Building2,
+  Settings, Gift, Navigation, Flame, Building2, Briefcase, Trophy, Heart,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
 import { NearbyEventTile } from '@/components/NearbyEventTile';
@@ -21,7 +21,7 @@ import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
-import { EVENT_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
+import { MAIN_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
 import {
@@ -41,11 +41,12 @@ import {
   LOME_CENTER,
   type UserLocationState,
 } from '@/utils/geo';
-import type { Event, Artist, Organization, EventCategory } from '@/types';
+import type { Event, Artist, Organization } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
+  Briefcase, Flame, Trophy, Heart,
 };
 
 interface HomeScreenProps {
@@ -105,7 +106,10 @@ export function HomeScreen({
   });
 
   // Category filter state
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const selectedMainCategory = MAIN_CATEGORIES.find((main) =>
+    main.id === selectedCategory || main.subcategories.some((sub) => sub.id === selectedCategory)
+  );
   const [categoryEvents, setCategoryEvents] = useState<Event[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(false);
 
@@ -354,31 +358,75 @@ export function HomeScreen({
     });
     return Array.from(map.values());
   }, [allEvents, featured, trending, nearby]);
+  const allActiveEventsRef = useRef(allActiveEvents);
+  allActiveEventsRef.current = allActiveEvents;
 
-  // Category events fetch
+  // La requête distante ne dépend que de la sélection : les mises à jour globales
+  // ne relancent pas une recherche de catégorie toutes les minutes.
   useEffect(() => {
     if (!selectedCategory) {
       setCategoryEvents([]);
+      setCategoryLoading(false);
       return;
     }
-    const immediateMatches = allActiveEvents.filter((e) => eventMatchesCategoryFilter(e, selectedCategory));
-    if (immediateMatches.length > 0) {
-      setCategoryEvents(immediateMatches);
-    } else {
-      setCategoryLoading(true);
-    }
+
+    let isCurrentRequest = true;
+    const immediateMatches = allActiveEventsRef.current.filter((event) =>
+      eventMatchesCategoryFilter(event, selectedCategory)
+    );
+    setCategoryEvents(immediateMatches);
+    setCategoryLoading(immediateMatches.length === 0);
+
     fetchEventsByCategory(selectedCategory)
-      .then((res) => {
-        const active = res.filter((e) => e.status === 'published' && !isEventTerminated(e));
-        if (active.length > 0 || immediateMatches.length === 0) {
-          setCategoryEvents(active);
-        }
+      .then((results) => {
+        if (!isCurrentRequest) return;
+        const latestMatches = allActiveEventsRef.current.filter((event) =>
+          eventMatchesCategoryFilter(event, selectedCategory)
+        );
+        const merged = new Map(latestMatches.map((event) => [event.id, event]));
+        results
+          .filter((event) =>
+            event.status === 'published' &&
+            isEventActive(event) &&
+            !isEventTerminated(event) &&
+            eventMatchesCategoryFilter(event, selectedCategory)
+          )
+          .forEach((event) => merged.set(event.id, event));
+        setCategoryEvents(Array.from(merged.values()));
       })
       .catch(() => {
-        if (immediateMatches.length === 0) setCategoryEvents([]);
+        if (isCurrentRequest) setCategoryEvents(immediateMatches);
       })
-      .finally(() => setCategoryLoading(false));
-  }, [selectedCategory, allActiveEvents]);
+      .finally(() => {
+        if (isCurrentRequest) setCategoryLoading(false);
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [selectedCategory]);
+
+  // Les nouveaux événements reçus par Realtime rejoignent la liste affichée
+  // sans redéclencher la requête distante ni le skeleton.
+  useEffect(() => {
+    if (!selectedCategory) return;
+    const matches = allActiveEvents.filter((event) =>
+      eventMatchesCategoryFilter(event, selectedCategory)
+    );
+    setCategoryEvents((previous) => {
+      const merged = new Map(
+        previous
+          .filter((event) =>
+            isEventActive(event) &&
+            !isEventTerminated(event) &&
+            eventMatchesCategoryFilter(event, selectedCategory)
+          )
+          .map((event) => [event.id, event])
+      );
+      matches.forEach((event) => merged.set(event.id, event));
+      return Array.from(merged.values());
+    });
+  }, [allActiveEvents, selectedCategory]);
 
   // Spatial enrichment: compute exact distance from user ONLY when GPS is real/actual!
   const allEventsWithDistance = useMemo(() => {
@@ -614,32 +662,67 @@ export function HomeScreen({
           Explorer par catégorie
         </h2>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5 py-1">
-          {EVENT_CATEGORIES.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.icon] || Music;
-            const isActive = selectedCategory === cat.value;
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 py-1">
+          {MAIN_CATEGORIES.map((main) => {
+            const Icon = CATEGORY_ICONS[main.iconName] || Palette;
+            const isActive = selectedMainCategory?.id === main.id;
             return (
               <button
-                key={cat.value}
+                key={main.id}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => {
                   haptic.selection();
-                  setSelectedCategory(isActive ? null : cat.value);
+                  setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[1.35rem] transition-all active:scale-95 cursor-pointer ${
+                className={`flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-[1.35rem] px-3 py-4 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] shadow-purple text-white'
                     : 'bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 text-[#6600FF] dark:text-purple-300'
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
-                <span className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
-                  {t('events', `categories.${cat.value}`)}
+                <span className={`text-xs text-center font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
+                  {main.shortLabel}
                 </span>
               </button>
             );
           })}
         </div>
+        {selectedMainCategory && (
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              aria-pressed={selectedCategory === selectedMainCategory.id}
+              onClick={() => setSelectedCategory(selectedMainCategory.id)}
+              className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                selectedCategory === selectedMainCategory.id
+                  ? 'bg-[#6600FF] text-white'
+                  : 'bg-black/[0.04] dark:bg-white/[0.08] text-gray-700 dark:text-gray-200'
+              }`}
+            >
+              Toutes
+            </button>
+            {selectedMainCategory.subcategories.map((sub) => {
+              const isSelected = selectedCategory === sub.id;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                  className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                    isSelected
+                      ? 'bg-[#6600FF] text-white'
+                      : 'bg-black/[0.04] dark:bg-white/[0.08] text-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  {sub.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
@@ -647,7 +730,9 @@ export function HomeScreen({
         <section className="mt-6 px-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-              {t('events', `categories.${selectedCategory}`)}
+              {selectedCategory === selectedMainCategory?.id
+                ? selectedMainCategory.shortLabel
+                : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
             </h2>
             <button
               type="button"
@@ -981,7 +1066,6 @@ export function HomeScreen({
             </p>
           </div>
         <GbaigbanceStatsDashboard
-          events={allActiveEvents}
           platformStats={platformStats || undefined}
         />
       </section>

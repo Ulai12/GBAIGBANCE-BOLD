@@ -1,5 +1,5 @@
-// ExploreScreen.tsx - Écran de découverte et de recherche enrichi (Événements & Participants/Amis),
-// synchronisation silencieuse 3s en arrière-plan, filtres dynamiques et responsive layout Apple HIG (mobile, tablette, PC).
+// ExploreScreen.tsx - Découverte et recherche d'événements et de participants.
+// Les mises à jour de la liste reposent sur Supabase Realtime, sans polling périodique.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SlidersHorizontal,
@@ -19,6 +19,9 @@ import {
   Theater,
   Landmark,
   Lock,
+  Briefcase,
+  Flame,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import { EventCard } from '@/components/EventCard';
@@ -39,8 +42,8 @@ import {
   searchProfiles,
 } from '@/services/events';
 import { getCachedHomeData } from '@/services/cache';
-import { EVENT_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories, COUNTRY_FLAGS } from '@/constants';
-import type { Event, EventCategory, Profile } from '@/types';
+import { MAIN_CATEGORIES, CITIES, eventMatchesCategoryFilter, hydrateEventCategories, COUNTRY_FLAGS } from '@/constants';
+import type { Event, Profile } from '@/types';
 import { coreSearchIds, coreFuzzySearch } from '@/lib/rust-core';
 
 interface ExploreScreenProps {
@@ -57,6 +60,10 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Theater,
   Landmark,
   Lock,
+  Briefcase,
+  Flame,
+  Trophy,
+  Heart,
 };
 
 let exploreCache: Event[] | null = null;
@@ -91,18 +98,19 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [events, setEvents] = useState<Event[]>(() => getWarmExploreEvents());
   const [loading, setLoading] = useState(() => getWarmExploreEvents().length === 0);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
-  const eventsCountRef = useRef(events.length);
-  eventsCountRef.current = events.length;
+  const hasLoadedEventsRef = useRef(events.length > 0);
+  const eventRequestRef = useRef(0);
 
   // Participants trouvés lors de la recherche
   const [participants, setParticipants] = useState<Profile[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   const loadEvents = useCallback(async (isDefault = false) => {
-    setLoading((prev) => (eventsCountRef.current === 0 ? true : prev));
+    const requestId = ++eventRequestRef.current;
+    if (!hasLoadedEventsRef.current) setLoading(true);
     try {
       const q = query.trim();
       const rawSql = q ? await searchEvents(q) : await fetchUpcomingEvents();
@@ -138,14 +146,19 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           result = applyFilters(rawSql);
         }
       }
+      if (requestId !== eventRequestRef.current) return;
       setEvents(result);
+      hasLoadedEventsRef.current = true;
       if (isDefault) {
         exploreCache = result;
       }
     } catch {
-      // Retain warm cache on network failure
+      // Conserve les résultats déjà affichés en cas de perte réseau.
     } finally {
-      setLoading(false);
+      if (requestId === eventRequestRef.current) {
+        hasLoadedEventsRef.current = true;
+        setLoading(false);
+      }
     }
   }, [query, selectedCategory, selectedCity, priceFilter]);
 
@@ -184,35 +197,17 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     }
   }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
-  // Rafraîchissement automatique en arrière-plan toutes les 3 secondes max (silencieux)
+  // Synchronisation initiale et notifications Realtime uniquement.
+  // Aucun polling ne relance les recherches ni ne réaffiche les skeletons.
   useEffect(() => {
-    const periodicSync = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        if (searchMode === 'events') {
-          const isDefault = !query && !selectedCategory && !selectedCity && priceFilter === 'any';
-          loadEvents(isDefault);
-        } else if (query.trim()) {
-          loadParticipants();
-        }
-      }
-    }, 20000);
-
     const unsubscribe = subscribeToGlobalEventsLive(() => {
-      if (searchMode === 'events') {
-        loadEvents(false);
-      }
+      if (searchMode === 'events') loadEvents(false);
     });
 
-    const pruneTicker = setInterval(() => {
-      setEvents((prev) => prev.filter((e) => !isEventTerminated(e)));
-    }, 20000);
-
     return () => {
-      clearInterval(periodicSync);
-      clearInterval(pruneTicker);
       if (unsubscribe) unsubscribe();
     };
-  }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
+  }, [searchMode, loadEvents]);
 
   const resetFilters = () => {
     setSelectedCategory(null);
@@ -221,6 +216,9 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   };
 
   const hasActiveFilters = Boolean(selectedCategory || selectedCity || priceFilter !== 'any');
+  const selectedMainCategory = MAIN_CATEGORIES.find((main) =>
+    main.id === selectedCategory || main.subcategories.some((sub) => sub.id === selectedCategory)
+  );
 
   const handleToggleFollowUserInSearch = async (targetUserId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -349,22 +347,23 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               <Sparkles className="w-3.5 h-3.5" />
               <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
             </button>
-            {EVENT_CATEGORIES.map((cat) => {
-              const Icon = CATEGORY_ICONS[cat.icon] || Music;
-              const isActive = selectedCategory === cat.value;
+            {MAIN_CATEGORIES.map((main) => {
+              const Icon = CATEGORY_ICONS[main.iconName] || Palette;
+              const isActive = selectedCategory === main.id;
               return (
                 <button
-                  key={cat.value}
+                  key={main.id}
                   type="button"
-                  onClick={() => setSelectedCategory(isActive ? null : cat.value)}
-                  className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  aria-pressed={isActive}
+                  onClick={() => setSelectedCategory(isActive ? null : main.id)}
+                  className={`min-h-[40px] px-4 py-2 rounded-2xl text-xs font-bold transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] shrink-0 cursor-pointer flex items-center gap-2 ${
                     isActive
                       ? 'bg-[#5900E6] text-white shadow-xs'
-                      : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
+                      : 'bg-black/[0.03] dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{t('events', `categories.${cat.value}`)}</span>
+                  <span>{main.shortLabel}</span>
                 </button>
               );
             })}
@@ -509,25 +508,65 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               Catégorie
             </h3>
             <div className="flex flex-wrap gap-2">
-              {EVENT_CATEGORIES.map((cat) => {
-                const Icon = CATEGORY_ICONS[cat.icon] || Music;
-                const isSelected = selectedCategory === cat.value;
+              {MAIN_CATEGORIES.map((main) => {
+                const Icon = CATEGORY_ICONS[main.iconName] || Palette;
+                const isSelected = selectedCategory === main.id;
                 return (
                   <button
-                    key={cat.value}
+                    key={main.id}
                     type="button"
-                    onClick={() => setSelectedCategory(isSelected ? null : cat.value)}
-                    className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedCategory(isSelected ? null : main.id)}
+                    className={`min-h-[40px] px-3 py-2 rounded-2xl text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
-                    <span>{t('events', `categories.${cat.value}`)}</span>
+                    <span>{main.shortLabel}</span>
                   </button>
                 );
               })}
+              {selectedMainCategory && (
+                <div className="basis-full pt-2">
+                  <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                    Sous-catégories · {selectedMainCategory.shortLabel}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={selectedCategory === selectedMainCategory.id}
+                      onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                      className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                        selectedCategory === selectedMainCategory.id
+                          ? 'bg-[#6600FF] text-white'
+                          : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      Toutes
+                    </button>
+                    {selectedMainCategory.subcategories.map((sub) => {
+                      const isSelected = selectedCategory === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                          className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                            isSelected
+                              ? 'bg-[#6600FF] text-white'
+                              : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {sub.shortLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

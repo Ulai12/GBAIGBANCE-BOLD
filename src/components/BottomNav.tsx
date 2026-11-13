@@ -141,7 +141,7 @@ export function BottomNav({
           'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-full select-none',
           'touch-manipulation transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] cursor-pointer',
           // Zone tactile respectant la norme Apple HIG (>= 44px)
-          'min-h-[44px]',
+          'min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] motion-reduce:transition-none',
           isPressed ? 'scale-[0.92]' : 'scale-100',
         ].join(' ')}
       >
@@ -204,7 +204,7 @@ export function BottomNav({
               aria-label={`${ticketCount} billet${ticketCount > 1 ? 's' : ''}`}
               className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5"
             >
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 ring-2 ring-white dark:ring-[#14121E]" />
             </span>
           )}
@@ -298,8 +298,8 @@ export function BottomNav({
                   onPointerLeave={() => setPressed(null)}
                   aria-label={createLabel}
                   className={[
-                    'group relative w-10 h-10 rounded-full flex items-center justify-center cursor-pointer select-none',
-                    'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation',
+                    'group relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer select-none',
+                    'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#6600FF] motion-reduce:transition-none',
                     pressed === 'create'
                       ? 'scale-[0.88] brightness-90'
                       : 'scale-100 hover:scale-105 active:scale-95',
@@ -323,7 +323,7 @@ export function BottomNav({
                   />
 
                   <Plus
-                    className="w-4.5 h-4.5 text-white transition-transform duration-300 group-hover:rotate-90"
+                    className="w-5 h-5 text-white transition-transform duration-300 group-hover:rotate-90 motion-reduce:transition-none motion-reduce:transform-none"
                     strokeWidth={2.6}
                   />
                 </button>

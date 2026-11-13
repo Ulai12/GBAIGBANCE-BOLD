@@ -4,15 +4,12 @@ import {
   Users,
   Calendar,
   DollarSign,
-  RotateCw,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
-import type { Event } from '@/types';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
-import { coreTimeline, statsEngine, type TimelineBucket } from '@/lib/rust-core';
+import { coreTimeline, type TimelineBucket } from '@/lib/rust-core';
 
 export interface GbaigbanceStatsDashboardProps {
-  events?: Event[];
   platformStats?: PlatformStats;
 }
 
@@ -29,7 +26,6 @@ interface MonthlyDataPoint {
 }
 
 export function GbaigbanceStatsDashboard({
-  events = [],
   platformStats: initialPlatformStats,
 }: GbaigbanceStatsDashboardProps) {
   const [period, setPeriod] = useState<Period>('current_month');
@@ -39,16 +35,19 @@ export function GbaigbanceStatsDashboard({
   const [selectedCategory, setSelectedCategory] =
     useState<string | null>(null);
   const [platformStats, setPlatformStats] = useState(initialPlatformStats);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
-  const [rustBuckets, setRustBuckets] = useState<TimelineBucket[] | null>(null);
+  const [timelineBuckets, setTimelineBuckets] = useState<TimelineBucket[] | null>(null);
   const syncSeq = useRef(0);
+  // Ne jamais tracer les quelques événements de découverte comme s'ils représentaient
+  // toute la plateforme : le graphique attend exclusivement l'agrégat complet du service.
+  const timelineEvents = useMemo(
+    () => platformStats?.eventsTimeline ?? [],
+    [platformStats?.eventsTimeline]
+  );
 
   // Keep state updated if props change
   useEffect(() => {
     if (initialPlatformStats) {
       setPlatformStats(initialPlatformStats);
-      setLastSyncTime(new Date());
     }
   }, [initialPlatformStats]);
 
@@ -59,42 +58,21 @@ export function GbaigbanceStatsDashboard({
       fetchPlatformStats().then((data) => {
         if (seq !== syncSeq.current || !data) return;
         setPlatformStats(data);
-        setLastSyncTime(new Date());
-      }).catch(() => {});
+        }).catch(() => {});
     };
 
     const unsubscribe = subscribeToPlatformStatsLive(handleStatsUpdate);
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        handleStatsUpdate();
-      }
-    }, 60000);
-
     window.addEventListener('gba-ticket-booked', handleStatsUpdate);
     window.addEventListener('gba-event-created', handleStatsUpdate);
     window.addEventListener('gba-refresh-events', handleStatsUpdate);
 
     return () => {
       if (unsubscribe) unsubscribe();
-      clearInterval(interval);
       window.removeEventListener('gba-ticket-booked', handleStatsUpdate);
       window.removeEventListener('gba-event-created', handleStatsUpdate);
       window.removeEventListener('gba-refresh-events', handleStatsUpdate);
     };
   }, []);
-
-  const handleManualRefresh = async () => {
-    const seq = ++syncSeq.current;
-    setIsRefreshing(true);
-    try {
-      const data = await fetchPlatformStats();
-      if (seq !== syncSeq.current || !data) return;
-      setPlatformStats(data);
-      setLastSyncTime(new Date());
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
-    }
-  };
 
   // Totaux réels de la plateforme (100% dynamiques et vérifiés)
   const totals = useMemo(() => {
@@ -110,28 +88,24 @@ export function GbaigbanceStatsDashboard({
   // Données dynamiques de la période sélectionnée basées sur les dates réelles des événements et des billets
   useEffect(() => {
     let cancelled = false;
+    setTimelineBuckets(null);
     const tickets = (platformStats?.ticketsTimeline || []).map((ticket, index) => ({
-      id: `${ticket.event_id}-${ticket.created_at_ms || index}`,
+      id: ticket.id || `${ticket.event_id}-${ticket.created_at_ms || index}-${index}`,
       created_at_ms: ticket.created_at_ms || Date.parse(ticket.created_at),
       price_paid: ticket.price_paid || 0,
       status: 'valid',
     }));
-    const markers = events.map((event) => ({
-      id: event.id,
-      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
-      attendees: event.attendees_count || 0,
-    }));
-    coreTimeline({ period, nowMs: Date.now(), tickets, events: markers }).then((buckets) => {
-      if (!cancelled) setRustBuckets(buckets);
+    coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
+      if (!cancelled) setTimelineBuckets(buckets);
     });
     return () => {
       cancelled = true;
     };
-  }, [period, platformStats, events]);
+  }, [period, platformStats, timelineEvents]);
 
   const monthlyTimeline = useMemo<MonthlyDataPoint[]>(() => {
-    if (rustBuckets && rustBuckets.length > 0) {
-      return rustBuckets.map((bucket) => {
+    if (timelineBuckets && timelineBuckets.length > 0) {
+      return timelineBuckets.map((bucket) => {
         const monthDate = new Date(bucket.year, bucket.month - 1, 1);
         const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(monthDate);
         const fullMonth = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(monthDate);
@@ -173,12 +147,12 @@ export function GbaigbanceStatsDashboard({
       ];
 
       // 1. Événements réels se déroulant ce mois
-      events.forEach((ev) => {
-        const d = new Date(ev.starts_at);
+      timelineEvents.forEach((ev) => {
+        const d = new Date(ev.starts_at_ms);
         if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
           const day = d.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          const evAttendees = ev.attendees_count || 0;
+          const evAttendees = ev.attendees || 0;
           weeks[weekIdx].events += 1;
           weeks[weekIdx].attendees += evAttendees;
         }
@@ -186,7 +160,7 @@ export function GbaigbanceStatsDashboard({
 
       // 2. Vrais billets achetés ce mois
       tickets.forEach((tk) => {
-        const td = new Date(tk.created_at);
+        const td = new Date(tk.created_at_ms || Date.parse(tk.created_at));
         if (!isNaN(td.getTime()) && td.getMonth() === currentMonth && td.getFullYear() === currentYear) {
           const day = td.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
@@ -211,19 +185,19 @@ export function GbaigbanceStatsDashboard({
         { label: `Semaine 4 (22+ ${lastMonthName})`, shortLabel: 'Sem 4', tickets: 0, revenue: 0, attendees: 0, events: 0 },
       ];
 
-      events.forEach((ev) => {
-        const d = new Date(ev.starts_at);
+      timelineEvents.forEach((ev) => {
+        const d = new Date(ev.starts_at_ms);
         if (!isNaN(d.getTime()) && d.getMonth() === lastMonthIdx && d.getFullYear() === lastMonthYear) {
           const day = d.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          const evAttendees = ev.attendees_count || 0;
+          const evAttendees = ev.attendees || 0;
           weeks[weekIdx].events += 1;
           weeks[weekIdx].attendees += evAttendees;
         }
       });
 
       tickets.forEach((tk) => {
-        const td = new Date(tk.created_at);
+        const td = new Date(tk.created_at_ms || Date.parse(tk.created_at));
         if (!isNaN(td.getTime()) && td.getMonth() === lastMonthIdx && td.getFullYear() === lastMonthYear) {
           const day = td.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
@@ -247,12 +221,12 @@ export function GbaigbanceStatsDashboard({
     const m2Data: MonthlyDataPoint = { label: formatFullMonth(m2), shortLabel: formatMonth(m2), tickets: 0, revenue: 0, attendees: 0, events: 0 };
     const m3Data: MonthlyDataPoint = { label: `${formatFullMonth(m3)} (en cours)`, shortLabel: formatMonth(m3), tickets: 0, revenue: 0, attendees: 0, events: 0 };
 
-    events.forEach((ev) => {
-      const d = new Date(ev.starts_at);
+    timelineEvents.forEach((ev) => {
+      const d = new Date(ev.starts_at_ms);
       if (isNaN(d.getTime())) return;
       const m = d.getMonth();
       const y = d.getFullYear();
-      const evAttendees = ev.attendees_count || 0;
+      const evAttendees = ev.attendees || 0;
 
       if (m === m1.getMonth() && y === m1.getFullYear()) {
         m1Data.events += 1;
@@ -267,7 +241,7 @@ export function GbaigbanceStatsDashboard({
     });
 
     tickets.forEach((tk) => {
-      const td = new Date(tk.created_at);
+      const td = new Date(tk.created_at_ms || Date.parse(tk.created_at));
       if (isNaN(td.getTime())) return;
       const m = td.getMonth();
       const y = td.getFullYear();
@@ -286,7 +260,7 @@ export function GbaigbanceStatsDashboard({
     });
 
     return [m1Data, m2Data, m3Data];
-  }, [period, totals, events, platformStats?.ticketsTimeline, rustBuckets]);
+  }, [period, totals, timelineEvents, platformStats?.ticketsTimeline, timelineBuckets]);
 
   // Répartition par catégorie basée sur les vrais événements
   const categoriesBreakdown = useMemo(() => {
@@ -301,6 +275,7 @@ export function GbaigbanceStatsDashboard({
       private: { label: 'Événements Privés', color: '#6366F1' },
       sport: { label: 'Sport & Bien-être', color: '#EF4444' },
       exhibition: { label: 'Expositions & Art', color: '#D946EF' },
+      exposition: { label: 'Expositions & Art', color: '#D946EF' },
     };
 
     const shares = platformStats?.categoryShares || [];
@@ -472,25 +447,17 @@ export function GbaigbanceStatsDashboard({
       : null;
 
   return (
-    <div className="w-full overflow-hidden rounded-[2.2rem] border border-black/[0.06] bg-white shadow-[0_12px_36px_rgba(102,0,255,0.06)] transition-all dark:border-white/[0.08] dark:bg-[#14121E] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+    <div className="w-full overflow-hidden rounded-[2rem] border border-black/[0.055] bg-white shadow-[0_8px_28px_rgba(23,19,29,0.045)] dark:border-white/[0.075] dark:bg-[#14121E] dark:shadow-[0_12px_36px_rgba(0,0,0,0.28)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between mb-2 px-1">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-              Direct · {statsEngine() === 'rust' ? 'Rust' : 'calcul'} • {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+Données synchronisées en direct
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
-            className="min-h-[44px] min-w-[44px] rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
-            aria-label="Actualiser les statistiques"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#6600FF]' : ''}`} />
-          </button>
+
         </div>
         <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/10">
 
@@ -540,7 +507,7 @@ export function GbaigbanceStatsDashboard({
       </div>
 
       {/* Cartes KPI */}
-      <div className="mb-4 grid grid-cols-2 gap-2.5 px-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 px-4 sm:px-5 lg:grid-cols-4">
 
         {/* Billets - Total global acheté par tout le monde */}
         <button
@@ -548,7 +515,7 @@ export function GbaigbanceStatsDashboard({
           onClick={() =>
             setActiveMetric('tickets')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-all ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'tickets'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
               : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
@@ -580,7 +547,7 @@ export function GbaigbanceStatsDashboard({
           onClick={() =>
             setActiveMetric('revenue')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-all ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'revenue'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
               : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
@@ -639,7 +606,7 @@ export function GbaigbanceStatsDashboard({
           onClick={() =>
             setActiveMetric('events')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-all ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'events'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
               : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
@@ -944,7 +911,7 @@ export function GbaigbanceStatsDashboard({
                             : category.id
                         )
                       }
-                      className={`flex min-h-[44px] items-center justify-between rounded-xl px-2 text-left transition-all ${
+                      className={`flex min-h-[44px] items-center justify-between rounded-xl px-2 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
                         isSelected
                           ? 'bg-gray-100 ring-1 ring-[#6600FF] dark:bg-white/15'
                           : 'hover:bg-gray-50 dark:hover:bg-white/5'

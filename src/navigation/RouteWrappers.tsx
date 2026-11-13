@@ -19,7 +19,7 @@ const OrganizerDetailScreen = lazy(() =>
 
 interface RouteProps {
   onToast: (toast: Omit<ToastData, 'id'>) => void;
-  onBook: (event: Event) => void;
+  onBook: (event: Event, initialOptionId?: string | null) => void;
 }
 
 // Fonction utilitaire de retour sécurisé garantissant de ne jamais sortir de l'application ni d'échouer
