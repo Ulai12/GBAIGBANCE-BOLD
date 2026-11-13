@@ -35,7 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
-import { EVENT_CATEGORIES, CITIES, COUNTRIES } from '@/constants';
+import { CITIES, COUNTRIES, MAIN_CATEGORIES, getMainCategoryById, getSubcategoryById, hydrateEventCategories } from '@/constants';
 import {
   fetchEventById,
   fetchTicketOptions,
@@ -49,6 +49,7 @@ import {
   deleteEvent,
 } from '@/services/events';
 import type { Artist, Event, EventCategory, EventStatus, EventCollaborator } from '@/types';
+import type { MainCategoryId, SubCategoryId } from '@/constants/categories';
 import type { ToastData } from '@/components/Toast';
 import { formatNumber } from '@/utils/format';
 import { coreStock } from '@/lib/rust-core';
@@ -98,6 +99,18 @@ function toLocalDateTimeInput(dateStr?: string | null): string {
 // Category Icon renderer with visual fallback
 function getCategoryIcon(value: string) {
   switch (value) {
+    case 'cultural_artistic':
+      return <Palette className="w-5 h-5" />;
+    case 'commercial_professional':
+      return <Landmark className="w-5 h-5" />;
+    case 'festive_nightlife':
+      return <PartyPopper className="w-5 h-5" />;
+    case 'sports':
+      return <Trophy className="w-5 h-5" />;
+    case 'private_family':
+      return <Lock className="w-5 h-5" />;
+    case 'leisure_discovery':
+      return <Sparkles className="w-5 h-5" />;
     case 'concert':
       return <Music className="w-5 h-5" />;
     case 'festival':
@@ -139,6 +152,8 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<EventCategory>('concert');
+  const [mainCategory, setMainCategory] = useState<MainCategoryId>('cultural_artistic');
+  const [subcategory, setSubcategory] = useState<SubCategoryId>('concerts_spectacles');
   const [status, setStatus] = useState<EventStatus>('published');
 
   // Location & Dates
@@ -198,7 +213,13 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
         setRawEvent(eventData);
         setTitle(eventData.title || '');
         setDescription(eventData.description || '');
-        setCategory(eventData.category || 'concert');
+        const categorizedEvent = hydrateEventCategories(eventData);
+        setCategory(categorizedEvent.category || 'concert');
+        const resolvedMain = getMainCategoryById(categorizedEvent.main_category || '') || MAIN_CATEGORIES[0];
+        const resolvedSub = getSubcategoryById(categorizedEvent.subcategory || '') || resolvedMain.subcategories[0];
+        setMainCategory(resolvedMain.id);
+        setSubcategory(resolvedSub.id);
+        setCategory(resolvedSub.defaultLegacyCategory);
         setStatus(eventData.status || 'published');
         setLocationName(eventData.location_name || '');
         setLocationAddress(eventData.location_address || '');
@@ -545,6 +566,8 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
           title: title.trim(),
           description: description.trim(),
           category,
+          main_category: mainCategory,
+          subcategory,
           location_name: locationName.trim() || 'Lieu à définir',
           location_address: locationAddress.trim() || null,
           city,
@@ -802,32 +825,62 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
               />
             </div>
 
-            {/* Category: Corrected icons and values! */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                Catégorie *
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {EVENT_CATEGORIES.map((cat) => {
-                  const isSelected = category === cat.value;
-                  return (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => setCategory(cat.value as EventCategory)}
-                      className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-sm shadow-[#6600FF]/30 scale-[1.02]'
-                          : 'bg-white dark:bg-[#1A1829] border-black/[0.07] dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-black/20'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-xl ${isSelected ? 'bg-white/20 text-white' : 'bg-[#6600FF]/10 text-[#6600FF]'}`}>
-                        {getCategoryIcon(cat.value)}
-                      </div>
-                      <span className="truncate w-full text-center">{cat.label}</span>
-                    </button>
-                  );
-                })}
+            {/* Taxonomie partagée avec l'écran de création et Explorer */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                  Catégorie principale *
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {MAIN_CATEGORIES.map((main) => {
+                    const isSelected = mainCategory === main.id;
+                    return (
+                      <button
+                        key={main.id}
+                        type="button"
+                        onClick={() => {
+                          const nextSub = main.subcategories[0];
+                          setMainCategory(main.id);
+                          if (nextSub) {
+                            setSubcategory(nextSub.id);
+                            setCategory(nextSub.defaultLegacyCategory);
+                          }
+                        }}
+                        className={`min-h-[76px] rounded-2xl border p-3 text-xs font-bold flex flex-col items-center justify-center gap-2 transition-all ${
+                          isSelected
+                            ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-sm shadow-[#6600FF]/30'
+                            : 'bg-white/80 dark:bg-white/[0.055] border-black/[0.07] dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:border-[#6600FF]/40'
+                        }`}
+                      >
+                        <span className={`rounded-xl p-2 ${isSelected ? 'bg-white/20 text-white' : 'bg-[#6600FF]/10 text-[#6600FF] dark:text-violet-300'}`}>
+                          {getCategoryIcon(main.id)}
+                        </span>
+                        <span className="w-full text-center leading-tight">{main.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                  Sous-catégorie *
+                </label>
+                <select
+                  value={subcategory}
+                  onChange={(e) => {
+                    const nextSub = e.target.value as SubCategoryId;
+                    const definition = getSubcategoryById(nextSub);
+                    if (!definition) return;
+                    setSubcategory(nextSub);
+                    setCategory(definition.defaultLegacyCategory);
+                  }}
+                  className="w-full rounded-2xl border border-black/[0.08] bg-white px-4 py-3.5 text-sm font-semibold text-[#17131D] shadow-xs dark:border-white/[0.12] dark:bg-[#211a32] dark:text-white"
+                >
+                  {(getMainCategoryById(mainCategory)?.subcategories || []).map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
