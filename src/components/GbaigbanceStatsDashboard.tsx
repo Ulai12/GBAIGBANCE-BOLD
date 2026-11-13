@@ -6,6 +6,7 @@ import {
   DollarSign,
   UserRoundCheck,
   Contact,
+  Eye,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
@@ -15,7 +16,7 @@ export interface GbaigbanceStatsDashboardProps {
   platformStats?: PlatformStats;
 }
 
-type Period = 'current_month' | 'last_month' | 'quarter';
+type Period = 'current_month' | 'last_month' | 'quarter' | 'all';
 type MetricType = 'tickets' | 'revenue' | 'attendees' | 'events';
 
 interface MonthlyDataPoint {
@@ -87,6 +88,7 @@ export function GbaigbanceStatsDashboard({
       profiles: platformStats?.totalProfiles ?? 0,
       participantAccounts: platformStats?.totalParticipantAccounts ?? 0,
       events: platformStats?.totalEvents ?? 0,
+      views: platformStats?.totalViews ?? 0,
     };
   }, [platformStats]);
 
@@ -100,9 +102,51 @@ export function GbaigbanceStatsDashboard({
       price_paid: ticket.price_paid || 0,
       status: 'valid',
     }));
-    coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
+    if (period === 'all') {
+      // Historique complet : les filtres mensuels/trimestriels peuvent être vides
+      // alors que la plateforme possède déjà des données plus anciennes.
+      const timestamps = [
+        ...timelineEvents.map((event) => event.starts_at_ms),
+        ...tickets.map((ticket) => ticket.created_at_ms),
+      ].filter((timestamp) => Number.isFinite(timestamp) && timestamp > 0 && timestamp <= Date.now());
+      const now = new Date();
+      const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const earliest = timestamps.length
+        ? new Date(Math.min(...timestamps))
+        : currentMonth;
+      const firstMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+      const monthCount = Math.max(1, Math.min(120,
+        (currentMonth.getFullYear() - firstMonth.getFullYear()) * 12 +
+        currentMonth.getMonth() - firstMonth.getMonth() + 1
+      ));
+      const buckets = Array.from({ length: monthCount }, (_, index) => {
+        const date = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
+        return { year: date.getFullYear(), month: date.getMonth() + 1, week: null, tickets: 0, revenue: 0, attendees: 0, events: 0 };
+      });
+      const indexFor = (timestamp: number) => {
+        const date = new Date(timestamp);
+        return (date.getFullYear() - firstMonth.getFullYear()) * 12 + date.getMonth() - firstMonth.getMonth();
+      };
+      timelineEvents.forEach((event) => {
+        const index = indexFor(event.starts_at_ms);
+        if (index >= 0 && index < buckets.length && event.starts_at_ms > 0 && event.starts_at_ms <= Date.now()) {
+          buckets[index].events += 1;
+          buckets[index].attendees += Math.max(0, event.attendees || 0);
+        }
+      });
+      tickets.forEach((ticket) => {
+        const index = indexFor(ticket.created_at_ms);
+        if (index >= 0 && index < buckets.length && ticket.created_at_ms > 0 && ticket.created_at_ms <= Date.now()) {
+          buckets[index].tickets += 1;
+          buckets[index].revenue += Math.max(0, ticket.price_paid || 0);
+        }
+      });
       if (!cancelled) setTimelineBuckets(buckets);
-    });
+    } else {
+      coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
+        if (!cancelled) setTimelineBuckets(buckets);
+      });
+    }
     return () => {
       cancelled = true;
     };
@@ -490,6 +534,20 @@ export function GbaigbanceStatsDashboard({
           <button
             type="button"
             onClick={() =>
+              setPeriod('all')
+            }
+            className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
+              period === 'all'
+                ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#6600FF] dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+            }`}
+          >
+            Tout
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
               setPeriod('quarter')
             }
             className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
@@ -579,6 +637,20 @@ export function GbaigbanceStatsDashboard({
             Montant total des ventes
           </p>
         </button>
+
+        {/* Vues : indicateur agrégé depuis les compteurs d'événements. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <Eye className="h-3.5 w-3.5 text-[#6600FF]" />
+              Vues cumulées
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.views)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total des vues sur les événements</p>
+        </div>
 
         {/* Comptes Auth : tous les rôles, participants et organisateurs compris. */}
         <div
