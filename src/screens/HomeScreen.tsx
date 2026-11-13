@@ -656,13 +656,12 @@ export function HomeScreen({
       </section>
 
       {/* SECTION 2: Explorer par catégorie */}
-      <section className="mt-8 px-5">
-        <div className="text-center">
-        <h2 className="text-xl uppercase items-center sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white mb-3">
+      <section className="mt-7 px-5" aria-label="Explorer les catégories d'événements">
+        <h2 className="mb-3 text-center text-lg font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-xl">
           Explorer par catégorie
         </h2>
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 py-1">
+
+        <div className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-5" aria-label="Catégories principales">
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -675,14 +674,14 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-2xl px-1.5 py-2 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
+                className={`flex min-h-[80px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-3 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
                   isActive
-                    ? 'bg-[#6600FF] shadow-purple text-white'
-                    : 'bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 text-[#6600FF] dark:text-purple-300'
+                    ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+                    : 'border border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
                 }`}
               >
-                <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
-                <span className={`text-[11px] leading-tight text-center font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
+                <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
+                <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
                   {main.shortLabel}
                 </span>
               </button>
@@ -690,61 +689,62 @@ export function HomeScreen({
           })}
         </div>
 
+        {selectedMainCategory && (
+          <div
+            className="-mx-5 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 no-scrollbar"
+            role="group"
+            aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
+          >
+            <button
+              type="button"
+              aria-pressed={selectedCategory === selectedMainCategory.id}
+              onClick={() => setSelectedCategory(selectedMainCategory.id)}
+              className={`min-h-9 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+                selectedCategory === selectedMainCategory.id
+                  ? 'bg-[#6600FF] text-white'
+                  : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+              }`}
+            >
+              Toutes
+            </button>
+            {selectedMainCategory.subcategories.map((sub) => {
+              const isSelected = selectedCategory === sub.id;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                  className={`min-h-9 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+                    isSelected
+                      ? 'bg-[#6600FF] text-white'
+                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                  }`}
+                >
+                  {sub.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
-          <div className="mb-3 space-y-2.5">
-            <h2 className="text-lg font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
                 ? selectedMainCategory.shortLabel
                 : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
             </h2>
-            <div className="flex items-center gap-2">
-              <div
-                className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
-                aria-label="Sous-catégories"
-              >
-                <button
-                  type="button"
-                  aria-pressed={selectedCategory === selectedMainCategory?.id}
-                  onClick={() => setSelectedCategory(selectedMainCategory?.id || null)}
-                  className={`min-h-9 shrink-0 snap-start rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                    selectedCategory === selectedMainCategory?.id
-                      ? 'border-[#6600FF] bg-[#6600FF] text-white'
-                      : 'border-black/5 bg-black/[0.04] text-gray-700 dark:border-white/10 dark:bg-white/[0.08] dark:text-gray-200'
-                  }`}
-                >
-                  Toutes
-                </button>
-                {selectedMainCategory?.subcategories.map((sub) => {
-                  const isSelected = selectedCategory === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                      className={`min-h-9 shrink-0 snap-start rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                        isSelected
-                          ? 'border-[#6600FF] bg-[#6600FF] text-white'
-                          : 'border-black/5 bg-black/[0.04] text-gray-700 dark:border-white/10 dark:bg-white/[0.08] dark:text-gray-200'
-                      }`}
-                    >
-                      {sub.shortLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory(null)}
-                className="min-h-9 shrink-0 rounded-xl bg-[#6600FF]/10 px-3 py-1.5 text-[11px] font-bold text-[#6600FF] cursor-pointer"
-              >
-                Fermer
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-3 py-1.5 rounded-full cursor-pointer"
+            >
+              Fermer
+            </button>
           </div>
           {categoryLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">

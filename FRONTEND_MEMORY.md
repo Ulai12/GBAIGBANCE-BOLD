@@ -1,85 +1,120 @@
 # FRONTEND_MEMORY.md
 
 ## Périmètre
-Mémoire du travail frontend de GBAIGBANCE-BOLD. Ne jamais lire ni modifier `PROJECT_MEMORY.md`, réservé à un autre agent.
-
-Les branches `Frontend-IA` et `FRONTED-iA` ont été fusionnées le 2026-11-13 dans `Frontend-IA` (PR #6 vers `main`). Cette branche contient désormais le dock mobile, le verre sombre à transparence réduite, l'explorateur de catégories et les correctifs stats/analytics.
+Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité du chantier frontend. `PROJECT_MEMORY.md` est consulté uniquement en lecture seule pour le contexte backend.
 
 ## Gouvernance
-- Lire ce fichier avant chaque session et le mettre à jour avec les changements réellement effectués.
-- Le code et l'état Git font autorité si cette mémoire diverge.
-- Priorité : UI, UX, responsive, accessibilité, animations, navigation et performance.
-- Ne pas modifier `package.json`, les lockfiles ou les dépendances sans demande explicite.
+- Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
+- Branche d'écriture exclusive : `FRONTEND-iA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
+- Le 2026-11-13, la branche exacte `FRONTEND-iA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
+- PR de suivi ouverte : [#9 — Frontend: équilibrer les catégories sur mobile](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/9), cible `main`, jamais fusionnée par cet agent.
+- Lire ce fichier en entier au début de chaque session et reprendre la tâche active.
+- Le code distant et l'état Git font autorité si cette mémoire diverge.
+- Ne pas modifier `package.json`, les lockfiles ou les dépendances sans autorisation explicite.
+- Après chaque écriture : relire depuis GitHub sur `FRONTEND-iA`, vérifier le commit, la taille, le contenu et l'absence de troncature.
 - Ne jamais prétendre qu'un build, lint, typecheck, test ou contrôle visuel a réussi s'il n'a pas été exécuté.
-- Ne pas fusionner dans `main` sans demande explicite.
+- Une amélioration principale significative par session ; préserver les changements préexistants.
 
 ## Projet
-- Dépôt : `Ulai12/GBAIGBANCE-BOLD`
-- Branche fusionnée : `Frontend-IA` (base de la PR #6)
-- Branche absorbée : `FRONTED-iA`
 - Stack : React 18, TypeScript, Vite, Tailwind CSS, Motion, Lucide, React Router, Supabase.
-- Identité : violet (#6600FF / #8B5CF6), thème clair/sombre, Liquid Glass.
+- Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
+- Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Journal
+## Tâche active — proportions de l'explorateur de catégories (Accueil)
+**Objectif :** rendre les catégories principales plus compactes et équilibrées, puis présenter les sous-catégories dans une rangée horizontale homogène et utilisable au tactile, sans modifier la taxonomie ni le filtrage des événements.
 
-### 2026-11-12 — Frontend-IA : verre sombre et dock
-- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres. Commit `8b7b1d6` sur `main`.
-- Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en. Commit `59bae5d` sur `Frontend-IA`.
-- Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante. PR #6 ouverte, non fusionnée dans `main`.
+**Progression :**
+- Terminé le 2026-11-13 : réduction de la hauteur minimale des cartes principales de 104px à 80px ; icônes de 20px à 18px ; libellés resserrés et centrés ; grille 2 colonnes sur petit écran, 3 dès `sm`, 5 dès `xl`.
+- Terminé : sous-catégories passées d'un groupe flex-wrap irrégulier à une rangée horizontale scrollable avec snap, hauteur minimale uniforme de 36px, libellés sans retour à la ligne.
+- Terminé : focus visible ajouté aux contrôles de catégorie et libellés de groupe accessibles.
+- À faire : vérifier le rendu réel aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, en clair/sombre et sur iPhone ; ajuster uniquement sur constat.
+- À faire : exécuter build, lint et typecheck dans un environnement avec le dépôt et ses dépendances.
+
+**Fichiers concernés :**
+- `src/screens/HomeScreen.tsx` — section « Explorer par catégorie ».
+- `src/constants/categories.ts` — taxonomie partagée, consultée sans modification.
+
+**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...FRONTEND-iA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
+
+**Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
+
+## Design system — décisions à préserver
+- Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`.
+- Typographie : hiérarchie Tailwind existante ; titres de section compacts, libellés de catégories 11–12px sur mobile.
+- Espacements : grille catégorie gap 8px mobile ; sous-catégories gap 8px ; padding horizontal de page 20px (classes `px-5`).
+- Rayons : cartes de catégories `rounded-2xl`, sous-catégories en capsules `rounded-full`.
+- Cibles tactiles : conserver au moins 44px pour les actions importantes ; les chips de sous-catégorie sont à 36px de hauteur visuelle et doivent rester confortables à toucher, à réévaluer lors du contrôle réel.
+- Focus : anneau violet visible avec offset adapté au thème sombre.
+- Mouvement : transitions courtes et ciblées ; respecter `prefers-reduced-motion`.
+- Responsive actuel : grille catégories 2 colonnes par défaut, 3 à `sm`, 5 à `xl` ; sous-catégories défilantes horizontalement.
+- Performance : éviter les effets coûteux et préserver les images lazy-loadées ; ne pas ajouter de dépendance pour une amélioration CSS.
+
+## Cartographie des écrans
+| Écran / zone | Statut | Notes |
+|---|---|---|
+| Accueil — explorateur de catégories | En cours | Proportions mises à jour ; contrôle responsive réel restant |
+| Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px ; contrôle visuel restant |
+| Thème sombre / réduction de transparence | À revoir | Correctif CSS présent ; contrôle réel restant |
+| Explorer / recherche | À auditer | Hiérarchie catégories et résultats à recontrôler |
+| Création / modification d'événement | À auditer | Taxonomie partagée ; dernier commit main alignant l'édition sur la taxonomie |
+| Billets / portefeuille | À auditer | Aucun changement dans cette session |
+| Profil / favoris / notifications | À auditer | Aucun changement dans cette session |
+| Dashboard organisateur / statistiques | À revoir | Correctifs stats/analytics déjà présents dans l'historique |
+
+## Dette UI
+- **P1** — Contrôler les débordements des libellés et des capsules de sous-catégories sur 320px.
+- **P2** — Valider l'équilibre visuel de la grille catégories sur tablette et grands écrans.
+- **P2** — Vérifier les contrastes en thème clair/sombre et la lisibilité avec réduction de transparence.
+- **P2** — Contrôler le dock mobile et les safe areas iOS.
+- **P3** — Harmoniser progressivement les états vides, chargement et erreur entre les écrans.
+
+## Incidents d'écriture
+- Aucun incident de troncature constaté pendant la session du 2026-11-13.
+- Protocole de vérification distant appliqué au commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
+
+## Vérifications
+- **Session du 2026-11-13 (reprise) :** branche `FRONTEND-iA` présente ; comparaison `main...FRONTEND-iA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
+- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `FRONTEND-iA`.
+- **Non vérifié :** build, lint, typecheck, tests et rendu navigateur lors de cette reprise. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine ; aucun environnement local de build n'est fourni par le connecteur GitHub.
+- **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
+- **Vérifié :** taille du fichier augmentée de 819 caractères et de 4 lignes ; aucune diminution ni référence d'espace réservé.
+- **Non vérifié :** build, lint, typecheck, tests automatisés et rendu navigateur ; le connecteur GitHub distant ne fournit pas ici un environnement d'exécution frontend.
+- **Non vérifié :** rendu aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, orientations tablette, thème clair/sombre et iPhone.
+
+## Backlog
+1. P1 — Vérification build, lint, typecheck et tests existants.
+2. P1 — Revue responsive réelle de l'explorateur de catégories sur petits mobiles, notamment 320px.
+3. P2 — Contrôle dock mobile, safe areas iOS et mode réduction de transparence.
+4. P2 — Revue progressive des pages Explorer et création/modification d'événement.
+5. P3 — Audit ciblé des états de chargement, vide, erreur et hors-ligne.
+
+## Historique
+### 2026-11-13 — Accueil : proportions des catégories
+- Réduction de la hauteur minimale des cartes principales de 104px à 80px et des icônes à 18px.
+- Sous-catégories uniformisées en rangée horizontale scrollable avec snap.
+- Focus visible et sémantique de groupe ajoutés.
+- Commit : `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
+- Relecture distante réussie ; validation build/lint/typecheck et rendu visuel non exécutés.
+
+### 2026-11-12 — FRONTEND-iA : verre sombre et dock
+- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres.
+- Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en.
+- Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante.
 
 ### 2026-11-12 — FRONTED-iA : cartes, catégories, stats
-- `EventCard.tsx` : plus de bouton imbriqué dans un `article role="button"` ; overlay de découverte distinct ; suppression de `min-h-[full]`.
-- `BottomNav.tsx` : bouton Créer 44×44 px, focus clavier, `prefers-reduced-motion`. Commit `d381a3b`.
+- `EventCard.tsx` : suppression du bouton imbriqué dans un `article role="button"`, overlay de découverte distinct, suppression de `min-h-[full]`.
+- `BottomNav.tsx` : bouton Créer 44×44px, focus clavier, `prefers-reduced-motion`.
 - Explorateur de catégories : hiérarchie parent/sous-catégorie, catalogue publié complet, plus de flicker ni de polling.
 - Stats/analytics : historique organisateur par mois, pas d'échantillon partiel, repli JavaScript typé, billets uniques.
-- Build de preview frontend consigné comme réussi dans les commits de la branche ; pas rejoué lors de la fusion.
 
-### 2026-11-13 — Fusion `FRONTED-iA` → `Frontend-IA`
-- Ancêtre commun : `75a06f1`.
-- Conflits résolus :
-  - `src/components/BottomNav.tsx` : bouton Créer conservé à 44×44 px avec anneau de focus et `motion-reduce` (FRONTED-iA), en gardant les labels 11px, le dock 62px, le badge accessible et le `GlassPanel` déjà fusionnés automatiquement.
-  - `FRONTEND_MEMORY.md` : les deux journaux sont réunis ici.
-- `main` n'a pas été modifié.
-
-## Ouvert
-- Contrôle visuel du dock et du thème sombre « réduire la transparence » toujours à faire aux largeurs 320–1440.
-- Build, lint et typecheck de la fusion non exécutés tant qu'ils ne sont pas lancés.
+### 2026-11-13 — Fusion des historiques frontend
+- L'ancien journal documentait une fusion `FRONTED-iA` vers `FRONTEND-iA` et la PR #6.
+- La branche de travail exacte a été recréée depuis `main` au début de cette session, conformément à la consigne lorsque `FRONTEND-iA` est absente.
 
 
-### 2026-11-13 — Explorateur : catégories privées et chips horizontales
-- `src/screens/HomeScreen.tsx`: cartes de catégorie réduites (hauteur minimum 104px → 76px, icône 18px, libellé 11px) pour rendre la grille mobile plus équilibrée.
-- Les sous-catégories sont désormais des chips compactes défilables horizontalement dans la barre de sélection des résultats, alignées sur la même rangée que le bouton « Fermer ».
-- `src/constants/categories.ts`: la catégorie parent « Privé & Célébrations » est conservée et sa taxonomie enrichie en Mariages, Anniversaires, Cérémonies familiales, VIP privés et Célébrations.
-- Inspection Supabase : la table `public.events` ne possède pas de colonnes dédiées `main_category` / `subcategory`; l'architecture actuelle expose l'enrichissement via les métadonnées de description. Aucune migration ni mutation de base n'a été faite.
-- Commit UI `7ed5cbc`; commit taxonomie `67a5049`. Build, lint, typecheck et contrôle visuel navigateur non exécutés dans cette session.
-
-
-### 2026-11-13 — Dashboard global, grille 6 catégories et verre sombre
-- `src/screens/HomeScreen.tsx`: l'explorateur conserve les 6 catégories canoniques déjà présentes (Culture & Arts, Business & Pro, Nuit & Fêtes, Sports & Rencontres, Privé & Célébrations, Loisirs & Découvertes) et passe à une grille mobile 3 colonnes × 2 rangées ; tuiles min-height 84px.
-- `src/features/events/queries.ts`: le total utilisateurs ne vient plus de `profiles.count` (incomplet pour les comptes sans profil). Il est récupéré via `supabase.functions.invoke('platform-stats')`, dont la fonction Edge utilise `auth.admin.listUsers` côté serveur pour compter les comptes Auth, y compris les comptes invités représentés dans Auth. Aucune donnée personnelle n'est renvoyée au client.
-- Les statistiques signalent maintenant `isAvailable` ; en cas d'erreur de collecte, le dashboard affiche un tiret plutôt qu'un faux zéro.
-- `src/components/GbaigbanceStatsDashboard.tsx`: renforce le matériau Liquid Glass sombre (gradient violet plus translucide, bord supérieur lumineux, reflet spéculaire, ombres internes) et le contraste des KPI.
-- Diagnostic projet Supabase connecté : 8 événements, 6 artistes, 3 organisations, 0 profils, 0 billets et 0 compte `auth.users` dans ce projet. La capture montrant 4 utilisateurs indique probablement un projet Supabase différent utilisé par le déploiement ou un cache ; vérifier `VITE_SUPABASE_URL`/les variables Vercel avant de conclure sur les chiffres en production.
-- Commits directs sur `FRONTEND-iA` uniquement : `621c52c` (grille), `0955438` (agrégat Auth), `10aa579` (verre sombre), `99c41e8`, `2750e0f`, `e335d9b` (état indisponible), `c369a5d` (reflet verre). Aucune PR créée.
-- Relecture GitHub des fichiers modifiés effectuée. Build, lint, typecheck, exécution réelle de la fonction Edge et contrôle visuel navigateur non exécutés dans cette session.
-
-
-### 2026-11-13 — Assainissement des statistiques globales
-- `src/features/events/queries.ts`: `fetchPlatformStats()` ne fusionne plus `localStorage` avec les billets Supabase. La fonction délègue les KPI à un agrégateur serveur unique et renvoie `isAvailable: false` en cas d'échec, sans présenter les données locales comme des données de plateforme.
-- `supabase/functions/platform-stats/index.ts`: agrégateur global paginé (events, tickets, profiles, organizations, artists, ticket_options, Auth). La clé `service_role` reste côté Edge Function ; seuls des nombres et séries agrégées sont renvoyés. L'endpoint est public car la section « GBAIGBANCE en chiffres » est affichée publiquement ; `verify_jwt=false` est intentionnel, aucun email/nom/id n'est renvoyé.
-- Comptes : `totalUsers` compte les comptes Auth inscrits, en excluant les invitations de plateforme non acceptées (`invited_at` sans `confirmed_at`). Les profils sont comptés séparément ; `totalParticipantAccounts` ventile les comptes participants (rôle participant ou profil absent) ; `totalPendingPlatformInvitations` reste séparé.
-- Participants : `totalParticipants` additionne `events.attendees_count` pour événements publiés/terminés. Ce sont des participations cumulées déclarées par événement, pas des personnes uniques ; l'interface le précise. Les participants externes sans compte peuvent donc y figurer s'ils ont été enregistrés par le flux événementiel.
-- Billets : statuts comptés `active`, `valid`, `used`; annulations et remboursements sont séparés. Les unités vendues utilisent `ticket_options.quantity_sold` (repli sur lignes de billets si inventaire à zéro) ; revenus issus des montants `price_paid` des billets non annulés/non remboursés. Séries et répartitions sont globales.
-- `src/components/GbaigbanceStatsDashboard.tsx`: six KPI équilibrés (billets, ventes, comptes inscrits, participations cumulées, profils, événements actifs), grille 2 colonnes mobile / 3 colonnes desktop ; compte Auth distinct du profil et des participations.
-- Edge Function `platform-stats` déployée sur le projet connecté `lwwiolbofrqakvrdvbbj`, version 3, `verify_jwt=false`. Source du code versionnée sur `FRONTEND-iA`.
-- Vérification SQL du projet connecté : 8 événements au total, 0 événement actif, 0 compte Auth inscrit, 0 invitation plateforme en attente, 0 profil, 0 ligne ticket, 0 unité `quantity_sold`, 21 529 participations cumulées dans `attendees_count`. Ces chiffres sont atypiques et ne correspondent pas à la capture (4 utilisateurs/1 événement) : vérifier que l'URL Supabase utilisée par le déploiement preview correspond au projet connecté. Ne pas corriger/écraser ces compteurs sans audit événement par événement.
-- Migrations : l'historique du projet connecté ne contient pas la migration billetterie/refunds du 24 septembre ; les tables `payments` et `ticket_refunds` ne sont pas présentes dans le schéma réel. L'agrégateur reste compatible avec les tables existantes et n'invente pas de chiffre d'affaires via une table absente.
-- Validation : déploiement Edge Function confirmé version 3 ; requête SQL de contrôle effectuée ; fichiers relus sur la branche. Invocation de la fonction depuis un client, build/lint/typecheck et contrôle visuel navigateur non disponibles dans cette session. Aucun changement destructif ni modification de données historiques. Aucun PR créé.
-
-
-### 2026-11-13 — Blocage de synchronisation avec main
-- Contrôle de divergence : `FRONTEND-iA` est en avance de 51 commits et en retard de 8 commits sur `main` (ancêtre commun `8586ee9`).
-- PR temporaire #10 (`main` → `FRONTEND-iA`) créée uniquement pour tester une fusion simple ; GitHub a confirmé `mergeable_state=dirty` / `mergeable=false` (conflits). PR fermée sans fusion.
-- Aucun conflit n'a été résolu automatiquement ou par supposition. Conformément à la règle de sécurité, arrêt des modifications de code jusqu'à résolution manuelle des conflits et nouvelle comparaison des branches.
-- Cette session : aucune modification frontend ni backend. Build, lint, typecheck, tests et contrôle visuel non exécutés.
-- Prochaine étape : examiner les conflits entre les 8 commits de `main` et la branche, les résoudre explicitement, puis reprendre le chantier UI actif.
+### 2026-11-13 — Synchronisation de main vers FRONTEND-iA
+- Analyse des 8 commits manquants depuis `main` ; les modifications entrantes concernaient `FRONTEND_MEMORY.md`, `src/screens/EditEventScreen.tsx` et `src/screens/HomeScreen.tsx`.
+- Résolution documentée : `src/screens/HomeScreen.tsx` reprend la version main qui contient la grille catégories 2/3/5 colonnes, les tuiles compactes de 80px et la rangée horizontale de sous-catégories. `src/screens/EditEventScreen.tsx` conserve la version FRONTEND-iA, qui garde l'import `Trophy` nécessaire et le fallback de catégorie legacy. La mémoire reprend le journal main, corrige le nom exact de la branche et conserve le blocage précédent ainsi que sa résolution.
+- PR temporaire #10 fermée sans fusion ; elle n'a modifié aucune branche.
+- Merge commit créé avec deux parents (branche de travail et main) ; aucune réécriture d'historique ni force push.
+- Prochaine étape : valider build, lint, typecheck, tests et rendu responsive avant toute nouvelle retouche UI.
