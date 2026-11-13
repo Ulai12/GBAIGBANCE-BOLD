@@ -67,29 +67,37 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     isAvailable: false,
   };
 
-  if (!isSupabaseConfigured) {
-    console.error('[platform-stats] Supabase client is not configured');
-    return unavailable;
-  }
+  if (!isSupabaseConfigured || typeof fetch !== 'function') return unavailable;
 
   try {
-    // L'agrégation est exécutée par PostgreSQL : aucune pagination client ni dépendance
-    // à une Edge Function distincte pour obtenir les statistiques globales.
-    const { data, error } = await supabase.rpc('get_platform_stats');
-    if (error) throw error;
-    if (!data || typeof data !== 'object' || typeof data.totalUsers !== 'number' ||
-        typeof data.totalTickets !== 'number' || typeof data.totalEvents !== 'number' ||
-        data.isAvailable !== true) {
-      throw new Error('La fonction SQL get_platform_stats a renvoyé une réponse invalide');
+    // Source unique : l'API serveur agrège les vraies lignes Supabase (tickets, events,
+    // profils et inventaire). Ne pas basculer vers l'ancien RPC SQL qui renvoie des
+    // montants nuls et ne reflète pas les ventes multi-quantités.
+    const response = await fetch('/api/platform-stats', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) return unavailable;
+
+    const data = (await response.json()) as Partial<PlatformStats>;
+    if (
+      !data ||
+      data.isAvailable !== true ||
+      typeof data.totalUsers !== 'number' ||
+      typeof data.totalTickets !== 'number' ||
+      typeof data.totalEvents !== 'number' ||
+      typeof data.totalRevenue !== 'number' ||
+      !Array.isArray(data.categoryShares) ||
+      !Array.isArray(data.ticketsTimeline) ||
+      !Array.isArray(data.eventsTimeline)
+    ) {
+      return unavailable;
     }
 
-    return {
-      ...unavailable,
-      ...data,
-      isAvailable: true,
-    } as PlatformStats;
-  } catch (error) {
-    console.error('[platform-stats] SQL RPC unavailable:', error);
+    return { ...unavailable, ...data, isAvailable: true } as PlatformStats;
+  } catch {
+    // En cas d'indisponibilité réelle, afficher l'état indisponible plutôt que des chiffres inventés.
     return unavailable;
   }
 }
