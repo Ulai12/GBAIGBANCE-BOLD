@@ -5,10 +5,6 @@ import * as Sentry from '@sentry/react';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
-import { initGbaCore } from '@/lib/rust-core';
-
-// Charge le moteur Rust avant les premiers calculs de stats.
-void initGbaCore();
 
 // Register Service Worker for PWA with prompt update
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
