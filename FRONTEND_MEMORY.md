@@ -7,6 +7,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
 - Branche d'écriture exclusive : `Frontend-IA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
 - Le 2026-11-13, la branche exacte `Frontend-IA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
+- PR de suivi ouverte : [#9 — Frontend: équilibrer les catégories sur mobile](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/9), cible `main`, jamais fusionnée par cet agent.
 - Lire ce fichier en entier au début de chaque session et reprendre la tâche active.
 - Le code distant et l'état Git font autorité si cette mémoire diverge.
 - Ne pas modifier `package.json`, les lockfiles ou les dépendances sans autorisation explicite.
