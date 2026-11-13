@@ -52,3 +52,13 @@ Les branches `Frontend-IA` et `FRONTED-iA` ont été fusionnées le 2026-11-13 d
 - `src/constants/categories.ts`: la catégorie parent « Privé & Célébrations » est conservée et sa taxonomie enrichie en Mariages, Anniversaires, Cérémonies familiales, VIP privés et Célébrations.
 - Inspection Supabase : la table `public.events` ne possède pas de colonnes dédiées `main_category` / `subcategory`; l'architecture actuelle expose l'enrichissement via les métadonnées de description. Aucune migration ni mutation de base n'a été faite.
 - Commit UI `7ed5cbc`; commit taxonomie `67a5049`. Build, lint, typecheck et contrôle visuel navigateur non exécutés dans cette session.
+
+
+### 2026-11-13 — Dashboard global, grille 6 catégories et verre sombre
+- `src/screens/HomeScreen.tsx`: l'explorateur conserve les 6 catégories canoniques déjà présentes (Culture & Arts, Business & Pro, Nuit & Fêtes, Sports & Rencontres, Privé & Célébrations, Loisirs & Découvertes) et passe à une grille mobile 3 colonnes × 2 rangées ; tuiles min-height 84px.
+- `src/features/events/queries.ts`: le total utilisateurs ne vient plus de `profiles.count` (incomplet pour les comptes sans profil). Il est récupéré via `supabase.functions.invoke('platform-stats')`, dont la fonction Edge utilise `auth.admin.listUsers` côté serveur pour compter les comptes Auth, y compris les comptes invités représentés dans Auth. Aucune donnée personnelle n'est renvoyée au client.
+- Les statistiques signalent maintenant `isAvailable` ; en cas d'erreur de collecte, le dashboard affiche un tiret plutôt qu'un faux zéro.
+- `src/components/GbaigbanceStatsDashboard.tsx`: renforce le matériau Liquid Glass sombre (gradient violet plus translucide, bord supérieur lumineux, reflet spéculaire, ombres internes) et le contraste des KPI.
+- Diagnostic projet Supabase connecté : 8 événements, 6 artistes, 3 organisations, 0 profils, 0 billets et 0 compte `auth.users` dans ce projet. La capture montrant 4 utilisateurs indique probablement un projet Supabase différent utilisé par le déploiement ou un cache ; vérifier `VITE_SUPABASE_URL`/les variables Vercel avant de conclure sur les chiffres en production.
+- Commits directs sur `FRONTEND-iA` uniquement : `621c52c` (grille), `0955438` (agrégat Auth), `10aa579` (verre sombre), `99c41e8`, `2750e0f`, `e335d9b` (état indisponible), `c369a5d` (reflet verre). Aucune PR créée.
+- Relecture GitHub des fichiers modifiés effectuée. Build, lint, typecheck, exécution réelle de la fonction Edge et contrôle visuel navigateur non exécutés dans cette session.
