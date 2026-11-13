@@ -54,6 +54,7 @@ export interface OrganizerPerformanceData {
 interface OrganizerMetricsChartProps {
   data: OrganizerPerformanceData;
   loading?: boolean;
+  error?: string | null;
   timeRange: '7d' | '30d' | 'all';
   onTimeRangeChange: (range: '7d' | '30d' | 'all') => void;
 }
@@ -63,6 +64,7 @@ type MetricMode = 'sales' | 'revenue' | 'breakdown';
 export function OrganizerMetricsChart({
   data,
   loading = false,
+  error = null,
   timeRange,
   onTimeRangeChange,
 }: OrganizerMetricsChartProps) {
@@ -248,6 +250,12 @@ export function OrganizerMetricsChart({
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
             <div className="w-6 h-6 rounded-full border-2 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" />
             <span>Chargement des métriques...</span>
+          </div>
+        ) : error ? (
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] px-5 text-center dark:bg-amber-400/[0.06]">
+            <Info className="mb-2 h-5 w-5 text-amber-600 dark:text-amber-300" />
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">Statistiques indisponibles</p>
+            <p className="mt-1 max-w-sm text-xs leading-relaxed text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : metricMode === 'breakdown' ? (
           /* Bar Chart for Ticket Categories */
