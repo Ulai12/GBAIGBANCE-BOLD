@@ -71,7 +71,7 @@ const SEARCH_WASM_THRESHOLD = 100;
 function normalizeSearchText(value: string | null | undefined): string {
   return (value || '')
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase('fr');
 }
 
@@ -94,6 +94,7 @@ function rankExploreResults(events: Event[], query: string): Event[] {
         (description.includes(needle) ? 5 : 0);
       return { event, index, score };
     })
+    .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map(({ event }) => event);
 }
@@ -179,12 +180,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             const byId = new Map(result.map((event) => [event.id, event]));
             result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
           } else {
-            result = rankExploreResults(result, q);
+            const localRanked = rankExploreResults(result, q);
+            result = localRanked.length > 0 ? localRanked : applyFilters(rawSql);
           }
         } else {
           // Pour les petits catalogues, le tri JavaScript évite le téléchargement
           // et l'initialisation WASM pour une recherche de quelques dizaines d'items.
-          result = rankExploreResults(result, q);
+          const localRanked = rankExploreResults(result, q);
+          result = localRanked.length > 0 ? localRanked : applyFilters(rawSql);
         }
       }
       if (requestId !== eventRequestRef.current) return;
