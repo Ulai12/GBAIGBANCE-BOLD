@@ -44,3 +44,11 @@ Les branches `Frontend-IA` et `FRONTED-iA` ont été fusionnées le 2026-11-13 d
 ## Ouvert
 - Contrôle visuel du dock et du thème sombre « réduire la transparence » toujours à faire aux largeurs 320–1440.
 - Build, lint et typecheck de la fusion non exécutés tant qu'ils ne sont pas lancés.
+
+
+### 2026-11-13 — Explorateur : catégories privées et chips horizontales
+- `src/screens/HomeScreen.tsx`: cartes de catégorie réduites (hauteur minimum 104px → 76px, icône 18px, libellé 11px) pour rendre la grille mobile plus équilibrée.
+- Les sous-catégories sont désormais des chips compactes défilables horizontalement dans la barre de sélection des résultats, alignées sur la même rangée que le bouton « Fermer ».
+- `src/constants/categories.ts`: la catégorie parent « Privé & Célébrations » est conservée et sa taxonomie enrichie en Mariages, Anniversaires, Cérémonies familiales, VIP privés et Célébrations.
+- Inspection Supabase : la table `public.events` ne possède pas de colonnes dédiées `main_category` / `subcategory`; l'architecture actuelle expose l'enrichissement via les métadonnées de description. Aucune migration ni mutation de base n'a été faite.
+- Commit UI `7ed5cbc`; commit taxonomie `67a5049`. Build, lint, typecheck et contrôle visuel navigateur non exécutés dans cette session.
