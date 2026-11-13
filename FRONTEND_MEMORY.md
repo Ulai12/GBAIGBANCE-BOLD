@@ -118,3 +118,10 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ### 2026-11-13 — Synchronisation
 - Merge `main` dans `FRONTEND-iA` (`989a5bd`) après résolution documentée de `HomeScreen.tsx` et `EditEventScreen.tsx`.
 - PR #10 fermée sans fusion. PR #11 ouverte en brouillon puis fusionnée dans `main` par le propriétaire (`b9a4b3f`).
+
+### 2026-11-13 — Diagnostic et amélioration statistiques
+- `GbaigbanceStatsDashboard.tsx`: ajout du mode « Tout » pour explorer l'historique mensuel complet (avec agrégation frontend depuis tickets/eventsTimeline) et du KPI « Vues cumulées » alimenté par `totalViews`.
+- `HomeScreen.tsx`: récupération de `platformStats` séparée du Promise.all de chargement des contenus, afin qu'un échec sur une autre requête d'accueil ne bloque plus l'actualisation de la section statistiques.
+- `OrganizerDashboardScreen.tsx`: plage initiale passée à « Tout » pour éviter le graphique vide par défaut sur les ventes plus anciennes que 7 jours.
+- Diagnostic Supabase read-only : 8 événements (tous publiés, 0 actifs à l'heure de l'inspection), 3 organisations, 6 artistes, 0 lignes tickets, 0 ticket_options, 0 profiles, somme attendees_count 21 529, somme views_count 145 000. Edge function `platform-stats` active, réponses HTTP 200 observées dans les logs.
+- Vérifications build/typecheck et rendu navigateur : non exécutées dans cette session. Commit direct sur `FRONTEND-iA` : `cf55a509`, `be4d5075`, `1ec778e6`.
