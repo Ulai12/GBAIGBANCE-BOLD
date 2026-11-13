@@ -67,6 +67,20 @@ describe('withinRadius', () => {
     assert.ok(rows[0].distance_km < 15);
   });
 
+  it('ne renvoie rien plutôt que le catalogue brut hors rayon', () => {
+    const rows = withinRadius(
+      [
+        { id: 'accra', latitude: 5.6, longitude: -0.19 },
+        { id: 'dakar', latitude: 14.69, longitude: -17.45 },
+      ],
+      6.1375,
+      1.2123,
+      15,
+      8,
+    );
+    assert.deepEqual(rows, []);
+  });
+
   it('mesure une distance courte autour de Lomé', () => {
     const km = haversineKm(6.1375, 1.2123, 6.17, 1.23);
     assert.ok(km > 0 && km < 10);

@@ -3,11 +3,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
 import {
   catalogDateWindow,
   clampLimit,
+  clampRadiusKm,
   formatEventPrice,
   normalizeCategory,
   sanitizeSearchTerm,
   ticketStatusLabel,
   VISIBLE_TICKET_STATUSES,
+  withinRadius,
 } from '../_shared/aiCatalog.ts';
 
 // ====================================================================
@@ -408,13 +410,36 @@ async function executeToolCall(
       case 'get_nearby_events': {
         const lat = Number(args.lat);
         const lng = Number(args.lng);
-        const radiusKm = Math.min(Math.max(Number(args.radius_km) || 15, 1), 25);
-        const limit = Math.min(Math.max(Number(args.limit) || 6, 1), 8);
+        const radiusKm = clampRadiusKm(args.radius_km);
+        const limit = clampLimit(args.limit);
 
-        if (isNaN(lat) || isNaN(lng)) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           warn(reqId, 'TOOL:get_nearby_events', 'Invalid GPS coordinates provided.', { lat, lng });
           return { error: 'Coordonnées GPS invalides.' };
         }
+
+        const toNearbyCard = (ev: {
+          id: string;
+          title: string;
+          category: string;
+          starts_at: string;
+          location_name: string;
+          city: string;
+          price_min: number;
+          currency: string;
+          distance_km: number;
+        }) => {
+          turnEventIds.add(ev.id);
+          return {
+            id: ev.id,
+            title: ev.title,
+            category: ev.category,
+            starts_at: ev.starts_at,
+            location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.replace(/^,\s*/, ''),
+            price: formatEventPrice(ev.price_min, ev.currency),
+            distance: `${ev.distance_km} km`,
+          };
+        };
 
         log(reqId, 'TOOL:get_nearby_events', `Executing Haversine nearby lookup (lat: ${lat}, lng: ${lng}, radius: ${radiusKm}km)...`);
 
@@ -426,67 +451,32 @@ async function executeToolCall(
         });
 
         const dur = Math.round(performance.now() - toolStart);
-        if (error) {
-          warn(reqId, 'TOOL:get_nearby_events', `RPC get_nearby_events_rpc failed (${dur}ms). Triggering fallback query. Error: ${error.message}`);
-          const { data: fallbackEvents } = await userClient
-            .from('events')
-            .select('id, title, category, starts_at, ends_at, location_name, city, country, price_min, price_max, currency')
-            .eq('status', 'published')
-            .limit(limit);
-
-          const list = (fallbackEvents || []).map(
-            (ev: {
-              id: string;
-              title: string;
-              category: string;
-              starts_at: string;
-              location_name: string;
-              city: string;
-              price_min: number;
-              currency: string;
-            }) => {
-              turnEventIds.add(ev.id);
-              return {
-                id: ev.id,
-                title: ev.title,
-                category: ev.category,
-                starts_at: ev.starts_at,
-                location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-                price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
-              };
-            }
-          );
-          log(reqId, 'TOOL:get_nearby_events', `Fallback returned ${list.length} event(s)`);
-          return { count: list.length, events: list };
+        if (!error && Array.isArray(data)) {
+          const eventsList = data.map(toNearbyCard);
+          log(reqId, 'TOOL:get_nearby_events', `Found ${eventsList.length} nearby event(s) in ${dur}ms`);
+          return { count: eventsList.length, events: eventsList, radius_km: radiusKm };
         }
 
-        const eventsList = (data || []).map(
-          (ev: {
-            id: string;
-            title: string;
-            category: string;
-            starts_at: string;
-            location_name: string;
-            city: string;
-            price_min: number;
-            currency: string;
-            distance_km: number;
-          }) => {
-            turnEventIds.add(ev.id);
-            return {
-              id: ev.id,
-              title: ev.title,
-              category: ev.category,
-              starts_at: ev.starts_at,
-              location: `${ev.location_name || ''}, ${ev.city || 'Lomé'}`.trim(),
-              price: ev.price_min === 0 ? 'Gratuit' : `${ev.price_min} ${ev.currency || 'FCFA'}`,
-              distance: `${ev.distance_km} km`,
-            };
-          }
-        );
+        warn(reqId, 'TOOL:get_nearby_events', `RPC get_nearby_events_rpc failed (${dur}ms). Haversine fallback. Error: ${error?.message || 'réponse invalide'}`);
+        const { data: fallbackEvents, error: fallbackError } = await userClient
+          .from('events')
+          .select('id, title, category, starts_at, location_name, city, price_min, currency, latitude, longitude')
+          .eq('status', 'published')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .gte('starts_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+          .order('starts_at', { ascending: true })
+          .limit(80);
 
-        log(reqId, 'TOOL:get_nearby_events', `✅ Found ${eventsList.length} nearby event(s) in ${dur}ms`);
-        return { count: eventsList.length, events: eventsList };
+        if (fallbackError) {
+          warn(reqId, 'TOOL:get_nearby_events', `Haversine fallback query failed: ${fallbackError.message}`);
+          return { error: 'Impossible de charger les événements à proximité.', radius_km: radiusKm, count: 0, events: [] };
+        }
+
+        const nearby = withinRadius(fallbackEvents || [], lat, lng, radiusKm, limit);
+        const eventsList = nearby.map(toNearbyCard);
+        log(reqId, 'TOOL:get_nearby_events', `Haversine fallback kept ${eventsList.length} event(s) within ${radiusKm}km`);
+        return { count: eventsList.length, events: eventsList, radius_km: radiusKm, source: 'haversine-fallback' };
       }
 
       // --------------------------------------------------------------
