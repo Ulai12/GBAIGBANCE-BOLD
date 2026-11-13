@@ -675,72 +675,76 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-[1.35rem] px-3 py-4 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
+                className={`flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] shadow-purple text-white'
                     : 'bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 text-[#6600FF] dark:text-purple-300'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
-                <span className={`text-xs text-center font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
+                <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
+                <span className={`text-[11px] leading-tight text-center font-bold ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
                   {main.shortLabel}
                 </span>
               </button>
             );
           })}
         </div>
-        {selectedMainCategory && (
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
-              aria-pressed={selectedCategory === selectedMainCategory.id}
-              onClick={() => setSelectedCategory(selectedMainCategory.id)}
-              className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                selectedCategory === selectedMainCategory.id
-                  ? 'bg-[#6600FF] text-white'
-                  : 'bg-black/[0.04] dark:bg-white/[0.08] text-gray-700 dark:text-gray-200'
-              }`}
-            >
-              Toutes
-            </button>
-            {selectedMainCategory.subcategories.map((sub) => {
-              const isSelected = selectedCategory === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                  className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                    isSelected
-                      ? 'bg-[#6600FF] text-white'
-                      : 'bg-black/[0.04] dark:bg-white/[0.08] text-gray-700 dark:text-gray-200'
-                  }`}
-                >
-                  {sub.shortLabel}
-                </button>
-              );
-            })}
-          </div>
-        )}
+
       </section>
 
       {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
       {selectedCategory && (
         <section className="mt-6 px-5 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+          <div className="mb-3 space-y-2.5">
+            <h2 className="text-lg font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
                 ? selectedMainCategory.shortLabel
                 : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
             </h2>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-3 py-1.5 rounded-full cursor-pointer"
-            >
-              Fermer
-            </button>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+                aria-label="Sous-catégories"
+              >
+                <button
+                  type="button"
+                  aria-pressed={selectedCategory === selectedMainCategory?.id}
+                  onClick={() => setSelectedCategory(selectedMainCategory?.id || null)}
+                  className={`min-h-9 shrink-0 snap-start rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                    selectedCategory === selectedMainCategory?.id
+                      ? 'border-[#6600FF] bg-[#6600FF] text-white'
+                      : 'border-black/5 bg-black/[0.04] text-gray-700 dark:border-white/10 dark:bg-white/[0.08] dark:text-gray-200'
+                  }`}
+                >
+                  Toutes
+                </button>
+                {selectedMainCategory?.subcategories.map((sub) => {
+                  const isSelected = selectedCategory === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                      className={`min-h-9 shrink-0 snap-start rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                        isSelected
+                          ? 'border-[#6600FF] bg-[#6600FF] text-white'
+                          : 'border-black/5 bg-black/[0.04] text-gray-700 dark:border-white/10 dark:bg-white/[0.08] dark:text-gray-200'
+                      }`}
+                    >
+                      {sub.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className="min-h-9 shrink-0 rounded-xl bg-[#6600FF]/10 px-3 py-1.5 text-[11px] font-bold text-[#6600FF] cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
           {categoryLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
