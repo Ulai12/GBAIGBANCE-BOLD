@@ -100,6 +100,18 @@ function toLocalDateTimeInput(dateStr?: string | null): string {
 // Category Icon renderer with visual fallback
 function getCategoryIcon(value: string) {
   switch (value) {
+    case 'cultural_artistic':
+      return <Palette className="w-5 h-5" />;
+    case 'commercial_professional':
+      return <Landmark className="w-5 h-5" />;
+    case 'festive_nightlife':
+      return <PartyPopper className="w-5 h-5" />;
+    case 'sports':
+      return <Trophy className="w-5 h-5" />;
+    case 'private_family':
+      return <Lock className="w-5 h-5" />;
+    case 'leisure_discovery':
+      return <Sparkles className="w-5 h-5" />;
     case 'concert':
       return <Music className="w-5 h-5" />;
     case 'festival':
