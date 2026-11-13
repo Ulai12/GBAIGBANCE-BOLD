@@ -597,7 +597,7 @@ export function GbaigbanceStatsDashboard({
           </p>
         </button>
 
-        {/* Revenus - Montant total des ventes de billets dans l'app */}
+        {/* Revenus - Paiements confirmés uniquement de billets dans l'app */}
         <button
           type="button"
           onClick={() =>
@@ -649,7 +649,7 @@ export function GbaigbanceStatsDashboard({
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
             {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.views)}
           </p>
-          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total des vues sur les événements</p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Visiteurs uniques par événement et par jour</p>
         </div>
 
         {/* Comptes Auth : tous les rôles, participants et organisateurs compris. */}
@@ -683,7 +683,7 @@ export function GbaigbanceStatsDashboard({
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
             {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
           </p>
-          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total déclaré par les événements · non dédupliqué</p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Billets valides enregistrés</p>
         </div>
 
         {/* Profils : distincts des comptes Auth. */}
@@ -728,7 +728,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Événements créés en cours
+            Événements publiés non terminés
           </p>
         </button>
 
