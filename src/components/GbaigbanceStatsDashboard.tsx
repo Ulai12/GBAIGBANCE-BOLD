@@ -512,7 +512,7 @@ Données synchronisées en direct
       </div>
 
       {/* Cartes KPI */}
-      <div className="mb-5 grid grid-cols-2 gap-3 px-4 sm:px-5 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 px-4 sm:px-5 lg:grid-cols-3">
 
         {/* Billets - Total global acheté par tout le monde */}
         <button
