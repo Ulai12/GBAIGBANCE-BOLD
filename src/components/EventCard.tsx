@@ -64,6 +64,9 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
   const isCancelled = event.status === 'cancelled';
   const isPostponed = event.status === 'postponed';
   const isHot = (event.attendees_count || 0) >= 500 || (event.likes_count || 0) >= 200;
+  const coverSrc = event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title);
+  // Les PNG conservent leur canal alpha : on les affiche en entier sur un fond dédié.
+  const isTransparentAsset = /\\.png(?:$|[?#])/i.test(coverSrc);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -80,8 +83,9 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
   return (
     <>
       <motion.article
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+        // Pas d'animation d'entrée par carte : évite les pics de travail sur les grilles mobiles.
+        initial={false}
+        animate={undefined}
         whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.012 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         onMouseEnter={prefetchEventDetail}
@@ -96,18 +100,18 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
       >
         {/* IMAGE */}
         <motion.div
-          className="absolute inset-0 bg-neutral-200 dark:bg-[#1E172E]"
-          whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+          className={`absolute inset-0 ${isTransparentAsset ? 'bg-gradient-to-br from-neutral-100 via-neutral-200 to-neutral-300 dark:from-[#30283D] dark:via-[#211B30] dark:to-[#15111F]' : 'bg-neutral-200 dark:bg-[#1E172E]'}`}
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.035 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
           <SmartImage
-            src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
+            src={coverSrc}
             alt={event.title}
             fallbackSrc={getDefaultEventCover(event.id, event.category, event.title)}
             fallbackText={event.title}
             sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 280px"
             widths={[280, 380, 560, 720]}
-            className="h-full w-full object-cover"
+            className={`h-full w-full ${isTransparentAsset ? 'object-contain p-2.5' : 'object-cover'}`}
           />
         </motion.div>
 
@@ -124,7 +128,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
               <div className="
                 inline-flex h-7 min-w-0 max-w-[calc(100%-4.5rem)] 
                 items-center gap-1.5 rounded-full 
-                border border-white/20 bg-black/25 
+                border border-white/25 bg-black/65 shadow-sm 
                 px-2 backdrop-blur-md
               ">
                 <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
@@ -145,7 +149,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
                   onClick={handleShare}
                   className="
                     flex h-7 w-7 shrink-0 items-center justify-center 
-                    rounded-full border border-white/20 bg-black/35 
+                    rounded-full border border-white/30 bg-black/65 shadow-md 
                     backdrop-blur-md transition-all hover:bg-white/25 active:scale-90 text-white shadow-xs
                   "
                 >
@@ -239,8 +243,8 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
             {/* ATTENDEES */}
             <div className="
               flex h-6 shrink-0 items-center gap-1 
-              rounded-full border border-white/10 bg-white/10 
-              px-2 backdrop-blur-sm
+              rounded-full border border-white/25 bg-black/65 
+              px-2 backdrop-blur-md shadow-sm
             ">
               <Users className="h-3 w-3 text-white/70" />
               <span className="text-[10px] font-semibold text-white/90">
