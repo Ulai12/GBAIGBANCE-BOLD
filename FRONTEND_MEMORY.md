@@ -125,3 +125,11 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - `OrganizerDashboardScreen.tsx`: plage initiale passée à « Tout » pour éviter le graphique vide par défaut sur les ventes plus anciennes que 7 jours.
 - Diagnostic Supabase read-only : 8 événements (tous publiés, 0 actifs à l'heure de l'inspection), 3 organisations, 6 artistes, 0 lignes tickets, 0 ticket_options, 0 profiles, somme attendees_count 21 529, somme views_count 145 000. Edge function `platform-stats` active, réponses HTTP 200 observées dans les logs.
 - Vérifications build/typecheck et rendu navigateur : non exécutées dans cette session. Commit direct sur `FRONTEND-iA` : `cf55a509`, `be4d5075`, `1ec778e6`.
+
+
+### 2026-11-13 — Exclusion des données de seed des statistiques publiques
+- Correction du diagnostic précédent : les 21 529 participations et 145 000 vues calculées sur Supabase étaient des valeurs fictives provenant de la seed, et ne doivent pas être présentées comme engagement réel.
+- Source démontrée : `supabase/migrations/20260725074839_gbaigbance_seed_data.sql` insère 8 événements avec IDs `e1000000-…`, nombres de vues/participants/likes gonflés ; la migration `20260909120000_gbaigbance_cleanup_seed_and_gemini_config.sql` prévoyait explicitement leur suppression, mais la base active les contient encore (8/8 events, 6 artistes et 3 organisations de seed ; 0 événement non-seed).
+- `supabase/functions/platform-stats/index.ts`: filtrage des événements, billets/options reliés aux événements seed, artistes et organisations de démonstration avant calcul des totaux et timelines. Aucun enregistrement de base supprimé.
+- Edge Function `platform-stats` déployée sur Supabase version 4, commit GitHub `f515bb0ef1c3a1082a15cce74b3056361755920e` (branche `FRONTEND-iA`). Pas de vérification runtime d'invocation effectuée après déploiement dans cette session.
+- Les stats publiques deviennent propres à la seed exclusion, mais les données d'activité de vrais événements doivent toujours provenir de compteurs réellement générés par les actions app; les totaux attendees_count ne sont pas considérés comme fiables par défaut pour ces événements seed.
