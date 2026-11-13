@@ -23,7 +23,11 @@ export type SubCategoryId =
   | 'competitions_matchs'
   | 'fan_zones'
   // Événements privés et familiaux
-  | 'celebrations_personnelles';
+  | 'celebrations_personnelles'
+  | 'mariages_receptions'
+  | 'anniversaires'
+  | 'ceremonies_familiales'
+  | 'evenements_vip_prives';
 
 export interface SubCategoryDefinition {
   id: SubCategoryId;
@@ -199,11 +203,51 @@ export const MAIN_CATEGORIES: MainCategoryDefinition[] = [
         id: 'celebrations_personnelles',
         mainCategoryId: 'private_family',
         label: 'Célébrations personnelles',
-        shortLabel: 'Mariages & Anniversaires',
-        description: "Mariages, anniversaires, fêtes familiales ou cérémonies privées.",
+        shortLabel: 'Célébrations',
+        description: "Événements personnels organisés dans un cadre privé.",
         defaultLegacyCategory: 'private',
         iconName: 'Cake',
-        tags: ['Mariage', 'Anniversaire', 'Fête de famille', 'Baptême', 'Cérémonie privée'],
+        tags: ['Célébration personnelle', 'Fête privée'],
+      },
+      {
+        id: 'mariages_receptions',
+        mainCategoryId: 'private_family',
+        label: 'Mariages & Réceptions',
+        shortLabel: 'Mariages',
+        description: "Mariages, réceptions et fêtes de mariage réservées aux invités.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Heart',
+        tags: ['Mariage', 'Réception de mariage', 'Fiancailles', 'Wedding'],
+      },
+      {
+        id: 'anniversaires',
+        mainCategoryId: 'private_family',
+        label: 'Anniversaires & Fêtes',
+        shortLabel: 'Anniversaires',
+        description: "Anniversaires et fêtes privées entre proches.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Gift',
+        tags: ['Anniversaire', 'Birthday', 'Fête privée'],
+      },
+      {
+        id: 'ceremonies_familiales',
+        mainCategoryId: 'private_family',
+        label: 'Cérémonies familiales',
+        shortLabel: 'Cérémonies',
+        description: "Baptêmes, cérémonies traditionnelles et rassemblements familiaux privés.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Users',
+        tags: ['Baptême', 'Cérémonie familiale', 'Tradition', 'Fête de famille'],
+      },
+      {
+        id: 'evenements_vip_prives',
+        mainCategoryId: 'private_family',
+        label: 'Événements VIP privés',
+        shortLabel: 'VIP privés',
+        description: "Rencontres privées sur invitation, événements VIP et réceptions intimistes.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Lock',
+        tags: ['VIP', 'Invitation', 'Lounge privé', 'Réception privée'],
       },
     ],
   },
