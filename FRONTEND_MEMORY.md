@@ -75,3 +75,11 @@ Les branches `Frontend-IA` et `FRONTED-iA` ont été fusionnées le 2026-11-13 d
 - Vérification SQL du projet connecté : 8 événements au total, 0 événement actif, 0 compte Auth inscrit, 0 invitation plateforme en attente, 0 profil, 0 ligne ticket, 0 unité `quantity_sold`, 21 529 participations cumulées dans `attendees_count`. Ces chiffres sont atypiques et ne correspondent pas à la capture (4 utilisateurs/1 événement) : vérifier que l'URL Supabase utilisée par le déploiement preview correspond au projet connecté. Ne pas corriger/écraser ces compteurs sans audit événement par événement.
 - Migrations : l'historique du projet connecté ne contient pas la migration billetterie/refunds du 24 septembre ; les tables `payments` et `ticket_refunds` ne sont pas présentes dans le schéma réel. L'agrégateur reste compatible avec les tables existantes et n'invente pas de chiffre d'affaires via une table absente.
 - Validation : déploiement Edge Function confirmé version 3 ; requête SQL de contrôle effectuée ; fichiers relus sur la branche. Invocation de la fonction depuis un client, build/lint/typecheck et contrôle visuel navigateur non disponibles dans cette session. Aucun changement destructif ni modification de données historiques. Aucun PR créé.
+
+
+### 2026-11-13 — Blocage de synchronisation avec main
+- Contrôle de divergence : `FRONTEND-iA` est en avance de 51 commits et en retard de 8 commits sur `main` (ancêtre commun `8586ee9`).
+- PR temporaire #10 (`main` → `FRONTEND-iA`) créée uniquement pour tester une fusion simple ; GitHub a confirmé `mergeable_state=dirty` / `mergeable=false` (conflits). PR fermée sans fusion.
+- Aucun conflit n'a été résolu automatiquement ou par supposition. Conformément à la règle de sécurité, arrêt des modifications de code jusqu'à résolution manuelle des conflits et nouvelle comparaison des branches.
+- Cette session : aucune modification frontend ni backend. Build, lint, typecheck, tests et contrôle visuel non exécutés.
+- Prochaine étape : examiner les conflits entre les 8 commits de `main` et la branche, les résoudre explicitement, puis reprendre le chantier UI actif.
