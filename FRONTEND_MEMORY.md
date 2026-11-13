@@ -36,7 +36,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 
 **Dernière action :** commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a` — `Improve responsive proportions of home category navigation`. Relecture distante réussie sur `Frontend-IA` : `src/screens/HomeScreen.tsx` est passé de 1 087 à 1 091 lignes (47 155 à 47 974 caractères) ; contenu attendu retrouvé, aucune troncature, aucun fichier raccourci.
 
-**Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle ; ne pas commencer un autre chantier avant validation ou blocage documenté.
+**Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
 
 ## Design system — décisions à préserver
 - Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`.
@@ -73,6 +73,9 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Protocole de vérification distant appliqué au commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
 
 ## Vérifications
+- **Session du 2026-11-13 (reprise) :** branche `Frontend-IA` présente ; comparaison `main...Frontend-IA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
+- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `Frontend-IA`.
+- **Non vérifié :** build, lint, typecheck, tests et rendu navigateur lors de cette reprise. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine ; aucun environnement local de build n'est fourni par le connecteur GitHub.
 - **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `Frontend-IA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
 - **Vérifié :** taille du fichier augmentée de 819 caractères et de 4 lignes ; aucune diminution ni référence d'espace réservé.
 - **Non vérifié :** build, lint, typecheck, tests automatisés et rendu navigateur ; le connecteur GitHub distant ne fournit pas ici un environnement d'exécution frontend.
