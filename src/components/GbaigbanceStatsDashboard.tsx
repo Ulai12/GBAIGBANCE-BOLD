@@ -85,6 +85,7 @@ export function GbaigbanceStatsDashboard({
       attendees: platformStats?.totalParticipants ?? 0,
       users: platformStats?.totalUsers ?? 0,
       profiles: platformStats?.totalProfiles ?? 0,
+      participantAccounts: platformStats?.totalParticipantAccounts ?? 0,
       events: platformStats?.totalEvents ?? 0,
     };
   }, [platformStats]);
@@ -602,7 +603,7 @@ Données synchronisées en direct
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Tous les comptes Auth
+            {platformStats?.isAvailable === false || !platformStats ? 'Comptes indisponibles' : `${formatNumber(totals.participantAccounts)} comptes participants`}
           </p>
         </div>
 
