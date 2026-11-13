@@ -34,7 +34,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - `src/screens/HomeScreen.tsx` — section « Explorer par catégorie ».
 - `src/constants/categories.ts` — taxonomie partagée, consultée sans modification.
 
-**Dernière action :** commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a` — `Improve responsive proportions of home category navigation`. Relecture distante réussie sur `Frontend-IA` : `src/screens/HomeScreen.tsx` est passé de 1 087 à 1 091 lignes (47 155 à 47 974 caractères) ; contenu attendu retrouvé, aucune troncature, aucun fichier raccourci.
+**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...Frontend-IA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
 
 **Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
 
