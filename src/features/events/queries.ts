@@ -31,6 +31,7 @@ export interface PlatformStats {
     price_paid: number;
     event_id: string;
   }>;
+  isAvailable?: boolean;
   eventsTimeline: Array<{
     id: string;
     starts_at_ms: number;
@@ -85,7 +86,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   }
 
   try {
-    const [rawEvents, artistsCount, orgsCount, rawTickets, profilesRes] = await Promise.all([
+    const [rawEvents, artistsCount, orgsCount, rawTickets, platformAggregate] = await Promise.all([
       selectPages<Event>((from, to) =>
         supabase
           .from('events')
@@ -101,12 +102,18 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
           .select('id, price_paid, status, created_at, event_id')
           .range(from, to)
       ),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.functions.invoke('platform-stats'),
     ]);
 
     const events = rawEvents.filter(isRealEvent);
     const activeIds = new Set(events.filter((e) => isEventActive(e) && !isEventTerminated(e)).map((e) => e.id));
-    const users = profilesRes.count ?? 0;
+    if (platformAggregate.error) throw platformAggregate.error;
+    const aggregateData = platformAggregate.data as { totalUsers?: number } | null;
+    if (!aggregateData || typeof aggregateData.totalUsers !== 'number') {
+      throw new Error('Global Auth user aggregate is unavailable');
+    }
+    // Compte Auth global côté serveur : inclut les comptes invités ou sans profil.
+    const users = aggregateData.totalUsers;
 
     const rustTickets: RustTicket[] = [
       ...rawTickets.filter((ticket) =>
@@ -255,6 +262,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryShares: resolvedCategoryShares,
       ticketsTimeline,
       eventsTimeline,
+      isAvailable: true,
     };
   } catch {
     return {
@@ -271,6 +279,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryShares: [],
       ticketsTimeline: [],
       eventsTimeline: [],
+      isAvailable: false,
     };
   }
 }
