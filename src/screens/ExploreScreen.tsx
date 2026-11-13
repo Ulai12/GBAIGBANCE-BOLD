@@ -209,7 +209,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       if (searchModeRef.current === 'events') {
         void loadEventsRef.current?.(false);
       }
-    });
+    }, ['events']);
 
     return () => {
       unsubscribe();
