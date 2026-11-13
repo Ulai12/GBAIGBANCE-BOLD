@@ -5,7 +5,8 @@ export type MainCategoryId =
   | 'commercial_professional'
   | 'festive_nightlife'
   | 'sports'
-  | 'private_family';
+  | 'private_family'
+  | 'leisure_discovery';
 
 export type SubCategoryId =
   // Événements culturels et artistiques
@@ -27,7 +28,11 @@ export type SubCategoryId =
   | 'mariages_receptions'
   | 'anniversaires'
   | 'ceremonies_familiales'
-  | 'evenements_vip_prives';
+  | 'evenements_vip_prives'
+  // Loisirs et expériences
+  | 'gaming_esport'
+  | 'loisirs_sorties'
+  | 'bien_etre_lifestyle';
 
 export interface SubCategoryDefinition {
   id: SubCategoryId;
@@ -248,6 +253,46 @@ export const MAIN_CATEGORIES: MainCategoryDefinition[] = [
         defaultLegacyCategory: 'private',
         iconName: 'Lock',
         tags: ['VIP', 'Invitation', 'Lounge privé', 'Réception privée'],
+      },
+    ],
+  },
+  {
+    id: 'leisure_discovery',
+    label: 'Loisirs et découvertes',
+    shortLabel: 'Loisirs & Découvertes',
+    description: 'Jeux vidéo, expériences ludiques, sorties et activités de bien-être.',
+    iconName: 'Sparkles',
+    accentColor: '#06B6D4',
+    subcategories: [
+      {
+        id: 'gaming_esport',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Gaming & E-sport',
+        shortLabel: 'Gaming',
+        description: 'Tournois de jeux vidéo, rencontres gaming et compétitions e-sport.',
+        defaultLegacyCategory: 'cultural',
+        iconName: 'Gamepad2',
+        tags: ['Gaming', 'Jeux vidéo', 'E-sport', 'Tournoi', 'LAN'],
+      },
+      {
+        id: 'loisirs_sorties',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Loisirs & Sorties',
+        shortLabel: 'Loisirs',
+        description: 'Activités récréatives, découvertes, sorties et expériences collectives.',
+        defaultLegacyCategory: 'cultural',
+        iconName: 'Compass',
+        tags: ['Loisirs', 'Sortie', 'Découverte', 'Expérience', 'Activité'],
+      },
+      {
+        id: 'bien_etre_lifestyle',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Bien-être & Lifestyle',
+        shortLabel: 'Bien-être',
+        description: 'Activités de détente, bien-être, développement personnel et art de vivre.',
+        defaultLegacyCategory: 'formation',
+        iconName: 'Sparkles',
+        tags: ['Bien-être', 'Yoga', 'Méditation', 'Lifestyle', 'Développement personnel'],
       },
     ],
   },
