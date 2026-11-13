@@ -612,13 +612,13 @@ Données synchronisées en direct
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <UserRoundCheck className="h-3.5 w-3.5 text-[#6600FF]" />
-              Participants
+              Participations
             </span>
           </div>
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
             {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
           </p>
-          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Présences cumulées aux événements</p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total déclaré par les événements · non dédupliqué</p>
         </div>
 
         {/* Profils : distincts des comptes Auth. */}
