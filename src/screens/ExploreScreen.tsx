@@ -66,6 +66,38 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Heart,
 };
 
+const SEARCH_WASM_THRESHOLD = 100;
+
+function normalizeSearchText(value: string | null | undefined): string {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLocaleLowerCase('fr');
+}
+
+function rankExploreResults(events: Event[], query: string): Event[] {
+  const needle = normalizeSearchText(query.trim());
+  if (!needle) return events;
+
+  return events
+    .map((event, index) => {
+      const title = normalizeSearchText(event.title);
+      const city = normalizeSearchText(event.city);
+      const location = normalizeSearchText(event.location_name);
+      const category = normalizeSearchText(event.category);
+      const description = normalizeSearchText(event.description);
+      const score =
+        (title === needle ? 100 : title.startsWith(needle) ? 80 : title.includes(needle) ? 60 : 0) +
+        (city.includes(needle) ? 25 : 0) +
+        (location.includes(needle) ? 20 : 0) +
+        (category.includes(needle) ? 15 : 0) +
+        (description.includes(needle) ? 5 : 0);
+      return { event, index, score };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ event }) => event);
+}
+
 let exploreCache: Event[] | null = null;
 
 function getWarmExploreEvents(): Event[] {
@@ -141,12 +173,18 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           description: event.description || '',
           location: event.location_name,
         }));
-        const ranked = (await coreFuzzySearch(q, eventsForRust)) || (await coreSearchIds(q, eventsForRust));
-        if (ranked && ranked.length > 0) {
-          const byId = new Map(result.map((event) => [event.id, event]));
-          result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
+        if (eventsForRust.length >= SEARCH_WASM_THRESHOLD) {
+          const ranked = (await coreFuzzySearch(q, eventsForRust)) || (await coreSearchIds(q, eventsForRust));
+          if (ranked && ranked.length > 0) {
+            const byId = new Map(result.map((event) => [event.id, event]));
+            result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
+          } else {
+            result = rankExploreResults(result, q);
+          }
         } else {
-          result = applyFilters(rawSql);
+          // Pour les petits catalogues, le tri JavaScript évite le téléchargement
+          // et l'initialisation WASM pour une recherche de quelques dizaines d'items.
+          result = rankExploreResults(result, q);
         }
       }
       if (requestId !== eventRequestRef.current) return;
