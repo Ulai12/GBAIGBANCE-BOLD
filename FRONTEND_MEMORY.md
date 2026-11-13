@@ -20,24 +20,21 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Recherche : catégories alignées sur l'accueil
-**Objectif :** rendre les catégories de l'écran Recherche utilisables au doigt, avec la même hiérarchie parent / sous-catégorie que l'accueil, sans changer le filtrage.
+## Tâche active — Marges des rails et filtrage catégories accueil
+**Objectif :** les capsules de catégories et les cartes de proximité ne collent plus aux bords de l'écran ; « Explorer par catégorie » affiche les événements existants.
 
 **Progression :**
-- Terminé le 2026-11-13 (session 12h) : rangée principale en capsules `#6600FF`, cible 44px, snap horizontal. La puce parente reste active quand une sous-catégorie est choisie.
-- Terminé : seconde rangée de sous-catégories, visible sans ouvrir les filtres. « Toutes » sélectionne le parent ; un second appui sur une sous-catégorie revient au parent.
-- Terminé : feuille de filtres — catégories et sous-catégories en rangées scrollables 44px, villes et tarifs en cibles 44px, focus visible.
-- Terminé : libellé « Amis » sous 400px, « Amis & Participants » au-dessus, pour éviter le débordement du segment à 320px.
-- Terminé : accent `#5900E6` de cet écran ramené au token `#6600FF`.
-- Accueil catégories : contrôle visuel 320 sombre effectué (tuiles 80px, 2 colonnes, rail sous-catégories, pas de scroll horizontal de page). Les autres largeurs de l'accueil restent non rejouées dans cette session.
+- Terminé le 2026-11-13 : suppression de `-mx-5` sur les rails de catégories (Accueil et Recherche) et sur le carrousel « À proximité ». Les éléments restent dans le padding `px-5` de leur section, comme les onglets de « Modifier l'événement ».
+- Terminé : hydratation des événements dans `allActiveEvents` avant le filtrage par catégorie. Les événements sans `main_category` explicite sont maintenant classés selon leur catégorie héritée ou leurs tags.
+- Vérifié : ESLint des deux fichiers (1 erreur préexistante `t` inutilisé dans HomeScreen, hors de ce changement).
 
 **Fichiers concernés :**
-- `src/screens/ExploreScreen.tsx` — chrome de recherche, rails de catégories, feuille de filtres.
-- `src/screens/HomeScreen.tsx` — non modifié ; contrôle visuel seulement.
+- `src/screens/HomeScreen.tsx` — rail sous-catégories, carrousel proximité, hydratation.
+- `src/screens/ExploreScreen.tsx` — rails de catégories.
 
-**Dernière action :** refonte visible de la navigation catégories de Recherche, vérifiée au navigateur.
+**Dernière action :** marges restaurées et filtrage catégories corrigé.
 
-**Prochaine étape :** écran Auth (`src/screens/AuthScreen.tsx`) — il est encore en clair forcé (`bg-white`, `text-gray-700`) et ses trois rôles risquent de serrer à 320px. Ne pas y toucher avant cette session suivante. Alternative si Auth est déjà repris : états vides / hors-ligne du portefeuille billets.
+**Prochaine étape :** écran Auth (`src/screens/AuthScreen.tsx`) — thème clair forcé, rôles serrés à 320px.
 
 ## Design system — décisions à préserver
 - Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`. Ne plus introduire `#5900E6` sur Recherche.
@@ -53,8 +50,9 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ## Cartographie des écrans
 | Écran / zone | Statut | Notes |
 |---|---|---|
-| Accueil — explorateur de catégories | Finalisé | Grille 2/3/5, tuiles 80px, rail sous-catégories. Visuel 320 sombre OK. Autres largeurs non rejouées ici |
-| Recherche — catégories et filtres | Finalisé | Rails parent + sous-catégorie, feuille alignée, 320–1440 clair/sombre |
+| Accueil — explorateur de catégories | Finalisé | Grille 2/3/5, tuiles 80px. Rail sous-catégories contenu dans le padding. Hydratation ajoutée pour le filtrage |
+| Accueil — proximité | Finalisé | Carrousel contenu dans le padding `px-5`, plus de débordement aux bords |
+| Recherche — catégories et filtres | Finalisé | Rails contenus dans le padding, plus de `-mx-5` |
 | Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
 | Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
 | Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
@@ -91,6 +89,11 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-13 — Marges des rails et filtrage catégories
+- Suppression de `-mx-5` sur les rails de catégories (Accueil, Recherche) et le carrousel « À proximité ». Les éléments restent dans le padding de leur section.
+- Hydratation des événements dans `allActiveEvents` avant le filtrage. « Explorer par catégorie » affiche maintenant les événements classés selon leur catégorie héritée.
+- Signalé par captures iPhone : capsules et cartes collées aux bords, catégorie « Privé & Célébrations » vide malgré des événements existants.
+
 ### 2026-11-13 — Recherche : hiérarchie de catégories
 - Capsules parentes et rangée de sous-catégories directement sur Recherche, violet `#6600FF`, 44px, snap, focus, `prefers-reduced-motion`.
 - La catégorie parente reste visible quand une sous-catégorie est active. La feuille de filtres suit le même modèle.

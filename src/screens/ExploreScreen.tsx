@@ -384,7 +384,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
         {searchMode === 'events' && (
           <div className="space-y-2">
             <div
-              className="-mx-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pt-1 no-scrollbar"
+              className="flex snap-x snap-mandatory gap-2 overflow-x-auto pt-1 no-scrollbar"
               role="group"
               aria-label="Catégories principales"
             >
@@ -426,7 +426,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
             {selectedMainCategory && (
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 no-scrollbar"
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
                 role="group"
                 aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
               >
