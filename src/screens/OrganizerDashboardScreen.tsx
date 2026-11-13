@@ -47,7 +47,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
   const [activeDashboardTab, setActiveDashboardTab] = useState<'events' | 'refunds'>('events');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerEventId, setScannerEventId] = useState<string | undefined>(undefined);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
+  // Par défaut, afficher l'historique disponible plutôt qu'une fenêtre 7 jours souvent vide.
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('all');
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [perfData, setPerfData] = useState<OrganizerPerformanceData>({

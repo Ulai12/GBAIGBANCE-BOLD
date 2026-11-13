@@ -21,7 +21,7 @@ import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
-import { MAIN_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
+import { MAIN_CATEGORIES, eventMatchesCategoryFilter, hydrateEventCategories } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
 import {
@@ -147,14 +147,20 @@ export function HomeScreen({
     }
 
     try {
-      const [feat, up, trend, art, orgs, stats] = await Promise.all([
+      // Charger les statistiques en indépendant : une erreur sur les cartes de découverte
+      // ne doit pas empêcher la section « GBAIGBANCE en chiffres » de recevoir ses données.
+      const statsPromise = fetchPlatformStats().then((stats) => {
+        setPlatformStats(stats);
+        return stats;
+      });
+      const [feat, up, trend, art, orgs] = await Promise.all([
         fetchFeaturedEvents(),
         fetchUpcomingEvents(),
         fetchTrendingEvents(),
         fetchFeaturedArtists(),
         fetchVerifiedOrganizations(),
-        fetchPlatformStats(),
       ]);
+      const stats = await statsPromise;
 
       // Algorithme de score de tendance basé sur l'engagement réel et la proximité temporelle
       const calculateTrendingScore = (e: Event): number => {
@@ -348,12 +354,12 @@ export function HomeScreen({
     };
   }, [refreshHomeData]);
 
-  // Unified list of all unique active published events
+  // Unified list of all unique active published events, hydratés pour le filtrage par catégorie
   const allActiveEvents = useMemo(() => {
     const map = new Map<string, Event>();
     [...allEvents, ...featured, ...trending, ...nearby].forEach((e) => {
       if (e && e.id && isEventActive(e) && !isEventTerminated(e)) {
-        map.set(e.id, e);
+        map.set(e.id, hydrateEventCategories(e));
       }
     });
     return Array.from(map.values());
@@ -691,7 +697,7 @@ export function HomeScreen({
 
         {selectedMainCategory && (
           <div
-            className="-mx-5 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 no-scrollbar"
+            className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
             role="group"
             aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
           >
@@ -807,7 +813,7 @@ export function HomeScreen({
           </div>
 
           {/* Tuiles défilables horizontales modernes compactes */}
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-5 px-5">
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5">
             {nearbySectionData.events.map((event) => (
               <NearbyEventTile
                 key={event.id}

@@ -173,12 +173,31 @@ export async function isFollowingArtist(artistId: string, userId: string): Promi
   return !!data;
 }
 
+const ANALYTICS_VISITOR_KEY = 'gba_analytics_visitor_v1';
+
+function getAnalyticsVisitorKey(): string {
+  try {
+    const existing = localStorage.getItem(ANALYTICS_VISITOR_KEY);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    localStorage.setItem(ANALYTICS_VISITOR_KEY, created);
+    return created;
+  } catch {
+    // Si le stockage est indisponible, la vue reste enregistrable mais sans garantie
+    // de déduplication entre les chargements de page.
+    return crypto.randomUUID();
+  }
+}
+
 export async function incrementEventViews(eventId: string): Promise<void> {
   if (!isSupabaseConfigured || !eventId) return;
   try {
-    await supabase.rpc('increment_event_views', { p_event_id: eventId });
-  } catch {
-    // Ignore error
+    await supabase.rpc('record_event_view', {
+      p_event_id: eventId,
+      p_visitor_key: getAnalyticsVisitorKey(),
+    });
+  } catch (error) {
+    console.warn('[event-views] Unable to record view:', error);
   }
 }
 
