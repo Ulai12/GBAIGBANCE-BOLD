@@ -103,9 +103,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
   const hasLoadedEventsRef = useRef(events.length > 0);
   const eventRequestRef = useRef(0);
-  const loadEventsRef = useRef(loadEvents);
+  const loadEventsRef = useRef<((isDefault?: boolean) => Promise<void>) | null>(null);
   const searchModeRef = useRef(searchMode);
-  loadEventsRef.current = loadEvents;
   searchModeRef.current = searchMode;
 
   // Participants trouvés lors de la recherche
@@ -166,6 +165,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     }
   }, [query, selectedCategory, selectedCity, priceFilter]);
 
+  loadEventsRef.current = loadEvents;
+
   const loadParticipants = useCallback(async () => {
     const q = query.trim();
     // « a » renvoyait n'importe quel profil dès l'ouverture de l'onglet Amis.
@@ -206,7 +207,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   useEffect(() => {
     const unsubscribe = subscribeToGlobalEventsLive(() => {
       if (searchModeRef.current === 'events') {
-        void loadEventsRef.current(false);
+        void loadEventsRef.current?.(false);
       }
     });
 
