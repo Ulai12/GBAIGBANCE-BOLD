@@ -9,10 +9,17 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status,
   headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
 });
-type EventRow = { id: string; category: string | null; attendees_count: number | null; views_count: number | null; starts_at: string | null; ends_at: string | null; status: string; created_at: string | null };
+type EventRow = { id: string; title: string; category: string | null; attendees_count: number | null; views_count: number | null; starts_at: string | null; ends_at: string | null; status: string; created_at: string | null };
 type TicketRow = { id: string; event_id: string; user_id: string | null; price_paid: number | string | null; status: string; created_at: string | null };
 type ProfileRow = { id: string; role: string | null };
 type TicketOptionRow = { id: string; event_id: string; quantity_sold: number | null };
+
+const seedEventNames = new Set(['Afro-Fusion Festival 2025', 'Lomé Summer Jam 2025', 'Neon Vibe Night', 'Jazz at Marina', 'Art & Soul Gallery', 'Skyline Lounge Session', 'TechTogo Summit 2025', 'Festival Vodoun Cotonou']);
+const seedArtistNames = new Set(['Kafui Mensah', 'Aminata Diallo', 'DJ Eklu', 'Kofi & The Roots', 'Sira Kone', 'Ama Rhythm']);
+const seedOrganizationNames = new Set(['AfroVibe Events', 'Culture Bénin', 'Grand Place Productions']);
+const isSeedEvent = (event: Pick<EventRow, 'id' | 'title'>) => event.id.startsWith('e1000000-') || seedEventNames.has(event.title);
+const isSeedArtist = (artist: { id: string; name: string }) => artist.id.startsWith('b1000000-') || seedArtistNames.has(artist.name);
+const isSeedOrganization = (organization: { id: string; name: string }) => organization.id.startsWith('a1000000-') || seedOrganizationNames.has(organization.name);
 
 async function fetchAll<T>(queryPage: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
   const rows: T[] = [];
@@ -38,14 +45,23 @@ Deno.serve(async (req: Request) => {
     // reste côté serveur et aucune donnée personnelle n'est renvoyée.
     const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
-    const [events, tickets, profiles, organizations, artists, ticketOptions] = await Promise.all([
-      fetchAll<EventRow>((from, to) => admin.from('events').select('id, category, attendees_count, views_count, starts_at, ends_at, status, created_at').order('created_at', { ascending: true }).range(from, to)),
+    const [rawEvents, rawTickets, profiles, rawOrganizations, rawArtists, rawTicketOptions] = await Promise.all([
+      fetchAll<EventRow>((from, to) => admin.from('events').select('id, title, category, attendees_count, views_count, starts_at, ends_at, status, created_at').order('created_at', { ascending: true }).range(from, to)),
       fetchAll<TicketRow>((from, to) => admin.from('tickets').select('id, event_id, user_id, price_paid, status, created_at').order('created_at', { ascending: true }).range(from, to)),
       fetchAll<ProfileRow>((from, to) => admin.from('profiles').select('id, role').range(from, to)),
-      fetchAll<{ id: string }>((from, to) => admin.from('organizations').select('id').range(from, to)),
-      fetchAll<{ id: string }>((from, to) => admin.from('artists').select('id').range(from, to)),
+      fetchAll<{ id: string; name: string }>((from, to) => admin.from('organizations').select('id, name').range(from, to)),
+      fetchAll<{ id: string; name: string }>((from, to) => admin.from('artists').select('id, name').range(from, to)),
       fetchAll<TicketOptionRow>((from, to) => admin.from('ticket_options').select('id, event_id, quantity_sold').range(from, to)),
     ]);
+
+    // Les lignes de seed/demo ne sont pas des métriques d'engagement authentiques.
+    // On les exclut de toutes les statistiques publiques sans supprimer les données.
+    const events = rawEvents.filter((event) => !isSeedEvent(event));
+    const realEventIds = new Set(events.map((event) => event.id));
+    const tickets = rawTickets.filter((ticket) => realEventIds.has(ticket.event_id));
+    const ticketOptions = rawTicketOptions.filter((option) => realEventIds.has(option.event_id));
+    const organizations = rawOrganizations.filter((organization) => !isSeedOrganization(organization));
+    const artists = rawArtists.filter((artist) => !isSeedArtist(artist));
 
     const authUsers: Array<{ id: string; invited_at?: string | null; confirmed_at?: string | null }> = [];
     for (let page = 1; page <= 100; page += 1) {
