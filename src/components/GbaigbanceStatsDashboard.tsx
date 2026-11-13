@@ -447,7 +447,7 @@ export function GbaigbanceStatsDashboard({
       : null;
 
   return (
-    <div className="w-full overflow-hidden rounded-[2rem] border border-white/75 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/15 dark:bg-gradient-to-br dark:from-[#302542]/75 dark:via-[#191526]/70 dark:to-[#30203d]/65 dark:shadow-[0_18px_48px_rgba(0,0,0,0.38)]">
+    <div className="w-full overflow-hidden relative isolate rounded-[2rem] border border-white/75 border-t-white/90 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.48)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between mb-2 px-1">
@@ -459,7 +459,7 @@ Données synchronisées en direct
           </div>
 
         </div>
-        <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/10">
+        <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/[0.055]">
 
           <button
             type="button"
@@ -517,8 +517,8 @@ Données synchronisées en direct
           }
           className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'tickets'
-              ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
+              ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#8B5CF6]/25'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.045]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -533,7 +533,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {formatNumber(totals.tickets)}
+            {{platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.tickets)}}
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
@@ -592,7 +592,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {formatNumber(totals.attendees)}
+            {{platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
