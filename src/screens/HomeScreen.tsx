@@ -147,14 +147,20 @@ export function HomeScreen({
     }
 
     try {
-      const [feat, up, trend, art, orgs, stats] = await Promise.all([
+      // Charger les statistiques en indépendant : une erreur sur les cartes de découverte
+      // ne doit pas empêcher la section « GBAIGBANCE en chiffres » de recevoir ses données.
+      const statsPromise = fetchPlatformStats().then((stats) => {
+        setPlatformStats(stats);
+        return stats;
+      });
+      const [feat, up, trend, art, orgs] = await Promise.all([
         fetchFeaturedEvents(),
         fetchUpcomingEvents(),
         fetchTrendingEvents(),
         fetchFeaturedArtists(),
         fetchVerifiedOrganizations(),
-        fetchPlatformStats(),
       ]);
+      const stats = await statsPromise;
 
       // Algorithme de score de tendance basé sur l'engagement réel et la proximité temporelle
       const calculateTrendingScore = (e: Event): number => {
