@@ -533,7 +533,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {{platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.tickets)}}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.tickets)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
