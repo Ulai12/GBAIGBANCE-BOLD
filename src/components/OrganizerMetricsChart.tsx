@@ -169,7 +169,7 @@ export function OrganizerMetricsChart({
           className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
             metricMode === 'sales'
               ? 'bg-[#6600FF]/[0.08] dark:bg-[#6600FF]/20 border-[#6600FF]/40 shadow-xs'
-              : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80 dark:hover:bg-white/[0.09]'
+              : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80 dark:hover:bg-white/[0.11]'
           }`}
         >
           <div className="flex items-center justify-between mb-1">
@@ -206,7 +206,7 @@ export function OrganizerMetricsChart({
         </div>
 
         {/* Vues totales */}
-        <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.055] border border-black/5 dark:border-white/5">
+        <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.055] border border-black/5 dark:border-white/10">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Vues</span>
             <Eye className="w-3.5 h-3.5 text-gray-400" />
@@ -286,6 +286,16 @@ export function OrganizerMetricsChart({
               </p>
             </div>
           )
+        ) : !hasSalesData || timeSeries.length === 0 ? (
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-black/[0.02] px-5 text-center dark:border-white/10 dark:bg-white/[0.025]">
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6600FF]/10 text-[#6600FF] dark:bg-[#8B5CF6]/20 dark:text-violet-300">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">Aucune vente sur cette période</p>
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+              Les statistiques apparaîtront ici dès qu’un billet confirmé sera enregistré pour vos événements.
+            </p>
+          </div>
         ) : (
           /* Area Chart for Ticket Sales or Revenue Over Time */
           <ResponsiveContainer width="100%" height="100%">
