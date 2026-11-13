@@ -2,8 +2,7 @@ import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { Event, EventWithRelations, EventCategory } from '@/types';
 import { hydrateEventCategories, eventMatchesCategoryFilter } from '@/constants/categories';
 import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded } from './status';
-import { getLocalStoredTickets } from '@/features/tickets/service';
-import { corePlatformStats, coreRankIds, coreTrendIds, type RustEvent, type RustTicket } from '@/lib/rust-core';
+import { coreRankIds, coreTrendIds } from '@/lib/rust-core';
 
 function sanitizeSearchInput(input: string): string {
   if (!input) return '';
@@ -14,13 +13,18 @@ function sanitizeSearchInput(input: string): string {
 
 export interface PlatformStats {
   totalEvents: number;
+  totalAllEvents?: number;
   totalArtists: number;
   totalOrganizers: number;
   totalTickets: number;
   totalParticipants: number;
+  totalParticipantAccounts?: number;
+  totalProfiles?: number;
   totalUsers: number;
   totalViews: number;
   totalRevenue: number;
+  totalCancelledTickets?: number;
+  totalRefundedTickets?: number;
   categories: Record<string, number>;
   categoryBasis: 'revenue' | 'events';
   categoryShares: Array<{ id: string; count: number; amount: number; percent: number }>;
@@ -39,249 +43,48 @@ export interface PlatformStats {
   }>;
 }
 
-async function selectPages<T>(
-  queryPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>
-): Promise<T[]> {
-  const pageSize = 1000;
-  const rows: T[] = [];
-  // Au-delà de 1000 lignes Supabase tronque : les totaux étaient faux.
-  for (let from = 0; from < 8000; from += pageSize) {
-    const { data, error } = await queryPage(from, from + pageSize - 1);
-    if (error) throw new Error(error.message);
-    const chunk = (data || []) as T[];
-    rows.push(...chunk);
-    if (chunk.length < pageSize) break;
-  }
-  return rows;
-}
-
 export async function fetchPlatformStats(): Promise<PlatformStats> {
-  const localTickets = getLocalStoredTickets();
-  const countedTicketStatuses = new Set(['valid', 'used']);
-  const localActiveTickets = localTickets.filter((t) =>
-    countedTicketStatuses.has(String((t as { status?: string }).status || 'valid').toLowerCase())
-  );
-  const localTicketCount = localActiveTickets.length;
-  const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number((t as { price_paid?: number }).price_paid) || 0), 0);
+  const unavailable: PlatformStats = {
+    totalEvents: 0,
+    totalAllEvents: 0,
+    totalArtists: 0,
+    totalOrganizers: 0,
+    totalTickets: 0,
+    totalParticipants: 0,
+    totalParticipantAccounts: 0,
+    totalProfiles: 0,
+    totalUsers: 0,
+    totalViews: 0,
+    totalRevenue: 0,
+    totalCancelledTickets: 0,
+    totalRefundedTickets: 0,
+    categories: {},
+    categoryBasis: 'events',
+    categoryShares: [],
+    ticketsTimeline: [],
+    eventsTimeline: [],
+    isAvailable: false,
+  };
 
-  const baselineTickets = localTicketCount;
-  const baselineRevenue = localRevenue;
-
-  if (!isSupabaseConfigured) {
-    return {
-      totalEvents: 0,
-      totalArtists: 0,
-      totalOrganizers: 0,
-      totalTickets: baselineTickets,
-      totalParticipants: 0,
-      totalUsers: 0,
-      totalViews: 0,
-      totalRevenue: baselineRevenue,
-      categories: {},
-      categoryBasis: 'events',
-      categoryShares: [],
-      ticketsTimeline: [],
-      eventsTimeline: [],
-      isAvailable: false,
-    };
-  }
+  if (!isSupabaseConfigured) return unavailable;
 
   try {
-    const [rawEvents, artistsCount, orgsCount, rawTickets, platformAggregate] = await Promise.all([
-      selectPages<Event>((from, to) =>
-        supabase
-          .from('events')
-          .select('id, category, attendees_count, views_count, price_min, starts_at, ends_at, status, created_at')
-          .eq('status', 'published')
-          .range(from, to)
-      ),
-      supabase.from('artists').select('id', { count: 'exact', head: true }),
-      supabase.from('organizations').select('id', { count: 'exact', head: true }),
-      selectPages<{ id: string; price_paid?: number; status?: string; created_at?: string; event_id?: string }>((from, to) =>
-        supabase
-          .from('tickets')
-          .select('id, price_paid, status, created_at, event_id')
-          .range(from, to)
-      ),
-      supabase.functions.invoke('platform-stats'),
-    ]);
-
-    const events = rawEvents.filter(isRealEvent);
-    const activeIds = new Set(events.filter((e) => isEventActive(e) && !isEventTerminated(e)).map((e) => e.id));
-    if (platformAggregate.error) throw platformAggregate.error;
-    const aggregateData = platformAggregate.data as { totalUsers?: number } | null;
-    if (!aggregateData || typeof aggregateData.totalUsers !== 'number') {
-      throw new Error('Global Auth user aggregate is unavailable');
+    // Une seule source de vérité : tous les KPI viennent de l'agrégateur serveur.
+    // Aucun ticket localStorage ne doit entrer dans les statistiques globales.
+    const { data, error } = await supabase.functions.invoke('platform-stats');
+    if (error) throw error;
+    if (!data || typeof data.totalUsers !== 'number' || typeof data.totalTickets !== 'number') {
+      throw new Error('Réponse incomplète de platform-stats');
     }
-    // Compte Auth global côté serveur : inclut les comptes invités ou sans profil.
-    const users = aggregateData.totalUsers;
-
-    const rustTickets: RustTicket[] = [
-      ...rawTickets.filter((ticket) =>
-        countedTicketStatuses.has(String(ticket.status || 'valid').toLowerCase())
-      ).map((ticket) => ({
-        id: ticket.id,
-        price_paid: Number(ticket.price_paid) || 0,
-        status: ticket.status || 'valid',
-        created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
-        event_id: ticket.event_id || '',
-        source: 'server' as const,
-      })),
-      ...localActiveTickets.map((ticket) => ({
-        id: ticket.id,
-        price_paid: Number(ticket.price_paid) || 0,
-        status: ticket.status || 'valid',
-        created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
-        event_id: ticket.event_id || '',
-        source: 'local' as const,
-      })),
-    ];
-
-    const rustEvents: RustEvent[] = events.map((event) => ({
-      id: event.id,
-      category: event.category,
-      attendees: event.attendees_count || 0,
-      views: event.views_count || 0,
-      likes: event.likes_count || 0,
-      featured: !!event.is_featured,
-      starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
-      active: activeIds.has(event.id),
-    }));
-
-    const core = await corePlatformStats({ tickets: rustTickets, events: rustEvents, users });
-
-    // Repli TypeScript cohérent avec le moteur Rust lorsque le fichier WASM
-    // n'est pas disponible : dédoublonner les billets et garder le serveur prioritaire.
-    const mergedTickets = new Map<string, RustTicket>();
-    for (const ticket of rustTickets) {
-      if (!ticket.id) continue;
-      const previous = mergedTickets.get(ticket.id);
-      if (!previous || (previous.source !== 'server' && ticket.source === 'server')) {
-        mergedTickets.set(ticket.id, ticket);
-      }
-    }
-    const confirmedTickets = Array.from(mergedTickets.values()).filter((ticket) =>
-      countedTicketStatuses.has(String(ticket.status || 'valid').toLowerCase())
-    );
-    const fallbackRevenue = Math.round(
-      confirmedTickets.reduce((sum, ticket) => sum + Math.max(0, ticket.price_paid || 0), 0)
-    );
-
-    const categoryByEvent = new Map(events.map((event) => [event.id, event.category || '']));
-    const revenueByCategory = new Map<string, { count: number; amount: number }>();
-    for (const ticket of confirmedTickets) {
-      const category = categoryByEvent.get(ticket.event_id);
-      if (!category) continue;
-      const current = revenueByCategory.get(category) || { count: 0, amount: 0 };
-      current.count += 1;
-      current.amount += Math.max(0, ticket.price_paid || 0);
-      revenueByCategory.set(category, current);
-    }
-
-    const useRevenueBasis = Array.from(revenueByCategory.values()).some((value) => value.amount > 0);
-    const fallbackCategoryBasis: PlatformStats['categoryBasis'] = useRevenueBasis ? 'revenue' : 'events';
-    const categoryTotals = useRevenueBasis
-      ? Array.from(revenueByCategory.entries())
-          .filter(([, value]) => value.amount > 0)
-          .map(([id, value]) => ({ id, count: value.count, amount: value.amount }))
-      : Array.from(events.reduce((counts, event) => {
-          if (activeIds.has(event.id) && event.category) {
-            counts.set(event.category, (counts.get(event.category) || 0) + 1);
-          }
-          return counts;
-        }, new Map<string, number>()).entries())
-          .map(([id, count]) => ({ id, count, amount: 0 }));
-
-    categoryTotals.sort((a, b) =>
-      (useRevenueBasis ? b.amount - a.amount : b.count - a.count) || b.count - a.count
-    );
-    const totalCategoryWeight = categoryTotals.reduce(
-      (sum, item) => sum + (useRevenueBasis ? item.amount : item.count),
-      0
-    );
-    const categoryShares = categoryTotals.map((item) => {
-      const weight = useRevenueBasis ? item.amount : item.count;
-      const exact = totalCategoryWeight > 0 ? (weight / totalCategoryWeight) * 100 : 0;
-      return { ...item, percent: Math.floor(exact), remainder: exact - Math.floor(exact) };
-    });
-    const remainingPercent = 100 - categoryShares.reduce((sum, item) => sum + item.percent, 0);
-    const remainderOrder = [...categoryShares].sort((a, b) => b.remainder - a.remainder);
-    for (let index = 0; index < remainingPercent && index < remainderOrder.length; index++) {
-      remainderOrder[index].percent += 1;
-    }
-    const fallbackCategoryShares = categoryShares.map((item) => ({
-      id: item.id,
-      count: item.count,
-      amount: item.amount,
-      percent: item.percent,
-    }));
-
-    const categories: Record<string, number> = {};
-    const resolvedCategoryShares = core?.category_shares ?? fallbackCategoryShares;
-    for (const share of resolvedCategoryShares) {
-      categories[share.id] = share.count;
-    }
-
-    const ticketsTimeline = (core?.timeline
-      ? core.timeline.map((ticket, index) => ({
-          // Le moteur Rust renvoie les billets sans leur identifiant : l'index garantit
-          // une clé distincte même si plusieurs achats partagent la même milliseconde.
-          id: `${ticket.event_id}-${ticket.created_at_ms}-${index}`,
-          created_at: new Date(ticket.created_at_ms).toISOString(),
-          created_at_ms: ticket.created_at_ms,
-          price_paid: ticket.price_paid,
-          event_id: ticket.event_id,
-        }))
-      : confirmedTickets
-          .filter((ticket) => ticket.created_at_ms > 0)
-          .map((ticket) => ({
-            id: ticket.id,
-            created_at: new Date(ticket.created_at_ms).toISOString(),
-            created_at_ms: ticket.created_at_ms,
-            price_paid: ticket.price_paid || 0,
-            event_id: ticket.event_id,
-          })));
-    const eventsTimeline = events
-      .filter((event) => activeIds.has(event.id))
-      .map((event) => ({
-        id: event.id,
-        starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
-        attendees: event.attendees_count || 0,
-      }));
 
     return {
-      totalEvents: core?.total_events ?? activeIds.size,
-      totalArtists: artistsCount.count ?? 0,
-      totalOrganizers: orgsCount.count ?? 0,
-      totalTickets: core?.total_tickets ?? confirmedTickets.length,
-      totalParticipants: users,
-      totalUsers: users,
-      totalViews: core?.total_views ?? events.reduce((sum, event) => sum + Math.max(0, event.views_count || 0), 0),
-      totalRevenue: core?.total_revenue ?? fallbackRevenue,
-      categories,
-      categoryBasis: core?.category_basis ?? fallbackCategoryBasis,
-      categoryShares: resolvedCategoryShares,
-      ticketsTimeline,
-      eventsTimeline,
+      ...unavailable,
+      ...data,
       isAvailable: true,
-    };
-  } catch {
-    return {
-      totalEvents: 0,
-      totalArtists: 0,
-      totalOrganizers: 0,
-      totalTickets: baselineTickets,
-      totalParticipants: 0,
-      totalUsers: 0,
-      totalViews: 0,
-      totalRevenue: baselineRevenue,
-      categories: {},
-      categoryBasis: 'events',
-      categoryShares: [],
-      ticketsTimeline: [],
-      eventsTimeline: [],
-      isAvailable: false,
-    };
+    } as PlatformStats;
+  } catch (error) {
+    console.error('[platform-stats] unavailable:', error);
+    return unavailable;
   }
 }
 
