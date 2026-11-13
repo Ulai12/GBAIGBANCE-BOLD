@@ -140,25 +140,40 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const handleTogglePurchaseTarget = (target: 'self' | 'friend') => {
     haptic.selection();
     setPurchaseTarget(target);
-    if (target === 'friend') {
-      setRecipients([
-        {
-          recipient_name: friendName.trim() || 'Mon ami',
-          recipient_phone: friendPhone.trim(),
-          recipient_user_id: selectedFriendId || undefined,
-          is_for_me: false,
-        },
-      ]);
-    } else {
-      setSelectedFriendId(null);
-      setRecipients([
-        {
-          recipient_name: user?.name || 'Moi-même',
-          recipient_phone: user?.phone || '',
-          is_for_me: true,
-        },
-      ]);
-    }
+
+    // Le nombre de destinataires doit toujours rester égal à la quantité affichée :
+    // purchaseTicketsMulti calcule le total et crée les billets depuis ce tableau.
+    const nextRecipients = Array.from({ length: quantity }, (_, index): TicketRecipientInput => {
+      if (target === 'friend') {
+        return index === 0
+          ? {
+              recipient_name: friendName.trim() || 'Mon ami',
+              recipient_phone: friendPhone.trim(),
+              recipient_user_id: selectedFriendId || undefined,
+              is_for_me: false,
+            }
+          : {
+              recipient_name: `Invité #${index + 1}`,
+              recipient_phone: friendPhone.trim(),
+              is_for_me: false,
+            };
+      }
+
+      return index === 0
+        ? {
+            recipient_name: user?.name || 'Moi-même',
+            recipient_phone: user?.phone || '',
+            is_for_me: true,
+          }
+        : {
+            recipient_name: `Ami #${index + 1}`,
+            recipient_phone: '',
+            is_for_me: false,
+          };
+    });
+
+    if (target === 'self') setSelectedFriendId(null);
+    setRecipients(nextRecipients);
   };
 
   // Sélection rapide d'un ami suivi
@@ -182,7 +197,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       if (newQty > next.length) {
         for (let i = next.length; i < newQty; i++) {
           next.push({
-            recipient_name: purchaseTarget === 'friend' ? (friendName.trim() || `Ami #${i + 1}`) : `Ami #${i + 1}`,
+            recipient_name: purchaseTarget === 'friend' ? `Invité #${i + 1}` : `Ami #${i + 1}`,
             recipient_phone: purchaseTarget === 'friend' ? friendPhone.trim() : '',
             is_for_me: purchaseTarget === 'self' && i === 0,
           });
@@ -247,7 +262,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       }
     }
 
-    const finalRecipients: TicketRecipientInput[] = recipients.map((r, i) => {
+    // Garde-fou : aucune divergence entre la quantité facturée et les billets générés.
+    const alignedRecipients = Array.from({ length: quantity }, (_, index) =>
+      recipients[index] ?? {
+        recipient_name: purchaseTarget === 'friend' ? `Invité #${index + 1}` : `Ami #${index + 1}`,
+        recipient_phone: purchaseTarget === 'friend' ? friendPhone.trim() : '',
+        is_for_me: purchaseTarget === 'self' && index === 0,
+      }
+    );
+
+    const finalRecipients: TicketRecipientInput[] = alignedRecipients.map((r, i) => {
       if (purchaseTarget === 'friend') {
         const primary = i === 0;
         return {
@@ -657,7 +681,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                       <input
                         type="text"
                         value={r.recipient_name}
-                        onChange={(e) => handleUpdateRecipient(i, 'recipient_name', e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleUpdateRecipient(i, 'recipient_name', value);
+                          if (purchaseTarget === 'friend' && i === 0) setFriendName(value);
+                        }}
                         placeholder={`Bénéficiaire place #${i + 1}`}
                         className="flex-1 min-h-[44px] px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF]"
                       />

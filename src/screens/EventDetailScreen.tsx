@@ -53,7 +53,6 @@ import { EventInteractionPanel } from '@/components/EventInteractionPanel';
 import { EventSchedule } from '@/components/EventSchedule';
 import { EventLiveLinks } from '@/components/EventLiveLinks';
 import { EventSponsors } from '@/components/EventSponsors';
-import { BookingModal } from '@/components/BookingModal';
 import { EventManagementModal } from '@/components/EventManagementModal';
 import { Lightbox } from '@/components/Lightbox';
 import { ShareModal } from '@/components/ShareModal';
@@ -63,7 +62,7 @@ interface EventDetailScreenProps {
   event: Event;
   onBack: () => void;
   onArtistClick: (artist: Artist) => void;
-  onBook: (event: Event) => void;
+  onBook: (event: Event, initialOptionId?: string | null) => void;
   onEditEvent?: (event: Event) => void;
   onOpenAISettings?: () => void;
   onToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void;
@@ -150,6 +149,7 @@ export function EventDetailScreen({
   event,
   onBack,
   onArtistClick,
+  onBook,
   onEditEvent,
   onOpenAISettings,
   onToast,
@@ -162,8 +162,6 @@ export function EventDetailScreen({
   const { scrollY } = useScrollGlass(12);
 
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
-  const [showBooking, setShowBooking] = useState(false);
-  const [selectedTicketOptionId, setSelectedTicketOptionId] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
   const [collaborators, setCollaborators] = useState<EventCollaborator[]>([]);
   const [ticketOptions, setTicketOptions] = useState<TicketOption[]>([]);
@@ -447,10 +445,7 @@ export function EventDetailScreen({
 
   const handleSelectPass = (optionId: string) => {
     haptic.selection();
-    setSelectedTicketOptionId(optionId);
-    // Une seule modale : appeler aussi onBook ouvrait une deuxième réservation
-    // par-dessus, verrouillait le scroll et faisait payer deux fois la même place.
-    setShowBooking(true);
+    onBook(displayEvent as Event, optionId);
   };
 
   // Formatage ultra-robuste de la date et de l'heure (Haute lisibilité, zéro chevauchement)
@@ -1107,8 +1102,7 @@ export function EventDetailScreen({
             disabled={!canBook}
             onClick={() => {
               haptic.selection();
-              setSelectedTicketOptionId(null);
-              setShowBooking(true);
+              onBook(displayEvent as Event);
             }}
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
@@ -1139,18 +1133,6 @@ export function EventDetailScreen({
         onClose={() => setShowAttendeesModal(false)}
         onSelectProfile={handleSelectAttendeeProfile}
         onToggleFollow={handleToggleFollowAttendee}
-      />
-
-      <BookingModal
-        open={showBooking}
-        event={displayEvent as Event}
-        initialOptionId={selectedTicketOptionId}
-        onClose={() => setShowBooking(false)}
-        onSuccess={() => {
-          onToast({ message: 'Billet confirmé. Retrouvez-le dans Mes billets.', type: 'success' });
-          setShowBooking(false);
-          navigate('/tickets');
-        }}
       />
 
       {isOrganizer && (

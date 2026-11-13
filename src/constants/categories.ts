@@ -248,42 +248,20 @@ export function eventMatchesCategoryFilter(
 ): boolean {
   if (!filterValue) return true;
 
-  // 1. Égalité directe de catégorie hébergée
-  if (event.category === filterValue) return true;
+  const subcategory = getSubcategoryById(event.subcategory);
+  const resolvedMain = subcategory?.mainCategoryId || event.main_category;
 
-  // 2. Mappage intelligent avec les nouvelles sous-catégories et catégories principales
-  const sub = event.subcategory;
-  const main = event.main_category;
+  // Les catégories principales sont les parents canoniques.
+  if (getMainCategoryById(filterValue)) return resolvedMain === filterValue;
 
-  switch (filterValue) {
-    case 'concert':
-      return sub === 'concerts_spectacles' || Boolean(event.title?.toLowerCase().includes('concert'));
-    case 'festival':
-      return sub === 'festivals' || Boolean(event.title?.toLowerCase().includes('fest'));
-    case 'conference':
-      return sub === 'conferences_seminaires' || sub === 'foires_salons' || Boolean(event.title?.toLowerCase().includes('conf'));
-    case 'formation':
-      return sub === 'conferences_seminaires' || Boolean(event.title?.toLowerCase().includes('format'));
-    case 'exposition':
-      return sub === 'expositions_vernissages' || sub === 'foires_salons' || Boolean(event.title?.toLowerCase().includes('expo'));
-    case 'spectacle':
-      return sub === 'concerts_spectacles' || Boolean(event.title?.toLowerCase().includes('spectacl') || event.title?.toLowerCase().includes('humour'));
-    case 'cultural':
-      return (
-        main === 'cultural_artistic' ||
-        sub === 'fetes_carnavals' ||
-        sub === 'competitions_matchs' ||
-        sub === 'fan_zones'
-      );
-    case 'private':
-      return (
-        main === 'private_family' ||
-        sub === 'celebrations_personnelles' ||
-        sub === 'clubbing_soirees'
-      );
-    default:
-      return event.category === filterValue || event.subcategory === filterValue || event.main_category === filterValue;
-  }
+  // Une sous-catégorie ne correspond qu'à elle-même.
+  if (getSubcategoryById(filterValue)) return event.subcategory === filterValue;
+
+  // Compatibilité historique : un événement enrichi est classé selon
+  // l'alias de sa sous-catégorie, jamais selon les mots de son titre.
+  if (subcategory) return subcategory.defaultLegacyCategory === filterValue;
+
+  return event.category === filterValue || event.main_category === filterValue;
 }
 
 /**
@@ -417,7 +395,8 @@ export function hydrateEventCategories<T extends {
         break;
     }
   }
-  if (!resolvedMain && resolvedSub) {
+  if (resolvedSub) {
+    // La sous-catégorie est la source de vérité pour son unique catégorie parente.
     const foundMain = getMainCategoryForSubcategory(resolvedSub);
     if (foundMain) resolvedMain = foundMain.id;
   }

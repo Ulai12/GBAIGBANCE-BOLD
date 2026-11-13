@@ -25,10 +25,16 @@ export interface PlatformStats {
   categoryBasis: 'revenue' | 'events';
   categoryShares: Array<{ id: string; count: number; amount: number; percent: number }>;
   ticketsTimeline?: Array<{
+    id: string;
     created_at: string;
     created_at_ms: number;
     price_paid: number;
     event_id: string;
+  }>;
+  eventsTimeline: Array<{
+    id: string;
+    starts_at_ms: number;
+    attendees: number;
   }>;
 }
 
@@ -50,8 +56,10 @@ async function selectPages<T>(
 
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const localTickets = getLocalStoredTickets();
-  const dead = new Set(['cancelled', 'canceled', 'refunded', 'failed']);
-  const localActiveTickets = localTickets.filter((t) => !dead.has(String((t as { status?: string }).status || '')));
+  const countedTicketStatuses = new Set(['valid', 'used']);
+  const localActiveTickets = localTickets.filter((t) =>
+    countedTicketStatuses.has(String((t as { status?: string }).status || 'valid').toLowerCase())
+  );
   const localTicketCount = localActiveTickets.length;
   const localRevenue = localActiveTickets.reduce((sum, t) => sum + (Number((t as { price_paid?: number }).price_paid) || 0), 0);
 
@@ -72,6 +80,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryBasis: 'events',
       categoryShares: [],
       ticketsTimeline: [],
+      eventsTimeline: [],
     };
   }
 
@@ -100,7 +109,9 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     const users = profilesRes.count ?? 0;
 
     const rustTickets: RustTicket[] = [
-      ...rawTickets.map((ticket) => ({
+      ...rawTickets.filter((ticket) =>
+        countedTicketStatuses.has(String(ticket.status || 'valid').toLowerCase())
+      ).map((ticket) => ({
         id: ticket.id,
         price_paid: Number(ticket.price_paid) || 0,
         status: ticket.status || 'valid',
@@ -130,31 +141,120 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     }));
 
     const core = await corePlatformStats({ tickets: rustTickets, events: rustEvents, users });
+
+    // Repli TypeScript cohérent avec le moteur Rust lorsque le fichier WASM
+    // n'est pas disponible : dédoublonner les billets et garder le serveur prioritaire.
+    const mergedTickets = new Map<string, RustTicket>();
+    for (const ticket of rustTickets) {
+      if (!ticket.id) continue;
+      const previous = mergedTickets.get(ticket.id);
+      if (!previous || (previous.source !== 'server' && ticket.source === 'server')) {
+        mergedTickets.set(ticket.id, ticket);
+      }
+    }
+    const confirmedTickets = Array.from(mergedTickets.values()).filter((ticket) =>
+      countedTicketStatuses.has(String(ticket.status || 'valid').toLowerCase())
+    );
+    const fallbackRevenue = Math.round(
+      confirmedTickets.reduce((sum, ticket) => sum + Math.max(0, ticket.price_paid || 0), 0)
+    );
+
+    const categoryByEvent = new Map(events.map((event) => [event.id, event.category || '']));
+    const revenueByCategory = new Map<string, { count: number; amount: number }>();
+    for (const ticket of confirmedTickets) {
+      const category = categoryByEvent.get(ticket.event_id);
+      if (!category) continue;
+      const current = revenueByCategory.get(category) || { count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += Math.max(0, ticket.price_paid || 0);
+      revenueByCategory.set(category, current);
+    }
+
+    const useRevenueBasis = Array.from(revenueByCategory.values()).some((value) => value.amount > 0);
+    const fallbackCategoryBasis: PlatformStats['categoryBasis'] = useRevenueBasis ? 'revenue' : 'events';
+    const categoryTotals = useRevenueBasis
+      ? Array.from(revenueByCategory.entries())
+          .filter(([, value]) => value.amount > 0)
+          .map(([id, value]) => ({ id, count: value.count, amount: value.amount }))
+      : Array.from(events.reduce((counts, event) => {
+          if (activeIds.has(event.id) && event.category) {
+            counts.set(event.category, (counts.get(event.category) || 0) + 1);
+          }
+          return counts;
+        }, new Map<string, number>()).entries())
+          .map(([id, count]) => ({ id, count, amount: 0 }));
+
+    categoryTotals.sort((a, b) =>
+      (useRevenueBasis ? b.amount - a.amount : b.count - a.count) || b.count - a.count
+    );
+    const totalCategoryWeight = categoryTotals.reduce(
+      (sum, item) => sum + (useRevenueBasis ? item.amount : item.count),
+      0
+    );
+    const categoryShares = categoryTotals.map((item) => {
+      const weight = useRevenueBasis ? item.amount : item.count;
+      const exact = totalCategoryWeight > 0 ? (weight / totalCategoryWeight) * 100 : 0;
+      return { ...item, percent: Math.floor(exact), remainder: exact - Math.floor(exact) };
+    });
+    const remainingPercent = 100 - categoryShares.reduce((sum, item) => sum + item.percent, 0);
+    const remainderOrder = [...categoryShares].sort((a, b) => b.remainder - a.remainder);
+    for (let index = 0; index < remainingPercent && index < remainderOrder.length; index++) {
+      remainderOrder[index].percent += 1;
+    }
+    const fallbackCategoryShares = categoryShares.map((item) => ({
+      id: item.id,
+      count: item.count,
+      amount: item.amount,
+      percent: item.percent,
+    }));
+
     const categories: Record<string, number> = {};
-    for (const share of core?.category_shares || []) {
+    const resolvedCategoryShares = core?.category_shares ?? fallbackCategoryShares;
+    for (const share of resolvedCategoryShares) {
       categories[share.id] = share.count;
     }
 
-    const ticketsTimeline = (core?.timeline || []).map((ticket) => ({
-      created_at: new Date(ticket.created_at_ms).toISOString(),
-      created_at_ms: ticket.created_at_ms,
-      price_paid: ticket.price_paid,
-      event_id: ticket.event_id,
-    }));
+    const ticketsTimeline = (core?.timeline
+      ? core.timeline.map((ticket, index) => ({
+          // Le moteur Rust renvoie les billets sans leur identifiant : l'index garantit
+          // une clé distincte même si plusieurs achats partagent la même milliseconde.
+          id: `${ticket.event_id}-${ticket.created_at_ms}-${index}`,
+          created_at: new Date(ticket.created_at_ms).toISOString(),
+          created_at_ms: ticket.created_at_ms,
+          price_paid: ticket.price_paid,
+          event_id: ticket.event_id,
+        }))
+      : confirmedTickets
+          .filter((ticket) => ticket.created_at_ms > 0)
+          .map((ticket) => ({
+            id: ticket.id,
+            created_at: new Date(ticket.created_at_ms).toISOString(),
+            created_at_ms: ticket.created_at_ms,
+            price_paid: ticket.price_paid || 0,
+            event_id: ticket.event_id,
+          })));
+    const eventsTimeline = events
+      .filter((event) => activeIds.has(event.id))
+      .map((event) => ({
+        id: event.id,
+        starts_at_ms: event.starts_at ? Date.parse(event.starts_at) : 0,
+        attendees: event.attendees_count || 0,
+      }));
 
     return {
       totalEvents: core?.total_events ?? activeIds.size,
       totalArtists: artistsCount.count ?? 0,
       totalOrganizers: orgsCount.count ?? 0,
-      totalTickets: core?.total_tickets ?? rawTickets.length,
+      totalTickets: core?.total_tickets ?? confirmedTickets.length,
       totalParticipants: users,
       totalUsers: users,
-      totalViews: core?.total_views ?? 0,
-      totalRevenue: core?.total_revenue ?? 0,
+      totalViews: core?.total_views ?? events.reduce((sum, event) => sum + Math.max(0, event.views_count || 0), 0),
+      totalRevenue: core?.total_revenue ?? fallbackRevenue,
       categories,
-      categoryBasis: core?.category_basis ?? 'events',
-      categoryShares: core?.category_shares ?? [],
+      categoryBasis: core?.category_basis ?? fallbackCategoryBasis,
+      categoryShares: resolvedCategoryShares,
       ticketsTimeline,
+      eventsTimeline,
     };
   } catch {
     return {
@@ -170,6 +270,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryBasis: 'events',
       categoryShares: [],
       ticketsTimeline: [],
+      eventsTimeline: [],
     };
   }
 }
@@ -214,19 +315,20 @@ export async function fetchFeaturedEvents(): Promise<Event[]> {
 export async function fetchEventsByCategory(category: EventCategory | string): Promise<Event[]> {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .eq('status', 'published')
-      .order('starts_at', { ascending: true })
-      .limit(60);
-    if (!error && data && data.length > 0) {
-      const hydrated = (data as Event[])
-        .map(hydrateEventCategories)
-        .filter((e) => isRealEvent(e) && isEventActive(e) && !isEventTerminated(e));
-      return hydrated.filter((e) => eventMatchesCategoryFilter(e, category));
-    }
-    return [];
+    // Parcourir les pages plutôt que filtrer seulement les 60 premiers événements :
+    // une catégorie moins récente ne doit pas disparaître des résultats.
+    const data = await selectPages<Event>((from, to) =>
+      supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'published')
+        .order('starts_at', { ascending: true })
+        .range(from, to)
+    );
+    const hydrated = data
+      .map(hydrateEventCategories)
+      .filter((event) => isRealEvent(event) && isEventActive(event) && !isEventTerminated(event));
+    return hydrated.filter((event) => eventMatchesCategoryFilter(event, category));
   } catch {
     return [];
   }

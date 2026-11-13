@@ -1,30 +1,46 @@
 # FRONTEND_MEMORY.md
 
 ## Périmètre
-Mémoire indépendante du travail frontend de ChatGPT pour GBAIGBANCE-BOLD. Ne jamais lire ni modifier `PROJECT_MEMORY.md`, réservé à un autre agent.
+Mémoire du travail frontend de GBAIGBANCE-BOLD. Ne jamais lire ni modifier `PROJECT_MEMORY.md`, réservé à un autre agent.
 
-## État initial vérifié
-- Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
-- Branche par défaut observée : `main`; permissions GitHub retournées : lecture/écriture.
-- Stack observée dans `package.json` : React 18, TypeScript, Vite, Tailwind CSS.
-- Styles globaux : `src/index.css`; thèmes clair/sombre et tokens Liquid Glass.
-- Ce fichier était absent lors de la première intervention du 2026-11-12.
+Les branches `Frontend-IA` et `FRONTED-iA` ont été fusionnées le 2026-11-13 dans `Frontend-IA` (PR #6 vers `main`). Cette branche contient désormais le dock mobile, le verre sombre à transparence réduite, l'explorateur de catégories et les correctifs stats/analytics.
 
-## Historique des interventions
+## Gouvernance
+- Lire ce fichier avant chaque session et le mettre à jour avec les changements réellement effectués.
+- Le code et l'état Git font autorité si cette mémoire diverge.
+- Priorité : UI, UX, responsive, accessibilité, animations, navigation et performance.
+- Ne pas modifier `package.json`, les lockfiles ou les dépendances sans demande explicite.
+- Ne jamais prétendre qu'un build, lint, typecheck, test ou contrôle visuel a réussi s'il n'a pas été exécuté.
+- Ne pas fusionner dans `main` sans demande explicite.
 
-### 2026-11-12 — P2 : transparence réduite en thème sombre
-- Diagnostic : dans `src/index.css`, la règle `@media (prefers-reduced-transparency: reduce)` définissait des tokens de verre clairs sur `:root`, sans rétablir des valeurs sombres sous `.dark`. Les surfaces utilisant ces tokens pouvaient donc devenir trop claires en thème sombre.
-- Correction : ajout d'une surcharge `.dark` dans cette media query pour conserver une teinte sombre opaque et des bordures/reflets discrets.
-- Fichier modifié : `src/index.css`.
-- Commit : `8b7b1d6a898a694a61697c863d60d816d25a5507` sur `main`.
-- Vérification effectuée : relecture du fichier depuis GitHub et confirmation de présence du bloc ajouté.
-- Tests build/typecheck/lint : non exécutés dans cette intervention distante.
-- Validation visuelle et responsive navigateur : non exécutée; aucun rendu/capture n'a été vérifié.
+## Projet
+- Dépôt : `Ulai12/GBAIGBANCE-BOLD`
+- Branche fusionnée : `Frontend-IA` (base de la PR #6)
+- Branche absorbée : `FRONTED-iA`
+- Stack : React 18, TypeScript, Vite, Tailwind CSS, Motion, Lucide, React Router, Supabase.
+- Identité : violet (#6600FF / #8B5CF6), thème clair/sombre, Liquid Glass.
 
-## Problèmes ouverts et prochaine priorité
-- Vérifier le comportement réel du thème sombre avec l'option système « Réduire la transparence » activée, notamment les surfaces GlassPanel et la navigation.
-- Ensuite, poursuivre l'audit ciblé du dock de navigation sur petits écrans et tailles de texte agrandies.
-- Ne considérer aucun contrôle visuel, test automatisé ou build comme réussi sans exécution effective.
+## Journal
 
-## Règle de continuité
-À chaque exécution, lire intégralement ce fichier avant toute intervention. Le code et l'état Git réels priment sur cette mémoire; corriger cette mémoire si elle diverge. Un seul chantier principal par session.
+### 2026-11-12 — Frontend-IA : verre sombre et dock
+- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres. Commit `8b7b1d6` sur `main`.
+- Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en. Commit `59bae5d` sur `Frontend-IA`.
+- Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante. PR #6 ouverte, non fusionnée dans `main`.
+
+### 2026-11-12 — FRONTED-iA : cartes, catégories, stats
+- `EventCard.tsx` : plus de bouton imbriqué dans un `article role="button"` ; overlay de découverte distinct ; suppression de `min-h-[full]`.
+- `BottomNav.tsx` : bouton Créer 44×44 px, focus clavier, `prefers-reduced-motion`. Commit `d381a3b`.
+- Explorateur de catégories : hiérarchie parent/sous-catégorie, catalogue publié complet, plus de flicker ni de polling.
+- Stats/analytics : historique organisateur par mois, pas d'échantillon partiel, repli JavaScript typé, billets uniques.
+- Build de preview frontend consigné comme réussi dans les commits de la branche ; pas rejoué lors de la fusion.
+
+### 2026-11-13 — Fusion `FRONTED-iA` → `Frontend-IA`
+- Ancêtre commun : `75a06f1`.
+- Conflits résolus :
+  - `src/components/BottomNav.tsx` : bouton Créer conservé à 44×44 px avec anneau de focus et `motion-reduce` (FRONTED-iA), en gardant les labels 11px, le dock 62px, le badge accessible et le `GlassPanel` déjà fusionnés automatiquement.
+  - `FRONTEND_MEMORY.md` : les deux journaux sont réunis ici.
+- `main` n'a pas été modifié.
+
+## Ouvert
+- Contrôle visuel du dock et du thème sombre « réduire la transparence » toujours à faire aux largeurs 320–1440.
+- Build, lint et typecheck de la fusion non exécutés tant qu'ils ne sont pas lancés.
