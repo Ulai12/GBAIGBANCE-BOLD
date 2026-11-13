@@ -1,7 +1,6 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { Event, Organization, Ticket } from '@/types';
+import type { Event, Organization } from '@/types';
 import { isRealEvent, isRealOrganization, isEventActive } from '@/features/events/status';
-import { getLocalStoredTickets } from '@/services/tickets';
 import { coreOrganizerSeries, corePlatformStats, type RustTicket } from '@/lib/rust-core';
 
 export interface PerformanceTimePoint {
@@ -34,7 +33,7 @@ export interface OrganizerPerformanceData {
   };
 }
 
-const COUNTED_TICKET_STATUSES = new Set(['valid', 'used']);
+const COUNTED_TICKET_STATUSES = new Set(['active', 'valid', 'used']);
 
 async function fetchTicketsForEvents(eventIds: string[]) {
   const rows: Array<{
@@ -78,7 +77,7 @@ function toRustTickets(tickets: Array<{
     created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
     event_id: ticket.event_id,
     ticket_type: ticket.ticket_type,
-    source: ticket.id.startsWith('tkt_') ? 'local' as const : 'server' as const,
+    source: 'server' as const,
   }));
 }
 
@@ -210,22 +209,9 @@ export async function fetchOrganizerPerformanceMetrics(
       tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
     }
 
-    const localTickets = getLocalStoredTickets();
-    localTickets.forEach((lt: Ticket) => {
-      const eId = lt.event_id || '';
-      const tId = lt.id || '';
-      if (eventIds.includes(eId) && !tickets.some((t) => t.id === tId)) {
-        tickets.push({
-          id: tId,
-          event_id: eId,
-          ticket_type: lt.ticket_type || 'standard',
-          quantity: typeof lt.quantity === 'number' ? lt.quantity : 1,
-          price_paid: typeof lt.price_paid === 'number' ? lt.price_paid : 0,
-          status: lt.status || 'valid',
-          created_at: lt.created_at || new Date().toISOString(),
-        });
-      }
-    });
+    // Les métriques organisateur reposent sur les billets persistés côté serveur.
+    // Le cache du navigateur ne constitue pas une source de vérité et ne doit pas
+    // gonfler ou diverger les ventes affichées sur plusieurs appareils.
 
     const daysCount = timeRange === '7d' ? 7 : 30;
     const countedTickets = tickets.filter((ticket) =>
