@@ -193,7 +193,7 @@ export async function fetchOrganizerPerformanceMetrics(
     const totalViews = events.reduce((s, e) => s + (e.views_count || 0), 0);
     const activeEvents = events.filter((e) => e.status === 'published' && isEventActive(e)).length;
 
-    // 2. Billets serveur (au-delà de 1000) + cache local. Rust retire les annulations.
+    // 2. Billets serveur paginés. Rust calcule les séries et agrégats.
     let tickets: Array<{
       id: string;
       event_id: string;
@@ -495,7 +495,7 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
   };
   if (!isSupabaseConfigured || !userId) return defaultStats;
   try {
-    const { data: rawEvents } = await supabase.from('events').select('*').eq('organizer_user_id', userId);
+    const { data: rawEvents } = await supabase.from('events').select('*').or(`organizer_user_id.eq.${userId},organizer_id.eq.${userId}`);
     const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     const eventIds = events.map((e) => e.id);
     const baseStats = {
@@ -509,18 +509,7 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
     };
     if (eventIds.length === 0) return baseStats;
     const rows = await fetchTicketsForEvents(eventIds);
-    const local = getLocalStoredTickets().filter((ticket) => eventIds.includes(ticket.event_id || '') && !rows.some((row) => row.id === ticket.id));
-    const rustTickets = toRustTickets([
-      ...rows,
-      ...local.map((ticket) => ({
-        id: ticket.id,
-        event_id: ticket.event_id || '',
-        ticket_type: ticket.ticket_type || 'standard',
-        price_paid: ticket.price_paid,
-        status: ticket.status,
-        created_at: ticket.created_at,
-      })),
-    ]);
+    const rustTickets = toRustTickets(rows);
     const core = await corePlatformStats({ tickets: rustTickets, events: [], users: 0 });
     const fallback = core ? null : tallyTickets(rustTickets);
     baseStats.totalTickets = core?.total_tickets ?? fallback?.tickets ?? 0;
