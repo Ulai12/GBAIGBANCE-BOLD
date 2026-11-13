@@ -20,6 +20,7 @@ export interface PlatformStats {
   totalParticipants: number;
   totalParticipantAccounts?: number;
   totalProfiles?: number;
+  totalPendingPlatformInvitations?: number;
   totalUsers: number;
   totalViews: number;
   totalRevenue: number;
