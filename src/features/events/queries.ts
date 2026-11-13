@@ -67,15 +67,20 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     isAvailable: false,
   };
 
-  if (!isSupabaseConfigured) return unavailable;
+  if (!isSupabaseConfigured) {
+    console.error('[platform-stats] Supabase client is not configured');
+    return unavailable;
+  }
 
   try {
-    // Une seule source de vérité : tous les KPI viennent de l'agrégateur serveur.
-    // Aucun ticket localStorage ne doit entrer dans les statistiques globales.
-    const { data, error } = await supabase.functions.invoke('platform-stats');
+    // L'agrégation est exécutée par PostgreSQL : aucune pagination client ni dépendance
+    // à une Edge Function distincte pour obtenir les statistiques globales.
+    const { data, error } = await supabase.rpc('get_platform_stats');
     if (error) throw error;
-    if (!data || typeof data.totalUsers !== 'number' || typeof data.totalTickets !== 'number') {
-      throw new Error('Réponse incomplète de platform-stats');
+    if (!data || typeof data !== 'object' || typeof data.totalUsers !== 'number' ||
+        typeof data.totalTickets !== 'number' || typeof data.totalEvents !== 'number' ||
+        data.isAvailable !== true) {
+      throw new Error('La fonction SQL get_platform_stats a renvoyé une réponse invalide');
     }
 
     return {
@@ -84,7 +89,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       isAvailable: true,
     } as PlatformStats;
   } catch (error) {
-    console.error('[platform-stats] unavailable:', error);
+    console.error('[platform-stats] SQL RPC unavailable:', error);
     return unavailable;
   }
 }
