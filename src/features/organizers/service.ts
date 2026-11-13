@@ -54,7 +54,8 @@ async function fetchTicketsForEvents(eventIds: string[]) {
         .select('id, event_id, ticket_type, price_paid, status, created_at')
         .in('event_id', slice)
         .range(from, from + pageSize - 1);
-      if (error || !data) break;
+      if (error) throw error;
+      if (!data) throw new Error('Impossible de charger les billets de cet organisateur.');
       rows.push(...(data as typeof rows));
       if (data.length < pageSize) break;
     }
@@ -182,10 +183,11 @@ export async function fetchOrganizerPerformanceMetrics(
 
   try {
     // 1. Fetch user's events
-    const { data: rawEvents } = await supabase
+    const { data: rawEvents, error: eventsError } = await supabase
       .from('events')
       .select('id, title, views_count, attendees_count, status, created_at, starts_at')
       .or(`organizer_user_id.eq.${userId},organizer_id.eq.${userId}`);
+    if (eventsError) throw eventsError;
 
     const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     const eventIds = events.map((e) => e.id);
@@ -279,7 +281,7 @@ export async function fetchOrganizerPerformanceMetrics(
     };
   } catch (error) {
     console.error('Error fetching organizer performance metrics:', error);
-    return emptyResult;
+    throw error;
   }
 }
 
