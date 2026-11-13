@@ -302,6 +302,8 @@ export function GbaigbanceStatsDashboard({
   }, [platformStats?.categoryShares]);
 
   // Valeur maximale du graphique
+  const hasMetricData = monthlyTimeline.some((item) => item[activeMetric] > 0);
+
   const maxMetricValue = useMemo(() => {
     const values = monthlyTimeline.map(
       (item) => item[activeMetric]
@@ -708,6 +710,13 @@ export function GbaigbanceStatsDashboard({
           </div>
 
           {/* SVG */}
+          {!hasMetricData ? (
+            <div className="flex h-[140px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-black/[0.02] text-center dark:border-white/10 dark:bg-white/[0.025]">
+              <Calendar className="mb-2 h-5 w-5 text-[#6600FF] dark:text-violet-300" />
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Aucune activité sur cette période</p>
+              <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">Les courbes apparaîtront avec les premières données enregistrées.</p>
+            </div>
+          ) : (
           <div className="relative flex h-[140px] w-full items-center justify-center">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -860,6 +869,7 @@ export function GbaigbanceStatsDashboard({
               })}
             </svg>
           </div>
+          )}
         </div>
       </div>
 
