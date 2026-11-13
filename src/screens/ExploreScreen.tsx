@@ -103,6 +103,10 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
   const hasLoadedEventsRef = useRef(events.length > 0);
   const eventRequestRef = useRef(0);
+  const loadEventsRef = useRef(loadEvents);
+  const searchModeRef = useRef(searchMode);
+  loadEventsRef.current = loadEvents;
+  searchModeRef.current = searchMode;
 
   // Participants trouvés lors de la recherche
   const [participants, setParticipants] = useState<Profile[]>([]);
@@ -197,17 +201,19 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     }
   }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
-  // Synchronisation initiale et notifications Realtime uniquement.
-  // Aucun polling ne relance les recherches ni ne réaffiche les skeletons.
+  // Un seul canal global pendant la durée de vie de l'écran.
+  // Les refs évitent de recréer le WebSocket à chaque frappe ou changement de filtre.
   useEffect(() => {
     const unsubscribe = subscribeToGlobalEventsLive(() => {
-      if (searchMode === 'events') loadEvents(false);
+      if (searchModeRef.current === 'events') {
+        void loadEventsRef.current(false);
+      }
     });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribe();
     };
-  }, [searchMode, loadEvents]);
+  }, []);
 
   const resetFilters = () => {
     setSelectedCategory(null);
