@@ -47,19 +47,23 @@ Deno.serve(async (req: Request) => {
       fetchAll<TicketOptionRow>((from, to) => admin.from('ticket_options').select('id, event_id, quantity_sold').range(from, to)),
     ]);
 
-    const authUsers: Array<{ id: string }> = [];
+    const authUsers: Array<{ id: string; invited_at?: string | null; confirmed_at?: string | null }> = [];
     for (let page = 1; page <= 100; page += 1) {
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
       if (error) throw new Error(error.message);
       const batch = data.users ?? [];
-      authUsers.push(...batch.map((user) => ({ id: user.id })));
+      authUsers.push(...batch.map((user) => ({ id: user.id, invited_at: user.invited_at, confirmed_at: user.confirmed_at })));
       if (batch.length < 1000) break;
       if (page === 100) throw new Error('Auth user pagination limit reached');
     }
 
+    // Les invitations de compte non acceptées ne sont pas des utilisateurs inscrits.
+    // Les participants externes sans compte n'existent pas dans Auth et sont comptés via attendees_count.
+    const registeredUsers = authUsers.filter((user) => !(user.invited_at && !user.confirmed_at));
+    const pendingPlatformInvitations = authUsers.length - registeredUsers.length;
     const roleByUser = new Map(profiles.map((profile) => [profile.id, String(profile.role || 'participant').toLowerCase()]));
     const nonParticipantRoles = new Set(['organizer', 'artist', 'admin']);
-    const totalParticipantAccounts = authUsers.filter((user) => !nonParticipantRoles.has(roleByUser.get(user.id) || 'participant')).length;
+    const totalParticipantAccounts = registeredUsers.filter((user) => !nonParticipantRoles.has(roleByUser.get(user.id) || 'participant')).length;
 
     const now = Date.now();
     const activeEvents = events.filter((event) => event.status === 'published' && (!event.ends_at || Date.parse(event.ends_at) >= now));
@@ -118,7 +122,7 @@ Deno.serve(async (req: Request) => {
 
     return json({
       totalEvents: activeEvents.length, totalAllEvents: events.length, totalArtists: artists.length, totalOrganizers: organizations.length,
-      totalTickets, totalParticipants, totalParticipantAccounts, totalProfiles: profiles.length, totalUsers: authUsers.length,
+      totalTickets, totalParticipants, totalParticipantAccounts, totalProfiles: profiles.length, totalPendingPlatformInvitations: pendingPlatformInvitations, totalUsers: registeredUsers.length,
       totalViews, totalRevenue, totalCancelledTickets: cancelledTickets.length, totalRefundedTickets: refundedTickets.length,
       categories: Object.fromEntries([...categoryCounts].map(([id, item]) => [id, item.events])),
       categoryBasis: useRevenue ? 'revenue' : 'events', categoryShares, ticketsTimeline, eventsTimeline,
