@@ -106,7 +106,7 @@ export function OrganizerMetricsChart({
   };
 
   return (
-    <div className="rounded-[2rem] bg-white/90 dark:bg-[#151322]/90 backdrop-blur-2xl p-5 shadow-[0_12px_40px_rgba(102,0,255,0.06)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5)] border border-black/[0.06] dark:border-white/[0.08] mb-6 overflow-hidden">
+    <div className="relative isolate mb-6 w-full overflow-hidden rounded-[2rem] border border-white/80 border-t-white bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 p-4 shadow-[0_14px_42px_rgba(102,0,255,0.08)] backdrop-blur-2xl sm:p-5 dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.14),transparent_34%,rgba(139,92,246,0.09)_72%,transparent)]">
       {/* Top Header with title & time filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
@@ -162,14 +162,14 @@ export function OrganizerMetricsChart({
       </div>
 
       {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 gap-2.5 mb-5 sm:grid-cols-4 sm:gap-3">
         {/* Billets vendus */}
         <div
           onClick={() => setMetricMode('sales')}
           className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
             metricMode === 'sales'
               ? 'bg-[#6600FF]/[0.08] dark:bg-[#6600FF]/20 border-[#6600FF]/40 shadow-xs'
-              : 'bg-gray-50/80 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-gray-100/80'
+              : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80 dark:hover:bg-white/[0.09]'
           }`}
         >
           <div className="flex items-center justify-between mb-1">
@@ -190,7 +190,7 @@ export function OrganizerMetricsChart({
           className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
             metricMode === 'revenue'
               ? 'bg-emerald-500/[0.08] dark:bg-emerald-500/20 border-emerald-500/40 shadow-xs'
-              : 'bg-gray-50/80 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-gray-100/80'
+              : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80'
           }`}
         >
           <div className="flex items-center justify-between mb-1">
@@ -206,7 +206,7 @@ export function OrganizerMetricsChart({
         </div>
 
         {/* Vues totales */}
-        <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] border border-black/5 dark:border-white/5">
+        <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.055] border border-black/5 dark:border-white/5">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Vues</span>
             <Eye className="w-3.5 h-3.5 text-gray-400" />
