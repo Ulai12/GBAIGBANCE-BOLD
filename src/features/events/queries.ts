@@ -82,6 +82,7 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
       categoryShares: [],
       ticketsTimeline: [],
       eventsTimeline: [],
+      isAvailable: false,
     };
   }
 
