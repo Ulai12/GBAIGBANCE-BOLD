@@ -179,6 +179,8 @@ export async function coreSearchIds(query: string, events: RustEvent[]): Promise
 }
 
 export async function coreTrendIds(events: RustEvent[], nowMs = Date.now()): Promise<string[] | null> {
+  // Évite de démarrer WASM pour les listes courtes (30 événements dans le flux tendance).
+  if (events.length < 100) return null;
   const result = await exec<{ ids: string[] }>({ op: 'trend', now_ms: nowMs, events });
   return result?.ids ?? null;
 }

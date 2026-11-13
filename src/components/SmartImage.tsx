@@ -57,9 +57,11 @@ export const SmartImage = memo(function SmartImage({
   const [errored, setErrored] = useState(false);
   const [loaded, setLoaded] = useState(() => (src ? LOADED_IMAGE_URLS.has(src) : false));
 
+  // Construire les variantes depuis la source réellement affichée : cela permet au fallback
+  // de prendre effet après une erreur réseau ou une URL d'image invalide.
   const responsive = useMemo(() => {
-    return buildResponsiveImageSources(effectiveSrc, widths, sizes, applyDataSaver);
-  }, [effectiveSrc, widths, sizes, applyDataSaver]);
+    return buildResponsiveImageSources(imgSrc, widths, sizes, applyDataSaver);
+  }, [imgSrc, widths, sizes, applyDataSaver]);
 
   useEffect(() => {
     const nextSrc = (src && src.trim() !== '') ? src : resolvedFallback;
@@ -117,7 +119,7 @@ export const SmartImage = memo(function SmartImage({
         srcSet={responsive.srcSetWebp || undefined}
         sizes={sizes}
         alt={alt}
-        className={`${className} ${!loaded ? 'bg-black/[0.04] dark:bg-white/[0.06]' : 'transition-opacity duration-200 opacity-100'}`}
+        className={`${className} ${!loaded ? 'bg-black/[0.04] dark:bg-white/[0.06]' : 'opacity-100'} transition-opacity duration-200`}
         style={style}
         onError={handleError}
         onLoad={() => {

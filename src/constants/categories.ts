@@ -5,7 +5,8 @@ export type MainCategoryId =
   | 'commercial_professional'
   | 'festive_nightlife'
   | 'sports'
-  | 'private_family';
+  | 'private_family'
+  | 'leisure_discovery';
 
 export type SubCategoryId =
   // Événements culturels et artistiques
@@ -23,7 +24,15 @@ export type SubCategoryId =
   | 'competitions_matchs'
   | 'fan_zones'
   // Événements privés et familiaux
-  | 'celebrations_personnelles';
+  | 'celebrations_personnelles'
+  | 'mariages_receptions'
+  | 'anniversaires'
+  | 'ceremonies_familiales'
+  | 'evenements_vip_prives'
+  // Loisirs et expériences
+  | 'gaming_esport'
+  | 'loisirs_sorties'
+  | 'bien_etre_lifestyle';
 
 export interface SubCategoryDefinition {
   id: SubCategoryId;
@@ -199,11 +208,91 @@ export const MAIN_CATEGORIES: MainCategoryDefinition[] = [
         id: 'celebrations_personnelles',
         mainCategoryId: 'private_family',
         label: 'Célébrations personnelles',
-        shortLabel: 'Mariages & Anniversaires',
-        description: "Mariages, anniversaires, fêtes familiales ou cérémonies privées.",
+        shortLabel: 'Célébrations',
+        description: "Événements personnels organisés dans un cadre privé.",
         defaultLegacyCategory: 'private',
         iconName: 'Cake',
-        tags: ['Mariage', 'Anniversaire', 'Fête de famille', 'Baptême', 'Cérémonie privée'],
+        tags: ['Célébration personnelle', 'Fête privée'],
+      },
+      {
+        id: 'mariages_receptions',
+        mainCategoryId: 'private_family',
+        label: 'Mariages & Réceptions',
+        shortLabel: 'Mariages',
+        description: "Mariages, réceptions et fêtes de mariage réservées aux invités.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Heart',
+        tags: ['Mariage', 'Réception de mariage', 'Fiancailles', 'Wedding'],
+      },
+      {
+        id: 'anniversaires',
+        mainCategoryId: 'private_family',
+        label: 'Anniversaires & Fêtes',
+        shortLabel: 'Anniversaires',
+        description: "Anniversaires et fêtes privées entre proches.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Gift',
+        tags: ['Anniversaire', 'Birthday', 'Fête privée'],
+      },
+      {
+        id: 'ceremonies_familiales',
+        mainCategoryId: 'private_family',
+        label: 'Cérémonies familiales',
+        shortLabel: 'Cérémonies',
+        description: "Baptêmes, cérémonies traditionnelles et rassemblements familiaux privés.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Users',
+        tags: ['Baptême', 'Cérémonie familiale', 'Tradition', 'Fête de famille'],
+      },
+      {
+        id: 'evenements_vip_prives',
+        mainCategoryId: 'private_family',
+        label: 'Événements VIP privés',
+        shortLabel: 'VIP privés',
+        description: "Rencontres privées sur invitation, événements VIP et réceptions intimistes.",
+        defaultLegacyCategory: 'private',
+        iconName: 'Lock',
+        tags: ['VIP', 'Invitation', 'Lounge privé', 'Réception privée'],
+      },
+    ],
+  },
+  {
+    id: 'leisure_discovery',
+    label: 'Loisirs et découvertes',
+    shortLabel: 'Loisirs & Découvertes',
+    description: 'Jeux vidéo, expériences ludiques, sorties et activités de bien-être.',
+    iconName: 'Sparkles',
+    accentColor: '#06B6D4',
+    subcategories: [
+      {
+        id: 'gaming_esport',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Gaming & E-sport',
+        shortLabel: 'Gaming',
+        description: 'Tournois de jeux vidéo, rencontres gaming et compétitions e-sport.',
+        defaultLegacyCategory: 'cultural',
+        iconName: 'Gamepad2',
+        tags: ['Call of Duty', 'FPS', 'Gaming', 'Jeux vidéo', 'E-sport', 'Tournoi gaming', 'LAN'],
+      },
+      {
+        id: 'loisirs_sorties',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Loisirs & Sorties',
+        shortLabel: 'Loisirs',
+        description: 'Activités récréatives, découvertes, sorties et expériences collectives.',
+        defaultLegacyCategory: 'cultural',
+        iconName: 'Compass',
+        tags: ['Loisirs', 'Sortie', 'Découverte', 'Expérience', 'Activité'],
+      },
+      {
+        id: 'bien_etre_lifestyle',
+        mainCategoryId: 'leisure_discovery',
+        label: 'Bien-être & Lifestyle',
+        shortLabel: 'Bien-être',
+        description: 'Activités de détente, bien-être, développement personnel et art de vivre.',
+        defaultLegacyCategory: 'formation',
+        iconName: 'Sparkles',
+        tags: ['Bien-être', 'Yoga', 'Méditation', 'Lifestyle', 'Développement personnel'],
       },
     ],
   },
@@ -346,6 +435,7 @@ export function injectCategoryMeta(
 // Supporte les types Event où subcategory et main_category peuvent être typés string | null
 export function hydrateEventCategories<T extends {
   category: EventCategory;
+  title?: string;
   description?: string | null;
   subcategory?: SubCategoryId | string | null;
   main_category?: MainCategoryId | string | null;
@@ -361,6 +451,36 @@ export function hydrateEventCategories<T extends {
   const meta = extractCategoryMeta(event.description);
   let resolvedSub = event.subcategory || meta.subcategory;
   let resolvedMain = event.main_category || meta.main_category;
+
+  // Les anciens événements n'ont pas toujours de sous-catégorie enregistrée.
+  // On utilise alors les tags explicites du catalogue (ex. Call of Duty → Gaming),
+  // sans déduire une catégorie à partir d'un simple alias historique trop large.
+  if (!resolvedSub) {
+    const sourceText = `${event.title || ''} ${meta.description || event.description || ''}`
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('fr')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+    const inferred = ALL_SUBCATEGORIES
+      .map((sub) => ({
+        sub,
+        score: sub.tags.reduce((best, tag) => {
+          const normalizedTag = tag
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLocaleLowerCase('fr')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+          return normalizedTag.length >= 4 && sourceText.includes(normalizedTag)
+            ? Math.max(best, normalizedTag.length)
+            : best;
+        }, 0),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+    if (inferred) resolvedSub = inferred.sub.id;
+  }
 
   if (!resolvedSub) {
     switch (event.category) {
@@ -385,13 +505,13 @@ export function hydrateEventCategories<T extends {
         resolvedSub = 'concerts_spectacles';
         resolvedMain = 'cultural_artistic';
         break;
+      // Les anciennes catégories "cultural" et "private" sont trop larges
+      // pour leur attribuer arbitrairement une sous-catégorie précise.
       case 'cultural':
-        resolvedSub = 'fetes_carnavals';
         resolvedMain = 'cultural_artistic';
         break;
       case 'private':
-        resolvedSub = 'clubbing_soirees';
-        resolvedMain = 'festive_nightlife';
+        resolvedMain = 'private_family';
         break;
     }
   }

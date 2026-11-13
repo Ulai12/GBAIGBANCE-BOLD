@@ -66,6 +66,39 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Heart,
 };
 
+const SEARCH_WASM_THRESHOLD = 100;
+
+function normalizeSearchText(value: string | null | undefined): string {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('fr');
+}
+
+function rankExploreResults(events: Event[], query: string): Event[] {
+  const needle = normalizeSearchText(query.trim());
+  if (!needle) return events;
+
+  return events
+    .map((event, index) => {
+      const title = normalizeSearchText(event.title);
+      const city = normalizeSearchText(event.city);
+      const location = normalizeSearchText(event.location_name);
+      const category = normalizeSearchText(event.category);
+      const description = normalizeSearchText(event.description);
+      const score =
+        (title === needle ? 100 : title.startsWith(needle) ? 80 : title.includes(needle) ? 60 : 0) +
+        (city.includes(needle) ? 25 : 0) +
+        (location.includes(needle) ? 20 : 0) +
+        (category.includes(needle) ? 15 : 0) +
+        (description.includes(needle) ? 5 : 0);
+      return { event, index, score };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ event }) => event);
+}
+
 let exploreCache: Event[] | null = null;
 
 function getWarmExploreEvents(): Event[] {
@@ -103,6 +136,9 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
   const [priceFilter, setPriceFilter] = useState<'any' | 'free' | 'paid'>('any');
   const hasLoadedEventsRef = useRef(events.length > 0);
   const eventRequestRef = useRef(0);
+  const loadEventsRef = useRef<((isDefault?: boolean) => Promise<void>) | null>(null);
+  const searchModeRef = useRef(searchMode);
+  searchModeRef.current = searchMode;
 
   // Participants trouvés lors de la recherche
   const [participants, setParticipants] = useState<Profile[]>([]);
@@ -138,12 +174,20 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           description: event.description || '',
           location: event.location_name,
         }));
-        const ranked = (await coreFuzzySearch(q, eventsForRust)) || (await coreSearchIds(q, eventsForRust));
-        if (ranked && ranked.length > 0) {
-          const byId = new Map(result.map((event) => [event.id, event]));
-          result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
+        if (eventsForRust.length >= SEARCH_WASM_THRESHOLD) {
+          const ranked = (await coreFuzzySearch(q, eventsForRust)) || (await coreSearchIds(q, eventsForRust));
+          if (ranked && ranked.length > 0) {
+            const byId = new Map(result.map((event) => [event.id, event]));
+            result = ranked.map((id) => byId.get(id)).filter((event): event is Event => !!event);
+          } else {
+            const localRanked = rankExploreResults(result, q);
+            result = localRanked.length > 0 ? localRanked : applyFilters(rawSql);
+          }
         } else {
-          result = applyFilters(rawSql);
+          // Pour les petits catalogues, le tri JavaScript évite le téléchargement
+          // et l'initialisation WASM pour une recherche de quelques dizaines d'items.
+          const localRanked = rankExploreResults(result, q);
+          result = localRanked.length > 0 ? localRanked : applyFilters(rawSql);
         }
       }
       if (requestId !== eventRequestRef.current) return;
@@ -161,6 +205,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       }
     }
   }, [query, selectedCategory, selectedCity, priceFilter]);
+
+  loadEventsRef.current = loadEvents;
 
   const loadParticipants = useCallback(async () => {
     const q = query.trim();
@@ -197,17 +243,19 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
     }
   }, [searchMode, loadEvents, loadParticipants, query, selectedCategory, selectedCity, priceFilter]);
 
-  // Synchronisation initiale et notifications Realtime uniquement.
-  // Aucun polling ne relance les recherches ni ne réaffiche les skeletons.
+  // Un seul canal global pendant la durée de vie de l'écran.
+  // Les refs évitent de recréer le WebSocket à chaque frappe ou changement de filtre.
   useEffect(() => {
     const unsubscribe = subscribeToGlobalEventsLive(() => {
-      if (searchMode === 'events') loadEvents(false);
-    });
+      if (searchModeRef.current === 'events') {
+        void loadEventsRef.current?.(false);
+      }
+    }, ['events']);
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribe();
     };
-  }, [searchMode, loadEvents]);
+  }, []);
 
   const resetFilters = () => {
     setSelectedCategory(null);

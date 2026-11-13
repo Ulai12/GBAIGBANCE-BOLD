@@ -27,6 +27,7 @@ import {
   Search,
   Sparkles,
   Theater,
+  Trophy,
   Ticket as TicketIcon,
   Trash2,
   Upload,
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { CITIES, COUNTRIES, MAIN_CATEGORIES, getMainCategoryById, getSubcategoryById, hydrateEventCategories } from '@/constants';
+import type { MainCategoryId, SubCategoryId } from '@/constants/categories';
 import {
   fetchEventById,
   fetchTicketOptions,
@@ -49,7 +51,6 @@ import {
   deleteEvent,
 } from '@/services/events';
 import type { Artist, Event, EventCategory, EventStatus, EventCollaborator } from '@/types';
-import type { MainCategoryId, SubCategoryId } from '@/constants/categories';
 import type { ToastData } from '@/components/Toast';
 import { formatNumber } from '@/utils/format';
 import { coreStock } from '@/lib/rust-core';
@@ -214,12 +215,11 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
         setTitle(eventData.title || '');
         setDescription(eventData.description || '');
         const categorizedEvent = hydrateEventCategories(eventData);
-        setCategory(categorizedEvent.category || 'concert');
         const resolvedMain = getMainCategoryById(categorizedEvent.main_category || '') || MAIN_CATEGORIES[0];
         const resolvedSub = getSubcategoryById(categorizedEvent.subcategory || '') || resolvedMain.subcategories[0];
         setMainCategory(resolvedMain.id);
         setSubcategory(resolvedSub.id);
-        setCategory(resolvedSub.defaultLegacyCategory);
+        setCategory(resolvedSub.defaultLegacyCategory || eventData.category || 'concert');
         setStatus(eventData.status || 'published');
         setLocationName(eventData.location_name || '');
         setLocationAddress(eventData.location_address || '');
@@ -825,7 +825,7 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
               />
             </div>
 
-            {/* Taxonomie partagée avec l'écran de création et Explorer */}
+            {/* Taxonomie commune avec la création et Explorer */}
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
@@ -833,26 +833,26 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {MAIN_CATEGORIES.map((main) => {
-                    const isSelected = mainCategory === main.id;
+                    const selected = mainCategory === main.id;
                     return (
                       <button
                         key={main.id}
                         type="button"
                         onClick={() => {
-                          const nextSub = main.subcategories[0];
+                          const firstSub = main.subcategories[0];
                           setMainCategory(main.id);
-                          if (nextSub) {
-                            setSubcategory(nextSub.id);
-                            setCategory(nextSub.defaultLegacyCategory);
+                          if (firstSub) {
+                            setSubcategory(firstSub.id);
+                            setCategory(firstSub.defaultLegacyCategory);
                           }
                         }}
                         className={`min-h-[76px] rounded-2xl border p-3 text-xs font-bold flex flex-col items-center justify-center gap-2 transition-all ${
-                          isSelected
+                          selected
                             ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-sm shadow-[#6600FF]/30'
                             : 'bg-white/80 dark:bg-white/[0.055] border-black/[0.07] dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:border-[#6600FF]/40'
                         }`}
                       >
-                        <span className={`rounded-xl p-2 ${isSelected ? 'bg-white/20 text-white' : 'bg-[#6600FF]/10 text-[#6600FF] dark:text-violet-300'}`}>
+                        <span className={`rounded-xl p-2 ${selected ? 'bg-white/20 text-white' : 'bg-[#6600FF]/10 text-[#6600FF] dark:text-violet-300'}`}>
                           {getCategoryIcon(main.id)}
                         </span>
                         <span className="w-full text-center leading-tight">{main.shortLabel}</span>
@@ -861,7 +861,6 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                   })}
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
                   Sous-catégorie *

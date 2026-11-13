@@ -233,95 +233,71 @@ export async function purchaseTicketsMulti(params: {
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
   const amountXof = unitPrice * Math.max(1, recipients.length);
 
-  // Tentative via la RPC Supabase si configuré et utilisateur connecté
-  if (isSupabaseConfigured && userId && !userId.startsWith('guest-')) {
+  // Production: aucune émission locale de faux billets.
+  // La base connectée expose actuellement book_ticket (réservation gratuite),
+  // mais pas purchase_tickets_multi ni de flux de confirmation Mobile Money.
+  if (isSupabaseConfigured) {
+    if (!userId || userId.startsWith('guest-')) {
+      return { success: false, error: 'Connectez-vous pour réserver un billet.' };
+    }
+
+    if (unitPrice > 0) {
+      return {
+        success: false,
+        error: 'Le paiement Mobile Money n’est pas encore relié à la confirmation serveur. Aucun billet payant ne sera marqué comme acheté avant confirmation du paiement.',
+      };
+    }
+
+    if (recipients.length !== 1 || !recipients[0]?.is_for_me) {
+      return {
+        success: false,
+        error: 'La réservation gratuite multi-bénéficiaires n’est pas encore disponible. Réservez un billet à la fois.',
+      };
+    }
+
     try {
-      const { data, error } = await supabase.rpc('purchase_tickets_multi', {
+      const { data, error } = await supabase.rpc('book_ticket', {
         p_event_id: eventId,
         p_ticket_option_id: ticketOptionId,
-        p_recipients: recipients,
-        p_payment_provider: paymentProvider,
-        p_payment_phone: paymentPhone,
+        p_quantity: 1,
       });
-
       if (error) {
-        if (!isMissingRpcError(error)) {
-          return { success: false, error: error.message || 'Le paiement n’a pas pu être confirmé.' };
-        }
-        // Fonction RPC absente du schéma Supabase : bascule propre vers la création locale
-      } else if (data) {
-        const result = data as {
-          success?: boolean;
-          payment_id?: string;
-          amount_xof?: number;
-          tickets?: Array<{
-            ticket_id: string;
-            qr_code: string;
-            is_for_me: boolean;
-            recipient_name?: string;
-            claim_token?: string;
-          }>;
-          error?: string;
-        };
-
-        if (result.success && result.tickets && result.tickets.length > 0) {
-          const event = await fetchEventById(eventId);
-          const paidEach = (result.amount_xof ?? amountXof) / result.tickets.length;
-          for (let i = 0; i < result.tickets.length; i++) {
-            const item = result.tickets[i];
-            const recipientInput = recipients[i] || recipients[0];
-            const targetUserId = item.is_for_me ? userId : (recipientInput?.recipient_user_id || '');
-            const loc: Ticket = {
-              id: item.ticket_id,
-              event_id: eventId,
-              user_id: targetUserId,
-              buyer_user_id: userId,
-              buyer_name: buyerName || 'Un ami',
-              is_for_me: item.is_for_me,
-              payment_id: result.payment_id,
-              ticket_type: 'standard',
-              ticket_option_id: ticketOptionId,
-              price_paid: paidEach,
-              currency: 'XOF',
-              qr_code: item.qr_code,
-              status: 'pending',
-              quantity: 1,
-              recipient_name: item.recipient_name || recipientInput?.recipient_name,
-              recipient_phone: recipientInput?.recipient_phone,
-              claim_token: item.claim_token,
-              is_claimed: item.is_for_me,
-              seat_info: null,
-              created_at: new Date().toISOString(),
-              event: event || undefined,
-            };
-            saveLocalStoredTicket(loc, userId);
-            if (!item.is_for_me && recipientInput?.recipient_user_id) {
-              saveLocalStoredTicket(loc, recipientInput.recipient_user_id);
-            }
-            if (!item.is_for_me) {
-              saveGiftTicketForFriend(loc);
-            }
-          }
-          return {
-            success: true,
-            payment_id: result.payment_id,
-            amount_xof: result.amount_xof ?? amountXof,
-            tickets: result.tickets,
-          };
-        }
-
-        if (result.error) {
-          return {
-            success: false,
-            error: result.error || 'Réservation refusée. Aucun billet n’a été créé.',
-          };
-        }
+        return { success: false, error: error.message || 'La réservation n’a pas pu être enregistrée.' };
       }
+
+      const result = data as {
+        success?: boolean;
+        error?: string;
+        ticket?: { id?: string; qr_code?: string; price_paid?: number; status?: string };
+      } | null;
+      if (!result?.success || !result.ticket?.id || !result.ticket.qr_code) {
+        return { success: false, error: result?.error || 'Le serveur n’a pas confirmé la création du billet.' };
+      }
+
+      return {
+        success: true,
+        amount_xof: Number(result.ticket.price_paid) || 0,
+        tickets: [{
+          ticket_id: result.ticket.id,
+          qr_code: result.ticket.qr_code,
+          is_for_me: true,
+          recipient_name: recipients[0].recipient_name,
+        }],
+      };
     } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réservation' };
-      }
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Erreur lors de la réservation serveur.',
+      };
     }
+  }
+
+  // Mode hors ligne de démonstration: réservé aux billets gratuits.
+  if (unitPrice > 0) {
+    return {
+      success: false,
+      error: 'Les achats payants nécessitent une connexion au service de paiement. Aucun billet en attente fictif n’a été créé.',
+    };
   }
 
   // Démo hors-ligne : prix réel, et un pass payant reste « en attente » tant qu'il n'y a pas de caisse.

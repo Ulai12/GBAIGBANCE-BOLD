@@ -4,6 +4,8 @@ import {
   Users,
   Calendar,
   DollarSign,
+  UserRoundCheck,
+  Contact,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
@@ -80,7 +82,10 @@ export function GbaigbanceStatsDashboard({
     return {
       tickets: platformStats?.totalTickets ?? 0,
       revenue: platformStats?.totalRevenue ?? 0,
-      attendees: platformStats?.totalUsers ?? 0,
+      attendees: platformStats?.totalParticipants ?? 0,
+      users: platformStats?.totalUsers ?? 0,
+      profiles: platformStats?.totalProfiles ?? 0,
+      participantAccounts: platformStats?.totalParticipantAccounts ?? 0,
       events: platformStats?.totalEvents ?? 0,
     };
   }, [platformStats]);
@@ -297,6 +302,8 @@ export function GbaigbanceStatsDashboard({
   }, [platformStats?.categoryShares]);
 
   // Valeur maximale du graphique
+  const hasMetricData = monthlyTimeline.some((item) => item[activeMetric] > 0);
+
   const maxMetricValue = useMemo(() => {
     const values = monthlyTimeline.map(
       (item) => item[activeMetric]
@@ -447,19 +454,10 @@ export function GbaigbanceStatsDashboard({
       : null;
 
   return (
-    <div className="w-full overflow-hidden rounded-[2rem] border border-black/[0.055] bg-white shadow-[0_8px_28px_rgba(23,19,29,0.045)] dark:border-white/[0.075] dark:bg-[#14121E] dark:shadow-[0_12px_36px_rgba(0,0,0,0.28)]">
+    <div className="w-full overflow-hidden relative isolate rounded-[2rem] border border-white/75 border-t-white/90 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.48)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_34%,rgba(139,92,246,0.07)_72%,transparent)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-Données synchronisées en direct
-            </span>
-          </div>
-
-        </div>
-        <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/10">
+        <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/[0.055]">
 
           <button
             type="button"
@@ -507,7 +505,7 @@ Données synchronisées en direct
       </div>
 
       {/* Cartes KPI */}
-      <div className="mb-5 grid grid-cols-2 gap-3 px-4 sm:px-5 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 px-4 sm:px-5 lg:grid-cols-3">
 
         {/* Billets - Total global acheté par tout le monde */}
         <button
@@ -515,10 +513,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('tickets')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'tickets'
-              ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#8B5CF6]/25'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.045]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -533,7 +531,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {formatNumber(totals.tickets)}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.tickets)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
@@ -547,10 +545,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('revenue')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'revenue'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -565,11 +563,13 @@ Données synchronisées en direct
           </div>
 
           <p className="truncate text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {totals.revenue >= 1000000
-              ? `${(totals.revenue / 1000000).toFixed(1)}M`
-              : totals.revenue > 0
-                ? totals.revenue.toLocaleString('fr-FR')
-                : '0'}{' '}
+            {platformStats?.isAvailable === false || !platformStats
+              ? '—'
+              : totals.revenue >= 1000000
+                ? `${(totals.revenue / 1000000).toFixed(1)}M`
+                : totals.revenue > 0
+                  ? totals.revenue.toLocaleString('fr-FR')
+                  : '0'}{' '}
             <span className="text-xs font-bold text-gray-400">
               FCFA
             </span>
@@ -580,24 +580,52 @@ Données synchronisées en direct
           </p>
         </button>
 
-        {/* Comptes : le chiffre n'est pas la courbe (la courbe est la jauge des événements). */}
+        {/* Comptes Auth : tous les rôles, participants et organisateurs compris. */}
         <div
-          className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/80 p-3.5 text-left dark:border-white/[0.05] dark:bg-white/[0.04]"
+          className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]"
         >
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Users className="h-3.5 w-3.5 text-[#6600FF]" />
-              Utilisateurs
+              Comptes inscrits
             </span>
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {formatNumber(totals.attendees)}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.users)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Comptes inscrits
+            {platformStats?.isAvailable === false || !platformStats ? 'Comptes indisponibles' : `${formatNumber(totals.participantAccounts)} comptes participants`}
           </p>
+        </div>
+
+        {/* Participants : cumul des inscriptions aux événements, avec ou sans compte. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <UserRoundCheck className="h-3.5 w-3.5 text-[#6600FF]" />
+              Participations
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total déclaré par les événements · non dédupliqué</p>
+        </div>
+
+        {/* Profils : distincts des comptes Auth. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <Contact className="h-3.5 w-3.5 text-[#6600FF]" />
+              Profils créés
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.profiles)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Fiches associées aux comptes</p>
         </div>
 
         {/* Événements créés - Actifs uniquement */}
@@ -606,10 +634,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('events')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'events'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -624,7 +652,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {totals.events}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.events)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
@@ -636,7 +664,7 @@ Données synchronisées en direct
 
       {/* Graphique */}
       <div className="mb-4 px-5">
-        <div className="rounded-[1.8rem] border border-black/[0.04] bg-gradient-to-b from-[#6600FF]/[0.03] to-transparent p-4 dark:border-white/[0.05] dark:from-[#6600FF]/15">
+        <div className="rounded-[1.8rem] border border-white/65 bg-gradient-to-b from-white/55 to-white/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl dark:border-white/[0.12] dark:from-[#8B5CF6]/20 dark:via-[#251d35]/35 dark:to-white/[0.035] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
 
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
@@ -682,6 +710,13 @@ Données synchronisées en direct
           </div>
 
           {/* SVG */}
+          {!hasMetricData ? (
+            <div className="flex h-[140px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-black/[0.02] text-center dark:border-white/10 dark:bg-white/[0.025]">
+              <Calendar className="mb-2 h-5 w-5 text-[#6600FF] dark:text-violet-300" />
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Aucune activité sur cette période</p>
+              <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">Les courbes apparaîtront avec les premières données enregistrées.</p>
+            </div>
+          ) : (
           <div className="relative flex h-[140px] w-full items-center justify-center">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -834,6 +869,7 @@ Données synchronisées en direct
               })}
             </svg>
           </div>
+          )}
         </div>
       </div>
 

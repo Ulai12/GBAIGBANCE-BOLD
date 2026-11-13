@@ -1,7 +1,6 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { Event, Organization, Ticket } from '@/types';
+import type { Event, Organization } from '@/types';
 import { isRealEvent, isRealOrganization, isEventActive } from '@/features/events/status';
-import { getLocalStoredTickets } from '@/services/tickets';
 import { coreOrganizerSeries, corePlatformStats, type RustTicket } from '@/lib/rust-core';
 
 export interface PerformanceTimePoint {
@@ -34,7 +33,7 @@ export interface OrganizerPerformanceData {
   };
 }
 
-const COUNTED_TICKET_STATUSES = new Set(['valid', 'used']);
+const COUNTED_TICKET_STATUSES = new Set(['active', 'valid', 'used']);
 
 async function fetchTicketsForEvents(eventIds: string[]) {
   const rows: Array<{
@@ -49,13 +48,14 @@ async function fetchTicketsForEvents(eventIds: string[]) {
   const pageSize = 1000;
   for (let i = 0; i < eventIds.length; i += 80) {
     const slice = eventIds.slice(i, i + 80);
-    for (let from = 0; from < 8000; from += pageSize) {
+    for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from('tickets')
         .select('id, event_id, ticket_type, price_paid, status, created_at')
         .in('event_id', slice)
         .range(from, from + pageSize - 1);
-      if (error || !data) break;
+      if (error) throw error;
+      if (!data) throw new Error('Impossible de charger les billets de cet organisateur.');
       rows.push(...(data as typeof rows));
       if (data.length < pageSize) break;
     }
@@ -78,7 +78,7 @@ function toRustTickets(tickets: Array<{
     created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
     event_id: ticket.event_id,
     ticket_type: ticket.ticket_type,
-    source: ticket.id.startsWith('tkt_') ? 'local' as const : 'server' as const,
+    source: 'server' as const,
   }));
 }
 
@@ -183,10 +183,11 @@ export async function fetchOrganizerPerformanceMetrics(
 
   try {
     // 1. Fetch user's events
-    const { data: rawEvents } = await supabase
+    const { data: rawEvents, error: eventsError } = await supabase
       .from('events')
       .select('id, title, views_count, attendees_count, status, created_at, starts_at')
-      .eq('organizer_user_id', userId);
+      .or(`organizer_user_id.eq.${userId},organizer_id.eq.${userId}`);
+    if (eventsError) throw eventsError;
 
     const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     const eventIds = events.map((e) => e.id);
@@ -194,7 +195,7 @@ export async function fetchOrganizerPerformanceMetrics(
     const totalViews = events.reduce((s, e) => s + (e.views_count || 0), 0);
     const activeEvents = events.filter((e) => e.status === 'published' && isEventActive(e)).length;
 
-    // 2. Billets serveur (au-delà de 1000) + cache local. Rust retire les annulations.
+    // 2. Billets serveur paginés. Rust calcule les séries et agrégats.
     let tickets: Array<{
       id: string;
       event_id: string;
@@ -210,22 +211,9 @@ export async function fetchOrganizerPerformanceMetrics(
       tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
     }
 
-    const localTickets = getLocalStoredTickets();
-    localTickets.forEach((lt: Ticket) => {
-      const eId = lt.event_id || '';
-      const tId = lt.id || '';
-      if (eventIds.includes(eId) && !tickets.some((t) => t.id === tId)) {
-        tickets.push({
-          id: tId,
-          event_id: eId,
-          ticket_type: lt.ticket_type || 'standard',
-          quantity: typeof lt.quantity === 'number' ? lt.quantity : 1,
-          price_paid: typeof lt.price_paid === 'number' ? lt.price_paid : 0,
-          status: lt.status || 'valid',
-          created_at: lt.created_at || new Date().toISOString(),
-        });
-      }
-    });
+    // Les métriques organisateur reposent sur les billets persistés côté serveur.
+    // Le cache du navigateur ne constitue pas une source de vérité et ne doit pas
+    // gonfler ou diverger les ventes affichées sur plusieurs appareils.
 
     const daysCount = timeRange === '7d' ? 7 : 30;
     const countedTickets = tickets.filter((ticket) =>
@@ -293,7 +281,7 @@ export async function fetchOrganizerPerformanceMetrics(
     };
   } catch (error) {
     console.error('Error fetching organizer performance metrics:', error);
-    return emptyResult;
+    throw error;
   }
 }
 
@@ -509,7 +497,7 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
   };
   if (!isSupabaseConfigured || !userId) return defaultStats;
   try {
-    const { data: rawEvents } = await supabase.from('events').select('*').eq('organizer_user_id', userId);
+    const { data: rawEvents } = await supabase.from('events').select('*').or(`organizer_user_id.eq.${userId},organizer_id.eq.${userId}`);
     const events = ((rawEvents || []) as Event[]).filter(isRealEvent);
     const eventIds = events.map((e) => e.id);
     const baseStats = {
@@ -523,18 +511,7 @@ export async function fetchOrganizerStats(userId: string): Promise<{ totalEvents
     };
     if (eventIds.length === 0) return baseStats;
     const rows = await fetchTicketsForEvents(eventIds);
-    const local = getLocalStoredTickets().filter((ticket) => eventIds.includes(ticket.event_id || '') && !rows.some((row) => row.id === ticket.id));
-    const rustTickets = toRustTickets([
-      ...rows,
-      ...local.map((ticket) => ({
-        id: ticket.id,
-        event_id: ticket.event_id || '',
-        ticket_type: ticket.ticket_type || 'standard',
-        price_paid: ticket.price_paid,
-        status: ticket.status,
-        created_at: ticket.created_at,
-      })),
-    ]);
+    const rustTickets = toRustTickets(rows);
     const core = await corePlatformStats({ tickets: rustTickets, events: [], users: 0 });
     const fallback = core ? null : tallyTickets(rustTickets);
     baseStats.totalTickets = core?.total_tickets ?? fallback?.tickets ?? 0;

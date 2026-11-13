@@ -163,9 +163,12 @@
     transform: translateZ(0);
   }
   .dark .card {
-    background: #1B182B;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 20px rgba(10, 8, 20, 0.35);
+    background: linear-gradient(145deg, rgba(49, 39, 75, 0.72), rgba(20, 17, 34, 0.76));
+    border: 1px solid rgba(221, 214, 254, 0.14);
+    border-top-color: rgba(255, 255, 255, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 14px 34px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px) saturate(155%);
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
     transform: translateZ(0);
   }
   .card-dark {
@@ -198,6 +201,34 @@
     box-shadow: 0 18px 42px rgba(76,29,149,0.14), inset 0 1px 0 rgba(255,255,255,0.85);
     backdrop-filter: blur(24px) saturate(1.2);
     -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  }
+
+  /* Dark Liquid Glass — matériaux partagés pour toutes les cartes et surfaces. */
+  .dark .glass-surface,
+  .dark .glass,
+  .dark .glass-card {
+    background: linear-gradient(145deg, rgba(67, 52, 99, 0.62), rgba(24, 20, 40, 0.72));
+    border-color: rgba(221, 214, 254, 0.16);
+    border-top-color: rgba(255, 255, 255, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 38px rgba(0, 0, 0, 0.30);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+  }
+
+  .dark .glass-strong,
+  .dark .glass-ios {
+    background: linear-gradient(145deg, rgba(77, 59, 112, 0.72), rgba(28, 23, 47, 0.82));
+    border-color: rgba(221, 214, 254, 0.20);
+    border-top-color: rgba(255, 255, 255, 0.30);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 42px rgba(0, 0, 0, 0.34);
+  }
+
+  .dark .form-surface,
+  .dark .search-bar {
+    background: rgba(35, 29, 55, 0.76);
+    border-color: rgba(221, 214, 254, 0.16);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 10px 28px rgba(0, 0, 0, 0.22);
   }
 
   /* iOS 27 Liquid Glass Adaptive Header */

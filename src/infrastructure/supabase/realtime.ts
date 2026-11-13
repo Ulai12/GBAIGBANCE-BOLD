@@ -369,59 +369,51 @@ export function subscribeToUserFavoritesLive(
  * as well as tickets and event_likes for instantaneous card and list updates across clients.
  */
 export function subscribeToGlobalEventsLive(
-  onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void
+  onEventChange: (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => void,
+  tables: Array<'events' | 'tickets' | 'event_likes'> = ['events', 'tickets', 'event_likes']
 ) {
-  if (!isSupabaseConfigured) return () => {};
+  if (!isSupabaseConfigured || tables.length === 0) return () => {};
 
   const channelId = `realtime:global_events_feed:${Math.random().toString(36).substring(2, 8)}`;
-  const channel = supabase
-    .channel(channelId)
-    .on(
+  let channel = supabase.channel(channelId);
+
+  if (tables.includes('events')) {
+    channel = channel.on(
       'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'events',
-      },
-      (payload) => {
-        onEventChange({
-          eventType: payload.eventType,
-          new: payload.new as Record<string, unknown> | undefined,
-          old: payload.old as Record<string, unknown> | undefined,
-        });
-      }
-    )
-    .on(
+      { event: '*', schema: 'public', table: 'events' },
+      (payload) => onEventChange({
+        eventType: payload.eventType,
+        new: payload.new as Record<string, unknown> | undefined,
+        old: payload.old as Record<string, unknown> | undefined,
+      })
+    );
+  }
+
+  if (tables.includes('tickets')) {
+    channel = channel.on(
       'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'tickets',
-      },
-      (payload) => {
-        onEventChange({
-          eventType: payload.eventType,
-          new: payload.new as Record<string, unknown> | undefined,
-          old: payload.old as Record<string, unknown> | undefined,
-        });
-      }
-    )
-    .on(
+      { event: '*', schema: 'public', table: 'tickets' },
+      (payload) => onEventChange({
+        eventType: payload.eventType,
+        new: payload.new as Record<string, unknown> | undefined,
+        old: payload.old as Record<string, unknown> | undefined,
+      })
+    );
+  }
+
+  if (tables.includes('event_likes')) {
+    channel = channel.on(
       'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'event_likes',
-      },
-      (payload) => {
-        onEventChange({
-          eventType: payload.eventType,
-          new: payload.new as Record<string, unknown> | undefined,
-          old: payload.old as Record<string, unknown> | undefined,
-        });
-      }
-    )
-    .subscribe();
+      { event: '*', schema: 'public', table: 'event_likes' },
+      (payload) => onEventChange({
+        eventType: payload.eventType,
+        new: payload.new as Record<string, unknown> | undefined,
+        old: payload.old as Record<string, unknown> | undefined,
+      })
+    );
+  }
+
+  channel.subscribe();
 
   return () => {
     try {

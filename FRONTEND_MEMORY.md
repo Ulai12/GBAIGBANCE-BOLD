@@ -5,13 +5,13 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 
 ## Gouvernance
 - Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
-- Branche d'écriture exclusive : `Frontend-IA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
-- Le 2026-11-13, la branche exacte `Frontend-IA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
-- PR de suivi ouverte : [#9 — Frontend: équilibrer les catégories sur mobile](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/9), cible `main`, jamais fusionnée par cet agent.
+- Branche d'écriture exclusive : `FRONTEND-iA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
+- Le 2026-11-13, la branche exacte `FRONTEND-iA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
+- PR #9 — Frontend: équilibrer les catégories sur mobile — fusionnée dans `main` par le propriétaire. PR de suivi actuelle : [#11 — Frontend: évolutions UI/UX continues](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/11), ouverte en brouillon vers `main`, jamais fusionnée par cet agent.
 - Lire ce fichier en entier au début de chaque session et reprendre la tâche active.
 - Le code distant et l'état Git font autorité si cette mémoire diverge.
 - Ne pas modifier `package.json`, les lockfiles ou les dépendances sans autorisation explicite.
-- Après chaque écriture : relire depuis GitHub sur `Frontend-IA`, vérifier le commit, la taille, le contenu et l'absence de troncature.
+- Après chaque écriture : relire depuis GitHub sur `FRONTEND-iA`, vérifier le commit, la taille, le contenu et l'absence de troncature.
 - Ne jamais prétendre qu'un build, lint, typecheck, test ou contrôle visuel a réussi s'il n'a pas été exécuté.
 - Une amélioration principale significative par session ; préserver les changements préexistants.
 
@@ -34,7 +34,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - `src/screens/HomeScreen.tsx` — section « Explorer par catégorie ».
 - `src/constants/categories.ts` — taxonomie partagée, consultée sans modification.
 
-**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...Frontend-IA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
+**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...FRONTEND-iA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
 
 **Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
 
@@ -73,10 +73,10 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Protocole de vérification distant appliqué au commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
 
 ## Vérifications
-- **Session du 2026-11-13 (reprise) :** branche `Frontend-IA` présente ; comparaison `main...Frontend-IA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
-- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `Frontend-IA`.
+- **Session du 2026-11-13 (reprise) :** branche `FRONTEND-iA` présente ; comparaison `main...FRONTEND-iA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
+- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `FRONTEND-iA`.
 - **Non vérifié :** build, lint, typecheck, tests et rendu navigateur lors de cette reprise. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine ; aucun environnement local de build n'est fourni par le connecteur GitHub.
-- **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `Frontend-IA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
+- **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
 - **Vérifié :** taille du fichier augmentée de 819 caractères et de 4 lignes ; aucune diminution ni référence d'espace réservé.
 - **Non vérifié :** build, lint, typecheck, tests automatisés et rendu navigateur ; le connecteur GitHub distant ne fournit pas ici un environnement d'exécution frontend.
 - **Non vérifié :** rendu aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, orientations tablette, thème clair/sombre et iPhone.
@@ -96,7 +96,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commit : `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
 - Relecture distante réussie ; validation build/lint/typecheck et rendu visuel non exécutés.
 
-### 2026-11-12 — Frontend-IA : verre sombre et dock
+### 2026-11-12 — FRONTEND-iA : verre sombre et dock
 - `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres.
 - Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en.
 - Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante.
@@ -108,5 +108,15 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Stats/analytics : historique organisateur par mois, pas d'échantillon partiel, repli JavaScript typé, billets uniques.
 
 ### 2026-11-13 — Fusion des historiques frontend
-- L'ancien journal documentait une fusion `FRONTED-iA` vers `Frontend-IA` et la PR #6.
-- La branche de travail exacte a été recréée depuis `main` au début de cette session, conformément à la consigne lorsque `Frontend-IA` est absente.
+- L'ancien journal documentait une fusion `FRONTED-iA` vers `FRONTEND-iA` et la PR #6.
+- La branche de travail exacte a été recréée depuis `main` au début de cette session, conformément à la consigne lorsque `FRONTEND-iA` est absente.
+
+
+### 2026-11-13 — Synchronisation de main vers FRONTEND-iA
+- Analyse des 8 commits manquants depuis `main` ; les modifications entrantes concernaient `FRONTEND_MEMORY.md`, `src/screens/EditEventScreen.tsx` et `src/screens/HomeScreen.tsx`.
+- Résolution documentée : `src/screens/HomeScreen.tsx` reprend la version main qui contient la grille catégories 2/3/5 colonnes, les tuiles compactes de 80px et la rangée horizontale de sous-catégories. `src/screens/EditEventScreen.tsx` conserve la version FRONTEND-iA, qui garde l'import `Trophy` nécessaire et le fallback de catégorie legacy. La mémoire reprend le journal main, corrige le nom exact de la branche et conserve le blocage précédent ainsi que sa résolution.
+- PR temporaire #10 fermée sans fusion ; elle n'a modifié aucune branche.
+- Merge commit créé avec deux parents (branche de travail et main) ; aucune réécriture d'historique ni force push.
+- Prochaine étape : valider build, lint, typecheck, tests et rendu responsive avant toute nouvelle retouche UI.
+
+- PR de suivi #11 créée le 2026-11-13 depuis `FRONTEND-iA` vers `main`, ouverte en brouillon ; aucune fusion demandée ni effectuée.
