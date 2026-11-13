@@ -27,6 +27,7 @@ import {
   Search,
   Sparkles,
   Theater,
+  Trophy,
   Ticket as TicketIcon,
   Trash2,
   Upload,
