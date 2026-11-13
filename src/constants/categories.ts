@@ -435,6 +435,7 @@ export function injectCategoryMeta(
 // Supporte les types Event où subcategory et main_category peuvent être typés string | null
 export function hydrateEventCategories<T extends {
   category: EventCategory;
+  title?: string;
   description?: string | null;
   subcategory?: SubCategoryId | string | null;
   main_category?: MainCategoryId | string | null;
@@ -457,7 +458,7 @@ export function hydrateEventCategories<T extends {
   if (!resolvedSub) {
     const sourceText = `${event.title || ''} ${meta.description || event.description || ''}`
       .normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/[\u0300-\u036f]/g, '')
       .toLocaleLowerCase('fr')
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
@@ -467,7 +468,7 @@ export function hydrateEventCategories<T extends {
         score: sub.tags.reduce((best, tag) => {
           const normalizedTag = tag
             .normalize('NFD')
-            .replace(/[\\u0300-\\u036f]/g, '')
+            .replace(/[\u0300-\u036f]/g, '')
             .toLocaleLowerCase('fr')
             .replace(/[^a-z0-9]+/g, ' ')
             .trim();
