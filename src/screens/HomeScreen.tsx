@@ -662,7 +662,7 @@ export function HomeScreen({
           Explorer par catégorie
         </h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 py-1">
+        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 py-1">
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -675,7 +675,7 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
+                className={`flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-2xl px-1.5 py-2 transition-[background-color,color,transform,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] shadow-purple text-white'
                     : 'bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 text-[#6600FF] dark:text-purple-300'
