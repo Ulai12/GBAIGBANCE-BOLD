@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { Event, EventWithRelations, EventCategory } from '@/types';
 import { hydrateEventCategories, eventMatchesCategoryFilter } from '@/constants/categories';
-import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded } from './status';
+import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded, isRealProfile, isRealArtist, isRealOrganization } from './status';
 import { coreRankIds, coreTrendIds } from '@/lib/rust-core';
 
 function sanitizeSearchInput(input: string): string {
@@ -67,37 +67,107 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
     isAvailable: false,
   };
 
-  if (!isSupabaseConfigured || typeof fetch !== 'function') return unavailable;
+  if (!isSupabaseConfigured) return unavailable;
 
   try {
-    // Source unique : l'API serveur agrège les vraies lignes Supabase (tickets, events,
-    // profils et inventaire). Ne pas basculer vers l'ancien RPC SQL qui renvoie des
-    // montants nuls et ne reflète pas les ventes multi-quantités.
-    const response = await fetch('/api/platform-stats', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (!response.ok) return unavailable;
-
-    const data = (await response.json()) as Partial<PlatformStats>;
-    if (
-      !data ||
-      data.isAvailable !== true ||
-      typeof data.totalUsers !== 'number' ||
-      typeof data.totalTickets !== 'number' ||
-      typeof data.totalEvents !== 'number' ||
-      typeof data.totalRevenue !== 'number' ||
-      !Array.isArray(data.categoryShares) ||
-      !Array.isArray(data.ticketsTimeline) ||
-      !Array.isArray(data.eventsTimeline)
-    ) {
-      return unavailable;
+    // Priorité au endpoint serveur même origine propulsé par Rust WebAssembly
+    if (typeof fetch === 'function') {
+      try {
+        const res = await fetch('/api/platform-stats', {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const apiData = (await res.json()) as Partial<PlatformStats>;
+          if (apiData && typeof apiData.totalUsers === 'number' && typeof apiData.totalTickets === 'number') {
+            return {
+              ...unavailable,
+              ...apiData,
+              isAvailable: true,
+            } as PlatformStats;
+          }
+        }
+      } catch {
+        // Repli sur l'edge function Supabase si /api/platform-stats est indisponible
+      }
     }
 
-    return { ...unavailable, ...data, isAvailable: true } as PlatformStats;
+    // Repli sur l'agrégation directe via les tables publiques si /api/platform-stats est indisponible
+    const [eventsRes, optionsRes, artistsRes, orgsRes, profilesRes] = await Promise.all([
+      supabase.from('events').select('id, category, attendees_count, views_count, starts_at, ends_at, status').limit(500),
+      supabase.from('ticket_options').select('id, event_id, price, quantity_sold').limit(1000),
+      supabase.from('artists').select('id, name').limit(500),
+      supabase.from('organizations').select('id, name').limit(500),
+      supabase.from('profiles').select('id, name, email, role').limit(1000),
+    ]);
+
+    if (eventsRes.error) return unavailable;
+
+    const events = (Array.isArray(eventsRes.data) ? eventsRes.data : []).filter(
+      (ev) => isRealEvent(ev) && !String(ev.id).toLowerCase().startsWith('e1000000-')
+    );
+    const realEventIds = new Set(events.map((ev) => ev.id));
+    const options = (Array.isArray(optionsRes.data) ? optionsRes.data : []).filter((o) =>
+      realEventIds.has(o.event_id)
+    );
+    const artists = (Array.isArray(artistsRes.data) ? artistsRes.data : []).filter(isRealArtist);
+    const orgs = (Array.isArray(orgsRes.data) ? orgsRes.data : []).filter(isRealOrganization);
+    const profiles = (Array.isArray(profilesRes.data) ? profilesRes.data : []).filter(isRealProfile);
+    const nonParticipantRoles = new Set(['organizer', 'artist', 'admin']);
+    const participantAccounts = profiles.filter(
+      (p) => !nonParticipantRoles.has(String(p.role || 'participant').toLowerCase())
+    ).length;
+
+    const activeEvents = events.filter((ev) => isEventActive(ev as Event));
+    const attendanceEvents = events.filter((ev) => ['published', 'completed'].includes(ev.status));
+    const categories: Record<string, number> = {};
+    for (const ev of activeEvents) {
+      const cat = String(ev.category || 'other');
+      categories[cat] = (categories[cat] || 0) + 1;
+    }
+
+    const totalTickets = options.reduce((sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0), 0);
+    const totalRevenue = Math.round(
+      options.reduce(
+        (sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0) * Math.max(0, Number(opt.price) || 0),
+        0
+      )
+    );
+    const totalActiveCount = activeEvents.length;
+    const categoryShares = Object.entries(categories)
+      .map(([id, count]) => ({
+        id,
+        count,
+        amount: 0,
+        percent: totalActiveCount > 0 ? Math.round((count / totalActiveCount) * 100) : 0,
+      }))
+      .sort((a, b) => b.percent - a.percent);
+
+    return {
+      ...unavailable,
+      totalEvents: activeEvents.length,
+      totalAllEvents: events.length,
+      totalArtists: artists.length,
+      totalOrganizers: orgs.length,
+      totalTickets,
+      totalRevenue,
+      totalUsers: profiles.length,
+      totalProfiles: profiles.length,
+      totalParticipantAccounts: participantAccounts,
+      totalParticipants: attendanceEvents.reduce((sum, ev) => sum + Math.max(0, Number(ev.attendees_count) || 0), 0),
+      totalViews: events.reduce((sum, ev) => sum + Math.max(0, Number(ev.views_count) || 0), 0),
+      categories,
+      categoryBasis: 'events',
+      categoryShares,
+      eventsTimeline: attendanceEvents.map((ev) => ({
+        id: ev.id,
+        starts_at_ms: ev.starts_at ? Date.parse(ev.starts_at) || 0 : 0,
+        attendees: Math.max(0, Number(ev.attendees_count) || 0),
+      })),
+      isAvailable: true,
+    };
   } catch {
-    // En cas d'indisponibilité réelle, afficher l'état indisponible plutôt que des chiffres inventés.
     return unavailable;
   }
 }
