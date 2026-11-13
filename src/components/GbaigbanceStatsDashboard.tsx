@@ -751,6 +751,12 @@ export function GbaigbanceStatsDashboard({
 
       </div>
 
+      <details className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/45 dark:border-white/10 dark:bg-white/[0.035]">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-bold text-[#17131D] dark:text-white [&::-webkit-details-marker]:hidden">
+          <span>Explorer les statistiques</span>
+          <span className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA]">Graphique et catégories</span>
+        </summary>
+        <div className="border-t border-black/[0.05] pt-4 dark:border-white/10">
       {/* Graphique */}
       <div className="mb-4 px-5">
         <div className="rounded-[1.8rem] border border-white/65 bg-gradient-to-b from-white/55 to-white/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl dark:border-white/[0.12] dark:from-[#8B5CF6]/20 dark:via-[#251d35]/35 dark:to-white/[0.035] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
@@ -1073,6 +1079,8 @@ export function GbaigbanceStatsDashboard({
         )}
 
       </div>
+        </div>
+      </details>
     </div>
   );
 }
