@@ -447,7 +447,7 @@ export function GbaigbanceStatsDashboard({
       : null;
 
   return (
-    <div className="w-full overflow-hidden rounded-[2rem] border border-black/[0.055] bg-white shadow-[0_8px_28px_rgba(23,19,29,0.045)] dark:border-white/[0.075] dark:bg-[#14121E] dark:shadow-[0_12px_36px_rgba(0,0,0,0.28)]">
+    <div className="w-full overflow-hidden rounded-[2rem] border border-white/75 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/15 dark:bg-gradient-to-br dark:from-[#302542]/75 dark:via-[#191526]/70 dark:to-[#30203d]/65 dark:shadow-[0_18px_48px_rgba(0,0,0,0.38)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between mb-2 px-1">
@@ -515,10 +515,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('tickets')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'tickets'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -547,10 +547,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('revenue')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'revenue'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -582,7 +582,7 @@ Données synchronisées en direct
 
         {/* Comptes : le chiffre n'est pas la courbe (la courbe est la jauge des événements). */}
         <div
-          className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/80 p-3.5 text-left dark:border-white/[0.05] dark:bg-white/[0.04]"
+          className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]"
         >
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -606,10 +606,10 @@ Données synchronisées en direct
           onClick={() =>
             setActiveMetric('events')
           }
-          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          className={`relative overflow-hidden rounded-[1.4rem] border p-3.5 text-left backdrop-blur-xl transition-[background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
             activeMetric === 'events'
               ? 'border-[#6600FF]/40 bg-[#6600FF]/[0.08] shadow-xs dark:bg-[#6600FF]/25'
-              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.05] dark:bg-white/[0.04]'
+              : 'border-black/[0.04] bg-gray-50/80 hover:bg-gray-100/60 dark:border-white/[0.11] dark:bg-white/[0.075]'
           }`}
         >
           <div className="mb-1.5 flex items-center justify-between">
@@ -636,7 +636,7 @@ Données synchronisées en direct
 
       {/* Graphique */}
       <div className="mb-4 px-5">
-        <div className="rounded-[1.8rem] border border-black/[0.04] bg-gradient-to-b from-[#6600FF]/[0.03] to-transparent p-4 dark:border-white/[0.05] dark:from-[#6600FF]/15">
+        <div className="rounded-[1.8rem] border border-white/65 bg-gradient-to-b from-white/55 to-white/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl dark:border-white/[0.12] dark:from-[#8B5CF6]/20 dark:via-[#251d35]/35 dark:to-white/[0.035] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
 
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
