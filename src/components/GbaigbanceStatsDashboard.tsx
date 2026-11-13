@@ -4,6 +4,8 @@ import {
   Users,
   Calendar,
   DollarSign,
+  UserRoundCheck,
+  Contact,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
@@ -80,7 +82,9 @@ export function GbaigbanceStatsDashboard({
     return {
       tickets: platformStats?.totalTickets ?? 0,
       revenue: platformStats?.totalRevenue ?? 0,
-      attendees: platformStats?.totalUsers ?? 0,
+      attendees: platformStats?.totalParticipants ?? 0,
+      users: platformStats?.totalUsers ?? 0,
+      profiles: platformStats?.totalProfiles ?? 0,
       events: platformStats?.totalEvents ?? 0,
     };
   }, [platformStats]);
@@ -582,24 +586,52 @@ Données synchronisées en direct
           </p>
         </button>
 
-        {/* Comptes : le chiffre n'est pas la courbe (la courbe est la jauge des événements). */}
+        {/* Comptes Auth : tous les rôles, participants et organisateurs compris. */}
         <div
           className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]"
         >
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Users className="h-3.5 w-3.5 text-[#6600FF]" />
-              Utilisateurs
+              Comptes inscrits
             </span>
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.users)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Comptes inscrits
+            Tous les comptes Auth
           </p>
+        </div>
+
+        {/* Participants : cumul des inscriptions aux événements, avec ou sans compte. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <UserRoundCheck className="h-3.5 w-3.5 text-[#6600FF]" />
+              Participants
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Présences cumulées aux événements</p>
+        </div>
+
+        {/* Profils : distincts des comptes Auth. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <Contact className="h-3.5 w-3.5 text-[#6600FF]" />
+              Profils créés
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.profiles)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Fiches associées aux comptes</p>
         </div>
 
         {/* Événements créés - Actifs uniquement */}
@@ -626,7 +658,7 @@ Données synchronisées en direct
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {totals.events}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.events)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
