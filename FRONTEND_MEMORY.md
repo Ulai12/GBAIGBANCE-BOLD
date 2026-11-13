@@ -6,8 +6,8 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ## Gouvernance
 - Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
 - Branche d'écriture exclusive : `FRONTEND-iA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
-- Le 2026-11-13, la branche exacte `FRONTEND-iA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
-- PR #9 — Frontend: équilibrer les catégories sur mobile — fusionnée dans `main` par le propriétaire. PR de suivi actuelle : [#11 — Frontend: évolutions UI/UX continues](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/11), ouverte en brouillon vers `main`, jamais fusionnée par cet agent.
+- Le 2026-11-13, la branche exacte `FRONTEND-iA` a été créée depuis `main` car elle n'existait pas.
+- PR #9 et PR #11 ont été fusionnées dans `main` par le propriétaire. Cet agent ne fusionne pas vers `main`.
 - Lire ce fichier en entier au début de chaque session et reprendre la tâche active.
 - Le code distant et l'état Git font autorité si cette mémoire diverge.
 - Ne pas modifier `package.json`, les lockfiles ou les dépendances sans autorisation explicite.
@@ -20,103 +20,98 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — proportions de l'explorateur de catégories (Accueil)
-**Objectif :** rendre les catégories principales plus compactes et équilibrées, puis présenter les sous-catégories dans une rangée horizontale homogène et utilisable au tactile, sans modifier la taxonomie ni le filtrage des événements.
+## Tâche active — Recherche : catégories alignées sur l'accueil
+**Objectif :** rendre les catégories de l'écran Recherche utilisables au doigt, avec la même hiérarchie parent / sous-catégorie que l'accueil, sans changer le filtrage.
 
 **Progression :**
-- Terminé le 2026-11-13 : réduction de la hauteur minimale des cartes principales de 104px à 80px ; icônes de 20px à 18px ; libellés resserrés et centrés ; grille 2 colonnes sur petit écran, 3 dès `sm`, 5 dès `xl`.
-- Terminé : sous-catégories passées d'un groupe flex-wrap irrégulier à une rangée horizontale scrollable avec snap, hauteur minimale uniforme de 36px, libellés sans retour à la ligne.
-- Terminé : focus visible ajouté aux contrôles de catégorie et libellés de groupe accessibles.
-- À faire : vérifier le rendu réel aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, en clair/sombre et sur iPhone ; ajuster uniquement sur constat.
-- À faire : exécuter build, lint et typecheck dans un environnement avec le dépôt et ses dépendances.
+- Terminé le 2026-11-13 (session 12h) : rangée principale en capsules `#6600FF`, cible 44px, snap horizontal. La puce parente reste active quand une sous-catégorie est choisie.
+- Terminé : seconde rangée de sous-catégories, visible sans ouvrir les filtres. « Toutes » sélectionne le parent ; un second appui sur une sous-catégorie revient au parent.
+- Terminé : feuille de filtres — catégories et sous-catégories en rangées scrollables 44px, villes et tarifs en cibles 44px, focus visible.
+- Terminé : libellé « Amis » sous 400px, « Amis & Participants » au-dessus, pour éviter le débordement du segment à 320px.
+- Terminé : accent `#5900E6` de cet écran ramené au token `#6600FF`.
+- Accueil catégories : contrôle visuel 320 sombre effectué (tuiles 80px, 2 colonnes, rail sous-catégories, pas de scroll horizontal de page). Les autres largeurs de l'accueil restent non rejouées dans cette session.
 
 **Fichiers concernés :**
-- `src/screens/HomeScreen.tsx` — section « Explorer par catégorie ».
-- `src/constants/categories.ts` — taxonomie partagée, consultée sans modification.
+- `src/screens/ExploreScreen.tsx` — chrome de recherche, rails de catégories, feuille de filtres.
+- `src/screens/HomeScreen.tsx` — non modifié ; contrôle visuel seulement.
 
-**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...FRONTEND-iA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
+**Dernière action :** refonte visible de la navigation catégories de Recherche, vérifiée au navigateur.
 
-**Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
+**Prochaine étape :** écran Auth (`src/screens/AuthScreen.tsx`) — il est encore en clair forcé (`bg-white`, `text-gray-700`) et ses trois rôles risquent de serrer à 320px. Ne pas y toucher avant cette session suivante. Alternative si Auth est déjà repris : états vides / hors-ligne du portefeuille billets.
 
 ## Design system — décisions à préserver
-- Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`.
+- Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`. Ne plus introduire `#5900E6` sur Recherche.
 - Typographie : hiérarchie Tailwind existante ; titres de section compacts, libellés de catégories 11–12px sur mobile.
-- Espacements : grille catégorie gap 8px mobile ; sous-catégories gap 8px ; padding horizontal de page 20px (classes `px-5`).
-- Rayons : cartes de catégories `rounded-2xl`, sous-catégories en capsules `rounded-full`.
-- Cibles tactiles : conserver au moins 44px pour les actions importantes ; les chips de sous-catégorie sont à 36px de hauteur visuelle et doivent rester confortables à toucher, à réévaluer lors du contrôle réel.
+- Espacements : grille catégorie accueil gap 8px mobile ; sous-catégories gap 8px ; padding horizontal de page 20px (`px-5`).
+- Rayons : tuiles d'accueil `rounded-2xl` ; capsules de filtre et sous-catégories `rounded-full`.
+- Cibles tactiles : actions importantes ≥ 44px (`min-h-11`). Les capsules de sous-catégorie de l'accueil restent à 36px (`min-h-9`) — dette assumée, à ne relever qu'avec un contrôle visuel.
 - Focus : anneau violet visible avec offset adapté au thème sombre.
-- Mouvement : transitions courtes et ciblées ; respecter `prefers-reduced-motion`.
-- Responsive actuel : grille catégories 2 colonnes par défaut, 3 à `sm`, 5 à `xl` ; sous-catégories défilantes horizontalement.
-- Performance : éviter les effets coûteux et préserver les images lazy-loadées ; ne pas ajouter de dépendance pour une amélioration CSS.
+- Mouvement : transitions courtes ; `motion-reduce:transition-none` sur les contrôles de Recherche.
+- Responsive Recherche : rail horizontal snap ; segment « Amis » court sous 400px.
+- Performance : pas de nouvelle dépendance.
 
 ## Cartographie des écrans
 | Écran / zone | Statut | Notes |
 |---|---|---|
-| Accueil — explorateur de catégories | En cours | Proportions mises à jour ; contrôle responsive réel restant |
-| Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px ; contrôle visuel restant |
-| Thème sombre / réduction de transparence | À revoir | Correctif CSS présent ; contrôle réel restant |
-| Explorer / recherche | À auditer | Hiérarchie catégories et résultats à recontrôler |
-| Création / modification d'événement | À auditer | Taxonomie partagée ; dernier commit main alignant l'édition sur la taxonomie |
-| Billets / portefeuille | À auditer | Aucun changement dans cette session |
-| Profil / favoris / notifications | À auditer | Aucun changement dans cette session |
-| Dashboard organisateur / statistiques | À revoir | Correctifs stats/analytics déjà présents dans l'historique |
+| Accueil — explorateur de catégories | Finalisé | Grille 2/3/5, tuiles 80px, rail sous-catégories. Visuel 320 sombre OK. Autres largeurs non rejouées ici |
+| Recherche — catégories et filtres | Finalisé | Rails parent + sous-catégorie, feuille alignée, 320–1440 clair/sombre |
+| Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
+| Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
+| Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
+| Création / modification d'événement | À auditer | Typecheck préexistant en échec sur l'assistant |
+| Connexion / inscription | À revoir | Thème clair forcé, prochaine tâche |
+| Billets / portefeuille | À auditer | Aucun changement |
+| Profil / favoris / notifications | À auditer | Aucun changement |
+| Dashboard organisateur / statistiques | À revoir | Correctifs déjà dans l'historique |
 
 ## Dette UI
-- **P1** — Contrôler les débordements des libellés et des capsules de sous-catégories sur 320px.
-- **P2** — Valider l'équilibre visuel de la grille catégories sur tablette et grands écrans.
-- **P2** — Vérifier les contrastes en thème clair/sombre et la lisibilité avec réduction de transparence.
-- **P2** — Contrôler le dock mobile et les safe areas iOS.
-- **P3** — Harmoniser progressivement les états vides, chargement et erreur entre les écrans.
+- **P1** — `npm run typecheck` échoue déjà hors de cette session : `src/App.tsx`, `src/features/events/queries.ts` (`selectPages` introuvable), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`). Ne pas les mélanger à une retouche visuelle sans les isoler.
+- **P2** — AuthScreen non adapté au thème sombre ni au clavier virtuel.
+- **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible 44px.
+- **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
+- **P3** — Harmoniser les états vides, chargement, erreur et hors-ligne.
 
 ## Incidents d'écriture
-- Aucun incident de troncature constaté pendant la session du 2026-11-13.
-- Protocole de vérification distant appliqué au commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
+- Aucun incident de troncature le 2026-11-13.
+- `main` était en avance d'un seul commit de fusion (PR #11, `b9a4b3f`) sans différence de fichiers. Avance rapide de `FRONTEND-iA`, aucun conflit.
 
 ## Vérifications
-- **Session du 2026-11-13 (reprise) :** branche `FRONTEND-iA` présente ; comparaison `main...FRONTEND-iA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
-- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `FRONTEND-iA`.
-- **Non vérifié :** build, lint, typecheck, tests et rendu navigateur lors de cette reprise. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine ; aucun environnement local de build n'est fourni par le connecteur GitHub.
-- **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
-- **Vérifié :** taille du fichier augmentée de 819 caractères et de 4 lignes ; aucune diminution ni référence d'espace réservé.
-- **Non vérifié :** build, lint, typecheck, tests automatisés et rendu navigateur ; le connecteur GitHub distant ne fournit pas ici un environnement d'exécution frontend.
-- **Non vérifié :** rendu aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, orientations tablette, thème clair/sombre et iPhone.
+- **Vérifié :** `FRONTEND-iA` existait. Comparaison avant travail : `FRONTEND-iA` `8011838`, `main` `b9a4b3f`, `behind_by: 1`, diff d'arbre vide. Fast-forward local puis poussé avec le commit de fonction.
+- **Vérifié :** ESLint `src/screens/ExploreScreen.tsx` — exit 0.
+- **Vérifié :** `vite build` — succès (3288 modules). `tsx scripts/generate-preview.ts` — succès, 14 aperçus statiques. Aucun fichier de preview versionné modifié.
+- **Vérifié navigateur :** Recherche à 320, 375, 414, 768, 1024 et 1440 px. Thème sombre (classe `dark`) sur ces largeurs ; thème clair à 320 et sur la feuille de filtres 320. Pas de scroll horizontal de page (`scrollWidth === clientWidth`). Capsules de sous-catégorie mesurées à 44px. Rail 498px dans un viewport 320. Console : pas d'erreur non interceptée (connexions Vite uniquement).
+- **Vérifié navigateur :** Accueil catégories à 320 sombre. Tuiles mesurées à 80px, rail 467px, capsules 36px, page 320 sans débordement.
+- **Non vérifié :** `npm run typecheck` échoue sur des erreurs préexistantes, aucune dans `ExploreScreen.tsx`. Pas de script de tests dans `package.json`. Pas de contrôle iPhone réel ni `prefers-reduced-motion` sur appareil. Grille de résultats avec de vrais événements non affichée (catalogue vide dans cet environnement).
 
 ## Backlog
-1. P1 — Vérification build, lint, typecheck et tests existants.
-2. P1 — Revue responsive réelle de l'explorateur de catégories sur petits mobiles, notamment 320px.
-3. P2 — Contrôle dock mobile, safe areas iOS et mode réduction de transparence.
-4. P2 — Revue progressive des pages Explorer et création/modification d'événement.
-5. P3 — Audit ciblé des états de chargement, vide, erreur et hors-ligne.
+1. P1 — Corriger le typecheck préexistant (`selectPages`, `SubCategoryId`, `authState`) dans un chantier isolé.
+2. P2 — Auth : thème sombre, cibles 44px, rôles lisibles à 320px, focus et clavier.
+3. P2 — Relever les capsules accueil de 36px à 44px seulement après contrôle visuel.
+4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
+5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-13 — Recherche : hiérarchie de catégories
+- Capsules parentes et rangée de sous-catégories directement sur Recherche, violet `#6600FF`, 44px, snap, focus, `prefers-reduced-motion`.
+- La catégorie parente reste visible quand une sous-catégorie est active. La feuille de filtres suit le même modèle.
+- Segment participants raccourci en « Amis » sous 400px.
+- Contrôle navigateur 320–1440 et build Vite réussis. Typecheck global toujours rouge pour des causes antérieures.
+- Synchronisation : fast-forward de `FRONTEND-iA` sur le merge `main` `b9a4b3f` (PR #11), arbres identiques.
+
 ### 2026-11-13 — Accueil : proportions des catégories
-- Réduction de la hauteur minimale des cartes principales de 104px à 80px et des icônes à 18px.
-- Sous-catégories uniformisées en rangée horizontale scrollable avec snap.
-- Focus visible et sémantique de groupe ajoutés.
-- Commit : `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
-- Relecture distante réussie ; validation build/lint/typecheck et rendu visuel non exécutés.
+- Hauteur minimale des cartes principales 80px, icônes 18px, sous-catégories en rangée horizontale.
+- Commit d'origine : `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
+- Contrôle visuel 320 sombre ajouté lors de la session Recherche.
 
 ### 2026-11-12 — FRONTEND-iA : verre sombre et dock
-- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres.
-- Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en.
-- Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante.
+- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css`.
+- Dock mobile : labels 11px, dock 62px, aria-label du badge billets.
 
-### 2026-11-12 — FRONTED-iA : cartes, catégories, stats
-- `EventCard.tsx` : suppression du bouton imbriqué dans un `article role="button"`, overlay de découverte distinct, suppression de `min-h-[full]`.
-- `BottomNav.tsx` : bouton Créer 44×44px, focus clavier, `prefers-reduced-motion`.
-- Explorateur de catégories : hiérarchie parent/sous-catégorie, catalogue publié complet, plus de flicker ni de polling.
-- Stats/analytics : historique organisateur par mois, pas d'échantillon partiel, repli JavaScript typé, billets uniques.
+### 2026-11-12 — Cartes, catégories, stats
+- `EventCard.tsx` : plus de bouton imbriqué dans un `article`.
+- Explorateur de catégories : hiérarchie parent/sous-catégorie, catalogue publié complet.
+- Stats/analytics : historique organisateur par mois.
 
-### 2026-11-13 — Fusion des historiques frontend
-- L'ancien journal documentait une fusion `FRONTED-iA` vers `FRONTEND-iA` et la PR #6.
-- La branche de travail exacte a été recréée depuis `main` au début de cette session, conformément à la consigne lorsque `FRONTEND-iA` est absente.
-
-
-### 2026-11-13 — Synchronisation de main vers FRONTEND-iA
-- Analyse des 8 commits manquants depuis `main` ; les modifications entrantes concernaient `FRONTEND_MEMORY.md`, `src/screens/EditEventScreen.tsx` et `src/screens/HomeScreen.tsx`.
-- Résolution documentée : `src/screens/HomeScreen.tsx` reprend la version main qui contient la grille catégories 2/3/5 colonnes, les tuiles compactes de 80px et la rangée horizontale de sous-catégories. `src/screens/EditEventScreen.tsx` conserve la version FRONTEND-iA, qui garde l'import `Trophy` nécessaire et le fallback de catégorie legacy. La mémoire reprend le journal main, corrige le nom exact de la branche et conserve le blocage précédent ainsi que sa résolution.
-- PR temporaire #10 fermée sans fusion ; elle n'a modifié aucune branche.
-- Merge commit créé avec deux parents (branche de travail et main) ; aucune réécriture d'historique ni force push.
-- Prochaine étape : valider build, lint, typecheck, tests et rendu responsive avant toute nouvelle retouche UI.
-
-- PR de suivi #11 créée le 2026-11-13 depuis `FRONTEND-iA` vers `main`, ouverte en brouillon ; aucune fusion demandée ni effectuée.
+### 2026-11-13 — Synchronisation
+- Merge `main` dans `FRONTEND-iA` (`989a5bd`) après résolution documentée de `HomeScreen.tsx` et `EditEventScreen.tsx`.
+- PR #10 fermée sans fusion. PR #11 ouverte en brouillon puis fusionnée dans `main` par le propriétaire (`b9a4b3f`).
