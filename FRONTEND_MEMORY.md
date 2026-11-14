@@ -20,23 +20,18 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Explorer par catégorie : proportions et rangées équilibrées
+## Tâche active — Correction pagination catégories (selectPages)
 
-**Intervention du 2026-11-14 :** le dimensionnement des tuiles principales et la composition responsive de « Explorer par catégorie » ont été ajustés sur `FRONTEND-iA`.
+**Intervention du 2026-11-14 (session backend/liaison) :**
+Ajout du helper `selectPages` manquant dans `src/features/events/queries.ts`.
+`fetchEventsByCategory` appelait une fonction inexistante → erreur de typecheck P1 et pagination incomplète.
+Helper sûr : pages de 100, arrêt sur erreur / page vide / page incomplète. Aucun changement de schéma ni de données.
 
-**Changements dans `src/screens/HomeScreen.tsx` :**
-- Remplacement de la grille fixe 2/3/5 par une disposition flex-wrap centrée, avec bases 2/3/4/6 colonnes selon les breakpoints et gaps adaptés. Les rangées incomplètes (dont le cas de 5 catégories visible sur la capture) sont automatiquement centrées.
-- Largeur maximale progressive des tuiles : 180px sur mobile, 220px dès xl, 240px en 2xl, pour empêcher l'étirement disproportionné sur desktop.
-- Hauteur minimale des tuiles : 68px mobile, 72px sm, 76px 2xl; icônes, libellés, padding et gap compactés. Le titre de section et l'espace avant les résultats sont légèrement réduits.
-- Rail des sous-catégories : gaps, padding horizontal et taille de texte compactés; hauteur minimale de 36px conservée faute de contrôle visuel réel sur appareil.
+**Commit :** `07352871eefc8311497f5ca4c81f7b8bdd7d267f` sur `FRONTEND-iA`.
+**Vérification distante :** fichier relu, SHA `76ed8365504387085807952ff4e110c7ce89253b`, taille 13274 octets, helper présent, contenu réel.
+**Non vérifié :** `npm run typecheck` local (pas d'environnement de build dans cette session), build Vercel.
 
-**Audit source manuel :** les 6 catégories de la branche actuelle étaient disposées en 5 colonnes à xl, ce qui créait une rangée 5+1. Le flex-wrap centré traite cette configuration ainsi que le cas de 5 catégories du screenshot, sans toucher à la logique métier ni aux données. Les outils Superdesign/UIAudit n'étaient pas exposés dans cette exécution; revue de code seulement.
-
-**Validation :** contrôle structurel des remplacements via GitHub API et relecture à prévoir après commit. Aucun build, typecheck, lint ou test navigateur local exécuté : clone GitHub bloqué par résolution DNS, accès Browser indisponible. CI/Vercel post-commit reste à vérifier. Aucun changement backend, aucune PR.
-
-**Problèmes ouverts :** les capsules de sous-catégorie d'accueil restent à 36px (sous la cible tactile 44px); décision à prendre après vrai contrôle responsive. Le conflit documenté de synchronisation `main`/`server.ts` reste non résolu et hors du chantier.
-
-**Prochaine priorité :** contrôle visuel réel du parcours catégories sur iPhone/preview, puis ajustement des capsules de sous-catégorie si l'équilibre et les cibles tactiles le permettent.
+**Prochaine priorité :** isoler et corriger les autres erreurs de typecheck préexistantes (`SubCategoryId` dans CreateEventWizardScreen, authState dans App.tsx) si elles restent, ou avancer sur le dock mobile / safe areas.
 
 ## Dernier chantier Auth — terminé ; fusion `main` toujours bloquée
 **Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
@@ -80,7 +75,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 | Dashboard organisateur / statistiques | À revoir | Correctifs déjà dans l'historique |
 
 ## Dette UI
-- **P1** — `npm run typecheck` échoue déjà hors de cette session : `src/App.tsx`, `src/features/events/queries.ts` (`selectPages` introuvable), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`). Ne pas les mélanger à une retouche visuelle sans les isoler.
+- **P1** — `selectPages` corrigé (commit 0735287). Reste à isoler : `src/App.tsx` (authState), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`).
 - **P2** — Auth : thème et 320px traités le 2026-11-14. Clavier virtuel réel non contrôlé (le formulaire défile, `min-h-dvh`).
 - **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible tactile 44px; contrôle visuel réel requis avant ajustement.
 - **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
@@ -92,6 +87,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - `main` était en avance d'un seul commit de fusion (PR #11, `b9a4b3f`) sans différence de fichiers. Avance rapide de `FRONTEND-iA`, aucun conflit.
 
 ## Vérifications
+- **Vérifié le 2026-11-14 :** commit `07352871eefc8311497f5ca4c81f7b8bdd7d267f` sur `FRONTEND-iA`. Relecture distante de `queries.ts` : SHA `76ed8365…`, 13274 octets, helper `selectPages` présent et appelé correctement.
 - **Vérifié le 2026-11-14 :** `FRONTEND-iA` `e1cb0c5` au départ, `main` `ffe871c`, `behind_by: 2` (`ffe871c`, `fd7d25b`). Fusion testée puis annulée. Commit auth poussé : `d369889ae3789088e944e40de4a35bfc97365491`. Relecture distante `AuthScreen.tsx` : blob `b9352ba84e68c0fdd492e59636b50c37fef9914e`, 7129 → 12889 octets, contenu réel (thème sombre, radiogroup, `min-h-11`).
 - **Vérifié :** ESLint `src/screens/AuthScreen.tsx` — exit 0. `vite build` — succès (3288 modules). `npm run typecheck` — échec préexistant uniquement (`App.tsx` authState, `queries.ts` selectPages, `CreateEventWizardScreen.tsx` SubCategoryId). Aucune erreur dans `AuthScreen.tsx`. Pas de script de tests.
 - **Vérifié navigateur :** Chromium headless, `prefers-reduced-motion`, `/login` et `/signup`, thèmes `gba_theme` clair et sombre, largeurs 320, 375, 414, 768, 1024, 1440. `scrollWidth === clientWidth` partout. Rôles signup mesurés à 44px (246px de large à 320, empilés ; 117px dès 768, une ligne, pas de débordement). Tous les boutons ≥ 44px. Aucune `pageerror`.
@@ -105,12 +101,18 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 
 ## Backlog
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
-2. P1 — Corriger le typecheck préexistant (`selectPages`, `SubCategoryId`, `authState`) dans un chantier isolé.
+2. P1 — Isoler et corriger les erreurs de typecheck restantes (`SubCategoryId`, `authState`).
 3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-14 — Correction selectPages (pagination catégories)
+- Ajout de `selectPages<T>` dans `src/features/events/queries.ts`.
+- `fetchEventsByCategory` peut maintenant paginer correctement l'ensemble des événements publiés.
+- Commit `07352871eefc8311497f5ca4c81f7b8bdd7d267f` sur `FRONTEND-iA`. Relecture distante confirmée (SHA `76ed8365…`, 13274 o).
+- Aucun build/typecheck local exécuté dans cette session. Aucun changement sur `main`. Aucune PR.
+
 ### 2026-11-14 — Accueil : proportions et rangées équilibrées pour les catégories
 - `src/screens/HomeScreen.tsx` : remplacement de la grille fixe 2/3/5 par un flex-wrap centré avec bases 2/3/4/6, gaps progressifs et largeur maximale 180/220/240px selon breakpoint. Les rangées incomplètes restent centrées; le cas de 5 catégories du screenshot n'isole plus la dernière tuile à gauche.
 - Tuiles compactées : hauteur min 68px mobile, 72px sm, 76px 2xl; icône 16/17px, texte 10/11px, padding vertical et gap réduits. Titre et marge des résultats diminués.
@@ -159,7 +161,6 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Diagnostic Supabase read-only : 8 événements (tous publiés, 0 actifs à l'heure de l'inspection), 3 organisations, 6 artistes, 0 lignes tickets, 0 ticket_options, 0 profiles, somme attendees_count 21 529, somme views_count 145 000. Edge function `platform-stats` active, réponses HTTP 200 observées dans les logs.
 - Vérifications build/typecheck et rendu navigateur : non exécutées dans cette session. Commit direct sur `FRONTEND-iA` : `cf55a509`, `be4d5075`, `1ec778e6`.
 
-
 ### 2026-11-13 — Exclusion des données de seed des statistiques publiques
 - Correction du diagnostic précédent : les 21 529 participations et 145 000 vues calculées sur Supabase étaient des valeurs fictives provenant de la seed, et ne doivent pas être présentées comme engagement réel.
 - Source démontrée : `supabase/migrations/20260725074839_gbaigbance_seed_data.sql` insère 8 événements avec IDs `e1000000-…`, nombres de vues/participants/likes gonflés ; la migration `20260909120000_gbaigbance_cleanup_seed_and_gemini_config.sql` prévoyait explicitement leur suppression, mais la base active les contient encore (8/8 events, 6 artistes et 3 organisations de seed ; 0 événement non-seed).
@@ -167,14 +168,12 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Edge Function `platform-stats` déployée sur Supabase version 4, commit GitHub `f515bb0ef1c3a1082a15cce74b3056361755920e` (branche `FRONTEND-iA`). Pas de vérification runtime d'invocation effectuée après déploiement dans cette session.
 - Les stats publiques deviennent propres à la seed exclusion, mais les données d'activité de vrais événements doivent toujours provenir de compteurs réellement générés par les actions app; les totaux attendees_count ne sont pas considérés comme fiables par défaut pour ces événements seed.
 
-
 ### 2026-11-13 — Vérification déploiement / statistiques toujours indisponibles
 - La fonction Supabase `platform-stats` est bien ACTIVE en version 4 depuis 2026-11-13 08:07 UTC ; le contenu récupéré sur Supabase correspond au code filtrant les seeds (SHA de contenu `5174ccc9…`).
 - Le dernier déploiement Vercel de `FRONTEND-iA` est READY : `dpl_A3Ms8RtscPRo68GFnhwDW69GarA3`, commit `d17c9113a12f3c0714d2d5c48cc4859c706adc7d`, URL preview `https://gbaigbance-event-3wmvoy5ky-shogun10.vercel.app`.
 - L'alias de production `gbaigbance-event.vercel.app` pointe encore sur le déploiement de `main`, commit `b9a4b3f53788f6d1305698aa1e326a9af2fcf886`; les commits de correction sur `FRONTEND-iA` ne sont donc pas encore intégrés à la production. Ne pas ouvrir de PR ni modifier main sans demande explicite.
 - Les dernières requêtes `platform-stats` trouvées dans les logs avant le déploiement v4 sont des appels de version 3 (UA HeadlessChrome) entre 07:29 et 07:36 UTC ; aucun appel n'apparaît entre 08:07 et 08:20 UTC. Il n'y a donc pas encore de preuve que l'iPhone ait appelé la version 4.
-- Le frontend appelle `supabase.functions.invoke('platform-stats')`; si invocation échoue ou si `data.totalUsers`/`data.totalTickets` n'est pas numérique, il retourne `isAvailable:false`, ce qui explique les tirets. Le composant les affiche volontairement quand isAvailable=false.
-- La PWA utilise `registerType: 'prompt'` : une mise à jour peut rester en attente jusqu'à validation de l'action « Actualiser ». Test prioritaire : ouvrir le preview `FRONTEND-iA` dans Safari (pas l'icône installée) pour vérifier la nouvelle build et générer une requête après version 4. Ensuite inspecter les logs Supabase et les erreurs console avant toute autre modification.
+- Le frontend appelle `supabase.functions.invoke('platform-stats')`; si invocation échoue ou si `data.totalUsers`/`data.totalTickets` n'est pas un nombre, l'UI affiche des tirets.
 
 ### 2026-11-13 — Reconstruction backend des statistiques globales
 - Cause racine des tirets : fetchPlatformStats() dépendait de supabase.functions.invoke('platform-stats') et renvoyait silencieusement isAvailable:false sur toute erreur/incohérence. L'UI affichait alors des tirets.
