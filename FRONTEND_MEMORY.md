@@ -20,21 +20,20 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Marges des rails et filtrage catégories accueil
-**Objectif :** les capsules de catégories et les cartes de proximité ne collent plus aux bords de l'écran ; « Explorer par catégorie » affiche les événements existants.
+## Tâche active — Auth terminé ; fusion `main` bloquée
+**Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
 
 **Progression :**
-- Terminé le 2026-11-13 : suppression de `-mx-5` sur les rails de catégories (Accueil et Recherche) et sur le carrousel « À proximité ». Les éléments restent dans le padding `px-5` de leur section, comme les onglets de « Modifier l'événement ».
-- Terminé : hydratation des événements dans `allActiveEvents` avant le filtrage par catégorie. Les événements sans `main_category` explicite sont maintenant classés selon leur catégorie héritée ou leurs tags.
-- Vérifié : ESLint des deux fichiers (1 erreur préexistante `t` inutilisé dans HomeScreen, hors de ce changement).
+- Terminé : `src/screens/AuthScreen.tsx` refondu (verre, champs, rôles, liens). Logique `signIn` / `signUp` inchangée.
+- Bloqué, non poussé : fusion de `main` (`ffe871c`) dans `FRONTEND-iA`. Un seul conflit, `server.ts`. Fusion locale annulée (`git merge --abort`). Aucun fichier de `main` n'a été écrit sur la branche.
 
 **Fichiers concernés :**
-- `src/screens/HomeScreen.tsx` — rail sous-catégories, carrousel proximité, hydratation.
-- `src/screens/ExploreScreen.tsx` — rails de catégories.
+- `src/screens/AuthScreen.tsx` — écran login/signup.
+- `server.ts` — conflit non résolu, fichier distant inchangé par cette session.
 
-**Dernière action :** marges restaurées et filtrage catégories corrigé.
+**Dernière action :** commit auth `d369889ae3789088e944e40de4a35bfc97365491` relu sur `FRONTEND-iA`.
 
-**Prochaine étape :** écran Auth (`src/screens/AuthScreen.tsx`) — thème clair forcé, rôles serrés à 320px.
+**Prochaine étape :** ne pas recommencer Auth. Re-tenter la fusion de `main`. Si `server.ts` conflit encore, s'arrêter : `FRONTEND-iA` a retiré la route Express `/api/platform-stats` (`56330f0`) ; `main` (`fd7d25b`) la réintroduit dans le même fichier que le durcissement serveur. Ne pas choisir un côté sans décision du propriétaire. Ensuite : dock mobile et safe areas.
 
 ## Design system — décisions à préserver
 - Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`. Ne plus introduire `#5900E6` sur Recherche.
@@ -57,24 +56,29 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 | Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
 | Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
 | Création / modification d'événement | À auditer | Typecheck préexistant en échec sur l'assistant |
-| Connexion / inscription | À revoir | Thème clair forcé, prochaine tâche |
+| Connexion / inscription | Finalisé | Thème clair/sombre, rôles empilés sous 480px, cibles 44px. Vérifié navigateur 320–1440 |
 | Billets / portefeuille | À auditer | Aucun changement |
 | Profil / favoris / notifications | À auditer | Aucun changement |
 | Dashboard organisateur / statistiques | À revoir | Correctifs déjà dans l'historique |
 
 ## Dette UI
 - **P1** — `npm run typecheck` échoue déjà hors de cette session : `src/App.tsx`, `src/features/events/queries.ts` (`selectPages` introuvable), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`). Ne pas les mélanger à une retouche visuelle sans les isoler.
-- **P2** — AuthScreen non adapté au thème sombre ni au clavier virtuel.
+- **P2** — Auth : thème et 320px traités le 2026-11-14. Clavier virtuel réel non contrôlé (le formulaire défile, `min-h-dvh`).
 - **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible 44px.
 - **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
 - **P3** — Harmoniser les états vides, chargement, erreur et hors-ligne.
 
 ## Incidents d'écriture
+- 2026-11-14 : fusion `main` → `FRONTEND-iA` annulée. Conflit unique `server.ts` (marqueurs 802–1031 sur la copie de travail, ~230 lignes). Côté `FRONTEND-iA` : zone vide (route Express stats retirée). Côté `main` : `handlePlatformStats` + `GET/POST /api/platform-stats`. Aucune troncature. Rien poussé. Tailles distantes de `server.ts` non modifiées par cette session (`FRONTEND-iA` 30154 octets / 792 lignes ; `main` 45068 octets / 1193 lignes).
 - Aucun incident de troncature le 2026-11-13.
 - `main` était en avance d'un seul commit de fusion (PR #11, `b9a4b3f`) sans différence de fichiers. Avance rapide de `FRONTEND-iA`, aucun conflit.
 
 ## Vérifications
-- **Vérifié :** `FRONTEND-iA` existait. Comparaison avant travail : `FRONTEND-iA` `8011838`, `main` `b9a4b3f`, `behind_by: 1`, diff d'arbre vide. Fast-forward local puis poussé avec le commit de fonction.
+- **Vérifié le 2026-11-14 :** `FRONTEND-iA` `e1cb0c5` au départ, `main` `ffe871c`, `behind_by: 2` (`ffe871c`, `fd7d25b`). Fusion testée puis annulée. Commit auth poussé : `d369889ae3789088e944e40de4a35bfc97365491`. Relecture distante `AuthScreen.tsx` : blob `b9352ba84e68c0fdd492e59636b50c37fef9914e`, 7129 → 12889 octets, contenu réel (thème sombre, radiogroup, `min-h-11`).
+- **Vérifié :** ESLint `src/screens/AuthScreen.tsx` — exit 0. `vite build` — succès (3288 modules). `npm run typecheck` — échec préexistant uniquement (`App.tsx` authState, `queries.ts` selectPages, `CreateEventWizardScreen.tsx` SubCategoryId). Aucune erreur dans `AuthScreen.tsx`. Pas de script de tests.
+- **Vérifié navigateur :** Chromium headless, `prefers-reduced-motion`, `/login` et `/signup`, thèmes `gba_theme` clair et sombre, largeurs 320, 375, 414, 768, 1024, 1440. `scrollWidth === clientWidth` partout. Rôles signup mesurés à 44px (246px de large à 320, empilés ; 117px dès 768, une ligne, pas de débordement). Tous les boutons ≥ 44px. Aucune `pageerror`.
+- **Non vérifié :** iPhone réel, clavier virtuel Android, contraste mesuré par outil. Rendu contrôlé sur build Vite preview, pas sur l'alias de production.
+- **Vérifié (session précédente) :** `FRONTEND-iA` existait. Comparaison d'alors : `FRONTEND-iA` `8011838`, `main` `b9a4b3f`, `behind_by: 1`, diff d'arbre vide.
 - **Vérifié :** ESLint `src/screens/ExploreScreen.tsx` — exit 0.
 - **Vérifié :** `vite build` — succès (3288 modules). `tsx scripts/generate-preview.ts` — succès, 14 aperçus statiques. Aucun fichier de preview versionné modifié.
 - **Vérifié navigateur :** Recherche à 320, 375, 414, 768, 1024 et 1440 px. Thème sombre (classe `dark`) sur ces largeurs ; thème clair à 320 et sur la feuille de filtres 320. Pas de scroll horizontal de page (`scrollWidth === clientWidth`). Capsules de sous-catégorie mesurées à 44px. Rail 498px dans un viewport 320. Console : pas d'erreur non interceptée (connexions Vite uniquement).
@@ -82,13 +86,17 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - **Non vérifié :** `npm run typecheck` échoue sur des erreurs préexistantes, aucune dans `ExploreScreen.tsx`. Pas de script de tests dans `package.json`. Pas de contrôle iPhone réel ni `prefers-reduced-motion` sur appareil. Grille de résultats avec de vrais événements non affichée (catalogue vide dans cet environnement).
 
 ## Backlog
-1. P1 — Corriger le typecheck préexistant (`selectPages`, `SubCategoryId`, `authState`) dans un chantier isolé.
-2. P2 — Auth : thème sombre, cibles 44px, rôles lisibles à 320px, focus et clavier.
+1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
+2. P1 — Corriger le typecheck préexistant (`selectPages`, `SubCategoryId`, `authState`) dans un chantier isolé.
 3. P2 — Relever les capsules accueil de 36px à 44px seulement après contrôle visuel.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-14 — Auth clair/sombre et fusion main bloquée
+- `AuthScreen.tsx` : panneau `glass-ios`, textes et champs adaptés au thème, champs en 16px, œil du mot de passe 44px, rôles en colonne sous 480px puis 3 colonnes, focus visible, `aria-invalid`. Commit `d369889` sur `FRONTEND-iA`. Taille 7129 → 12889 octets, relue sur le dépôt.
+- `main` a 2 commits d'avance. Conflit `server.ts` seulement. Fusion non poussée.
+
 ### 2026-11-13 — Marges des rails et filtrage catégories
 - Suppression de `-mx-5` sur les rails de catégories (Accueil, Recherche) et le carrousel « À proximité ». Les éléments restent dans le padding de leur section.
 - Hydratation des événements dans `allActiveEvents` avant le filtrage. « Explorer par catégorie » affiche maintenant les événements classés selon leur catégorie héritée.
