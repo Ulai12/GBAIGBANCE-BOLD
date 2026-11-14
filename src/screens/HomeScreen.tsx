@@ -680,7 +680,7 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[68px] sm:min-h-[72px] 2xl:min-h-[76px] shrink-0 basis-[calc(50%_-_0.25rem)] sm:basis-[calc((100%_-_1.25rem)/3)] xl:basis-[calc((100%_-_2.25rem)/4)] 2xl:basis-[calc((100%_-_3.75rem)/6)] max-w-[180px] xl:max-w-[220px] 2xl:max-w-[240px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,1,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
+                className={`flex min-h-[68px] sm:min-h-[72px] 2xl:min-h-[76px] shrink-0 basis-[calc(50%_-_0.25rem)] sm:basis-[calc(33.333%_-_0.4167rem)] xl:basis-[calc(25%_-_0.5625rem)] 2xl:basis-[calc(16.6667%_-_0.625rem)] max-w-[180px] xl:max-w-[220px] 2xl:max-w-[240px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
                     : 'border border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
