@@ -662,12 +662,12 @@ export function HomeScreen({
       </section>
 
       {/* SECTION 2: Explorer par catégorie */}
-      <section className="mt-7 px-5" aria-label="Explorer les catégories d'événements">
-        <h2 className="mb-3 text-center text-lg font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-xl">
+      <section className="mt-6 px-5" aria-label="Explorer les catégories d'événements">
+        <h2 className="mb-2.5 text-center text-base font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-lg">
           Explorer par catégorie
         </h2>
 
-        <div className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-5" aria-label="Catégories principales">
+        <div className="flex flex-wrap justify-center gap-2 py-1 sm:gap-2.5 xl:gap-3" aria-label="Catégories principales">
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -680,14 +680,14 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[80px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-3 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
+                className={`flex min-h-[68px] sm:min-h-[72px] 2xl:min-h-[76px] shrink-0 basis-[calc(50%_-_0.25rem)] sm:basis-[calc((100%_-_1.25rem)/3)] xl:basis-[calc((100%_-_2.25rem)/4)] 2xl:basis-[calc((100%_-_3.75rem)/6)] max-w-[180px] xl:max-w-[220px] 2xl:max-w-[240px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,1,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
                     : 'border border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
                 }`}
               >
-                <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
-                <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
+                <Icon className={`h-4 w-4 shrink-0 sm:h-[17px] sm:w-[17px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
+                <span className={`max-w-full break-words text-center text-[10px] font-semibold leading-tight sm:text-[11px] ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
                   {main.shortLabel}
                 </span>
               </button>
@@ -697,7 +697,7 @@ export function HomeScreen({
 
         {selectedMainCategory && (
           <div
-            className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
+            className="mt-2.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 no-scrollbar"
             role="group"
             aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
           >
@@ -705,7 +705,7 @@ export function HomeScreen({
               type="button"
               aria-pressed={selectedCategory === selectedMainCategory.id}
               onClick={() => setSelectedCategory(selectedMainCategory.id)}
-              className={`min-h-9 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+              className={`min-h-9 shrink-0 snap-start rounded-full px-2.5 text-[10.5px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
                 selectedCategory === selectedMainCategory.id
                   ? 'bg-[#6600FF] text-white'
                   : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
@@ -721,7 +721,7 @@ export function HomeScreen({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                  className={`min-h-9 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+                  className={`min-h-9 shrink-0 snap-start whitespace-nowrap rounded-full px-2.5 text-[10.5px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
                     isSelected
                       ? 'bg-[#6600FF] text-white'
                       : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
@@ -737,9 +737,9 @@ export function HomeScreen({
 
       {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
       {selectedCategory && (
-        <section className="mt-6 px-5 animate-slide-up">
+        <section className="mt-5 px-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+            <h2 className="text-lg sm:text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
                 ? selectedMainCategory.shortLabel
                 : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}

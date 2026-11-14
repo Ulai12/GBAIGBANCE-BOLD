@@ -1,7 +1,7 @@
 # FRONTEND_MEMORY.md
 
 ## Périmètre
-Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité du chantier frontend. `PROJECT_MEMORY.md` est consulté uniquement en lecture seule pour le contexte backend.
+Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité du chantier frontend. `PROJECT_MEMORY.md` appartient à Grok : cet agent ne doit jamais le lire, l'utiliser ni le modifier.
 
 ## Gouvernance
 - Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
@@ -20,7 +20,25 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Auth terminé ; fusion `main` bloquée
+## Tâche active — Explorer par catégorie : proportions et rangées équilibrées
+
+**Intervention du 2026-11-14 :** le dimensionnement des tuiles principales et la composition responsive de « Explorer par catégorie » ont été ajustés sur `FRONTEND-iA`.
+
+**Changements dans `src/screens/HomeScreen.tsx` :**
+- Remplacement de la grille fixe 2/3/5 par une disposition flex-wrap centrée, avec bases 2/3/4/6 colonnes selon les breakpoints et gaps adaptés. Les rangées incomplètes (dont le cas de 5 catégories visible sur la capture) sont automatiquement centrées.
+- Largeur maximale progressive des tuiles : 180px sur mobile, 220px dès xl, 240px en 2xl, pour empêcher l'étirement disproportionné sur desktop.
+- Hauteur minimale des tuiles : 68px mobile, 72px sm, 76px 2xl; icônes, libellés, padding et gap compactés. Le titre de section et l'espace avant les résultats sont légèrement réduits.
+- Rail des sous-catégories : gaps, padding horizontal et taille de texte compactés; hauteur minimale de 36px conservée faute de contrôle visuel réel sur appareil.
+
+**Audit source manuel :** les 6 catégories de la branche actuelle étaient disposées en 5 colonnes à xl, ce qui créait une rangée 5+1. Le flex-wrap centré traite cette configuration ainsi que le cas de 5 catégories du screenshot, sans toucher à la logique métier ni aux données. Les outils Superdesign/UIAudit n'étaient pas exposés dans cette exécution; revue de code seulement.
+
+**Validation :** contrôle structurel des remplacements via GitHub API et relecture à prévoir après commit. Aucun build, typecheck, lint ou test navigateur local exécuté : clone GitHub bloqué par résolution DNS, accès Browser indisponible. CI/Vercel post-commit reste à vérifier. Aucun changement backend, aucune PR.
+
+**Problèmes ouverts :** les capsules de sous-catégorie d'accueil restent à 36px (sous la cible tactile 44px); décision à prendre après vrai contrôle responsive. Le conflit documenté de synchronisation `main`/`server.ts` reste non résolu et hors du chantier.
+
+**Prochaine priorité :** contrôle visuel réel du parcours catégories sur iPhone/preview, puis ajustement des capsules de sous-catégorie si l'équilibre et les cibles tactiles le permettent.
+
+## Dernier chantier Auth — terminé ; fusion `main` toujours bloquée
 **Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
 
 **Progression :**
@@ -49,7 +67,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ## Cartographie des écrans
 | Écran / zone | Statut | Notes |
 |---|---|---|
-| Accueil — explorateur de catégories | Finalisé | Grille 2/3/5, tuiles 80px. Rail sous-catégories contenu dans le padding. Hydratation ajoutée pour le filtrage |
+| Accueil — explorateur de catégories | Proportions ajustées | Flex-wrap centré, bases 2/3/4/6, tuiles 68/72/76px avec max-width progressive; rail sous-catégories compacté (36px conservés, contrôle appareil à faire) |
 | Accueil — proximité | Finalisé | Carrousel contenu dans le padding `px-5`, plus de débordement aux bords |
 | Recherche — catégories et filtres | Finalisé | Rails contenus dans le padding, plus de `-mx-5` |
 | Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
@@ -64,7 +82,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ## Dette UI
 - **P1** — `npm run typecheck` échoue déjà hors de cette session : `src/App.tsx`, `src/features/events/queries.ts` (`selectPages` introuvable), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`). Ne pas les mélanger à une retouche visuelle sans les isoler.
 - **P2** — Auth : thème et 320px traités le 2026-11-14. Clavier virtuel réel non contrôlé (le formulaire défile, `min-h-dvh`).
-- **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible 44px.
+- **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible tactile 44px; contrôle visuel réel requis avant ajustement.
 - **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
 - **P3** — Harmoniser les états vides, chargement, erreur et hors-ligne.
 
@@ -88,11 +106,18 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 ## Backlog
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
 2. P1 — Corriger le typecheck préexistant (`selectPages`, `SubCategoryId`, `authState`) dans un chantier isolé.
-3. P2 — Relever les capsules accueil de 36px à 44px seulement après contrôle visuel.
+3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-14 — Accueil : proportions et rangées équilibrées pour les catégories
+- `src/screens/HomeScreen.tsx` : remplacement de la grille fixe 2/3/5 par un flex-wrap centré avec bases 2/3/4/6, gaps progressifs et largeur maximale 180/220/240px selon breakpoint. Les rangées incomplètes restent centrées; le cas de 5 catégories du screenshot n'isole plus la dernière tuile à gauche.
+- Tuiles compactées : hauteur min 68px mobile, 72px sm, 76px 2xl; icône 16/17px, texte 10/11px, padding vertical et gap réduits. Titre et marge des résultats diminués.
+- Sous-catégories : espacement/padding/font réduits; hauteur 36px conservée sans contrôle visuel réel.
+- Audit manuel du code uniquement. Pas de build/typecheck/lint ni test visuel local; accès navigateur et réseau clone indisponibles. Superdesign/UIAudit non exposés. Vérification CI/Vercel post-commit à faire.
+- Un commit substantiel combiné code + mémoire sur `FRONTEND-iA`; aucune PR et aucun changement sur une autre branche.
+
 ### 2026-11-14 — Auth clair/sombre et fusion main bloquée
 - `AuthScreen.tsx` : panneau `glass-ios`, textes et champs adaptés au thème, champs en 16px, œil du mot de passe 44px, rôles en colonne sous 480px puis 3 colonnes, focus visible, `aria-invalid`. Commit `d369889` sur `FRONTEND-iA`. Taille 7129 → 12889 octets, relue sur le dépôt.
 - `main` a 2 commits d'avance. Conflit `server.ts` seulement. Fusion non poussée.
