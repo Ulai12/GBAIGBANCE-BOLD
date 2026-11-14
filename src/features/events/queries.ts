@@ -6,7 +6,30 @@ import { coreRankIds, coreTrendIds } from '@/lib/rust-core';
 
 function sanitizeSearchInput(input: string): string {
   if (!input) return '';
-  return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+  return input.replace(/[,().:%*\"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+
+/**
+ * Pagine une requête Supabase jusqu'à épuisement des résultats.
+ * Utilise .range(from, to) inclusif. Arrête sur erreur, page vide ou page incomplète.
+ */
+async function selectPages<T>(
+  queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<T[]> {
+  const pageSize = 100;
+  const results: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + pageSize - 1;
+    const { data, error } = await queryFn(from, to);
+    if (error || !data || data.length === 0) break;
+    results.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return results;
 }
 
 // ==================== STATS ====================
