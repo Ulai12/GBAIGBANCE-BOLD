@@ -244,21 +244,53 @@ function AppContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // PWA update notification
+  // Confirmation après l'application automatique d'une nouvelle version PWA.
   useEffect(() => {
+    const updateFlag = 'gbaigbance:pwa-update-complete';
+
+    try {
+      if (window.sessionStorage.getItem(updateFlag) === '1') {
+        window.sessionStorage.removeItem(updateFlag);
+        addToast({
+          message: 'Gbaïgbancê a été mis à jour avec succès !',
+          type: 'success',
+        });
+      }
+    } catch {
+      // Le stockage de session peut être indisponible en navigation privée.
+    }
+
     const handleUpdate = (e: globalThis.Event) => {
-      const customEvent = e as CustomEvent<{ update: () => void }>;
+      const customEvent = e as CustomEvent<{ update?: () => Promise<void> | void }>;
+      const applyUpdate = customEvent.detail?.update;
+
       addToast({
-        message: 'Mise à jour disponible pour Gbaïgbancê',
+        message: 'Nouvelle version détectée. Mise à jour automatique…',
         type: 'info',
-        persistent: true,
-        action: customEvent.detail?.update
-          ? {
-              label: 'Actualiser',
-              onClick: () => customEvent.detail.update(),
-            }
-          : undefined,
       });
+
+      if (!applyUpdate) return;
+
+      try {
+        window.sessionStorage.setItem(updateFlag, '1');
+      } catch {
+        // La mise à jour reste possible même sans stockage de session.
+      }
+
+      // Laisse le toast apparaître avant le rechargement contrôlé par le Service Worker.
+      window.setTimeout(() => {
+        void Promise.resolve(applyUpdate()).catch(() => {
+          try {
+            window.sessionStorage.removeItem(updateFlag);
+          } catch {
+            // Ignore les restrictions de stockage.
+          }
+          addToast({
+            message: 'La mise à jour a échoué. Réessaie lorsque le réseau sera stable.',
+            type: 'error',
+          });
+        });
+      }, 1_200);
     };
 
     window.addEventListener('pwa-update-available', handleUpdate);
