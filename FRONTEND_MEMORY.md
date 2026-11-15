@@ -244,3 +244,14 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commits de code directs sur `FRONTEND-iA` : `8524fb9e0005fded2baae223b48f414dc33991f0` (theme-color), `51bc077cb53ac5daa9fa919d4cc00c1fb342cd2e` (fond safe-area), `50107bbae9824745b7d52360699660ffe4631989` (dock), `984dc451c62ebe1ee8414bb516c004239f3efa7a` (scroll reserve).
 - Tests locaux, build/typecheck/lint et contrôle navigateur/iPhone non exécutés ici. Les captures fournies ont servi à l'analyse visuelle, mais aucune capture après modification n'a été obtenue. Vérifier les statuts Vercel/CI avant de déclarer le build réussi.
 - Aucune PR, aucun backend, dépendance ou lockfile touché. `main` non modifié.
+
+
+### 2026-11-15 — Restauration Liquid Glass et en-tête sur FRONTEND-iA
+- Clarification utilisateur : la destination attendue est `FRONTEND-iA`, et non `main`. Les changements de cette session ont donc été portés sur `FRONTEND-iA`; aucune nouvelle modification de `main`.
+- `src/components/BottomNav.tsx` : restauration du composant Liquid Glass depuis la référence `main` : surface 62px, icônes 20px, labels 11px, ombres, bouton Créer et traitement visuel d'origine. La référence `main` contient le léger abaissement demandé (`max(0.25rem, calc(env(safe-area-inset-bottom, 0px) * 0.6)))); il est conservé.
+- `src/index.css` : suppression de la variable `--safe-area-bg` ajoutée lors de la correction précédente et restauration du fond racine `var(--bg)`, afin de retrouver le comportement d'en-tête/safe-area de la référence.
+- `index.html` : restauration du theme-color clair `#f4f1ff`.
+- `src/screens/HomeScreen.tsx` et `src/App.tsx` non remplacés : les changements fonctionnels propres à FRONTEND-iA sont préservés; l'en-tête visuel n'exigeait pas de remplacer ces fichiers.
+- Commits directs sur `FRONTEND-iA` : `43483a1e2677ed88d9518d8ca888a32ddcd383df` (dock), `3f721c10ab1674bfffb7befa08dab561531deccc` (fond safe-area), `a44082f715e44275076114238cc2b7a3052ea18b` (theme-color).
+- Build/tests et capture visuelle non exécutés ici. Déploiement Vercel de la branche à vérifier; ne pas annoncer READY avant confirmation.
+- Aucune PR; aucun changement backend, dépendance ou lockfile.
