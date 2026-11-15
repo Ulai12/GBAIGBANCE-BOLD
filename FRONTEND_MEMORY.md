@@ -255,3 +255,15 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commits directs sur `FRONTEND-iA` : `43483a1e2677ed88d9518d8ca888a32ddcd383df` (dock), `3f721c10ab1674bfffb7befa08dab561531deccc` (fond safe-area), `a44082f715e44275076114238cc2b7a3052ea18b` (theme-color).
 - Build/tests et capture visuelle non exécutés ici. Déploiement Vercel de la branche à vérifier; ne pas annoncer READY avant confirmation.
 - Aucune PR; aucun changement backend, dépendance ou lockfile.
+
+
+### 2026-11-15 — Détection et application automatique des mises à jour PWA
+- Diagnostic : le projet utilisait déjà `vite-plugin-pwa` avec `registerType: 'prompt'`. `src/main.tsx` déclenchait `pwa-update-available`, et `App.tsx` affichait un toast persistant avec action manuelle « Actualiser ». Aucune vérification périodique rapide n'était configurée.
+- `src/main.tsx` : `onRegisteredSW` déclenche désormais `registration.update()` toutes les 30 secondes lorsque l'application est visible et en ligne, et au retour au premier plan (visibilitychange/focus/online). Throttle de 10 secondes pour éviter les vérifications rapprochées. Aucun polling quand l'app est masquée ou hors ligne.
+- `src/App.tsx` : à la détection d'une nouvelle version, toast « Nouvelle version détectée. Mise à jour automatique… », puis application du nouveau Service Worker après 1,2 seconde avec `updateSW(true)`. Un indicateur `sessionStorage` permet d'afficher après le rechargement le toast de confirmation « Gbaïgbancê a été mis à jour avec succès ! ». Erreur d'application : toast d'échec.
+- `vercel.json` : headers `Cache-Control: no-cache, no-store, must-revalidate` pour `/sw.js`, `/index.html` et `/manifest.webmanifest`, afin d'éviter qu'un shell ou worker obsolète ralentisse la détection.
+- Pas de dépendance, lockfile, backend ou API modifiés. Le comportement conserve le cache des assets versionnés du precache Workbox; seuls les points d'entrée de mise à jour ne sont pas mis en cache.
+- Commits séquentiels directs sur `FRONTEND-iA` : `455e7795ceb18f796937bed7c6b2e1c39c67f620` (polling PWA), `31072065eff773e87f7f1be472058013d1f98dfb` (auto-apply + toast), `f4e8d86ea0c1979f11be2b6d32caf441f10de7bd` (headers Vercel).
+- Build, typecheck, lint et test réel de mise à jour entre deux déploiements non exécutés au moment de la modification. Déploiement Vercel de branche à vérifier. Vérifier aussi l'expérience iOS PWA/Android et le comportement en présence de formulaires non enregistrés.
+- Limite connue : le rechargement automatique peut interrompre une saisie non enregistrée. Le délai de 1,2 seconde sert uniquement à rendre le toast perceptible; il ne protège pas les formulaires en cours.
+- Aucune PR, aucune écriture sur `main`.
