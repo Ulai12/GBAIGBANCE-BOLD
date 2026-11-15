@@ -120,3 +120,12 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Prochaine étape : valider build, lint, typecheck, tests et rendu responsive avant toute nouvelle retouche UI.
 
 - PR de suivi #11 créée le 2026-11-13 depuis `FRONTEND-iA` vers `main`, ouverte en brouillon ; aucune fusion demandée ni effectuée.
+
+
+### 2026-11-15 — Retour au dock Liquid Glass d'origine sur main
+- Demande explicite de l'utilisateur : privilégier l'apparence du dock sur `main`, rétablir l'en-tête tel qu'il apparaît sur `main`, puis abaisser légèrement le dock pour un placement plus proche des tab bars natives iOS en affichage plein écran.
+- Exception explicite à la règle habituelle d'écriture exclusive sur `FRONTEND-iA` : intervention ciblée directement sur `main`, sans fusion ni PR.
+- `src/components/BottomNav.tsx` sur `main` : conservation du dock d'origine de 62px, des icônes de 20px, labels 11px, du verre Liquid Glass et des ombres d'origine. Seul le recul inférieur est légèrement réduit : `max(0.25rem, calc(env(safe-area-inset-bottom, 0px) * 0.6))`, pour descendre la barre sans la coller au bord.
+- L'en-tête de `main` est déjà identique au rendu de référence : `HomeScreen.tsx` conserve le logo, le bloc d'identité, le titre de salutation et les actions; `index.html` conserve `theme-color #f4f1ff` en clair; `src/index.css` conserve le fond racine `var(--bg)` sans la variable safe-area personnalisée ajoutée sur FRONTEND-iA. Aucun changement superflu sur ces fichiers.
+- Commit direct sur `main` : `080f3e40b65f7c7db5e5de2b1e37c4e9c13a1f20`.
+- Aucun changement backend, dépendance ou lockfile. Aucune PR. Build, tests et capture visuelle après changement non exécutés dans cette session.
