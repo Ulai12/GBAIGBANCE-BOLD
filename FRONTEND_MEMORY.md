@@ -20,18 +20,19 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Correction pagination catégories (selectPages)
+## Tâche active — Alignement des types catégories + null-safety auth (typecheck propre)
 
-**Intervention du 2026-11-14 (session backend/liaison) :**
-Ajout du helper `selectPages` manquant dans `src/features/events/queries.ts`.
-`fetchEventsByCategory` appelait une fonction inexistante → erreur de typecheck P1 et pagination incomplète.
-Helper sûr : pages de 100, arrêt sur erreur / page vide / page incomplète. Aucun changement de schéma ni de données.
+**Intervention du 2026-11-15 :**
+Correction des 2 erreurs de typecheck préexistantes restantes.
+- `src/types/index.ts` : `MainCategoryId` et `SubCategoryId` alignés sur `src/constants/categories.ts` (ajout `leisure_discovery` et sous-catégories privées/loisirs : mariages_receptions, anniversaires, etc.).
+- `src/App.tsx` : `authState?.returnTo` pour TS18047 (authState possibly null).
+- Typecheck (`npm run typecheck`) passe maintenant (exit 0). Aucun changement UI visible, mais débloque la qualité et l'assistant de création.
 
-**Commit :** `07352871eefc8311497f5ca4c81f7b8bdd7d267f` sur `FRONTEND-iA`.
-**Vérification distante :** fichier relu, SHA `76ed8365504387085807952ff4e110c7ce89253b`, taille 13274 octets, helper présent, contenu réel.
-**Non vérifié :** `npm run typecheck` local (pas d'environnement de build dans cette session), build Vercel.
+**Commit :** `b1d80727b9d98fbdc84fdc70993c796d717c6b63` sur `FRONTEND-iA`.
+**Vérification distante :** fichiers relus, tailles saines (App.tsx ~25k, types ~9k), contenu réel (unions étendues + optional chaining), pas de troncature.
+**Incident :** un push via connecteur a temporairement tronqué les fichiers en placeholders ; restauré et repoussé correctement via git local. Consigné ci-dessous.
 
-**Prochaine priorité :** isoler et corriger les autres erreurs de typecheck préexistantes (`SubCategoryId` dans CreateEventWizardScreen, authState dans App.tsx) si elles restent, ou avancer sur le dock mobile / safe areas.
+**Prochaine priorité :** dock mobile / safe areas, ou capsules sous-catégories accueil (36px → 44px après contrôle visuel).
 
 ## Dernier chantier Auth — terminé ; fusion `main` toujours bloquée
 **Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
@@ -82,6 +83,7 @@ Helper sûr : pages de 100, arrêt sur erreur / page vide / page incomplète. Au
 - **P3** — Harmoniser les états vides, chargement, erreur et hors-ligne.
 
 ## Incidents d'écriture
+- 2026-11-15 : push via connecteur GitHub a écrit des placeholders ("PLACEHOLDER_APP") au lieu du contenu complet sur App.tsx et types/index.ts (tailles ~300 octets). Restauré depuis commit précédent sain (11e067f), fixes réappliqués, commit b1d8072 poussé via git local. Tailles finales saines, contenu vérifié distant. Cause : limitation de transmission du contenu long dans l'appel outil.
 - 2026-11-14 : fusion `main` → `FRONTEND-iA` annulée. Conflit unique `server.ts` (marqueurs 802–1031 sur la copie de travail, ~230 lignes). Côté `FRONTEND-iA` : zone vide (route Express stats retirée). Côté `main` : `handlePlatformStats` + `GET/POST /api/platform-stats`. Aucune troncature. Rien poussé. Tailles distantes de `server.ts` non modifiées par cette session (`FRONTEND-iA` 30154 octets / 792 lignes ; `main` 45068 octets / 1193 lignes).
 - Aucun incident de troncature le 2026-11-13.
 - `main` était en avance d'un seul commit de fusion (PR #11, `b9a4b3f`) sans différence de fichiers. Avance rapide de `FRONTEND-iA`, aucun conflit.
@@ -101,7 +103,7 @@ Helper sûr : pages de 100, arrêt sur erreur / page vide / page incomplète. Au
 
 ## Backlog
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
-2. P1 — Isoler et corriger les erreurs de typecheck restantes (`SubCategoryId`, `authState`).
+2. P1 — Typecheck propre (SubCategoryId + authState corrigés le 2026-11-15, commit b1d8072).
 3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
