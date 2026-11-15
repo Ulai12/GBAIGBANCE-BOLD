@@ -8,6 +8,7 @@
   :root {
     --bg: #f4f1ff;
     --bg-2: #efe7ff;
+    --safe-area-bg: #efe7ff;
     --bg-3: #f9f7ff;
     --card: rgba(255, 255, 255, 0.72);
     --card-solid: #FFFFFF;
@@ -38,6 +39,7 @@
   .dark {
     --bg: #0c0a14;
     --bg-2: #141022;
+    --safe-area-bg: #141022;
     --bg-3: #08070d;
     --card: rgba(26, 22, 41, 0.75);
     --card-solid: #1b162b;
@@ -69,23 +71,28 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
-    /* Fond racine unifié WebKit : élimine tout blanc lors du rebond élastique iOS */
-    /* Harmonise le fond système des safe areas iOS avec le haut du dégradé. */
-    background-color: var(--bg);
+    /* La safe area iOS reprend la même teinte que le départ du fond de l'app. */
+    background-color: var(--safe-area-bg);
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.16), transparent 35%),
+      radial-gradient(circle at 85% 85%, rgba(96, 165, 250, 0.12), transparent 35%),
+      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background-repeat: no-repeat;
     min-height: 100%;
   }
 
   .dark html,
   html.dark {
-    background-color: var(--bg);
+    background-color: var(--safe-area-bg);
   }
 
   body {
-    background-color: var(--bg);
+    background-color: var(--safe-area-bg);
     background:
       radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.16), transparent 35%),
       radial-gradient(circle at 85% 85%, rgba(96, 165, 250, 0.12), transparent 35%),
-      var(--bg);
+      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background-repeat: no-repeat;
     color: var(--text);
     font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -96,11 +103,12 @@
   }
 
   .dark body {
-    background-color: var(--bg);
+    background-color: var(--safe-area-bg);
     background:
       radial-gradient(circle at 15% 15%, rgba(122, 26, 255, 0.15), transparent 35%),
       radial-gradient(circle at 85% 85%, rgba(79, 70, 229, 0.12), transparent 35%),
-      var(--bg);
+      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background-repeat: no-repeat;
   }
 
   #root {
