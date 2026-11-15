@@ -381,7 +381,7 @@ function AppContent() {
     <>
       <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
         {isTabScreen ? (
-          <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] max-w-7xl mx-auto">
+          <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-w-7xl mx-auto">
             <div className={activeTab === 'home' ? 'block' : 'hidden'}>
               <HomeScreen
                 onEventClick={handleEventClick}
