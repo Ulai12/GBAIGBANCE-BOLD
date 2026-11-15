@@ -20,19 +20,20 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Alignement des types catégories + null-safety auth (typecheck propre)
+## Tâche active — Création : catégories en capsules, comme Explorer
 
-**Intervention du 2026-11-15 :**
-Correction des 2 erreurs de typecheck préexistantes restantes.
-- `src/types/index.ts` : `MainCategoryId` et `SubCategoryId` alignés sur `src/constants/categories.ts` (ajout `leisure_discovery` et sous-catégories privées/loisirs : mariages_receptions, anniversaires, etc.).
-- `src/App.tsx` : `authState?.returnTo` pour TS18047 (authState possibly null).
-- Typecheck (`npm run typecheck`) passe maintenant (exit 0). Aucun changement UI visible, mais débloque la qualité et l'assistant de création.
+**Intervention du 2026-11-15 (suite) :**
+L'étape Infos de `CreateEventWizardScreen` n'utilisait plus deux listes natives. L'organisateur choisit la catégorie parente et la sous-catégorie avec les mêmes capsules que Recherche : 44px (`min-h-11`), rail horizontal à snap, focus violet, `motion-reduce`, libellés courts, description de la sous-catégorie sous le rail. Le violet reste `#6600FF`. La valeur enregistrée est toujours l'id du catalogue (`main_category`, `subcategory`, catégorie historique dérivée).
 
-**Commit :** `b1d80727b9d98fbdc84fdc70993c796d717c6b63` sur `FRONTEND-iA`.
-**Vérification distante :** fichiers relus, tailles saines (App.tsx ~25k, types ~9k), contenu réel (unions étendues + optional chaining), pas de troncature.
-**Incident :** un push via connecteur a temporairement tronqué les fichiers en placeholders ; restauré et repoussé correctement via git local. Consigné ci-dessous.
+Les types avaient déjà été alignés plus tôt le même jour (`b1d8072`). Cette session ne réécrit pas `src/types/index.ts` ni `src/App.tsx`.
 
-**Prochaine priorité :** dock mobile / safe areas, ou capsules sous-catégories accueil (36px → 44px après contrôle visuel).
+**Commit :** `1b394978236907d237acd270269a5e22049a27c3` sur `FRONTEND-iA`.
+**Tailles :** `src/screens/CreateEventWizardScreen.tsx` 81675 → 83140 octets. Blob distant SHA `11980958a4b3ba774427c4f69a9347cd726704df`, octet pour octet identique au fichier poussé. Contenu réel (`wizard-main-category`, deux `radiogroup`). Pas de troncature.
+**Vérifié :** `tsc --noEmit -p tsconfig.app.json` exit 0 ; ESLint du fichier exit 0 ; `vite build` exit 0.
+**Non vérifié :** rendu navigateur (pas de Chromium ici). `EditEventScreen` garde encore des `<select>`. Clavier réel et iPhone non contrôlés.
+**main :** toujours `ffe871c`. Fusion non retentée : aucun nouveau commit, conflit `server.ts` inchangé.
+
+**Prochaine priorité :** mêmes capsules sur l'édition d'événement (`EditEventScreen`). Ensuite dock mobile / safe areas, ou capsules accueil 36px après contrôle visuel.
 
 ## Dernier chantier Auth — terminé ; fusion `main` toujours bloquée
 **Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
@@ -69,14 +70,14 @@ Correction des 2 erreurs de typecheck préexistantes restantes.
 | Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
 | Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
 | Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
-| Création / modification d'événement | À auditer | Typecheck préexistant en échec sur l'assistant |
+| Création — catégories | En cours | Capsules parent/sous-catégorie 44px sur l'étape Infos (commit 1b39497). Édition encore en listes natives. Rendu navigateur non contrôlé. |
 | Connexion / inscription | Finalisé | Thème clair/sombre, rôles empilés sous 480px, cibles 44px. Vérifié navigateur 320–1440 |
 | Billets / portefeuille | À auditer | Aucun changement |
 | Profil / favoris / notifications | À auditer | Aucun changement |
 | Dashboard organisateur / statistiques | À revoir | Correctifs déjà dans l'historique |
 
 ## Dette UI
-- **P1** — `selectPages` corrigé (commit 0735287). Reste à isoler : `src/App.tsx` (authState), `src/screens/CreateEventWizardScreen.tsx` (union `SubCategoryId`).
+- **P1** — Typecheck global vert le 2026-11-15 (`b1d8072` : unions catégories + `authState?.returnTo`). Création : capsules catégories livrées (`1b39497`). Reste : mêmes capsules sur `EditEventScreen`.
 - **P2** — Auth : thème et 320px traités le 2026-11-14. Clavier virtuel réel non contrôlé (le formulaire défile, `min-h-dvh`).
 - **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible tactile 44px; contrôle visuel réel requis avant ajustement.
 - **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
@@ -89,6 +90,8 @@ Correction des 2 erreurs de typecheck préexistantes restantes.
 - `main` était en avance d'un seul commit de fusion (PR #11, `b9a4b3f`) sans différence de fichiers. Avance rapide de `FRONTEND-iA`, aucun conflit.
 
 ## Vérifications
+- **Vérifié le 2026-11-15 :** commit `1b394978236907d237acd270269a5e22049a27c3` en tête de `FRONTEND-iA`. Relecture distante de `CreateEventWizardScreen.tsx` : 81675 → 83140 octets, blob `11980958a4b3ba774427c4f69a9347cd726704df`, contenu identique au fichier poussé (`wizard-main-category`, deux radiogroups, fin de composant réelle). `tsc` exit 0, ESLint du fichier exit 0, `vite build` exit 0. Rendu 320–1440 non exécuté.
+- **Vérifié le 2026-11-15 :** `main` toujours `ffe871c14cb1a9959a5b1f23889db3491e341b66`. Fusion non relancée.
 - **Vérifié le 2026-11-14 :** commit `07352871eefc8311497f5ca4c81f7b8bdd7d267f` sur `FRONTEND-iA`. Relecture distante de `queries.ts` : SHA `76ed8365…`, 13274 octets, helper `selectPages` présent et appelé correctement.
 - **Vérifié le 2026-11-14 :** `FRONTEND-iA` `e1cb0c5` au départ, `main` `ffe871c`, `behind_by: 2` (`ffe871c`, `fd7d25b`). Fusion testée puis annulée. Commit auth poussé : `d369889ae3789088e944e40de4a35bfc97365491`. Relecture distante `AuthScreen.tsx` : blob `b9352ba84e68c0fdd492e59636b50c37fef9914e`, 7129 → 12889 octets, contenu réel (thème sombre, radiogroup, `min-h-11`).
 - **Vérifié :** ESLint `src/screens/AuthScreen.tsx` — exit 0. `vite build` — succès (3288 modules). `npm run typecheck` — échec préexistant uniquement (`App.tsx` authState, `queries.ts` selectPages, `CreateEventWizardScreen.tsx` SubCategoryId). Aucune erreur dans `AuthScreen.tsx`. Pas de script de tests.
@@ -103,12 +106,22 @@ Correction des 2 erreurs de typecheck préexistantes restantes.
 
 ## Backlog
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
-2. P1 — Typecheck propre (SubCategoryId + authState corrigés le 2026-11-15, commit b1d8072).
+2. P2 — Édition d'événement : remplacer les listes de catégories par les capsules 44px de la création.
 3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+### 2026-11-15 — Création : capsules de catégories
+- `src/screens/CreateEventWizardScreen.tsx` : l'étape Infos affiche la taxonomie parent / sous-catégorie en capsules radio 44px, comme Recherche, au lieu de deux `<select>`.
+- Commit `1b394978236907d237acd270269a5e22049a27c3` sur `FRONTEND-iA`. Relecture distante : 83140 octets, SHA `11980958…`, fichier identique, contenu réel.
+- `tsc`, ESLint du fichier et `vite build` : exit 0. Rendu navigateur non exécuté (pas de Chromium).
+- `main` inchangé (`ffe871c`). Aucune fusion, aucune PR. Types et `App.tsx` non réécrits (déjà restaurés dans `b1d8072`).
+
+### 2026-11-15 — Types catégories et authState (typecheck vert)
+- `MainCategoryId` / `SubCategoryId` dans `src/types/index.ts` alignés sur le catalogue, y compris loisirs et privé. `authState?.returnTo` dans `App.tsx`.
+- Un push connecteur avait tronqué ces deux fichiers ; restauration puis commit `b1d8072`. Typecheck exit 0. Pas de changement UI dans ce commit.
+
 ### 2026-11-14 — Correction selectPages (pagination catégories)
 - Ajout de `selectPages<T>` dans `src/features/events/queries.ts`.
 - `fetchEventsByCategory` peut maintenant paginer correctement l'ensemble des événements publiés.
