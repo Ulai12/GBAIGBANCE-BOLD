@@ -215,3 +215,11 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - totalRevenue est volontairement à 0 car le flux de paiement réel Mobile Money/confirmation n'est pas relié. Ne pas interpréter une réservation gratuite comme un revenu.
 - Déploiement Vercel branch FRONTEND-iA : RPC client commit 4a227dd… READY ; migration commit READY. Commit UI 105e337… QUEUED lors du dernier contrôle. Attendre READY avant de demander le test Safari. Production alias sur main non modifié. Aucun PR, aucun changement sur main.
 - Limite : identifiant visiteur local = déduplication ordinaire quotidienne, pas protection anti-bot forte. Organizer dashboard non reconstruit dans cette intervention; priorité = statistiques publiques.
+
+
+### 2026-11-15 — Dock mobile : espace de scroll de l'accueil
+- Capture iPhone fournie par l'utilisateur (828×1792) : le dock flottant fixed (surface 62px + padding bas dépendant safe-area) recouvre la suite du contenu de l'accueil dans la zone Explorer par catégorie; en fin de scroll, le contenu doit pouvoir remonter au-dessus du dock.
+- `src/screens/HomeScreen.tsx` : ajout au conteneur racine d'un padding bas adaptatif `pb-[calc(7rem+env(safe-area-inset-bottom,0px))]` pour réserver environ la hauteur du dock et la safe area, sans changer le dock lui-même ni le modèle de navigation.
+- Commit direct sur `FRONTEND-iA` : `4297a9a1ccc45d168d150b66e578a8ca7cb52a3f`.
+- Limites : aucun contrôle visuel sur iPhone/browser ni build/typecheck/lint exécuté après ce patch. Relecture distante du code et de cette mémoire à effectuer. Pas de PR, pas de backend touché.
+- Prochaine étape : contrôle navigateur aux largeurs 320–414px et vérifier en bas de page que la dernière section peut défiler au-dessus du dock; ajuster la réserve si le dock ou safe-area diffère.
