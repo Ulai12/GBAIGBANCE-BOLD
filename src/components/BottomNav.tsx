@@ -190,7 +190,7 @@ export function BottomNav({
         <div className="relative z-10 flex items-center justify-center">
           <Icon
             className={[
-              'w-[18px] h-[18px] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+              'w-5 h-5 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
               isActive
                 ? 'text-[#6600FF] dark:text-purple-300 scale-105'
                 : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200',
@@ -213,7 +213,7 @@ export function BottomNav({
         {/* Micro-label ergonomique haute lisibilité */}
         <span
           className={[
-            'relative z-10 mt-0.5 text-[10px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
+            'relative z-10 mt-0.5 text-[11px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
             isActive
               ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
               : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300',
@@ -234,7 +234,7 @@ export function BottomNav({
       }`}
       aria-hidden={isModalOpen ? 'true' : undefined}
       style={{
-        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'max(0.25rem, calc(env(safe-area-inset-bottom, 0px) * 0.6))',
       }}
     >
       {/* 
@@ -246,9 +246,9 @@ export function BottomNav({
         radius="capsule"
         interactive={true}
         className={[
-          'relative w-full max-w-md h-[56px] px-0 py-0',
+          'relative w-full max-w-md h-[62px] px-0 py-0',
           isModalOpen ? 'pointer-events-none' : 'pointer-events-auto',
-          'flex items-center transition-all duration-300 shadow-xl',
+          'flex items-center transition-all duration-500 shadow-2xl',
         ].join(' ')}
         style={{
           background: isDark
@@ -258,8 +258,8 @@ export function BottomNav({
             ? '1px solid rgba(255,255,255,0.12)'
             : '1px solid rgba(255,255,255,0.85)',
           boxShadow: isDark
-            ? '0 8px 24px rgba(0,0,0,0.38), 0 2px 8px rgba(102,0,255,0.12), inset 0 1px 0 rgba(255,255,255,0.15)'
-            : '0 8px 24px rgba(102,0,255,0.10), 0 2px 8px rgba(0,0,0,0.035), inset 0 1px 0 rgba(255,255,255,0.95)',
+            ? '0 12px 32px rgba(0,0,0,0.48), 0 4px 12px rgba(102,0,255,0.15), inset 0 1px 0 rgba(255,255,255,0.15)'
+            : '0 12px 30px rgba(102,0,255,0.12), 0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)',
         }}
       >
         <nav
@@ -304,35 +304,31 @@ export function BottomNav({
                       ? 'scale-[0.88] brightness-90'
                       : 'scale-100 hover:scale-105 active:scale-95',
                   ].join(' ')}
+                  style={{
+                    // Gradient opaque éclatant pour respecter la règle anti-superposition (zéro verre sur verre)
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #6600FF 55%, #4C1D95 100%)',
+                    boxShadow: isDark
+                      ? '0 6px 18px rgba(102,0,255,0.40), inset 0 1px 0 rgba(255,255,255,0.45)'
+                      : '0 6px 16px rgba(102,0,255,0.30), inset 0 1px 0 rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.35)',
+                  }}
                 >
-                  {/* Lueur d'ambiance violette, dissociée de la zone tactile. */}
+                  {/* Lueur d'ambiance violette */}
                   <span
                     aria-hidden="true"
-                    className="absolute -inset-1 rounded-full pointer-events-none opacity-50 blur-md"
+                    className="absolute -inset-1 rounded-full pointer-events-none opacity-60 blur-md"
                     style={{
-                      background: 'radial-gradient(circle, rgba(124,58,237,0.35), transparent 70%)',
-                    }}
-                  />
-                  {/* Cible tactile 44px, pastille visuelle réduite à 40px. */}
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0.5 rounded-full"
-                    style={{
-                      background: 'linear-gradient(135deg, #7C3AED 0%, #6600FF 55%, #4C1D95 100%)',
-                      boxShadow: isDark
-                        ? '0 5px 14px rgba(102,0,255,0.34), inset 0 1px 0 rgba(255,255,255,0.40)'
-                        : '0 5px 14px rgba(102,0,255,0.26), inset 0 1px 0 rgba(255,255,255,0.50)',
-                      border: '1px solid rgba(255,255,255,0.35)',
+                      background: 'radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)',
                     }}
                   />
 
                   <Plus
-                    className="relative z-10 w-[18px] h-[18px] text-white transition-transform duration-300 group-hover:rotate-90 motion-reduce:transition-none motion-reduce:transform-none"
+                    className="w-5 h-5 text-white transition-transform duration-300 group-hover:rotate-90 motion-reduce:transition-none motion-reduce:transform-none"
                     strokeWidth={2.6}
                   />
                 </button>
 
-                <span className="text-[9px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
+                <span className="text-[10px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
                   {createLabel}
                 </span>
               </div>
