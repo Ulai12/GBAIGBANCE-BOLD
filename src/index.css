@@ -7,6 +7,7 @@
 @layer base {
   :root {
     --bg: #f4f1ff;
+    --safe-area-bg: #efe7ff;
     --bg-2: #efe7ff;
     --bg-3: #f9f7ff;
     --card: rgba(255, 255, 255, 0.72);
@@ -37,6 +38,7 @@
 
   .dark {
     --bg: #0c0a14;
+    --safe-area-bg: #0c0a14;
     --bg-2: #141022;
     --bg-3: #08070d;
     --card: rgba(26, 22, 41, 0.75);
@@ -70,13 +72,14 @@
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     /* Fond racine unifié WebKit : élimine tout blanc lors du rebond élastique iOS */
-    background-color: var(--bg);
+    /* Harmonise le fond système des safe areas iOS avec le haut du dégradé. */
+    background-color: var(--safe-area-bg, var(--bg));
     min-height: 100%;
   }
 
   .dark html,
   html.dark {
-    background-color: var(--bg);
+    background-color: var(--safe-area-bg, var(--bg));
   }
 
   body {
