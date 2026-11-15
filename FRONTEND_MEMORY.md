@@ -267,3 +267,12 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Build, typecheck, lint et test réel de mise à jour entre deux déploiements non exécutés au moment de la modification. Déploiement Vercel de branche à vérifier. Vérifier aussi l'expérience iOS PWA/Android et le comportement en présence de formulaires non enregistrés.
 - Limite connue : le rechargement automatique peut interrompre une saisie non enregistrée. Le délai de 1,2 seconde sert uniquement à rendre le toast perceptible; il ne protège pas les formulaires en cours.
 - Aucune PR, aucune écriture sur `main`.
+
+
+### 2026-11-15 — Safe area iOS de l'en-tête (fond homogène)
+- Demande utilisateur : retrouver le fond lavande homogène de la capture `main`, sans bande blanche derrière la barre d'état iOS, sur `FRONTEND-iA`.
+- Comparaison directe `main` / `FRONTEND-iA` : `HomeScreen.tsx` (header `pt-safe-header`) identique sur la zone d'en-tête; règle `.pt-safe-header` identique; `index.html` theme-color clair `#f4f1ff` identique. La différence visuelle n'était donc pas causée par le composant d'en-tête React.
+- `index.html` : `apple-mobile-web-app-status-bar-style` passe de `default` à `black-translucent` afin que la zone d'état iOS en mode web-app soit translucide et laisse apparaître le fond de l'application. Le contenu garde son padding `pt-safe-header` pour éviter le chevauchement avec l'encoche/Dynamic Island.
+- Commit : `fb98255994a549d6ddb6aedc76efa2b2fa1d6f58` sur `FRONTEND-iA`. Relecture distante de `index.html` confirmée.
+- Non vérifié : rendu sur iPhone réel / PWA installée; build et déploiement non contrôlés. Ce réglage iOS est spécifique au mode écran d'accueil et peut différer dans Safari navigateur.
+- Aucun changement `main`, aucun backend, aucune PR.
