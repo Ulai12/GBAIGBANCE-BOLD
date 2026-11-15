@@ -286,3 +286,13 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commits directs sur FRONTEND-iA : bb38381b161326a97443f14524458c2699c7b68d (barre iOS restaurée à default comme main), ac52b269b11723e5fda65e3c6c2c7ca30ffd80e6 (configuration explicite d'activation SW).
 - Vérification effectuée : relecture distante des deux fichiers après commits; comparaison source main/FRONTEND-iA; état Vercel production connu encore sur main. Aucun test réel de mise à jour entre deux déploiements, aucun build/typecheck/lint ni contrôle iPhone effectué dans cette passe.
 - Blocage de livraison : les modifications de FRONTEND-iA ne seront visibles sur l'icône installée depuis le domaine production qu'après déploiement de cette branche sur le domaine de production. Aucune promotion de branche, modification de domaine, PR ou écriture sur main effectuée sans autorisation.
+
+
+## 2026-11-15 — Harmonisation safe area iOS et fond supérieur
+- Objectif : supprimer la différence de teinte entre la barre d'état iOS et le haut du fond de l'application, sans modifier le header, sa hauteur, ses marges ni ses composants.
+- `index.html` : `theme-color` clair aligné sur `#efe7ff` et sombre sur `#141022`, correspondant aux tokens de surface supérieure (`--bg-2`). Le style iOS reste `default`, comme sur `main`.
+- `src/index.css` : ajout du token `--safe-area-bg` (`#efe7ff` en clair, `#141022` en sombre). `html` et `body` partagent désormais les mêmes couches de fond radiales et un dégradé supérieur de `--safe-area-bg` vers `--bg` sur 260px, pour éviter que la safe area racine reste une couleur unie différente du haut de l'app. Le thème sombre suit ses propres tokens.
+- Commits directs sur `FRONTEND-iA` : `55c39295cafce24454396dc7dcfef89477023ee9` (`index.html`) puis `920c97e15edf42c77f9bfaf25fa3570d0fded482` (`src/index.css`). Aucun changement sur `main`, aucune PR.
+- Vérification : relecture GitHub post-écriture des deux fichiers, hashes confirmés (`index.html` blob `4b41badac756d9c803c6ea6d6d65215a81196edb`; `src/index.css` blob `8ee5e8619f29dd3f566b57eccb7818e078e33efc`). Vercel a détecté automatiquement le commit CSS `920c97e` et le déploiement preview était `BUILDING` au dernier contrôle; le commit HTML `55c3929` disposait d'une preview `READY` mais antérieure au CSS.
+- Non vérifié : build final du commit CSS, contrôle visuel navigateur et test sur iPhone/PWA installée. La continuité visuelle reste à confirmer sur l'appareil réel; la capture ne peut pas être simulée fidèlement par la seule inspection du code.
+- Périmètre volontaire : aucun changement de Service Worker, toast de mise à jour, header React ou configuration de production. Le déploiement reste une preview de `FRONTEND-iA`; l'origine de production n'a pas été changée.
