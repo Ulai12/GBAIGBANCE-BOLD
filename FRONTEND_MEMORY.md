@@ -20,21 +20,27 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Création : catégories en capsules, comme Explorer
+## Tâche active — Catégories en capsules (création + édition)
 
-**Intervention du 2026-11-15 (suite) :**
-L'étape Infos de `CreateEventWizardScreen` n'utilisait plus deux listes natives. L'organisateur choisit la catégorie parente et la sous-catégorie avec les mêmes capsules que Recherche : 44px (`min-h-11`), rail horizontal à snap, focus violet, `motion-reduce`, libellés courts, description de la sous-catégorie sous le rail. Le violet reste `#6600FF`. La valeur enregistrée est toujours l'id du catalogue (`main_category`, `subcategory`, catégorie historique dérivée).
-
-Les types avaient déjà été alignés plus tôt le même jour (`b1d8072`). Cette session ne réécrit pas `src/types/index.ts` ni `src/App.tsx`.
+### Création — livrée le 2026-11-15
+`src/screens/CreateEventWizardScreen.tsx` : les catégories parent et sous-catégorie de l'étape Infos utilisent les capsules 44px (`min-h-11`), rail horizontal snap, focus violet, `motion-reduce`, libellés courts et description de la sous-catégorie. La valeur enregistrée reste l'id du catalogue (`main_category`, `subcategory`, catégorie historique dérivée).
 
 **Commit :** `1b394978236907d237acd270269a5e22049a27c3` sur `FRONTEND-iA`.
-**Tailles :** `src/screens/CreateEventWizardScreen.tsx` 81675 → 83140 octets. Blob distant SHA `11980958a4b3ba774427c4f69a9347cd726704df`, octet pour octet identique au fichier poussé. Contenu réel (`wizard-main-category`, deux `radiogroup`). Pas de troncature.
-**Vérifié :** `tsc --noEmit -p tsconfig.app.json` exit 0 ; ESLint du fichier exit 0 ; `vite build` exit 0.
-**Non vérifié :** rendu navigateur (pas de Chromium ici). `EditEventScreen` garde encore des `<select>`. Clavier réel et iPhone non contrôlés.
-**main :** toujours `ffe871c`. Fusion non retentée : aucun nouveau commit, conflit `server.ts` inchangé.
+**Vérifié :** relecture distante du fichier (83140 octets, blob `11980958a4b3ba774427c4f69a9347cd726704df)); `tsc --noEmit -p tsconfig.app.json`, ESLint du fichier et `vite build` exit 0 lors de cette intervention.
+**Non vérifié :** rendu navigateur, clavier réel et iPhone.
 
-**Prochaine priorité :** mêmes capsules sur l'édition d'événement (`EditEventScreen`). Ensuite dock mobile / safe areas, ou capsules accueil 36px après contrôle visuel.
+### Édition — livrée en code le 2026-11-15
+`src/screens/EditEventScreen.tsx` : remplacement de la grille parent à 76px et du select natif sous-catégorie par deux rails de capsules 44px. Parent/sous-catégorie sont des groupes radio avec `aria-checked`, tab-stop roving, focus violet et navigation clavier gauche/droite + Home/End. L'icône passe à 14px; la description de la sous-catégorie sélectionnée est visible sous le rail. Quand le parent change, le sous-rail revient au début. La logique métier reste inchangée : `main_category`, `subcategory` et `category` legacy continuent d'être mis à jour selon le catalogue.
 
+**Commit initial du chantier :** `e9111e6b53330e399c97e522b29a96b820b95b02`.
+**Commit de suivi :** `fix(frontend): reset subcategory rail on parent change` (inclut cette mise à jour de mémoire).
+**Blob de code du commit de suivi :** `663698d4ac9f9967bd47115bf7c0817023ce0ae5`; taille `76519` octets. La relecture distante post-écriture doit confirmer la taille et le contenu.
+**Vercel :** preview du commit initial `e9111e6` READY, déploiement `dpl_Cvcx2XoAVHCdnzy4UTE4tsu6TqdR`, URL `https://gbaigbance-event-rl17kvdwx-shogun10.vercel.app`. Le build du commit de suivi sera contrôlé après son push.
+**Tests de cette exécution :** build/typecheck/lint locaux non exécutés. Le statut Vercel READY ne concerne que le commit initial. Rendu navigateur et iPhone non vérifiés (contexte navigateur indisponible).
+**main :** inchangé; aucune PR.
+
+**Prochaine priorité :** contrôler visuellement la taxonomie création/édition sur 320–414px et iPhone (proportions, rails, focus/clavier), puis dock mobile et safe areas. Ne pas augmenter les capsules d'accueil 36px sans mesure visuelle.
+ 
 ## Dernier chantier Auth — terminé ; fusion `main` toujours bloquée
 **Objectif atteint le 2026-11-14 :** connexion et inscription suivent le thème clair/sombre, les rôles restent lisibles à 320px, les cibles font au moins 44px.
 
@@ -70,14 +76,14 @@ Les types avaient déjà été alignés plus tôt le même jour (`b1d8072`). Cet
 | Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
 | Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
 | Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
-| Création — catégories | En cours | Capsules parent/sous-catégorie 44px sur l'étape Infos (commit 1b39497). Édition encore en listes natives. Rendu navigateur non contrôlé. |
+| Création / édition — catégories | Code livré | Capsules parent/sous-catégorie 44px dans `CreateEventWizardScreen` et `EditEventScreen`; édition avec navigation clavier et description sélectionnée. Preview Vercel du commit initial READY; contrôle navigateur et iPhone non effectués. |
 | Connexion / inscription | Finalisé | Thème clair/sombre, rôles empilés sous 480px, cibles 44px. Vérifié navigateur 320–1440 |
 | Billets / portefeuille | À auditer | Aucun changement |
 | Profil / favoris / notifications | À auditer | Aucun changement |
 | Dashboard organisateur / statistiques | À revoir | Correctifs déjà dans l'historique |
 
 ## Dette UI
-- **P1** — Typecheck global vert le 2026-11-15 (`b1d8072` : unions catégories + `authState?.returnTo`). Création : capsules catégories livrées (`1b39497`). Reste : mêmes capsules sur `EditEventScreen`.
+- **P1** — Typecheck global vert le 2026-11-15 (`b1d8072` : unions catégories + `authState?.returnTo`). Capsules parent/sous-catégorie 44px livrées dans création (`1b39497`) et édition (`e9111e6` + commit de suivi). Validation visuelle sur appareil encore requise.
 - **P2** — Auth : thème et 320px traités le 2026-11-14. Clavier virtuel réel non contrôlé (le formulaire défile, `min-h-dvh`).
 - **P2** — Capsules de sous-catégorie de l'accueil à 36px, sous la cible tactile 44px; contrôle visuel réel requis avant ajustement.
 - **P2** — Contrôler le dock mobile et les safe areas iOS sur appareil réel.
@@ -106,12 +112,19 @@ Les types avaient déjà été alignés plus tôt le même jour (`b1d8072`). Cet
 
 ## Backlog
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
-2. P2 — Édition d'événement : remplacer les listes de catégories par les capsules 44px de la création.
+2. P2 — Contrôler visuellement les capsules de création/édition (320–414px, focus, navigation clavier, rail après changement de parent) sur preview/appareil.
 3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
 ## Historique
+
+### 2026-11-15 — Édition : taxonomie en capsules
+- `src/screens/EditEventScreen.tsx` : parent et sous-catégorie deviennent des capsules radio horizontales 44px, avec snap, focus violet, navigation clavier (gauche/droite, Home/End), tab-stop roving et description du choix. Le rail de sous-catégorie est réinitialisé au début au changement de parent.
+- Commit initial `e9111e6b53330e399c97e522b29a96b820b95b02`; commit de suivi `fix(frontend): reset subcategory rail on parent change`, qui combine ce correctif interactif et la mise à jour mémoire.
+- Blob du code de suivi `663698d4ac9f9967bd47115bf7c0817023ce0ae5`, `76519` octets; relecture distante post-commit requise.
+- Preview Vercel du commit initial READY (`dpl_Cvcx2XoAVHCdnzy4UTE4tsu6TqdR`). Pas de build/typecheck/lint local ni de contrôle visuel navigateur dans cette exécution. Aucune PR, aucune modification de `main`.
+
 ### 2026-11-15 — Création : capsules de catégories
 - `src/screens/CreateEventWizardScreen.tsx` : l'étape Infos affiche la taxonomie parent / sous-catégorie en capsules radio 44px, comme Recherche, au lieu de deux `<select>`.
 - Commit `1b394978236907d237acd270269a5e22049a27c3` sur `FRONTEND-iA`. Relecture distante : 83140 octets, SHA `11980958…`, fichier identique, contenu réel.

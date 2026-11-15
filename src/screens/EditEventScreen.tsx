@@ -229,6 +229,13 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const subcategoryRailRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (subcategoryRailRef.current) {
+      subcategoryRailRef.current.scrollLeft = 0;
+    }
+  }, [mainCategory]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -906,6 +913,7 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                 <div
                   role="radiogroup"
                   aria-labelledby="edit-subcategory"
+                  ref={subcategoryRailRef}
                   className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
                 >
                   {(getMainCategoryById(mainCategory)?.subcategories || []).map((sub) => {
