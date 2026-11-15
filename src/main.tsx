@@ -6,12 +6,40 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Register Service Worker for PWA with prompt update
+// Enregistrement PWA avec détection rapide et application automatique des mises à jour.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { update: () => updateSW(true) } }));
+      window.dispatchEvent(
+        new CustomEvent('pwa-update-available', {
+          detail: { update: () => updateSW(true) },
+        }),
+      );
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+
+      let lastCheck = 0;
+      const checkForUpdate = () => {
+        if (!navigator.onLine || document.visibilityState !== 'visible') return;
+
+        // Évite les vérifications rapprochées lors d'un focus + retour au premier plan.
+        const now = Date.now();
+        if (now - lastCheck < 10_000) return;
+        lastCheck = now;
+
+        void registration.update().catch(() => {
+          // Une vérification échouée (réseau lent / hors ligne) sera retentée plus tard.
+        });
+      };
+
+      // Vercel est interrogé toutes les 30 secondes tant que l'app est visible.
+      window.setInterval(checkForUpdate, 30_000);
+      document.addEventListener('visibilitychange', checkForUpdate);
+      window.addEventListener('focus', checkForUpdate);
+      window.addEventListener('online', checkForUpdate);
+      checkForUpdate();
     },
     onOfflineReady() {
       console.log('[PWA] Prêt pour le mode hors ligne.');
