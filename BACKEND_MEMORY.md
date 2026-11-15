@@ -6,8 +6,7 @@ Branche d'écriture unique : `FRONTEND-iA`.
 
 ## Tâche active
 
-Session 1 (2026-11-15) — Audit léger et plan progressif.  
-Pas de modification de code ni de schéma dans cette session. Création de cette mémoire uniquement.
+Session 2 (2026-11-15) — P1 liaison Supabase. Bloquée par incident de troncature.
 
 ## Objectif
 
@@ -16,133 +15,55 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 ## Progression
 
 - Termine :
-  - Lecture en lecture seule de `PROJECT_MEMORY.md` (main) et `FRONTEND_MEMORY.md` (FRONTEND-iA).
-  - Confirmation branche `FRONTEND-iA` existante (SHA 1cde9f46…).
-  - Identification projet Supabase actif : `GBAIGBANCE EVENTS` (`lwwiolbofrqakvrdvbbj`), région eu-central-1, status ACTIVE_HEALTHY.
-  - Liste des tables publiques + Edge Functions.
-  - Inventaire des migrations.
-- En cours / restant :
-  - Cartographie progressive domaine par domaine (utilisateurs, événements, billets, paiements…).
-  - Vérification des liaisons front↔back (appels, types, erreurs).
-  - Advisors Supabase et logs (prochaines sessions).
+  - Audit léger session 1.
+  - Identification projet Supabase actif `lwwiolbofrqakvrdvbbj`.
+- En cours / bloqué :
+  - Correction URL + retrait clé hardcodée dans `server.ts` → incident de troncature.
 
 ## Fichiers concernés
 
-- `BACKEND_MEMORY.md` (ce fichier)
-- `server.ts` (Node/Express + WebSocket + outils IA)
-- `supabase/functions/ai-assistant/`
-- `supabase/functions/platform-stats/`
-- `supabase/migrations/`
-- `api/events.ts`
-- Types partagés côté front si liaison cassée.
+- `BACKEND_MEMORY.md`
+- `server.ts` (actuellement tronqué — à restaurer)
 
 ## Dernière action
 
-2026-11-15 — Création de BACKEND_MEMORY.md + audit léger (tables, edge functions, URL Supabase, mémoires front/project).
+2026-11-15 — Tentative de fix sur `server.ts` (URL + clé). Connecteur a écrit un contenu tronqué (23 o puis 4512 o au lieu de ~30154). Restauration partielle tentée, fichier toujours incomplet.
 
 ## Prochaine étape
 
-P1 — Vérifier et documenter la liaison `server.ts` ↔ Supabase (URL/projet actif, variables d'environnement, client service role).  
-Puis audit domaine « événements » (tables `events`, `ticket_options`, RPC `get_nearby_events_rpc`, repli Haversine déjà corrigé côté edge).
+1. Restaurer `server.ts` depuis le commit sain `852146e` (taille 30154 octets).
+2. Une fois restauré, reprendre la correction de la liaison Supabase par petites modifications ou via un moyen qui évite la troncature de fichiers longs.
 
 ## Vérifications
 
-- Branche `FRONTEND-iA` existe et est la cible d'écriture.
-- Projet Supabase `lwwiolbofrqakvrdvbbj` actif.
-- Tables listées : toutes en RLS, 0 lignes actuellement (seed nettoyé).
-- Edge functions actives : `ai-assistant` (verify_jwt=true), `platform-stats` (verify_jwt=false).
-- Aucun commit de code dans cette session. Ce fichier sera relu distant après push.
+- Incident confirmé par relecture distante.
+- Dernière version saine connue : commit `852146e`, blob `f71cda46…`, 30154 octets.
 
 ## Cartographie des données (initiale)
 
-### Tables principales (public)
+(inchangée depuis session 1)
 
-| Table | RLS | Lignes | Notes |
-|-------|-----|--------|-------|
-| profiles | oui | 0 | FK auth.users |
-| organizations | oui | 0 | |
-| artists | oui | 0 | |
-| events | oui | 0 | category, status, is_demo, geo |
-| tickets | oui | 0 | qr_code unique, status |
-| ticket_options | oui | 0 | inventaire |
-| event_likes, artist_follows, organization_follows | oui | 0 | |
-| event_collaborators, event_comments, event_reactions, event_questions, event_schedule, event_live_links, event_sponsors, event_reports, event_view_daily, notifications | oui | 0 | |
-| example | oui | 0 | table de test |
+## Points d'attention immédiats
 
-Conventions : montants en numeric (XOF), dates timestamptz (UTC), téléphones à normaliser (+228/+229), is_demo pour seed.
-
-### Relations clés
-
-- events.organizer_id → organizations
-- events.organizer_user_id → auth.users
-- tickets.event_id → events
-- tickets.user_id → auth.users
-- Nombreuses tables filles sur events (likes, comments, options, etc.)
-
-### Edge Functions
-
-- `ai-assistant` : outils search/get_nearby/get_my_tickets… (repli Haversine déjà aligné dans le dépôt, déploiement à confirmer).
-- `platform-stats` : stats publiques (verify_jwt=false — à surveiller).
-
-### Points d'attention immédiats
-
-- `server.ts` contient un DEFAULT_SUPABASE_URL pointant vers un ancien projet (`qbngqstyhusndngkours`). Le projet actif est `lwwiolbofrqakvrdvbbj`. À vérifier via variables d'environnement réelles.
-- Conflit connu sur `server.ts` entre `FRONTEND-iA` et `main` (route Express `/api/platform-stats`). Ne pas trancher sans décision propriétaire.
-- Quantity sur tickets : présent dans les migrations et `complete_schema.sql` ; à confirmer en live si besoin.
-
-## Liaisons front/back
-
-| Zone | Statut | Notes |
-|------|--------|-------|
-| Auth / profiles | À auditer | |
-| Événements (liste, détail, nearby) | Partiel | Edge + server.ts + Rust core |
-| Billets / réservation | À auditer | RPC book_ticket, inventaire |
-| Paiements mobile money | À auditer | Idempotence, webhooks, statuts |
-| Stats organisateur / plateforme | Branché (edge) | |
-| IA concierge | Branché | Quota + outils |
-| Notifications / rappels | À vérifier | |
-
-## Migrations appliquées
-
-Liste dans `supabase/migrations/` (20260725… à 20261110…). Dernières : hardening paiements/quota, refunds idempotents, rate limits IA, wallet/ticketing.  
-Retour arrière : à documenter fichier par fichier si modification future.
+- `server.ts` est actuellement tronqué sur `FRONTEND-iA`. Ne plus écrire dessus tant qu'il n'est pas restauré.
+- DEFAULT_SUPABASE_URL pointe encore vers l'ancien projet.
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 
-1. Décision sur le conflit `server.ts` (route Express platform-stats vs version FRONTEND-iA) avant toute fusion main → FRONTEND-iA.
-2. Confirmation du projet Supabase de production et des secrets (SUPABASE_URL, SERVICE_ROLE, etc.) — ne pas hardcoder.
-3. Déploiement de l'edge function `ai-assistant` si le correctif Haversine n'est pas encore en prod.
-
-## Dette backend
-
-- Alignement URL/projet Supabase dans le code vs environnement réel.
-- Audit RLS approfondi (recursion déjà corrigée dans le passé).
-- Idempotence et signature webhooks paiements (P0 futur).
-- Unicité billets / double vente (contraintes + logique).
-- Normalisation numéros de téléphone.
+1. Restaurer `server.ts` depuis `852146e` sur `FRONTEND-iA`.
+2. Décision sur le conflit `server.ts` avec `main`.
+3. Confirmation des variables d'environnement Supabase réelles.
 
 ## Incidents
 
-- Aucun dans cette session.
-- Historique front : incidents de troncature via connecteur déjà documentés dans FRONTEND_MEMORY (restaurés).
-
-## Backlog
-
-1. P1 — Clarifier et documenter la configuration Supabase réelle (URL, clés).
-2. P1 — Audit domaine événements + nearby + inventaire.
-3. P2 — Liaisons billets / réservation (front → RPC → base).
-4. P2 — Paiements (statuts, idempotence, réconciliation).
-5. P3 — Harmonisation nommage, index manquants, vues utiles.
-6. P0 futur — Sécurité webhooks et RLS exposée.
+- 2026-11-15 : troncature de `server.ts` via connecteur GitHub lors d'une mise à jour (contenu long). Fichier distant réduit de >20 %. Protocole appliqué : arrêt des écritures sur ce fichier, consignation. Restauration manuelle requise.
 
 ## Historique
 
-- 2026-11-15 — Session 1 : audit léger, création de cette mémoire, cartographie initiale, identification projet Supabase et points d'attention.
+- 2026-11-15 — Session 1 : création BACKEND_MEMORY.md, audit léger.
+- 2026-11-15 — Session 2 : incident de troncature sur server.ts.
 
 ## Pour les autres automatisations
 
-- Ne pas modifier `FRONTEND_MEMORY.md`.
-- Ne pas toucher aux fichiers purement visuels.
-- Toute liaison front↔back (types, appels API, gestion d'erreur) doit rester rétrocompatible.
-- Conflit `server.ts` : attendre décision propriétaire.
-- Projet Supabase de référence : `lwwiolbofrqakvrdvbbj` (GBAIGBANCE EVENTS).
+- Ne pas modifier `server.ts` tant que l'incident n'est pas résolu.
+- Projet Supabase de référence : `lwwiolbofrqakvrdvbbj`.
