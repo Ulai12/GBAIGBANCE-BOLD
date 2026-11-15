@@ -276,3 +276,13 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commit : `fb98255994a549d6ddb6aedc76efa2b2fa1d6f58` sur `FRONTEND-iA`. Relecture distante de `index.html` confirmée.
 - Non vérifié : rendu sur iPhone réel / PWA installée; build et déploiement non contrôlés. Ce réglage iOS est spécifique au mode écran d'accueil et peut différer dans Safari navigateur.
 - Aucun changement `main`, aucun backend, aucune PR.
+
+
+### 2026-11-15 — Diagnostic PWA installée et barre d'état iOS (seconde passe)
+- Comparaison réelle de main et FRONTEND-iA : main/index.html utilise apple-mobile-web-app-status-bar-style=default; FRONTEND-iA utilisait black-translucent. Le mode translucent laissait transparaître le fond racine/gradient différemment du thème système iOS. Retour au réglage exact de main sur FRONTEND-iA; les deux theme-color (#f4f1ff clair, #0c0a14 sombre) sont conservés.
+- Diagnostic PWA : production Vercel observée précédemment sur main (commit 6f0b94f), tandis que le polling d'updates et le toast sont uniquement dans FRONTEND-iA. Une PWA installée sur l'origine de production ne peut pas recevoir le code de la preview tant que cette version n'est pas déployée sur la même origine. L'origine réellement installée sur le téléphone n'est pas lisible à distance par les connecteurs.
+- vite.config.ts : explicitation de Workbox skipWaiting=false et clientsClaim=true, plus cleanupOutdatedCaches=true. C'est cohérent avec registerType=prompt : le worker mis à jour attend que le toast ait été affiché et que updateSW(true) déclenche son activation; ne pas activer skipWaiting dès l'installation, sinon l'étape de notification peut être court-circuitée.
+- src/main.tsx conserve le contrôle registration.update() toutes les 30 secondes quand l'app est visible/en ligne et aux événements visibilité/focus/online; App.tsx conserve le toast de détection, applique après 1,2 s, puis confirme après rechargement via sessionStorage.
+- Commits directs sur FRONTEND-iA : bb38381b161326a97443f14524458c2699c7b68d (barre iOS restaurée à default comme main), ac52b269b11723e5fda65e3c6c2c7ca30ffd80e6 (configuration explicite d'activation SW).
+- Vérification effectuée : relecture distante des deux fichiers après commits; comparaison source main/FRONTEND-iA; état Vercel production connu encore sur main. Aucun test réel de mise à jour entre deux déploiements, aucun build/typecheck/lint ni contrôle iPhone effectué dans cette passe.
+- Blocage de livraison : les modifications de FRONTEND-iA ne seront visibles sur l'icône installée depuis le domaine production qu'après déploiement de cette branche sur le domaine de production. Aucune promotion de branche, modification de domaine, PR ou écriture sur main effectuée sans autorisation.
