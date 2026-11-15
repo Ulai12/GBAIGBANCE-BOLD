@@ -234,7 +234,7 @@ export function BottomNav({
       }`}
       aria-hidden={isModalOpen ? 'true' : undefined}
       style={{
-        paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) * 0.75 + 0.25rem))',
+        paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))',
       }}
     >
       {/* 
