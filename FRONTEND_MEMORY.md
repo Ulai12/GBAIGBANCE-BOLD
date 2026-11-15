@@ -233,3 +233,14 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commits directs sur `FRONTEND-iA`: `32011640b1481365853684f87449111ccffca19d` (wrapper onglets), `609bef29588c290f7413ed16313eaf1773da01ee` (dock safe area), `c8798711b9357523cfa2c285665e5920f47edead` (suppression padding Accueil redondant).
 - Tests locaux, build et contrôle visuel iPhone non exécutés dans cette session. Statuts Vercel à consulter après écriture. Pas de PR, pas de backend ni de dépendances modifiés.
 - Prochaine priorité de backlog : évaluer rendu mobile par déploiement/browse si accessible, sinon poursuivre un chantier UX substantiel sans demander de validation manuelle à l'utilisateur.
+
+
+### 2026-11-15 — Fond supérieur iOS et dock mobile compact
+- Captures iPhone analysées : la bande de safe area/statusbar paraissait trop blanche par rapport au haut du dégradé violet; le dock Liquid Glass occupait trop de hauteur et ses éléments étaient visuellement généreux.
+- `index.html` : couleur de thème clair alignée sur `#efe7ff` (mode sombre conservé).
+- `src/index.css` : nouvelle variable `--safe-area-bg` (clair `#efe7ff`, sombre `#0c0a14`) utilisée pour le fond racine exposé dans les zones sûres iOS, sans supprimer le dégradé du body.
+- `src/components/BottomNav.tsx` : surface dock réduite de 62 à 56px; icônes de navigation de 20 à 18px; labels de 11 à 10px; pastille centrale visuelle de 44 à 40px, tout en gardant le bouton Créer avec une cible tactile 44×44; ombres moins lourdes; position basse réduite à `max(0.5rem, env(safe-area-inset-bottom, 0px))`.
+- `src/App.tsx` : réserve de défilement commune ajustée de 4.5rem à 3.5rem + safe-area, cohérente avec le dock compact.
+- Commits de code directs sur `FRONTEND-iA` : `8524fb9e0005fded2baae223b48f414dc33991f0` (theme-color), `51bc077cb53ac5daa9fa919d4cc00c1fb342cd2e` (fond safe-area), `50107bbae9824745b7d52360699660ffe4631989` (dock), `984dc451c62ebe1ee8414bb516c004239f3efa7a` (scroll reserve).
+- Tests locaux, build/typecheck/lint et contrôle navigateur/iPhone non exécutés ici. Les captures fournies ont servi à l'analyse visuelle, mais aucune capture après modification n'a été obtenue. Vérifier les statuts Vercel/CI avant de déclarer le build réussi.
+- Aucune PR, aucun backend, dépendance ou lockfile touché. `main` non modifié.
