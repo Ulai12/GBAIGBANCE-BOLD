@@ -223,3 +223,13 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Commit direct sur `FRONTEND-iA` : `4297a9a1ccc45d168d150b66e578a8ca7cb52a3f`.
 - Limites : aucun contrôle visuel sur iPhone/browser ni build/typecheck/lint exécuté après ce patch. Relecture distante du code et de cette mémoire à effectuer. Pas de PR, pas de backend touché.
 - Prochaine étape : contrôle navigateur aux largeurs 320–414px et vérifier en bas de page que la dernière section peut défiler au-dessus du dock; ajuster la réserve si le dock ou safe-area diffère.
+
+
+### 2026-11-15 — Dock mobile : correction globale et safe area
+- Relecture de la capture utilisateur : le dock fixe devait mieux respecter la zone sûre inférieure iOS et l'espace de scroll devait être garanti sur les quatre onglets, pas seulement Accueil.
+- `src/App.tsx`: remplacement du `pb-24` du wrapper commun des onglets par `pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]` pour réserver une marge liée à la safe-area et à la hauteur du dock sur Accueil, Explorer, Billets et Favoris.
+- `src/components/BottomNav.tsx`: augmentation du recul inférieur du dock de `max(0.5rem, calc(env(safe-area-inset-bottom) * 0.75 + 0.25rem))` à `max(0.75rem, calc(env(safe-area-inset-bottom) + 0.5rem))`; sur appareils avec inset bas (iPhone), le dock est remonté au-delà de l'encoche du bas avec marge de confort.
+- `src/screens/HomeScreen.tsx`: retrait du padding-bottom spécifique ajouté lors de l'intervention précédente, qui doublonnait la réserve du wrapper général.
+- Commits directs sur `FRONTEND-iA`: `32011640b1481365853684f87449111ccffca19d` (wrapper onglets), `609bef29588c290f7413ed16313eaf1773da01ee` (dock safe area), `c8798711b9357523cfa2c285665e5920f47edead` (suppression padding Accueil redondant).
+- Tests locaux, build et contrôle visuel iPhone non exécutés dans cette session. Statuts Vercel à consulter après écriture. Pas de PR, pas de backend ni de dépendances modifiés.
+- Prochaine priorité de backlog : évaluer rendu mobile par déploiement/browse si accessible, sinon poursuivre un chantier UX substantiel sans demander de validation manuelle à l'utilisateur.
