@@ -39,10 +39,34 @@ function saveDispatchedKey(storageKey: string, key: string): void {
 }
 
 /**
+ * Vérifie si les rappels d'événements sont activés pour l'utilisateur.
+ * Lecture seule : ne crée pas de ligne de préférence (évite les effets de bord sur le planificateur).
+ * Défaut : activé si aucune préférence ou erreur de lecture.
+ */
+async function areEventRemindersEnabled(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  try {
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .select('event_reminders')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error || !data) return true;
+    return data.event_reminders !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Analyse les billets réservés par l'utilisateur et déclenche les rappels 24h et 2h
+ * Respecte la préférence `event_reminders` de l'utilisateur.
  */
 export async function checkAndTriggerTicketReminders(userId: string): Promise<number> {
   if (!userId) return 0;
+
+  const remindersEnabled = await areEventRemindersEnabled(userId);
+  if (!remindersEnabled) return 0;
 
   let tickets: Ticket[] = [];
 
