@@ -32,6 +32,7 @@ import {
   type PlatformStats,
 } from '@/services/events';
 import { checkFollowedArtistsNewDates } from '@/services/eventReminderService';
+import { collectFollowTargets } from '@/services/eventReminderRules';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
 import { coreTrendIds } from '@/lib/rust-core';
 import {
@@ -236,8 +237,11 @@ export function HomeScreen({
       setOrganizations(cappedOrgs);
       setPlatformStats(stats);
 
-      // Vérifier si de nouveaux événements annoncés concernent des artistes suivis
-      checkFollowedArtistsNewDates(masterEvents, followedArtistIds);
+      // Artistes et festivals suivis : le catalogue d'accueil ne couvre pas les organisations seules.
+      checkFollowedArtistsNewDates(
+        masterEvents,
+        collectFollowTargets(followedArtistIds, followedOrgIds)
+      );
 
       // Save fresh data into the 0ms synchronous cache
       saveCachedHomeData({
@@ -258,7 +262,7 @@ export function HomeScreen({
     } finally {
       setLoading(false);
     }
-  }, [initialCache.hasCache, followedArtistIds]);
+  }, [initialCache.hasCache, followedArtistIds, followedOrgIds]);
 
   // Initial load
   useEffect(() => {

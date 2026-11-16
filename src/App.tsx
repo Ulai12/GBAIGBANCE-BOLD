@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams
 import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
-import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { FavoritesProvider, useFavorites } from '@/contexts/FavoritesContext';
 import { DataSaverProvider } from '@/contexts/DataSaverContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
@@ -21,7 +21,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { subscribeToUserTicketsLive } from '@/services/events';
 import { getSyncCachedUserTickets } from '@/services/cache';
-import { checkAndTriggerTicketReminders } from '@/services/eventReminderService';
+import { checkAndTriggerTicketReminders, checkFollowedArtistsAnnouncements } from '@/services/eventReminderService';
 import {
   EventDetailRoute,
   EditEventRoute,
@@ -66,6 +66,7 @@ function OtpRoute() {
 
 function AppContent() {
   const { loading, session, user } = useApp();
+  const { followedArtistIds, followedOrgIds } = useFavorites();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -280,22 +281,62 @@ function AppContent() {
     return () => window.removeEventListener('gba-inapp-push-received', handleInAppPush);
   }, [addToast]);
 
-  // Surveillance et déclenchement automatique des rappels 24h et 2h pour les événements réservés
+  // Rappels 24h / 2h : déjà planifiés ici (pas seulement sur l'accueil).
+  // Le retour au premier plan relance tout de suite, sans attendre le prochain cycle de 15 min.
   useEffect(() => {
     if (!user?.id) return;
 
-    // Vérification initiale
-    checkAndTriggerTicketReminders(user.id);
+    const run = () => {
+      void checkAndTriggerTicketReminders(user.id);
+    };
 
-    // Vérification périodique toutes les 15 minutes
+    run();
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     const interval = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        checkAndTriggerTicketReminders(user.id);
+        run();
       }
     }, 15 * 60 * 1000);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(interval);
+    };
   }, [user?.id]);
+
+  // Alertes « nouvelle date » : l'accueil est démonté hors des onglets (fiche, réglages, dashboard).
+  // Cette planification reste active quel que soit l'écran ouvert.
+  const artistFollowKey = Array.from(followedArtistIds).sort().join('\n');
+  const orgFollowKey = Array.from(followedOrgIds).sort().join('\n');
+
+  useEffect(() => {
+    if (!artistFollowKey && !orgFollowKey) return;
+    const artistIds = artistFollowKey ? artistFollowKey.split('\n') : [];
+    const orgIds = orgFollowKey ? orgFollowKey.split('\n') : [];
+
+    const run = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void checkFollowedArtistsAnnouncements(artistIds, orgIds);
+    };
+
+    run();
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = window.setInterval(run, 15 * 60 * 1000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(interval);
+    };
+  }, [artistFollowKey, orgFollowKey]);
 
   // Global toast and rollback event listeners
   useEffect(() => {

@@ -1,10 +1,15 @@
 import { sendLocalPushNotification } from './pushNotificationService';
 import { getSyncCachedUserTickets } from './cache';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { isRealEvent } from '@/features/events/status';
+import { collectFollowTargets, uniqueFollowIds } from './eventReminderRules';
 import type { Event, Ticket } from '@/types';
 
 const REMINDERS_KEY = 'gba_dispatched_reminders_v1';
 const ARTIST_ALERTS_KEY = 'gba_dispatched_artist_alerts_v1';
+
+// Empêche un double envoi si l'accueil et le démarrage global réclament la même alerte dans le même tour.
+const claimedArtistAlerts = new Set<string>();
 
 function getDispatchedKeys(storageKey: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -133,28 +138,79 @@ export function checkFollowedArtistsNewDates(
 
     if (matchesArtist) {
       const alertTag = `artist_date_${event.id}`;
-      if (!dispatchedAlerts.has(alertTag)) {
-        saveDispatchedKey(ARTIST_ALERTS_KEY, alertTag);
+      // Réservation synchrone : deux appels concurrents (accueil + démarrage) ne notifient qu'une fois.
+      if (dispatchedAlerts.has(alertTag) || claimedArtistAlerts.has(alertTag)) continue;
+      claimedArtistAlerts.add(alertTag);
+      saveDispatchedKey(ARTIST_ALERTS_KEY, alertTag);
+      dispatchedAlerts.add(alertTag);
 
-        const dateStr = new Date(event.starts_at).toLocaleDateString('fr-FR', {
-          day: 'numeric',
-          month: 'short',
-        });
+      const dateStr = new Date(event.starts_at).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+      });
 
-        sendLocalPushNotification({
-          title: `🎤 Nouvelle date annoncée !`,
-          body: `Un artiste que vous suivez se produira le ${dateStr} à ${event.city} : "${event.title}". Réservez dès maintenant !`,
-          tag: alertTag,
-          data: { url: `/events/${event.id}`, eventId: event.id },
-          vibrate: [80, 40, 80],
-        });
+      sendLocalPushNotification({
+        title: `🎤 Nouvelle date annoncée !`,
+        body: `Un artiste que vous suivez se produira le ${dateStr} à ${event.city} : "${event.title}". Réservez dès maintenant !`,
+        tag: alertTag,
+        data: { url: `/events/${event.id}`, eventId: event.id },
+        vibrate: [80, 40, 80],
+      });
 
-        alertedCount++;
-      }
+      alertedCount++;
     }
   }
 
   return alertedCount;
+}
+
+/**
+ * Événements publiés encore à venir, rattachés aux artistes ou festivals suivis.
+ * Indépendant du catalogue d'accueil : une fiche ouverte en lien direct doit aussi alerter.
+ */
+export async function fetchPublishedEventsForFollows(
+  artistIds: Iterable<string>,
+  organizerIds: Iterable<string>
+): Promise<Event[]> {
+  if (!isSupabaseConfigured) return [];
+  const artists = uniqueFollowIds(artistIds);
+  const orgs = uniqueFollowIds(organizerIds);
+  if (artists.length === 0 && orgs.length === 0) return [];
+
+  const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const byId = new Map<string, Event>();
+
+  const pull = async (column: 'artist_id' | 'organizer_id', ids: string[]) => {
+    if (ids.length === 0) return;
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('status', 'published')
+      .in(column, ids)
+      .gte('starts_at', since)
+      .order('starts_at', { ascending: true })
+      .limit(40);
+    if (error || !data) return;
+    for (const row of data as Event[]) {
+      if (isRealEvent(row)) byId.set(row.id, row);
+    }
+  };
+
+  await Promise.all([pull('artist_id', artists), pull('organizer_id', orgs)]);
+  return Array.from(byId.values());
+}
+
+/**
+ * Planifié au démarrage de l'app, pas seulement quand l'accueil est monté.
+ */
+export async function checkFollowedArtistsAnnouncements(
+  artistIds: Iterable<string>,
+  organizerIds: Iterable<string>
+): Promise<number> {
+  const targets = collectFollowTargets(artistIds, organizerIds);
+  if (targets.size === 0) return 0;
+  const events = await fetchPublishedEventsForFollows(artistIds, organizerIds);
+  return checkFollowedArtistsNewDates(events, targets);
 }
 
 /**
