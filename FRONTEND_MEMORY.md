@@ -322,3 +322,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - `server.ts` restauré dans le commit distinct `b1ad8dd` (4512 → 30154, blob `f71cda46`). Pas une évolution fonctionnelle : annule le placeholder du 2026-11-15.
 - Fusion `main` tentée puis annulée. Conflits non résolus : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. Aucune écriture sur `main`, aucune PR.
 
+### 2026-11-16 — Incident TicketsScreen puis restauration
+- Après le commit réservation `276f1f1`, deux commits ont remplacé `src/screens/TicketsScreen.tsx` par `PLACEHOLDER_TO_BE_REPLACED` (26 octets, `9f5d0ee`) puis `RESTORING_FROM_LOCAL` (20 octets, `d3c4fa9`).
+- Restauration depuis le blob sain de `276f1f1` (19523 octets) par commit git, pas par le connecteur. Relecture distante à faire.
+
