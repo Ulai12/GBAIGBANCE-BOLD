@@ -6,7 +6,7 @@ Branche d'écriture unique : `FRONTEND-iA`.
 
 ## Tâche active
 
-Session 3 (2026-11-16) — P1 liaison Supabase. server.ts restauré.
+Session 3 (2026-11-16) — Advisors Supabase + index FK. server.ts restauré.
 
 ## Objectif
 
@@ -16,66 +16,67 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 
 - Termine :
   - Audit léger session 1.
-  - Identification projet Supabase actif `lwwiolbofrqakvrdvbbj`.
-  - Restauration de `server.ts` (commit b1ad8dd, blob f71cda46, 30154 octets).
+  - Restauration de `server.ts`.
+  - Advisors Supabase (sécurité + performance) consultés.
+  - Migration d'index FK créée et poussée.
 - En cours :
-  - Correction URL + retrait clé hardcodée dans `server.ts` (maintenant possible par petites modifications).
+  - Correction URL hardcodée dans `server.ts` (toujours présente, écritures longues risquées).
 
 ## Fichiers concernés
 
 - `BACKEND_MEMORY.md`
-- `server.ts` (restauré)
+- `supabase/migrations/20261116000000_add_missing_fk_indexes.sql`
+- `server.ts` (restauré, non modifié ce tour)
 
 ## Dernière action
 
-2026-11-16 — Restauration confirmée de server.ts depuis le blob sain. Taille distante 30154 octets.
+2026-11-16 — Migration index FK (commit af475ae) + consignation advisors.
 
 ## Prochaine étape
 
-1. Corriger DEFAULT_SUPABASE_URL et retirer toute clé hardcodée par modifications ciblées.
-2. Vérifier les Edge Functions et RLS.
+1. Appliquer la migration sur Supabase (ou noter à faire).
+2. Traiter progressivement les WARN sécurité (search_path, SECURITY DEFINER exposés) — certaines nécessitent validation propriétaire.
+3. Corriger DEFAULT_SUPABASE_URL par petite modification si possible.
 
 ## Vérifications
 
-- server.ts restauré et relu : taille 30154 octets, contenu réel.
+- Migration relue distante : SHA 30a80a1f…, 1017 octets, contenu exact.
+- server.ts toujours sain (30154 octets).
 
-## Cartographie des données (initiale)
+## Cartographie des données
 
-(inchangée depuis session 1)
+(inchangée)
 
-## Points d'attention immédiats
+## Points d'attention immédiats (advisors)
 
-- DEFAULT_SUPABASE_URL pointe encore vers l'ancien projet.
-- Conflit potentiel avec main sur server.ts toujours à arbitrer par le propriétaire.
+### Sécurité
+- RLS enabled sans policy : `event_view_daily`, `example`.
+- search_path mutable : `book_ticket`, `cancel_ticket`, `accept_collaboration`, `update_event_price_range`.
+- SECURITY DEFINER executable par anon/authenticated : `book_ticket`, `cancel_ticket`, `accept_collaboration`, `create_notification`, `get_platform_stats`, `record_event_view`, etc. (9 fonctions). Risque élevé sur book_ticket.
+
+### Performance
+- 16 FK non indexées (migration partielle ajoutée).
+- Nombreuses policies RLS avec re-évaluation auth() par ligne (initplan).
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 
 1. Décision sur le conflit `server.ts` avec `main`.
-2. Confirmation des variables d'environnement Supabase réelles.
+2. Confirmation des variables d'environnement Supabase.
+3. Revue des fonctions SECURITY DEFINER exposées (surtout book_ticket) avant durcissement.
+4. Application de la migration index si souhaitée.
 
 ## Incidents
 
-- 2026-11-15 : troncature de `server.ts` via connecteur. Restauration manuelle effectuée le 2026-11-16.
+- 2026-11-15 : troncature server.ts. Restauration effectuée.
+- Note frontend : placeholder sur TicketsScreen.tsx (ne pas toucher).
 
 ## Historique
 
-- 2026-11-15 — Session 1 : création BACKEND_MEMORY.md, audit léger.
-- 2026-11-15 — Session 2 : incident de troncature sur server.ts.
-- 2026-11-16 — Restauration de server.ts.
+- 2026-11-15 — Sessions 1-2 : audit + incident troncature.
+- 2026-11-16 — Restauration server.ts + advisors + migration index FK.
 
 ## Pour les autres automatisations
 
-- Projet Supabase de référence : `lwwiolbofrqakvrdvbbj`.
-- server.ts est restauré ; les écritures longues restent risquées (préférer les diffs ciblés).
-
-## Tâches À faire (pour l'automatisation backend)
-
-- P1 : Corriger l'URL Supabase hardcodée dans server.ts (DEFAULT_SUPABASE_URL) et s'assurer qu'aucune clé n'est exposée. Utiliser des variables d'environnement.
-- P2 : Auditer les Edge Functions pour cohérence avec le projet lwwiolbofrqakvrdvbbj.
-- P2 : Vérifier que les RLS sont intactes après toute modification.
-- Note : incident de placeholder sur TicketsScreen.tsx le 2026-11-16 (connecteur frontend) ; ne pas toucher ce fichier.
-
-## Ajout frontend — 2026-11-16 (automatisation FRONTEND)
-
-- Fusion `main` → `FRONTEND-iA` tentée puis annulée. Conflits : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. Commits `main` non intégrés : `fd7d25b`, `ffe871c`, `080f3e4`, `6f0b94f`. Ne pas trancher `server.ts` sans le propriétaire.
-- `TicketsScreen.tsx` a été écrasé après `276f1f1` : `9f5d0ee` = `PLACEHOLDER_TO_BE_REPLACED` (26 o), `d3c4fa9` = `RESTORING_FROM_LOCAL` (20 o). Dernière version saine : blob du commit `276f1f1`, 19523 octets. Restauration git locale en cours dans le commit suivant, pas via le connecteur.
+- Projet Supabase : `lwwiolbofrqakvrdvbbj`.
+- Ne pas réécrire server.ts en entier (risque troncature).
+- Migration index : `20261116000000_add_missing_fk_indexes.sql` (rollback documenté).
