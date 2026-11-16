@@ -1,7 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
 
 // ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (STREAM + FALLBACK)
+// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (EDGE-FIRST + PROXY)
 // ====================================================================
 
 export interface AIAssistantMessage {
@@ -140,8 +140,9 @@ async function postAssistant(
 
 /**
  * Envoie la conversation :
- * 1) `/api/ai/assistant/stream` (Express local ou route Vercel)
- * 2) fallback Edge Function Supabase `ai-assistant`
+ * 1) Edge Function Supabase `ai-assistant` (chemin principal fiable)
+ * 2) `/api/ai-assistant` (proxy Vercel plat, même pattern que api/events.ts)
+ * 3) `/api/ai/assistant/stream` (compat Express local / ancien chemin)
  */
 export async function streamAIAssistant(
   options: SendMessageOptions,
@@ -162,13 +163,6 @@ export async function streamAIAssistant(
         data: { session },
       } = await supabase.auth.getSession();
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-
       const payload = {
         messages: options.messages.map((m) => ({
           role: m.role,
@@ -181,14 +175,26 @@ export async function streamAIAssistant(
       let response: Response | null = null;
       let lastError = '';
 
+      // 1) Edge Supabase en premier (prod fiable, testé live)
+      const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
+      const edgeHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+      };
+      if (session?.access_token) {
+        edgeHeaders.Authorization = `Bearer ${session.access_token}`;
+      } else {
+        edgeHeaders.Authorization = `Bearer ${supabaseAnonKey}`;
+      }
+
       try {
-        response = await postAssistant('/api/ai/assistant/stream', headers, payload, controller.signal);
+        response = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
         if (!response.ok) {
           const errorData = await response.clone().json().catch(() => ({}));
           lastError =
             (errorData as { error?: string }).error ||
             (errorData as { message?: string }).message ||
-            `Erreur serveur (${response.status})`;
+            `Erreur edge IA (${response.status})`;
           if (response.status === 429) {
             callbacks.onError(lastError, true);
             return;
@@ -196,40 +202,41 @@ export async function streamAIAssistant(
           response = null;
         }
       } catch (err) {
-        lastError = err instanceof Error ? err.message : 'Route /api inaccessible';
+        lastError = err instanceof Error ? err.message : 'Edge IA inaccessible';
         response = null;
       }
 
+      // 2) Proxy Vercel plat puis nested
       if (!response) {
-        const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-        const edgeHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
-          apikey: supabaseAnonKey,
-        };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (session?.access_token) {
-          edgeHeaders.Authorization = `Bearer ${session.access_token}`;
-        } else {
-          edgeHeaders.Authorization = `Bearer ${supabaseAnonKey}`;
+          headers.Authorization = `Bearer ${session.access_token}`;
         }
+        for (const path of ['/api/ai-assistant', '/api/ai/assistant/stream']) {
+          try {
+            const res = await postAssistant(path, headers, payload, controller.signal);
+            if (res.ok) {
+              response = res;
+              break;
+            }
+            const errorData = await res.clone().json().catch(() => ({}));
+            lastError =
+              (errorData as { error?: string }).error ||
+              (errorData as { message?: string }).message ||
+              `Erreur serveur (${res.status})`;
+            if (res.status === 429) {
+              callbacks.onError(lastError, true);
+              return;
+            }
+          } catch (err) {
+            lastError = err instanceof Error ? err.message : lastError || 'Proxy API inaccessible';
+          }
+        }
+      }
 
-        try {
-          response = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Edge IA inaccessible';
-          callbacks.onError(lastError || msg);
-          return;
-        }
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage =
-            (errorData as { error?: string }).error ||
-            (errorData as { message?: string }).message ||
-            lastError ||
-            `Erreur assistant IA (${response.status})`;
-          callbacks.onError(errorMessage, response.status === 429);
-          return;
-        }
+      if (!response) {
+        callbacks.onError(lastError || 'Assistant IA indisponible.');
+        return;
       }
 
       const contentType = response.headers.get('content-type') || '';
