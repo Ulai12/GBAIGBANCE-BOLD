@@ -7,9 +7,29 @@ import type { Event, Ticket } from '@/types';
 
 const REMINDERS_KEY = 'gba_dispatched_reminders_v1';
 const ARTIST_ALERTS_KEY = 'gba_dispatched_artist_alerts_v1';
+/** Marque qu'une base silencieuse des dates déjà présentes a été posée (premier lancement). */
+const ARTIST_BASELINE_KEY = 'gba_artist_alerts_baseline_done_v1';
 
 // Empêche un double envoi si l'accueil et le démarrage global réclament la même alerte dans le même tour.
 const claimedArtistAlerts = new Set<string>();
+
+function isArtistBaselineDone(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return localStorage.getItem(ARTIST_BASELINE_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
+function markArtistBaselineDone(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ARTIST_BASELINE_KEY, '1');
+  } catch {
+    // Ignore
+  }
+}
 
 function getDispatchedKeys(storageKey: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -142,7 +162,9 @@ export async function checkAndTriggerTicketReminders(userId: string): Promise<nu
 }
 
 /**
- * Détecte si de nouveaux événements annoncés concernent des artistes suivis par l'utilisateur
+ * Détecte si de nouveaux événements annoncés concernent des artistes suivis par l'utilisateur.
+ * Au premier passage (base absente), enregistre silencieusement les dates déjà présentes
+ * sans envoyer de notification, pour éviter le spam du catalogue existant.
  */
 export function checkFollowedArtistsNewDates(
   events: Event[],
@@ -151,6 +173,7 @@ export function checkFollowedArtistsNewDates(
   if (events.length === 0 || followedArtistIds.size === 0) return 0;
 
   const dispatchedAlerts = getDispatchedKeys(ARTIST_ALERTS_KEY);
+  const baselineDone = isArtistBaselineDone();
   let alertedCount = 0;
 
   for (const event of events) {
@@ -160,29 +183,36 @@ export function checkFollowedArtistsNewDates(
       (event.artist_id && followedArtistIds.has(event.artist_id)) ||
       (event.organizer_id && followedArtistIds.has(event.organizer_id));
 
-    if (matchesArtist) {
-      const alertTag = `artist_date_${event.id}`;
-      // Réservation synchrone : deux appels concurrents (accueil + démarrage) ne notifient qu'une fois.
-      if (dispatchedAlerts.has(alertTag) || claimedArtistAlerts.has(alertTag)) continue;
-      claimedArtistAlerts.add(alertTag);
-      saveDispatchedKey(ARTIST_ALERTS_KEY, alertTag);
-      dispatchedAlerts.add(alertTag);
+    if (!matchesArtist) continue;
 
-      const dateStr = new Date(event.starts_at).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-      });
+    const alertTag = `artist_date_${event.id}`;
+    // Réservation synchrone : deux appels concurrents (accueil + démarrage) ne notifient qu'une fois.
+    if (dispatchedAlerts.has(alertTag) || claimedArtistAlerts.has(alertTag)) continue;
+    claimedArtistAlerts.add(alertTag);
+    saveDispatchedKey(ARTIST_ALERTS_KEY, alertTag);
+    dispatchedAlerts.add(alertTag);
 
-      sendLocalPushNotification({
-        title: `🎤 Nouvelle date annoncée !`,
-        body: `Un artiste que vous suivez se produira le ${dateStr} à ${event.city} : "${event.title}". Réservez dès maintenant !`,
-        tag: alertTag,
-        data: { url: `/events/${event.id}`, eventId: event.id },
-        vibrate: [80, 40, 80],
-      });
+    // Premier lancement : on pose la base sans notifier.
+    if (!baselineDone) continue;
 
-      alertedCount++;
-    }
+    const dateStr = new Date(event.starts_at).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+    });
+
+    sendLocalPushNotification({
+      title: `🎤 Nouvelle date annoncée !`,
+      body: `Un artiste que vous suivez se produira le ${dateStr} à ${event.city} : "${event.title}". Réservez dès maintenant !`,
+      tag: alertTag,
+      data: { url: `/events/${event.id}`, eventId: event.id },
+      vibrate: [80, 40, 80],
+    });
+
+    alertedCount++;
+  }
+
+  if (!baselineDone) {
+    markArtistBaselineDone();
   }
 
   return alertedCount;
