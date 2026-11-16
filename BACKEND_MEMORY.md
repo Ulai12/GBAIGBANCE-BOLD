@@ -64,3 +64,7 @@ Rendre le backend cohérent, sûr et bien rangé sans rien casser.
 
 - Edge Function : `event-reminders` sur `lwwiolbofrqakvrdvbbj`.
 - Cron : `event-reminders-hourly` toutes les heures.
+
+## Tâches À faire
+
+- [Automatisation client / PROJECT_MEMORY] 2026-11-16 : Le planificateur client de rappels 24h/2h respecte désormais `event_reminders` (commit 2a8a5c8 sur main). Vérifier la cohérence avec l'Edge Function `event-reminders` (pas de doublon de logique, mêmes fenêtres de temps si applicable). Aucun problème détecté côté client.
