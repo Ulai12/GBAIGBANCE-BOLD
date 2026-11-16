@@ -6,7 +6,7 @@ Branche d'écriture unique : `FRONTEND-iA`.
 
 ## Tâche active
 
-Session 2 (2026-11-15) — P1 liaison Supabase. Bloquée par incident de troncature.
+Session 3 (2026-11-16) — P1 liaison Supabase. server.ts restauré.
 
 ## Objectif
 
@@ -17,27 +17,27 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 - Termine :
   - Audit léger session 1.
   - Identification projet Supabase actif `lwwiolbofrqakvrdvbbj`.
-- En cours / bloqué :
-  - Correction URL + retrait clé hardcodée dans `server.ts` → incident de troncature.
+  - Restauration de `server.ts` (commit b1ad8dd, blob f71cda46, 30154 octets).
+- En cours :
+  - Correction URL + retrait clé hardcodée dans `server.ts` (maintenant possible par petites modifications).
 
 ## Fichiers concernés
 
 - `BACKEND_MEMORY.md`
-- `server.ts` (actuellement tronqué — à restaurer)
+- `server.ts` (restauré)
 
 ## Dernière action
 
-2026-11-15 — Tentative de fix sur `server.ts` (URL + clé). Connecteur a écrit un contenu tronqué (23 o puis 4512 o au lieu de ~30154). Restauration partielle tentée, fichier toujours incomplet.
+2026-11-16 — Restauration confirmée de server.ts depuis le blob sain. Taille distante 30154 octets.
 
 ## Prochaine étape
 
-1. Restaurer `server.ts` depuis le commit sain `852146e` (taille 30154 octets).
-2. Une fois restauré, reprendre la correction de la liaison Supabase par petites modifications ou via un moyen qui évite la troncature de fichiers longs.
+1. Corriger DEFAULT_SUPABASE_URL et retirer toute clé hardcodée par modifications ciblées.
+2. Vérifier les Edge Functions et RLS.
 
 ## Vérifications
 
-- Incident confirmé par relecture distante.
-- Dernière version saine connue : commit `852146e`, blob `f71cda46…`, 30154 octets.
+- server.ts restauré et relu : taille 30154 octets, contenu réel.
 
 ## Cartographie des données (initiale)
 
@@ -45,25 +45,32 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 
 ## Points d'attention immédiats
 
-- `server.ts` est actuellement tronqué sur `FRONTEND-iA`. Ne plus écrire dessus tant qu'il n'est pas restauré.
 - DEFAULT_SUPABASE_URL pointe encore vers l'ancien projet.
+- Conflit potentiel avec main sur server.ts toujours à arbitrer par le propriétaire.
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 
-1. Restaurer `server.ts` depuis `852146e` sur `FRONTEND-iA`.
-2. Décision sur le conflit `server.ts` avec `main`.
-3. Confirmation des variables d'environnement Supabase réelles.
+1. Décision sur le conflit `server.ts` avec `main`.
+2. Confirmation des variables d'environnement Supabase réelles.
 
 ## Incidents
 
-- 2026-11-15 : troncature de `server.ts` via connecteur GitHub lors d'une mise à jour (contenu long). Fichier distant réduit de >20 %. Protocole appliqué : arrêt des écritures sur ce fichier, consignation. Restauration manuelle requise.
+- 2026-11-15 : troncature de `server.ts` via connecteur. Restauration manuelle effectuée le 2026-11-16.
 
 ## Historique
 
 - 2026-11-15 — Session 1 : création BACKEND_MEMORY.md, audit léger.
 - 2026-11-15 — Session 2 : incident de troncature sur server.ts.
+- 2026-11-16 — Restauration de server.ts.
 
 ## Pour les autres automatisations
 
-- Ne pas modifier `server.ts` tant que l'incident n'est pas résolu.
 - Projet Supabase de référence : `lwwiolbofrqakvrdvbbj`.
+- server.ts est restauré ; les écritures longues restent risquées (préférer les diffs ciblés).
+
+## Tâches À faire (pour l'automatisation backend)
+
+- P1 : Corriger l'URL Supabase hardcodée dans server.ts (DEFAULT_SUPABASE_URL) et s'assurer qu'aucune clé n'est exposée. Utiliser des variables d'environnement.
+- P2 : Auditer les Edge Functions pour cohérence avec le projet lwwiolbofrqakvrdvbbj.
+- P2 : Vérifier que les RLS sont intactes après toute modification.
+- Note : incident de placeholder sur TicketsScreen.tsx le 2026-11-16 (connecteur frontend) ; ne pas toucher ce fichier.
