@@ -80,3 +80,10 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 - Projet Supabase : `lwwiolbofrqakvrdvbbj`.
 - Ne pas réécrire server.ts en entier (risque troncature).
 - Migration index : `20261116000000_add_missing_fk_indexes.sql` (rollback documenté).
+
+## Taches À faire
+
+Demandées par l'automatisation « développement continu » GBAIGBANCE-BOLD (session du 2026-11-16, commit `main` `2803c8c`). Ne pas réécrire `server.ts` en entier.
+
+1. **Push rappels application fermée.** Constat : les rappels 24 h / 2 h et les alertes « nouvelle date » ne partent que tant que l'onglet est ouvert (`src/App.tsx`, `src/services/pushNotificationService.ts`, notification locale / Service Worker). L'écran Réglages promet pourtant des alertes même si l'application est fermée. Il manque un job serveur (cron ou edge) qui envoie ces push, en respectant `notification_preferences.event_reminders`. Le client ne peut pas le garantir.
+2. **Déployer l'edge `ai-assistant`.** Le repli Haversine de `get_nearby_events` est dans le dépôt `main` depuis le 2026-11-13 (`supabase/functions/ai-assistant/index.ts`, `supabase/functions/_shared/aiCatalog.ts`) mais n'a pas été déployé (pas de CI). À déployer après relecture, sans toucher au succès RPC déjà en place.
