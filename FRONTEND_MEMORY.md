@@ -20,7 +20,20 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Catégories en capsules (création + édition)
+## Tâche active — Feuille de réservation (thème + mobile)
+
+**Objectif :** la feuille d'achat de billet (pass, cadeau, quantité, Mobile Money T-Money/Flooz, succès) suit le thème clair/sombre du verre liquide, sans zoom iOS sur les champs.
+
+**Livré le 2026-11-16 :** `src/components/BookingModal.tsx`. Logique `purchaseTicketsMulti` inchangée. Champs en 16px, cibles ≥ 44px, focus violet, `motion-reduce`, radiogroups titulaire et opérateur, états indisponible / chargement / erreur / complet lisibles en sombre.
+
+**Commit :** `276f1f10fca46a800827f9d0f2f156e50fd9fc57` sur `FRONTEND-iA`.
+**Taille :** 35651 → 40262 octets. Blob distant `bb836819b6946e4ffda02ef6eaf77046fc03ddfc`, identique au local. Contenu réel (pas de placeholder).
+**Vérifié :** `tsc --noEmit -p tsconfig.app.json` exit 0 ; ESLint du fichier exit 0 ; `vite build` exit 0 (3289 modules). Relecture distante GitHub du fichier et du commit.
+**Non vérifié :** rendu navigateur 320–1440, iPhone réel, clavier virtuel, paiement Mobile Money réel.
+
+**Prochaine étape :** contrôle visuel de la feuille de réservation (clair/sombre, 320–414px). Ensuite états vides partagés (`EmptyState` encore clair uniquement).
+
+## Tâche précédente — Catégories en capsules (création + édition)
 
 ### Création — livrée le 2026-11-15
 `src/screens/CreateEventWizardScreen.tsx` : les catégories parent et sous-catégorie de l'étape Infos utilisent les capsules 44px (`min-h-11`), rail horizontal snap, focus violet, `motion-reduce`, libellés courts et description de la sous-catégorie. La valeur enregistrée reste l'id du catalogue (`main_category`, `subcategory`, catégorie historique dérivée).
@@ -76,6 +89,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 | Recherche — grille de résultats | À revoir | Catalogue vide pendant le contrôle (0 résultat) ; cartes réelles non revues |
 | Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px |
 | Thème sombre / réduction de transparence | À revoir | Correctif CSS présent |
+| Réservation / paiement Mobile Money | Code livré | `BookingModal` thème clair/sombre, champs 16px, cibles 44px. Commit `276f1f1`. Rendu navigateur non contrôlé. |
 | Création / édition — catégories | Code livré | Capsules parent/sous-catégorie 44px dans `CreateEventWizardScreen` et `EditEventScreen`; édition avec navigation clavier et description sélectionnée. Preview Vercel du commit initial READY; contrôle navigateur et iPhone non effectués. |
 | Connexion / inscription | Finalisé | Thème clair/sombre, rôles empilés sous 480px, cibles 44px. Vérifié navigateur 320–1440 |
 | Billets / portefeuille | À auditer | Aucun changement |
@@ -90,6 +104,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - **P3** — Harmoniser les états vides, chargement, erreur et hors-ligne.
 
 ## Incidents d'écriture
+- 2026-11-16 : `server.ts` sur `FRONTEND-iA` était un placeholder de 4512 octets (commentaire « contenu complet restauré », commit `450ce2f`), pas le blob sain. Restauré depuis `852146e` / blob `f71cda46` (30154 octets) par commit `b1ad8dd`. Relecture distante : même blob, vrai serveur Express (`httpServer.listen`). Cause d'origine : troncature du connecteur GitHub. Aucun rétrécissement non voulu sur les fichiers de cette session.
 - 2026-11-15 : push via connecteur GitHub a écrit des placeholders ("PLACEHOLDER_APP") au lieu du contenu complet sur App.tsx et types/index.ts (tailles ~300 octets). Restauré depuis commit précédent sain (11e067f), fixes réappliqués, commit b1d8072 poussé via git local. Tailles finales saines, contenu vérifié distant. Cause : limitation de transmission du contenu long dans l'appel outil.
 - 2026-11-14 : fusion `main` → `FRONTEND-iA` annulée. Conflit unique `server.ts` (marqueurs 802–1031 sur la copie de travail, ~230 lignes). Côté `FRONTEND-iA` : zone vide (route Express stats retirée). Côté `main` : `handlePlatformStats` + `GET/POST /api/platform-stats`. Aucune troncature. Rien poussé. Tailles distantes de `server.ts` non modifiées par cette session (`FRONTEND-iA` 30154 octets / 792 lignes ; `main` 45068 octets / 1193 lignes).
 - Aucun incident de troncature le 2026-11-13.
@@ -111,6 +126,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - **Non vérifié :** `npm run typecheck` échoue sur des erreurs préexistantes, aucune dans `ExploreScreen.tsx`. Pas de script de tests dans `package.json`. Pas de contrôle iPhone réel ni `prefers-reduced-motion` sur appareil. Grille de résultats avec de vrais événements non affichée (catalogue vide dans cet environnement).
 
 ## Backlog
+0. P0 — Fusion `main` → `FRONTEND-iA` toujours bloquée (essai 2026-11-16, annulé, rien poussé). Conflits : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. `main` a 4 commits non intégrés (`fd7d25b`, `ffe871c`, `080f3e4`, `6f0b94f`). Ne pas trancher `server.ts` sans le propriétaire.
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
 2. P2 — Contrôler visuellement les capsules de création/édition (320–414px, focus, navigation clavier, rail après changement de parent) sur preview/appareil.
 3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
@@ -298,3 +314,11 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Périmètre volontaire : aucun changement de Service Worker, toast de mise à jour, header React ou configuration de production. Le déploiement reste une preview de `FRONTEND-iA`; l'origine de production n'a pas été changée.
 
 - Mise à jour du statut après contrôle : le déploiement preview Vercel du commit `920c97e15edf42c77f9bfaf25fa3570d0fded482` est maintenant `READY` (`dpl_CD2MAR5e7at4KMS4mWcp4YZdTtmp`), alias `gbaigbance-event-git-frontend-ia-shogun10.vercel.app`. Cela confirme le build/déploiement Vercel, pas le rendu réel iOS.
+
+### 2026-11-16 — Feuille de réservation thème clair/sombre
+- `src/components/BookingModal.tsx` : pass, offre à un ami, quantité, Mobile Money (T-Money / Flooz), erreur et succès suivent le thème. Champs 16px (évite le zoom iOS), cibles 44px, focus visible, `prefers-reduced-motion`. La logique d'achat n'est pas modifiée.
+- Commit `276f1f10fca46a800827f9d0f2f156e50fd9fc57`. Taille 35651 → 40262 octets. Blob distant `bb836819…` identique. 
+- Vérifié : typecheck exit 0, ESLint du fichier exit 0, `vite build` exit 0. Non vérifié : navigateur et iPhone.
+- `server.ts` restauré dans le commit distinct `b1ad8dd` (4512 → 30154, blob `f71cda46`). Pas une évolution fonctionnelle : annule le placeholder du 2026-11-15.
+- Fusion `main` tentée puis annulée. Conflits non résolus : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. Aucune écriture sur `main`, aucune PR.
+

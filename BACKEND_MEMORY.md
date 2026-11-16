@@ -74,3 +74,8 @@ Rendre le backend cohérent, sûr et bien rangé (API Node/Express, Edge Functio
 - P2 : Auditer les Edge Functions pour cohérence avec le projet lwwiolbofrqakvrdvbbj.
 - P2 : Vérifier que les RLS sont intactes après toute modification.
 - Note : incident de placeholder sur TicketsScreen.tsx le 2026-11-16 (connecteur frontend) ; ne pas toucher ce fichier.
+
+## Ajout frontend — 2026-11-16 (automatisation FRONTEND)
+
+- Fusion `main` → `FRONTEND-iA` tentée puis annulée. Conflits : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. Commits `main` non intégrés : `fd7d25b`, `ffe871c`, `080f3e4`, `6f0b94f`. Ne pas trancher `server.ts` sans le propriétaire.
+- `TicketsScreen.tsx` a été écrasé après `276f1f1` : `9f5d0ee` = `PLACEHOLDER_TO_BE_REPLACED` (26 o), `d3c4fa9` = `RESTORING_FROM_LOCAL` (20 o). Dernière version saine : blob du commit `276f1f1`, 19523 octets. Restauration git locale en cours dans le commit suivant, pas via le connecteur.
