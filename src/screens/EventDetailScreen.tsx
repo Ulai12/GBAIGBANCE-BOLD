@@ -159,7 +159,7 @@ export function EventDetailScreen({
   const { user, theme, language } = useApp();
   const { isLiked, toggleLike, toggleFollowUser, isFollowingUser } = useFavorites();
   const liked = isLiked(event.id);
-  const { scrollY } = useScrollGlass(12);
+  const { isScrolled: showCompactHeader } = useScrollGlass(260);
 
   const [fullEvent, setFullEvent] = useState<EventWithRelations | null>(null);
   const [showManage, setShowManage] = useState(false);
@@ -473,8 +473,7 @@ export function EventDetailScreen({
     ? formatFullDate(targetDateForCountdown, language)
     : 'Date à confirmer';
 
-  // L'en-tête compact n'apparaît qu'après le hero pour éviter TOUT chevauchement visuel avec le titre et le compte à rebours
-  const showCompactHeader = scrollY > 260;
+  // Le hook ne met à jour l'état qu'au franchissement du seuil, après le hero
 
   return (
     <div className="min-h-screen relative bg-[#f7f5f0] dark:bg-[#141216] text-[#242126] dark:text-white antialiased selection:bg-[#6600FF]/20">

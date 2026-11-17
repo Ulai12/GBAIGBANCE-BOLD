@@ -44,6 +44,9 @@ export function FeaturedCarousel({
 }: FeaturedCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  );
   const [direction, setDirection] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -80,9 +83,15 @@ export function FeaturedCarousel({
 
   // SmartImage charge déjà la couverture visible en priorité; évite de télécharger d'avance toute la liste.
 
-  // Auto-scroll loop
   useEffect(() => {
-    if (isPaused || total <= 1) return;
+    const updateVisibility = () => setIsDocumentVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
+
+  // Stoppe l'autoplay lorsque l'onglet est masqué ou que l'utilisateur réduit les animations.
+  useEffect(() => {
+    if (isPaused || prefersReducedMotion || !isDocumentVisible || total <= 1) return;
 
     timerRef.current = setInterval(() => {
       nextSlide();
@@ -91,7 +100,7 @@ export function FeaturedCarousel({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused, total, nextSlide]);
+  }, [isPaused, isDocumentVisible, prefersReducedMotion, total, nextSlide]);
 
   if (featuredList.length === 0) return null;
 
