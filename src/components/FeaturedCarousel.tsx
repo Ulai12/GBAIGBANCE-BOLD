@@ -14,6 +14,7 @@ import { isEventTerminated } from '@/features/events/status';
 import { SmartImage } from '@/components/SmartImage';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 import { getDefaultEventCover } from '@/utils/defaultImages';
+import { formatCurrency } from '@/utils/format';
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -35,19 +36,6 @@ function formatDate(dateString: string | null | undefined, language: Language) {
     }).format(date);
   } catch {
     return '';
-  }
-}
-
-function formatXof(amount: number, language: Language): string {
-  const locale = language === 'en' ? 'en-US' : 'fr-FR';
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'XOF',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${Math.round(amount).toLocaleString(locale)} FCFA`;
   }
 }
 
@@ -123,7 +111,7 @@ export function FeaturedCarousel({
   const formattedPrice =
     currentEvent.price_min == null || currentEvent.price_min === 0
       ? t('events', 'free')
-      : formatXof(Number(currentEvent.price_min), language);
+      : formatCurrency(Number(currentEvent.price_min), 'XOF', language);
   const rawCategory = String(currentEvent.category || '').trim();
   const categoryKey = rawCategory.toLowerCase();
   const categoryTranslation = categoryKey ? t('events', `categories.${categoryKey}`) : '';
