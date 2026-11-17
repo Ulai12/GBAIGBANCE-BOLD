@@ -40,8 +40,6 @@ export function clearLocalUserTickets(userId?: string | null): void {
 }
 
 export function generateFallbackTicketOptions(eventId: string, priceMin: number = 0): TicketOption[] {
-  // Hors-ligne uniquement : un seul pass, stock stable (jamais aléatoire).
-  // Un stock tiré au hasard faisait « sauter » les places restantes à chaque rechargement.
   const isFree = !priceMin || priceMin <= 0;
   return [
     {
@@ -60,20 +58,15 @@ export function generateFallbackTicketOptions(eventId: string, priceMin: number 
 
 export async function fetchTicketOptions(eventId: string, priceMin: number = 0): Promise<TicketOption[]> {
   if (!eventId) return [];
-
-  // Catalogue démo seulement si Supabase n'est pas branché.
-  // En production, inventer des pass VIP factices permettait de payer un billet inexistant.
   if (!isSupabaseConfigured) {
     return generateFallbackTicketOptions(eventId, priceMin);
   }
-
   try {
     const { data, error } = await supabase
       .from('ticket_options')
       .select('*')
       .eq('event_id', eventId)
       .order('price', { ascending: true });
-
     if (error || !data) return [];
     return data as TicketOption[];
   } catch {
@@ -139,9 +132,6 @@ export interface TicketRecipientInput {
   is_for_me: boolean;
 }
 
-/**
- * Annulation directe de billet (rétrocompatibilité)
- */
 export async function cancelTicket(ticketId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
   removeLocalStoredTicket(ticketId, userId);
   if (isSupabaseConfigured && !ticketId.startsWith('tkt_')) {
@@ -154,9 +144,6 @@ export async function cancelTicket(ticketId: string, userId?: string): Promise<{
   return { success: true };
 }
 
-/**
- * Réservation simple de billet (rétrocompatibilité pour tests ou appels directs)
- */
 export async function bookTicket(
   eventId: string,
   ticketOptionId: string,
@@ -204,7 +191,7 @@ function isMissingRpcError(err: unknown): boolean {
 
 /**
  * Achat multi-billets (pour soi ou pour des amis)
- * Appelle la RPC purchase_tickets_multi
+ * Gratuit → purchase_tickets_multi ; payant → initiate_ticket_payment (billets apres webhook)
  */
 export async function purchaseTicketsMulti(params: {
   eventId: string;
@@ -214,7 +201,6 @@ export async function purchaseTicketsMulti(params: {
   paymentPhone: string;
   userId: string;
   buyerName?: string;
-  /** Prix unitaire réel du pass. */
   unitPrice?: number;
 }): Promise<{
   success: boolean;
@@ -233,56 +219,87 @@ export async function purchaseTicketsMulti(params: {
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
   const amountXof = unitPrice * Math.max(1, recipients.length);
 
-  // Production: aucune émission locale de faux billets.
-  // La base connectée expose actuellement book_ticket (réservation gratuite),
-  // mais pas purchase_tickets_multi ni de flux de confirmation Mobile Money.
   if (isSupabaseConfigured) {
     if (!userId || userId.startsWith('guest-')) {
       return { success: false, error: 'Connectez-vous pour réserver un billet.' };
     }
 
     if (unitPrice > 0) {
-      return {
-        success: false,
-        error: 'Le paiement Mobile Money n’est pas encore relié à la confirmation serveur. Aucun billet payant ne sera marqué comme acheté avant confirmation du paiement.',
-      };
-    }
-
-    if (recipients.length !== 1 || !recipients[0]?.is_for_me) {
-      return {
-        success: false,
-        error: 'La réservation gratuite multi-bénéficiaires n’est pas encore disponible. Réservez un billet à la fois.',
-      };
+      try {
+        const { data, error } = await supabase.rpc('initiate_ticket_payment', {
+          p_event_id: eventId,
+          p_ticket_option_id: ticketOptionId,
+          p_quantity: Math.max(1, recipients.length),
+          p_provider: paymentProvider || 'pending',
+          p_payment_phone: paymentPhone || null,
+          p_idempotency_key: null,
+          p_fee_payer: null,
+        });
+        if (error) {
+          return { success: false, error: error.message || 'Impossible d’initier le paiement.' };
+        }
+        const result = data as {
+          success?: boolean;
+          error?: string;
+          payment_id?: string;
+          amount_charged_xof?: number;
+          amount_face_xof?: number;
+          message?: string;
+        } | null;
+        if (!result?.success || !result.payment_id) {
+          return { success: false, error: result?.error || 'Initiation de paiement refusee.' };
+        }
+        return {
+          success: true,
+          payment_id: result.payment_id,
+          amount_xof: Number(result.amount_charged_xof ?? result.amount_face_xof) || amountXof,
+          tickets: [],
+          error: result.message || 'Paiement initie. Les billets seront emis apres confirmation Mobile Money.',
+        };
+      } catch (err: unknown) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : 'Erreur lors de l’initiation du paiement.',
+        };
+      }
     }
 
     try {
-      const { data, error } = await supabase.rpc('book_ticket', {
+      const { data, error } = await supabase.rpc('purchase_tickets_multi', {
         p_event_id: eventId,
         p_ticket_option_id: ticketOptionId,
-        p_quantity: 1,
+        p_recipients: recipients.map((r) => ({
+          recipient_name: r.recipient_name,
+          recipient_phone: r.recipient_phone || null,
+          recipient_user_id: r.recipient_user_id || null,
+          is_for_me: Boolean(r.is_for_me),
+        })),
+        p_payment_provider: 'free',
+        p_payment_phone: paymentPhone || null,
+        p_buyer_name: buyerName || null,
       });
       if (error) {
         return { success: false, error: error.message || 'La réservation n’a pas pu être enregistrée.' };
       }
-
       const result = data as {
         success?: boolean;
         error?: string;
-        ticket?: { id?: string; qr_code?: string; price_paid?: number; status?: string };
+        amount_xof?: number;
+        tickets?: Array<{
+          ticket_id: string;
+          qr_code: string;
+          is_for_me: boolean;
+          recipient_name?: string;
+          claim_token?: string;
+        }>;
       } | null;
-      if (!result?.success || !result.ticket?.id || !result.ticket.qr_code) {
-        return { success: false, error: result?.error || 'Le serveur n’a pas confirmé la création du billet.' };
+      if (!result?.success || !result.tickets?.length) {
+        return { success: false, error: result?.error || 'Le serveur n’a pas confirmé la création des billets.' };
       }
-
       return {
         success: true,
-        amount_xof: Number(result.ticket.price_paid) || 0,
-        tickets: [{
-          ticket_id: result.ticket.id,
-          qr_code: result.ticket.qr_code,
-          is_for_me: true,
-          recipient_name: recipients[0].recipient_name,
-        }],
+        amount_xof: Number(result.amount_xof) || 0,
+        tickets: result.tickets,
       };
     } catch (err: unknown) {
       return {
@@ -292,7 +309,6 @@ export async function purchaseTicketsMulti(params: {
     }
   }
 
-  // Mode hors ligne de démonstration: réservé aux billets gratuits.
   if (unitPrice > 0) {
     return {
       success: false,
@@ -300,7 +316,6 @@ export async function purchaseTicketsMulti(params: {
     };
   }
 
-  // Démo hors-ligne : prix réel, et un pass payant reste « en attente » tant qu'il n'y a pas de caisse.
   const event = await fetchEventById(eventId);
   const fakePaymentId = 'pay_' + Math.random().toString(36).slice(2, 10);
   const createdList = [];
@@ -361,9 +376,6 @@ export async function purchaseTicketsMulti(params: {
   };
 }
 
-/**
- * Enregistre un billet offert dans un registre partagé afin que l'ami puisse le voir
- */
 export function saveGiftTicketForFriend(ticket: Ticket) {
   try {
     const raw = localStorage.getItem('gba_gift_registry') || '[]';
@@ -375,9 +387,6 @@ export function saveGiftTicketForFriend(ticket: Ticket) {
   }
 }
 
-/**
- * Récupère les billets offerts destinés à un ami (par numéro de téléphone ou nom)
- */
 export function getGiftTicketsForFriend(phone?: string | null, name?: string | null): Ticket[] {
   try {
     if (!phone && !name) return [];
@@ -397,9 +406,6 @@ export function getGiftTicketsForFriend(phone?: string | null, name?: string | n
   }
 }
 
-/**
- * Réclamation de billet via un token offert
- */
 export async function claimTicketByToken(rawToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
   if (isSupabaseConfigured) {
     try {
@@ -417,9 +423,6 @@ export async function claimTicketByToken(rawToken: string): Promise<{ success: b
   return { success: true, message: 'Billet réclamé avec succès (mode local) !' };
 }
 
-/**
- * Régénération d'un lien de réclamation pour un ami
- */
 export async function regenerateClaimLink(ticketId: string): Promise<{ success: boolean; claim_token?: string; error?: string }> {
   if (isSupabaseConfigured) {
     try {
@@ -437,9 +440,6 @@ export async function regenerateClaimLink(ticketId: string): Promise<{ success: 
   return { success: true, claim_token: Math.random().toString(36).slice(2, 16) };
 }
 
-/**
- * Demande de remboursement
- */
 export async function requestTicketRefund(params: {
   ticketId: string;
   reasonDetails?: string;
@@ -465,13 +465,9 @@ export async function requestTicketRefund(params: {
     }
   }
 
-  // Local fallback
   return { success: true, message: 'Demande de remboursement soumise avec succès (mode local).' };
 }
 
-/**
- * Validation du mini-défi de présence fun
- */
 export async function completePresenceChallenge(params: {
   ticketId: string;
   submittedPattern: string;
@@ -493,13 +489,9 @@ export async function completePresenceChallenge(params: {
     }
   }
 
-  // Local fallback simulation
   return { success: true, badge_name: 'Pionnier du Live', message: 'Bravo ! Défi validé en mode local.' };
 }
 
-/**
- * Examen d'une demande de remboursement par l'organisateur (Approuver / Rejeter)
- */
 export async function reviewRefund(params: {
   refundId: string;
   action: 'approve' | 'reject';
@@ -526,9 +518,6 @@ export async function reviewRefund(params: {
   return { success: true, message: `Demande ${action === 'approve' ? 'approuvée' : 'refusée'} (mode local)` };
 }
 
-/**
- * Récupération de l'ensemble des billets d'un utilisateur (détenus + achetés pour des tiers + reçus en cadeau)
- */
 export async function fetchUserTickets(userId: string, userPhone?: string | null, userName?: string | null): Promise<Ticket[]> {
   const localTickets = getLocalStoredTickets(userId);
   const friendGifts = getGiftTicketsForFriend(userPhone, userName);
@@ -550,73 +539,18 @@ export async function fetchUserTickets(userId: string, userPhone?: string | null
     }
   }
 
-  const seen = new Set<string>();
-  const merged: Ticket[] = [];
   const pool = new Map<string, Ticket>();
   for (const ticket of [...dbTickets, ...localTickets, ...friendGifts]) {
     if (ticket?.id && !pool.has(ticket.id)) pool.set(ticket.id, ticket);
   }
-  // Le serveur passe devant le cache. Rust retire les doublons d'id.
   const order = await coreMergeIds(
     dbTickets.map((ticket) => ticket.id),
-    [...localTickets, ...friendGifts].map((ticket) => ticket.id),
-    []
+    [...localTickets, ...friendGifts].map((ticket) => ticket.id)
   );
-  const ordered = order && order.length > 0 ? order : [...pool.keys()];
-  for (const id of ordered) {
-    const ticket = pool.get(id);
-    if (!ticket || seen.has(id)) continue;
-    seen.add(id);
-    merged.push(ticket);
+  const merged: Ticket[] = [];
+  for (const id of order) {
+    const t = pool.get(id);
+    if (t) merged.push(t);
   }
-
-  if (isSupabaseConfigured) {
-    const missingIds = Array.from(
-      new Set(merged.filter((t) => !t.event && t.event_id).map((t) => t.event_id))
-    ).slice(0, 40);
-    if (missingIds.length > 0) {
-      try {
-        const { data: events } = await supabase.from('events').select('*').in('id', missingIds);
-        if (events && events.length > 0) {
-          const byId = new Map(events.map((eventRow) => [eventRow.id as string, eventRow as Event]));
-          for (const t of merged) {
-            if (!t.event && t.event_id && byId.has(t.event_id)) {
-              t.event = byId.get(t.event_id);
-            }
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }
-
   return merged;
-}
-
-export async function setEventStatus(
-  eventId: string,
-  status: Exclude<EventStatus, 'pending'>,
-  reason?: string
-): Promise<void> {
-  const { data, error } = await supabase.rpc('set_event_status', {
-    p_event_id: eventId,
-    p_status: status,
-    p_reason: reason || null,
-  });
-  if (error) throw error;
-  const result = data as { success?: boolean; error?: string };
-  if (!result.success) throw new Error(result.error || 'Transition de statut impossible');
-}
-
-export async function validateTicketQr(
-  qrCode: string,
-  eventId: string
-): Promise<{ success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string }> {
-  const { data, error } = await supabase.rpc('validate_ticket_qr', {
-    p_qr_code: qrCode,
-    p_event_id: eventId,
-  });
-  if (error) throw error;
-  return data as { success: boolean; error?: string; message?: string; ticket?: unknown; participant_name?: string };
 }
