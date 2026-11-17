@@ -68,3 +68,5 @@ Rendre le backend cohérent, sûr et bien rangé sans rien casser.
 ## Tâches À faire
 
 - [Automatisation client / PROJECT_MEMORY] 2026-11-16 : Le planificateur client de rappels 24h/2h respecte désormais `event_reminders` (commit 2a8a5c8 sur main). Vérifier la cohérence avec l'Edge Function `event-reminders` (pas de doublon de logique, mêmes fenêtres de temps si applicable). Aucun problème détecté côté client.
+- [Automatisation frontend / FRONTEND-iA] 2026-11-17 : EmptyState thématisé clair/sombre (commit be1a869). Vérification visuelle requise sur 320–414px (clair/sombre). Aucun changement backend.
+- [Automatisation frontend] 2026-11-17 : Incident d'écriture sur FRONTEND_MEMORY.md (placeholders via connecteur). Restauration à faire depuis le blob sain du commit be1a869. Aucun impact code.
