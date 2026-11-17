@@ -78,17 +78,7 @@ export function FeaturedCarousel({
     setCurrentIndex((prev) => (prev - 1 + total) % total);
   }, [total]);
 
-  // Preload all featured event images into memory to completely eliminate black flashes on transitions
-  useEffect(() => {
-    if (featuredList.length === 0 || typeof window === 'undefined') return;
-    featuredList.forEach((ev) => {
-      const url = ev.cover_url || ev.images?.[0];
-      if (url) {
-        const img = new Image();
-        img.src = url;
-      }
-    });
-  }, [featuredList]);
+  // SmartImage charge déjà la couverture visible en priorité; évite de télécharger d'avance toute la liste.
 
   // Auto-scroll loop
   useEffect(() => {
