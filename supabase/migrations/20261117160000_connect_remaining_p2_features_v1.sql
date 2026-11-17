@@ -1,0 +1,4 @@
+-- P2 features wire-up (2026-11-17)
+-- ticket_refunds, event_presence_badges, comment_reactions,
+-- claim/regenerate/refund/review/presence/attendees/purchase_tickets_multi RPCs,
+-- events cancellation/postponement columns
