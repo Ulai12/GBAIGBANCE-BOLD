@@ -1,15 +1,23 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import type { 
-  Ticket, 
-  TicketOption, 
-  TicketType, 
-  EventStatus, 
+import type {
+  Ticket,
+  TicketOption,
+  TicketType,
   PaymentProvider,
   Event,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
 import { coreMergeIds, coreSignTicket } from '@/lib/rust-core';
 export { coreFinancialFees, coreStock } from '@/lib/rust-core';
+import {
+  rpcClaimTicketByToken,
+  rpcCompletePresenceChallenge,
+  rpcInitiateTicketPayment,
+  rpcPurchaseTicketsMulti,
+  rpcRegenerateClaimLink,
+  rpcRequestTicketRefund,
+  rpcReviewRefund,
+} from './rpc';
 
 export const LOCAL_TICKETS_KEY = 'gba_user_tickets';
 
@@ -181,17 +189,10 @@ export async function bookTicket(
   return { success: false, error: res.error || 'Erreur réservation' };
 }
 
-function isMissingRpcError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const anyErr = err as { code?: string; message?: string; details?: string };
-  if (anyErr.code === 'PGRST202' || anyErr.code === '42883') return true;
-  const msg = ((anyErr.message || '') + ' ' + (anyErr.details || '')).toLowerCase();
-  return msg.includes('schema cache') || msg.includes('could not find the function');
-}
-
 /**
- * Gratuit → purchase_tickets_multi (emission immediate).
- * Payant → initiate_ticket_payment uniquement ; billets apres webhook confirm.
+ * Gratuit → purchase_tickets_multi.
+ * Payant → initiate_ticket_payment (billets apres webhook).
+ * Erreurs normalisees via src/lib/rpcErrors.ts
  */
 export async function purchaseTicketsMulti(params: {
   eventId: string;
@@ -214,6 +215,7 @@ export async function purchaseTicketsMulti(params: {
     claim_token?: string;
   }>;
   error?: string;
+  code?: string;
 }> {
   const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId, buyerName } = params;
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
@@ -221,100 +223,54 @@ export async function purchaseTicketsMulti(params: {
 
   if (isSupabaseConfigured) {
     if (!userId || userId.startsWith('guest-')) {
-      return { success: false, error: 'Connectez-vous pour réserver un billet.' };
+      return { success: false, error: 'Connectez-vous pour réserver un billet.', code: 'AUTH_REQUIRED' };
     }
 
     if (unitPrice > 0) {
-      try {
-        const { data, error } = await supabase.rpc('initiate_ticket_payment', {
-          p_event_id: eventId,
-          p_ticket_option_id: ticketOptionId,
-          p_quantity: Math.max(1, recipients.length),
-          p_provider: paymentProvider || 'pending',
-          p_payment_phone: paymentPhone || null,
-          p_idempotency_key: null,
-          p_fee_payer: null,
-        });
-        if (error) {
-          return { success: false, error: error.message || 'Impossible d’initier le paiement.' };
-        }
-        const result = data as {
-          success?: boolean;
-          error?: string;
-          payment_id?: string;
-          amount_charged_xof?: number;
-          amount_face_xof?: number;
-          message?: string;
-        } | null;
-        if (!result?.success || !result.payment_id) {
-          return { success: false, error: result?.error || 'Initiation de paiement refusee.' };
-        }
-        // Pas de succes billet tant que le webhook n a pas confirme
-        return {
-          success: false,
-          payment_id: result.payment_id,
-          amount_xof: Number(result.amount_charged_xof ?? result.amount_face_xof) || amountXof,
-          tickets: [],
-          error:
-            'Paiement initié. Confirmez sur Mobile Money — les billets seront émis uniquement après confirmation serveur.',
-        };
-      } catch (err: unknown) {
-        return {
-          success: false,
-          error: err instanceof Error ? err.message : 'Erreur lors de l’initiation du paiement.',
-        };
-      }
-    }
-
-    try {
-      const { data, error } = await supabase.rpc('purchase_tickets_multi', {
-        p_event_id: eventId,
-        p_ticket_option_id: ticketOptionId,
-        p_recipients: recipients.map((r) => ({
-          recipient_name: r.recipient_name,
-          recipient_phone: r.recipient_phone || null,
-          recipient_user_id: r.recipient_user_id || null,
-          is_for_me: Boolean(r.is_for_me),
-        })),
-        p_payment_provider: 'free',
-        p_payment_phone: paymentPhone || null,
-        p_buyer_name: buyerName || null,
+      const res = await rpcInitiateTicketPayment({
+        eventId,
+        ticketOptionId,
+        quantity: Math.max(1, recipients.length),
+        provider: paymentProvider || 'pending',
+        paymentPhone,
       });
-      if (error) {
-        return { success: false, error: error.message || 'La réservation n’a pas pu être enregistrée.' };
-      }
-      const result = data as {
-        success?: boolean;
-        error?: string;
-        amount_xof?: number;
-        tickets?: Array<{
-          ticket_id: string;
-          qr_code: string;
-          is_for_me: boolean;
-          recipient_name?: string;
-          claim_token?: string;
-        }>;
-      } | null;
-      if (!result?.success || !result.tickets?.length) {
-        return { success: false, error: result?.error || 'Le serveur n’a pas confirmé la création des billets.' };
-      }
-      return {
-        success: true,
-        amount_xof: Number(result.amount_xof) || 0,
-        tickets: result.tickets,
-      };
-    } catch (err: unknown) {
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Erreur lors de la réservation serveur.',
+        payment_id: res.payment_id,
+        amount_xof: res.amount_xof ?? amountXof,
+        tickets: [],
+        error: res.error,
+        code: res.code,
       };
     }
+
+    const res = await rpcPurchaseTicketsMulti({
+      eventId,
+      ticketOptionId,
+      recipients,
+      paymentPhone,
+      buyerName,
+    });
+    if (res.success) {
+      return {
+        success: true,
+        amount_xof: res.amount_xof,
+        tickets: res.tickets,
+      };
+    }
+    return {
+      success: false,
+      error: res.error,
+      code: res.code,
+    };
   }
 
   if (unitPrice > 0) {
     return {
       success: false,
-      error: 'Les achats payants nécessitent une connexion au service de paiement. Aucun billet en attente fictif n’a été créé.',
+      error:
+        'Les achats payants nécessitent une connexion au service de paiement. Aucun billet en attente fictif n’a été créé.',
+      code: 'NETWORK',
     };
   }
 
@@ -329,7 +285,7 @@ export async function purchaseTicketsMulti(params: {
     const qr = signed.qr_payload;
     const token = r.is_for_me ? undefined : Math.random().toString(36).slice(2, 16);
 
-    const targetUserId = r.is_for_me ? userId : (r.recipient_user_id || '');
+    const targetUserId = r.is_for_me ? userId : r.recipient_user_id || '';
     const ticket: Ticket = {
       id: tId,
       event_id: eventId,
@@ -395,12 +351,14 @@ export function getGiftTicketsForFriend(phone?: string | null, name?: string | n
     const raw = localStorage.getItem('gba_gift_registry') || '[]';
     const list: Ticket[] = JSON.parse(raw);
     return list.filter((t) => {
-      const matchPhone = phone && t.recipient_phone && (
-        t.recipient_phone.replace(/\s+/g, '') === phone.replace(/\s+/g, '')
-      );
-      const matchName = name && t.recipient_name && (
-        t.recipient_name.trim().toLowerCase() === name.trim().toLowerCase()
-      );
+      const matchPhone =
+        phone &&
+        t.recipient_phone &&
+        t.recipient_phone.replace(/\s+/g, '') === phone.replace(/\s+/g, '');
+      const matchName =
+        name &&
+        t.recipient_name &&
+        t.recipient_name.trim().toLowerCase() === name.trim().toLowerCase();
       return matchPhone || matchName;
     });
   } catch {
@@ -408,36 +366,24 @@ export function getGiftTicketsForFriend(phone?: string | null, name?: string | n
   }
 }
 
-export async function claimTicketByToken(rawToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+export async function claimTicketByToken(
+  rawToken: string
+): Promise<{ success: boolean; message?: string; error?: string; code?: string }> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('claim_ticket_by_token', {
-        p_raw_claim_token: rawToken,
-      });
-      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
-      if (data) return data as { success: boolean; message?: string; error?: string };
-    } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la réclamation' };
-      }
-    }
+    const res = await rpcClaimTicketByToken(rawToken);
+    if (res.success) return { success: true, message: res.message };
+    return { success: false, error: res.error, code: res.code };
   }
   return { success: true, message: 'Billet réclamé avec succès (mode local) !' };
 }
 
-export async function regenerateClaimLink(ticketId: string): Promise<{ success: boolean; claim_token?: string; error?: string }> {
+export async function regenerateClaimLink(
+  ticketId: string
+): Promise<{ success: boolean; claim_token?: string; error?: string; code?: string }> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('regenerate_claim_link', {
-        p_ticket_id: ticketId,
-      });
-      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
-      if (data) return data as { success: boolean; claim_token?: string; error?: string };
-    } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur' };
-      }
-    }
+    const res = await rpcRegenerateClaimLink(ticketId);
+    if (res.success) return { success: true, claim_token: res.claim_token };
+    return { success: false, error: res.error, code: res.code };
   }
   return { success: true, claim_token: Math.random().toString(36).slice(2, 16) };
 }
@@ -447,50 +393,52 @@ export async function requestTicketRefund(params: {
   reasonDetails?: string;
   refundPhone?: string;
   paymentProvider?: PaymentProvider;
-}): Promise<{ success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string }> {
-  const { ticketId, reasonDetails = '', refundPhone, paymentProvider } = params;
-
+}): Promise<{
+  success: boolean;
+  refund_id?: string;
+  amount_xof?: number;
+  message?: string;
+  error?: string;
+  code?: string;
+}> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('request_ticket_refund', {
-        p_ticket_id: ticketId,
-        p_reason_details: reasonDetails,
-        p_custom_refund_phone: refundPhone || null,
-        p_custom_payment_provider: paymentProvider || null,
-      });
-      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
-      if (data) return data as { success: boolean; refund_id?: string; amount_xof?: number; message?: string; error?: string };
-    } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la demande' };
-      }
+    const res = await rpcRequestTicketRefund(params);
+    if (res.success) {
+      return {
+        success: true,
+        refund_id: res.refund_id,
+        amount_xof: res.amount_xof,
+        message: res.message,
+      };
     }
+    return { success: false, error: res.error, code: res.code };
   }
-
   return { success: true, message: 'Demande de remboursement soumise avec succès (mode local).' };
 }
 
 export async function completePresenceChallenge(params: {
   ticketId: string;
   submittedPattern: string;
-}): Promise<{ success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string }> {
-  const { ticketId, submittedPattern } = params;
-
+}): Promise<{
+  success: boolean;
+  attempts_left?: number;
+  message?: string;
+  error?: string;
+  badge_name?: string;
+  code?: string;
+}> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('complete_presence_challenge', {
-        p_ticket_id: ticketId,
-        p_submitted_pattern: submittedPattern,
-      });
-      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
-      if (data) return data as { success: boolean; attempts_left?: number; message?: string; error?: string; badge_name?: string };
-    } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur de communication avec le serveur' };
-      }
+    const res = await rpcCompletePresenceChallenge(params);
+    if (res.success) {
+      return {
+        success: true,
+        badge_name: res.badge_name,
+        message: res.message,
+        attempts_left: res.attempts_left,
+      };
     }
+    return { success: false, error: res.error, code: res.code };
   }
-
   return { success: true, badge_name: 'Pionnier du Live', message: 'Bravo ! Défi validé en mode local.' };
 }
 
@@ -498,29 +446,23 @@ export async function reviewRefund(params: {
   refundId: string;
   action: 'approve' | 'reject';
   rejectionReason?: string;
-}): Promise<{ success: boolean; message?: string; error?: string }> {
-  const { refundId, action, rejectionReason } = params;
-
+}): Promise<{ success: boolean; message?: string; error?: string; code?: string }> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.rpc('review_refund', {
-        p_refund_id: refundId,
-        p_action: action,
-        p_rejection_reason: rejectionReason || null,
-      });
-      if (error && !isMissingRpcError(error)) return { success: false, error: error.message };
-      if (data) return data as { success: boolean; message?: string; error?: string };
-    } catch (err: unknown) {
-      if (!isMissingRpcError(err)) {
-        return { success: false, error: err instanceof Error ? err.message : 'Erreur lors de la revue' };
-      }
-    }
+    const res = await rpcReviewRefund(params);
+    if (res.success) return { success: true, message: res.message };
+    return { success: false, error: res.error, code: res.code };
   }
-
-  return { success: true, message: `Demande ${action === 'approve' ? 'approuvée' : 'refusée'} (mode local)` };
+  return {
+    success: true,
+    message: `Demande ${params.action === 'approve' ? 'approuvée' : 'refusée'} (mode local)`,
+  };
 }
 
-export async function fetchUserTickets(userId: string, userPhone?: string | null, userName?: string | null): Promise<Ticket[]> {
+export async function fetchUserTickets(
+  userId: string,
+  userPhone?: string | null,
+  userName?: string | null
+): Promise<Ticket[]> {
   const localTickets = getLocalStoredTickets(userId);
   const friendGifts = getGiftTicketsForFriend(userPhone, userName);
   let dbTickets: Ticket[] = [];
