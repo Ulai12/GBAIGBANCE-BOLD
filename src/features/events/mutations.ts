@@ -78,7 +78,6 @@ export async function createEventWithCollaborators(
     throw new Error('Indiquez le numéro WhatsApp pour les réservations.');
   }
 
-  // Dual-write: colonnes natives + meta description (compat lecture ancienne)
   const finalDescription = injectCategoryMeta(
     eventData.description,
     eventData.subcategory,
@@ -99,6 +98,8 @@ export async function createEventWithCollaborators(
       title: eventData.title.trim(),
       description: finalDescription || null,
       category: eventData.category,
+      main_category: eventData.main_category || null,
+      subcategory: eventData.subcategory || null,
       location_name: eventData.location_name || 'Lieu à définir',
       location_address: eventData.location_address || null,
       city: eventData.city,
@@ -127,7 +128,6 @@ export async function createEventWithCollaborators(
   const createdEvent = event as Event | null;
   if (!createdEvent) return null;
 
-  // Options de billets uniquement pour canal interne / free
   if (validTickets.length > 0 && (accessType === 'tickets' || accessType === 'free')) {
     const optionsToInsert = validTickets.map((opt) => ({
       event_id: createdEvent.id,
@@ -221,6 +221,8 @@ export async function updateEventFull(
     title: eventData.title.trim(),
     description: finalDescription || null,
     category: eventData.category,
+    main_category: eventData.main_category || null,
+    subcategory: eventData.subcategory || null,
     location_name: eventData.location_name || 'Lieu à définir',
     location_address: eventData.location_address || null,
     city: eventData.city,
