@@ -20,7 +20,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
-## Tâche active — Explorer par catégorie (proportions responsive)
+## Chantier livré — Explorer par catégorie (proportions responsive)
 
 **Objectif :** équilibrer les six catégories parentes, rendre la grille lisible selon viewport et améliorer les cibles tactiles des sous-catégories sans modifier données ni hiérarchie métier.
 
@@ -30,7 +30,21 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 **Vérifié :** relecture GitHub exacte du fichier post-commit; Vercel preview READY `https://gbaigbance-event-d321hbuau-shogun10.vercel.app`; HTTP 200; CSS déployé contient les variantes de grille, tailles et mouvement réduit.
 **Contrôles locaux (2026-11-17) :** `npm run build` et `npm run typecheck` échouent tous deux car le module `jsqr` importé par `src/components/TicketScannerModal.tsx` n'est pas présent dans `node_modules` (la dépendance est déclarée dans `package.json`; aucun package ni lockfile n'a été modifié). ESLint ciblé sur `src/screens/HomeScreen.tsx` signale une variable `t` inutilisée à la ligne 78, hors du diff de ce chantier. Aucun script de test n'est défini dans `package.json`. La preview Vercel READY et HTTP 200 confirme le déploiement, pas le succès des contrôles locaux.
 **Non vérifié :** capture/rendu visuel aux breakpoints, thème clair/sombre et interaction du rail. Le navigateur CUA a expiré; aucune capture n'était jointe dans ce tour. L'audit UIAudit n'a pas pu s'initialiser (téléchargement du moteur bloqué par réseau); aucun draft Superdesign n'a été créé (CLI bloqué par le réseau; `.superdesign/init` absent).
-**Prochaine étape :** contrôle navigateur/capture à 320, 375, 640, 768, 1024 et 1440px, clair/sombre; vérifier libellés longs, focus, sélection, scroll du rail et absence de débordement.
+**Validation visuelle différée :** contrôle navigateur/capture à 320, 375, 640, 768, 1024 et 1440px, clair/sombre; vérifier libellés longs, focus, sélection, scroll du rail et absence de débordement. La demande élargie du 2026-11-17 ajoute la vérification des fonctionnalités IA, puis l'audit des pages, cartes et modals.
+
+## Tâche active — Fonctionnalités IA partiellement branchées
+
+**Objectif :** rendre effectifs les réglages de réponse visibles dans l’écran IA et faire respecter le choix de partage de localisation sur tous les parcours assistant.
+
+**Livré le 2026-11-17 :** src/services/aiSettings.ts lit les préférences enregistrées au moment de chaque demande. Le réglage shareLocation est respecté par le concierge et les requêtes ponctuelles. src/constants/aiPreferences.ts normalise le style (concis/équilibré/détaillé), la température (0–1,5) et la longueur (256–4096 tokens). Ces valeurs sont envoyées dans aiAssistantService.ts et gemini.ts, puis appliquées côté serveur après validation dans la Supabase Edge Function et le serveur Express local; le proxy Vercel les transmet. Le prompt de vérité événementielle reste commun et inchangé.
+
+**Commits :** 2f9bd6d (lecture du réglage de localisation), 42605f4 (application à l’envoi), 87906335c1046744801e719b47ee1dc64b9d842f (préférences de réponse de bout en bout), tous sur FRONTEND-iA. Aucun PR.
+
+**Vérifié :** relecture GitHub des sept fichiers concernés sur FRONTEND-iA; ESLint ciblé exit 0 (la fonction Edge est ignorée par la config ESLint); TypeScript isolé du normaliseur exit 0; exécution du normaliseur confirme style détaillé et plafonds 1,5 / 4096 pour des entrées hors limites. Preview Vercel du commit 8790633 READY, HTTP 200.
+
+**Blocages / non vérifié :** npm run typecheck et npm run build locaux échouent sur jsqr, absent de node_modules malgré sa déclaration dans package.json; aucune dépendance touchée. Aucun script de test n’existe. Pas de test E2E avec session Gemini réelle; pas de contrôle visuel requis pour ce correctif de transport.
+
+**Prochaine priorité :** vérifier en production les voies IA ponctuelles (/api/ai/generate) et vocale (/live), puis poursuivre l’audit des pages, cartes, modals et performances en ne corrigeant que les défauts reproduits.
 
 ## Tâche active — Feuille de réservation (thème + mobile)
 
