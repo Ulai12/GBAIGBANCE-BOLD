@@ -76,3 +76,24 @@
 - Déploiement de prévisualisation Vercel du commit terminé avec le statut `success` le 17 novembre 2026.
 - Aucun typecheck, lint, test automatisé dédié ni contrôle visuel navigateur n'a été exécuté dans cette session; le déploiement confirme la compilation/déploiement configuré, pas ces contrôles additionnels.
 - Aucune modification de « Explorer par catégorie », du backend ou de `main`; aucun PR n'a été créé pendant cette intervention.
+
+
+## 2026-11-17 — Fluidité du défilement, autoplay et thème système
+### Constats
+- `useScrollGlass` mettait à jour un état `scrollY` à chaque événement de défilement. Sur la fiche événement, seule la bascule de l'en-tête après 260 px était nécessaire.
+- Le carrousel vedette continuait son intervalle en arrière-plan et avec la préférence système de réduction des animations.
+- Le thème persisté était appliqué, mais une première visite sans choix enregistré démarrait toujours en clair et ne suivait pas un changement du thème système.
+
+### Interventions
+- Le hook de défilement ne met désormais à jour React que lorsque le seuil franchit; la parallaxe CSS existante reste indépendante et planifiée avec `requestAnimationFrame`.
+- L'en-tête compact de la fiche événement utilise ce seuil de 260 px.
+- L'autoplay du carrousel s'arrête lorsque l'onglet est masqué, lorsque l'utilisateur réduit les animations ou pendant une interaction; il reprend lorsqu'il est pertinent.
+- Sans préférence enregistrée, le thème initial reprend le réglage système et suit ses changements. Le bouton de thème existant constitue le choix manuel et le conserve.
+- Fichiers modifiés : `src/hooks/useScrollGlass.ts`, `src/screens/EventDetailScreen.tsx`, `src/components/FeaturedCarousel.tsx`, `src/contexts/AppContext.tsx`.
+- Commit direct sur `FRONTEND-iA` : `ec8509da0d7eb858cd64509fff145125d43e3db6`. La section « Explorer par catégorie » n'a pas été modifiée.
+
+### Vérification et limites
+- Déploiement Vercel du commit : état `READY`.
+- L'URL de preview est protégée et a redirigé le navigateur vers la connexion Vercel; aucun rendu visuel n'a donc été confirmé.
+- Pas de typecheck, lint ou tests automatisés exécutés; l'état `READY` confirme le build/déploiement configuré, pas ces contrôles supplémentaires.
+- Aucun changement sur `main`; aucun PR créé ou fusionné pendant cette intervention.
