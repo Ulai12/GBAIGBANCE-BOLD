@@ -20,6 +20,17 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
 - Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
 
+## Tâche active — Explorer par catégorie (proportions responsive)
+
+**Objectif :** équilibrer les six catégories parentes, rendre la grille lisible selon viewport et améliorer les cibles tactiles des sous-catégories sans modifier données ni hiérarchie métier.
+
+**Livré le 2026-11-17 :** `src/screens/HomeScreen.tsx`. Grille explicite 2/3/6 colonnes (mobile/tablette/desktop) qui évite les lignes 5+1 liées aux largeurs maximales implicites; section centrée, largeur plafonnée à 1320px. Cartes parentes compactées (min-height 56/60/64px, croissance naturelle si le libellé se replie), labels 11/12px et respect de `prefers-reduced-motion`. Rail des sous-catégories à 44px, labels 11px. `MAIN_CATEGORIES` contient actuellement six catégories. Aucune donnée, logique de filtrage ou API changée.
+
+**Commit :** `4c245cf5724c64364ce713691c4701bf7ff66493` sur `FRONTEND-iA`.
+**Vérifié :** relecture GitHub exacte du fichier post-commit; Vercel preview READY `https://gbaigbance-event-d321hbuau-shogun10.vercel.app`; HTTP 200; CSS déployé contient les variantes de grille, tailles et mouvement réduit.
+**Non vérifié :** capture/rendu visuel aux breakpoints, thème clair/sombre et interaction du rail. Le navigateur CUA a expiré; aucune capture n'était jointe dans ce tour. Pas de dépendances locales (`node_modules` absent), donc pas de typecheck, lint ou tests locaux. L'audit UIAudit n'a pas pu s'initialiser (téléchargement du moteur bloqué par réseau); aucun draft Superdesign n'a été créé (CLI bloqué par le réseau; `.superdesign/init` absent).
+**Prochaine étape :** contrôle navigateur/capture à 320, 375, 640, 768, 1024 et 1440px, clair/sombre; vérifier libellés longs, focus, sélection, scroll du rail et absence de débordement.
+
 ## Tâche active — Feuille de réservation (thème + mobile)
 
 **Objectif :** la feuille d'achat de billet (pass, cadeau, quantité, Mobile Money T-Money/Flooz, succès) suit le thème clair/sombre du verre liquide, sans zoom iOS sur les champs.
@@ -129,7 +140,7 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 0. P0 — Fusion `main` → `FRONTEND-iA` toujours bloquée (essai 2026-11-16, annulé, rien poussé). Conflits : `server.ts`, `src/main.tsx`, `vite.config.ts`, `FRONTEND_MEMORY.md`. `main` a 4 commits non intégrés (`fd7d25b`, `ffe871c`, `080f3e4`, `6f0b94f`). Ne pas trancher `server.ts` sans le propriétaire.
 1. P0 — Décision propriétaire sur le conflit `server.ts` avant toute fusion de `main` (`ffe871c`, `fd7d25b`). Ne pas réintroduire ni supprimer la route Express sans cet arbitrage.
 2. P2 — Contrôler visuellement les capsules de création/édition (320–414px, focus, navigation clavier, rail après changement de parent) sur preview/appareil.
-3. P2 — Vérifier les capsules accueil à 36px sur preview/appareil; décider ensuite du passage à 44px.
+3. P2 — Vérifier visuellement la nouvelle grille 2/3/6 et les capsules accueil à 44px sur preview/appareil (320–1440px, clair/sombre); contrôle visuel non exécuté le 2026-11-17.
 4. P2 — Dock mobile, safe areas iOS, réduction de transparence.
 5. P3 — États vides, chargement, erreur et hors-ligne du portefeuille et de la recherche quand le catalogue répond.
 
@@ -326,3 +337,12 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - Après le commit réservation `276f1f1`, deux commits ont remplacé `src/screens/TicketsScreen.tsx` par `PLACEHOLDER_TO_BE_REPLACED` (26 octets, `9f5d0ee`) puis `RESTORING_FROM_LOCAL` (20 octets, `d3c4fa9`).
 - Restauration depuis le blob sain de `276f1f1` (19523 octets) par commit git, pas par le connecteur. Relecture distante à faire.
 
+
+
+### 2026-11-17 — Explorer par catégorie : grille responsive et densité
+- `src/screens/HomeScreen.tsx` : remplacer flex-wrap + max-widths concurrents par une grille 2/3/6 colonnes aux breakpoints mobile/tablette/desktop; cela garde les six catégories actuelles sur 3/2/1 rangées équilibrées. Conteneur centré, max-width 1320px; cartes min-height 56/60/64px, extensibles selon le wrapping, labels 11/12px. Sous-catégories en cibles 44px et typographie 11px; focus et identité/couleurs préservés; transition des cartes désactivée pour `prefers-reduced-motion`.
+- Commit direct `4c245cf5724c64364ce713691c4701bf7ff66493` sur `FRONTEND-iA`; aucune autre branche ni PR.
+- Vercel preview du commit READY (HTTP 200); CSS servi vérifié pour les classes `grid-cols-2`, `sm:grid-cols-3`, `lg:grid-cols-6`, `min-h-14`, `min-h-11` et `motion-reduce`.
+- Non vérifié : capture visuelle navigateur/appareil et test d'interaction; CUA timeout. Pas de typecheck/lint/tests locaux (`node_modules` absent); Vercel READY vérifie le build, pas ces contrôles.
+- UIAudit launcher essayé, moteur impossible à télécharger avec le réseau disponible; audit automatique non exécuté. Superdesign absent/non initialisé dans ce worktree; aucun draft affirmé.
+- Prochaine priorité de ce chantier : capture sur 320/375/640/768/1024/1440px en clair/sombre, wrapping, focus, sélection, rail et overflow; puis retour au backlog P2.
