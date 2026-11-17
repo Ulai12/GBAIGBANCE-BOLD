@@ -1,78 +1,78 @@
 # BACKEND_MEMORY.md
 
-Mémoire de travail backend / base / liaisons de GBAIGBANCE-BOLD.  
-Branche d'écriture unique : `FRONTEND-iA`.
+Memoire de travail backend / base / liaisons de GBAIGBANCE-BOLD.  
+Branche d'ecriture unique : `FRONTEND-iA`.
 
-## Tâche active
+## Tache active
 
-Session 2026-11-17 — Alignement des credentials Supabase dans server.ts.
+Session 2026-11-17 (apres-midi) — Fondation paiements billets + commission plateforme.
 
 ## Objectif
 
-Rendre le backend cohérent, sûr et bien rangé sans rien casser.
+Rendre le backend coherent, sur et bien range sans rien casser.
 
 ## Progression
 
-- Terminé :
-  - Correction de DEFAULT_SUPABASE_URL et DEFAULT_SUPABASE_ANON_KEY dans server.ts vers le projet actif lwwiolbofrqakvrdvbbj (GBAIGBANCE EVENTS).
-  - Incident de troncature temporaire via connecteur résolu (commits intermédiaires, restauration via API directe).
-  - Taille fichier préservée (30763 octets).
-- En cours :
-  - Advisors sécurité : RLS sans policy sur event_view_daily et example ; SECURITY DEFINER functions encore exécutables par anon/authenticated (book_ticket, etc.).
-  - DEFAULT_SUPABASE_URL corrigé côté serveur.
+- Termine :
+  - Migration `payments_and_platform_fees_v1` appliquee sur lwwiolbofrqakvrdvbbj.
+  - Tables `platform_settings`, `payments` ; colonnes frais sur `tickets` / `ticket_options`.
+  - RPC `compute_ticket_fees` (XOF entiers) verifiee.
+  - Taux par defaut : Mobile Money 2,5 % + 50 XOF ; carte 3,5 % + 100 XOF ; fee_payer buyer|organizer.
+  - Alignement credentials server.ts (session matin).
+- Non fait (ACTIONS REQUISES) :
+  - Integration reelle TMoney / Flooz / Wave (cles marchand, webhooks).
+  - RPC purchase confirmee apres paiement + emission billet seulement si succeeded.
+  - Dashboard organisateur payout (UI = frontend).
 
-## Fichiers concernés
+## Fichiers concernes
 
-- `server.ts` (commit c7db68ed...)
+- `supabase/migrations/20261117143000_payments_and_platform_fees_v1.sql`
 - `BACKEND_MEMORY.md`
 
-## Dernière action
+## Derniere action
 
-2026-11-17 — Alignement URL/key Supabase dans server.ts + restauration post-troncature.
+2026-11-17 — Migration fees + ledger payments + compute_ticket_fees.
 
-## Prochaine étape
+## Prochaine etape
 
-1. Vérifier les revokes EXECUTE sur les fonctions SECURITY DEFINER (advisors).
-2. Considérer le déplacement de pg_net hors du schéma public.
-3. Tester une liaison front → server.ts → base pour les outils AI.
+1. Edge function `payment-webhook` (signature, idempotence, passage status succeeded, creation tickets).
+2. Etendre `book_ticket` ou creer `initiate_ticket_payment` (cree payments initiated, ne livre pas de billet payant avant webhook).
+3. Brancher front sur `compute_ticket_fees` + affichage frais au checkout (liaison uniquement).
 
-## Vérifications
+## Verifications
 
-- Fichier server.ts relu distant : SHA 1240d3b3..., taille 30763, contient lwwiolbofrqakvrdvbbj.
-- Commit c7db68edf944124e65f28b8e8fdd8200fe971ae8 dans l'historique de la branche.
-- Pas de rétrécissement >20%.
+- compute_ticket_fees(5000, 2, mobile_money, buyer) => face 10000, platform 300, charged 10300, payout 10000. Verifie.
+- Tables payments / platform_settings presentes.
+- Billets gratuits inchanges (book_ticket existant).
 
-## Points d'attention
+## Modele metier (recherche + choix)
 
-- Incident de troncature récurrent avec le connecteur GitHub (placeholders). Utiliser gh API ou push_files avec contenu complet vérifié.
-- server.ts local (FRONTEND-iA) était désynchronisé avec client.ts et le projet actif.
-- Conflit historique avec server.ts sur main (encore qbngq dans certains commits).
+- Eventbrite-like : frais service % + fixe, passables a l'acheteur (defaut) ou absorbables par l'organisateur.
+- Afrique Ouest : Mobile Money ~1–2 % operateur ; commission plateforme cible 2,5 % + 50 XOF (alignee coreFinancialFees client).
+- Montants en entiers XOF. Pas de double debit : payments.idempotency_key + provider_ref uniques.
 
-## ACTIONS REQUISES DU PROPRIÉTAIRE
+## ACTIONS REQUISES DU PROPRIETAIRE
 
-1. Décision sur le conflit `server.ts` (main vs FRONTEND-iA).
-2. Confirmation des variables d'environnement (service role pour les fonctions).
-3. Validation pour durcir davantage les SECURITY DEFINER (revoke EXECUTE anon).
+1. Choisir / ouvrir compte marchand (TMoney, Flooz, Wave ou agregateur type Flutterwave) et fournir secrets hors code.
+2. Valider le taux de commission (actuellement 2,5 % + 50 XOF MM) et si defaut = acheteur paie les frais.
+3. Decision conflit server.ts main vs FRONTEND-iA.
 
 ## Historique
 
-- 2026-11-17 — Alignement credentials Supabase dans server.ts.
-- 2026-11-16 — Job cron rappels configuré.
+- 2026-11-17 — Fondation payments + fees.
+- 2026-11-17 — Alignement credentials server.ts.
+- 2026-11-16 — Job cron rappels.
 
 ## Pour les autres automatisations
 
-- server.ts sur FRONTEND-iA pointe désormais sur https://lwwiolbofrqakvrdvbbj.supabase.co.
-- Edge Functions et client.ts déjà alignés.
-- Assistant IA edge v7 opérationnel ; proxy Vercel `api/ai/assistant/stream.ts` présent sur main, en attente de déploiement pour éviter les 502.
+- Lire `platform_settings` key `ticket_fees` ou RPC `compute_ticket_fees` pour afficher le total checkout.
+- Ne pas marquer un billet payant `active` sans `payments.status = succeeded`.
+- Organisateur : `ticket_options.fee_payer`, `price`, `quantity_*`, `is_active`, fenetres de vente.
 
-## Tâches À faire
+## Cartographie des donnees
 
-- [Automatisation frontend] 2026-11-17 : Incident d'écriture sur FRONTEND_MEMORY.md (placeholders). Restauration à faire (ne pas toucher depuis backend).
-- Vérifier cohérence des appels AI depuis le frontend vers le serveur local/Vercel.
-- [Automatisation développement continu] 2026-11-17 : Confirmer le déploiement de la route Vercel `/api/ai/assistant/stream` (proxy vers edge ai-assistant). Actuellement peut retourner 502 « function not found » tant que non déployée. Le fallback edge direct fonctionne. Source : session développement continu (PROJECT_MEMORY).
-
-## Cartographie des données (rappel)
-
-Tables publiques : artist_follows, artists, event_artists, event_collaborators, event_comments, event_likes, event_live_links, event_questions, event_reactions, event_reports, event_schedule, event_sponsors, event_view_daily, events, example, notifications, organization_follows, organizations, profiles, ticket_options, tickets.
+Tables : ... + **payments**, **platform_settings**.
+Tickets : + payment_id, ticket_option_id, platform_fee_xof, organizer_net_xof, fee_payer.
+Ticket_options : + fee_payer, is_active, sales_start_at, sales_end_at.
 
 Projet Supabase actif : lwwiolbofrqakvrdvbbj.
