@@ -667,7 +667,11 @@ export function HomeScreen({
           Explorer par catégorie
         </h2>
 
-        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label="Catégories principales">
+        <div
+          className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-6 xl:gap-3"
+          role="group"
+          aria-label="Catégories principales"
+        >
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -680,14 +684,25 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-14 w-full max-w-[220px] min-w-0 justify-self-center flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2.5 sm:min-h-[60px] 2xl:min-h-16 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
+                className={`group flex min-h-12 w-full max-w-[280px] min-w-0 items-center justify-self-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
                   isActive
-                    ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
-                    : 'border border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
+                    ? 'border-transparent bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+                    : 'border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 sm:h-[17px] sm:w-[17px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
-                <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                    isActive
+                      ? 'bg-white/15 text-white'
+                      : 'bg-[#6600FF]/10 text-[#6600FF] dark:bg-purple-400/15 dark:text-purple-300'
+                  }`}
+                  aria-hidden="true"
+                >
+                  <Icon className="h-4 w-4" strokeWidth={1.8} />
+                </span>
+                <span className={`min-w-0 flex-1 break-words text-[11px] font-semibold leading-snug sm:text-xs ${
+                  isActive ? 'text-white' : 'text-[#171726] dark:text-white'
+                }`}>
                   {main.shortLabel}
                 </span>
               </button>
@@ -696,41 +711,46 @@ export function HomeScreen({
         </div>
 
         {selectedMainCategory && (
-          <div
-            className="mt-2.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 no-scrollbar"
-            role="group"
-            aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
-          >
-            <button
-              type="button"
-              aria-pressed={selectedCategory === selectedMainCategory.id}
-              onClick={() => setSelectedCategory(selectedMainCategory.id)}
-              className={`min-h-11 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
-                selectedCategory === selectedMainCategory.id
-                  ? 'bg-[#6600FF] text-white'
-                  : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-              }`}
+          <div className="mt-3">
+            <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+              Sous-catégories · {selectedMainCategory.shortLabel}
+            </p>
+            <div
+              className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 no-scrollbar sm:flex-wrap sm:overflow-visible sm:snap-none"
+              role="group"
+              aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
             >
-              Toutes
-            </button>
-            {selectedMainCategory.subcategories.map((sub) => {
-              const isSelected = selectedCategory === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                  className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
-                    isSelected
-                      ? 'bg-[#6600FF] text-white'
-                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-                  }`}
-                >
-                  {sub.shortLabel}
-                </button>
-              );
-            })}
+              <button
+                type="button"
+                aria-pressed={selectedCategory === selectedMainCategory.id}
+                onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                className={`min-h-11 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] sm:snap-none ${
+                  selectedCategory === selectedMainCategory.id
+                    ? 'bg-[#6600FF] text-white'
+                    : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                }`}
+              >
+                Toutes
+              </button>
+              {selectedMainCategory.subcategories.map((sub) => {
+                const isSelected = selectedCategory === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                    className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] sm:snap-none ${
+                      isSelected
+                        ? 'bg-[#6600FF] text-white'
+                        : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                    }`}
+                  >
+                    {sub.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </section>
