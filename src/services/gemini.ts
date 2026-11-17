@@ -164,6 +164,6 @@ export async function askGeminiAssistant(
     throw new Error(err.error || `Erreur serveur (${res.status})`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur de communication avec l’assistant';
-    return { text: `Désolé, une erreur est survenue : ${msg}` };
+    throw new Error(msg);
   }
 }
