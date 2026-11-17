@@ -190,8 +190,8 @@ function isMissingRpcError(err: unknown): boolean {
 }
 
 /**
- * Achat multi-billets (pour soi ou pour des amis)
- * Gratuit → purchase_tickets_multi ; payant → initiate_ticket_payment (billets apres webhook)
+ * Gratuit → purchase_tickets_multi (emission immediate).
+ * Payant → initiate_ticket_payment uniquement ; billets apres webhook confirm.
  */
 export async function purchaseTicketsMulti(params: {
   eventId: string;
@@ -249,12 +249,14 @@ export async function purchaseTicketsMulti(params: {
         if (!result?.success || !result.payment_id) {
           return { success: false, error: result?.error || 'Initiation de paiement refusee.' };
         }
+        // Pas de succes billet tant que le webhook n a pas confirme
         return {
-          success: true,
+          success: false,
           payment_id: result.payment_id,
           amount_xof: Number(result.amount_charged_xof ?? result.amount_face_xof) || amountXof,
           tickets: [],
-          error: result.message || 'Paiement initie. Les billets seront emis apres confirmation Mobile Money.',
+          error:
+            'Paiement initié. Confirmez sur Mobile Money — les billets seront émis uniquement après confirmation serveur.',
         };
       } catch (err: unknown) {
         return {
