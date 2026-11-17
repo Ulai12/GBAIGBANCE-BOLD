@@ -97,3 +97,18 @@
 - L'URL de preview est protégée et a redirigé le navigateur vers la connexion Vercel; aucun rendu visuel n'a donc été confirmé.
 - Pas de typecheck, lint ou tests automatisés exécutés; l'état `READY` confirme le build/déploiement configuré, pas ces contrôles supplémentaires.
 - Aucun changement sur `main`; aucun PR créé ou fusionné pendant cette intervention.
+
+
+## 2026-11-17 — Traduction et chargement du carrousel vedette
+### Intervention
+- Le carrousel s'appuie maintenant sur les traductions centralisées pour le badge, le prix d'entrée, l'action de réservation, le libellé accessible et les indicateurs de diapositives.
+- Les dates et montants XOF utilisent la locale française ou anglaise. Les identifiants de catégories connus réutilisent les traductions déjà disponibles.
+- Le fond flouté réutilisait la couverture à sa résolution source et ajoutait une couche GPU floutée. Il a été remplacé par un dégradé statique; la couverture responsive principale et son chargement prioritaire restent en place.
+- Clés ajoutées dans les fichiers d'événements FR/EN; « Explorer par catégorie » reste intacte.
+- Fichiers concernés : `src/components/FeaturedCarousel.tsx`, `src/locales/fr/events.json`, `src/locales/en/events.json`.
+- Commit direct sur `FRONTEND-iA` : `d0d765802d12800fdc6b347317b2f96ac98de78c`.
+
+### Vérification et limites
+- Déploiement Vercel du commit : état `READY`.
+- Test visuel manuel clair/sombre sur la preview mobile effectué après le lot précédent; les réglages et surfaces affichés restent lisibles. Le nouveau carrousel traduit n'a pas encore été inspecté dans la preview de ce commit.
+- Aucun typecheck, lint ou test dédié exécuté. Aucun changement sur `main`, aucun PR créé ou fusionné.
