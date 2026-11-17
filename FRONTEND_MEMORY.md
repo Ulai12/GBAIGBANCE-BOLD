@@ -48,3 +48,14 @@
 - Commit de restauration : `996a6815550895f10b7ab5bcdfee82b9d9a676dd`, directement sur `FRONTEND-iA`; aucun PR.
 - Vérification : le bloc restauré provient exactement du commit de référence. Aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur n'a été exécuté après cette restauration.
 - Prochaine priorité : laisser les cartes de catégorie intactes ; ne les retoucher que sur demande explicite.
+
+
+## 2026-11-17 — Contrôle qualité hors section catégories
+- Demande utilisateur : poursuivre le contrôle responsive/qualité sans toucher à « Explorer par catégorie ». Gel confirmé : aucun fichier source de cette section, aucune carte parent/enfant, aucun style, dimension, espacement, breakpoint, libellé ou comportement de catégorie n'a été modifié pendant cette session.
+- Branche vérifiée : `FRONTEND-iA` existe ; HEAD observé avant cette note : `86df65016a7db8caade02ddd3682d28abd25d728`.
+- Déploiement Vercel associé au commit de restauration source `996a6815550895f10b7ab5bcdfee82b9d9a676dd` : `READY`. Logs : Vite 8.3.7, 3 291 modules transformés, build Vite terminé en 6,43 s, PWA 63 entrées précachées, 14 fichiers preview synchronisés. Statut Vercel du HEAD mémoire `86df65016a7db8caade02ddd3682d28abd25d728` : success ; déploiement associé : `READY`.
+- Limite importante de l'environnement : le dépôt contient `bun.lock` mais pas de `package-lock.json`. Le build Vercel observé a utilisé Bun 1.4.4 et a généré son lockfile dans l'environnement de build. Conformément à la règle npm-only (et à l'interdiction de créer/modifier des lockfiles), aucun `npm install`, `bun install` ou contournement de lockfile n'a été tenté. `npm ci`, `npm run typecheck` et `npm run lint` n'ont donc pas pu être exécutés dans un environnement propre ; typecheck et lint restent non vérifiés.
+- Contrôle visuel multi-viewport non effectué : l'extension navigateur n'était pas accessible depuis cette session. Aucun résultat de test visuel n'est revendiqué.
+- Audit source exploratoire limité aux composants non-catégorie de l'accueil (EventCard, FeaturedCarousel, TrendingDeck, NearbyEventTile, BottomNav et App). Aucun défaut visuel certain ne justifiait une modification sans rendu navigateur réel ; aucun code source n'a été modifié.
+- Aucun PR, aucun changement de branche, aucun changement backend/API.
+- Prochaine étape recommandée : obtenir un environnement de test autorisé avec dépendances installées selon le workflow npm du projet (sans créer de lockfile), puis faire les contrôles visuels sur les sections non-catégorie uniquement. La section catégories reste gelée sauf demande explicite.
