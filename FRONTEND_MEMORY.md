@@ -110,5 +110,5 @@
 
 ### Vérification et limites
 - Déploiement Vercel du commit : état `READY`.
-- Test visuel manuel clair/sombre sur la preview mobile effectué après le lot précédent; les réglages et surfaces affichés restent lisibles. Le nouveau carrousel traduit n'a pas encore été inspecté dans la preview de ce commit.
+- Contrôle visuel manuel de la preview mobile après ce commit : carrousel affiché en français puis en anglais; badge, date, montant XOF, réservation, libellé accessible et indicateurs de diapositives traduits/formattés; affichage clair et sombre vérifiés. Langue française rétablie après vérification. Le navigateur a été redirigé depuis l'onboarding vers l'accueil avant le contrôle.
 - Aucun typecheck, lint ou test dédié exécuté. Aucun changement sur `main`, aucun PR créé ou fusionné.
