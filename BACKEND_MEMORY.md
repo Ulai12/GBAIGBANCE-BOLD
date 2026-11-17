@@ -63,11 +63,13 @@ Rendre le backend cohérent, sûr et bien rangé sans rien casser.
 
 - server.ts sur FRONTEND-iA pointe désormais sur https://lwwiolbofrqakvrdvbbj.supabase.co.
 - Edge Functions et client.ts déjà alignés.
+- Assistant IA edge v7 opérationnel ; proxy Vercel `api/ai/assistant/stream.ts` présent sur main, en attente de déploiement pour éviter les 502.
 
 ## Tâches À faire
 
 - [Automatisation frontend] 2026-11-17 : Incident d'écriture sur FRONTEND_MEMORY.md (placeholders). Restauration à faire (ne pas toucher depuis backend).
 - Vérifier cohérence des appels AI depuis le frontend vers le serveur local/Vercel.
+- [Automatisation développement continu] 2026-11-17 : Confirmer le déploiement de la route Vercel `/api/ai/assistant/stream` (proxy vers edge ai-assistant). Actuellement peut retourner 502 « function not found » tant que non déployée. Le fallback edge direct fonctionne. Source : session développement continu (PROJECT_MEMORY).
 
 ## Cartographie des données (rappel)
 
