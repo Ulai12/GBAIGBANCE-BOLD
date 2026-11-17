@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { streamAIAssistant, type AIAssistantMessage } from '@/services/aiAssistantService';
 import { supabase } from '@/infrastructure/supabase';
 import { useApp } from '@/hooks/useApp';
+import { shouldShareLocationWithAssistant } from '@/services/aiSettings';
 import type { Event } from '@/types';
 
 // ====================================================================
@@ -157,7 +158,10 @@ export function useAIAssistant() {
 
       // Injection de la position si le GPS réel est consenti et actif
       const gpsLocation =
-        userLocation?.isActual && typeof userLocation.latitude === 'number'
+        shouldShareLocationWithAssistant() &&
+        userLocation?.isActual &&
+        typeof userLocation.latitude === 'number' &&
+        typeof userLocation.longitude === 'number'
           ? { lat: userLocation.latitude, lng: userLocation.longitude }
           : null;
 
