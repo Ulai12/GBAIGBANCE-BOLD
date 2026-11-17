@@ -477,12 +477,12 @@ export function EventDetailScreen({
   const showCompactHeader = scrollY > 260;
 
   return (
-    <div className="min-h-screen relative bg-[#f4f1ff] dark:bg-[#0c0a14] text-[#1A1A2E] dark:text-white antialiased selection:bg-[#6600FF]/20">
+    <div className="min-h-screen relative bg-[#f7f5f0] dark:bg-[#141216] text-[#242126] dark:text-white antialiased selection:bg-[#6600FF]/20">
       {/* 
         AMBIENT BACKGROUND (Statique, très flouté, optimisé mobile)
         Fournit la radiance colorimétrique de l'affiche sans saccade matérielle.
       */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden select-none bg-[#f4f1ff] dark:bg-[#0c0a14]">
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden select-none bg-[#f7f5f0] dark:bg-[#141216]">
         <img
           src={coverImage}
           alt=""
@@ -490,7 +490,7 @@ export function EventDetailScreen({
           className="w-full h-full object-cover scale-140 filter blur-[56px] saturate-[1.3] opacity-35 dark:opacity-20 transform-gpu"
         />
         {/* Voile de thème préservant la lisibilité stricte WCAG AA */}
-        <div className="absolute inset-0 bg-[#f4f1ff]/90 dark:bg-[#0c0a14]/94" />
+        <div className="absolute inset-0 bg-[#f7f5f0]/90 dark:bg-[#141216]/94" />
       </div>
 
       {/* 

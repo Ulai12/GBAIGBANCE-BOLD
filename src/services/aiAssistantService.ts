@@ -60,6 +60,34 @@ async function parseSseResponse(
   const decoder = new TextDecoder();
   let buffer = '';
   let verifiedEventIds: string[] = [];
+  const processLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data:')) return false;
+
+    const dataStr = trimmed.slice(5).trim();
+    if (!dataStr || dataStr === '[DONE]') return false;
+
+    try {
+      const data = JSON.parse(dataStr) as Record<string, unknown>;
+      if (typeof data.text === 'string' && data.text) {
+        callbacks.onChunk(data.text);
+      } else if (typeof data.chunk === 'string' && data.chunk) {
+        callbacks.onChunk(data.chunk);
+      }
+
+      const ids = extractEventIds(data);
+      if (ids.length > 0) verifiedEventIds = ids;
+
+      if (typeof data.error === 'string' && data.error) {
+        callbacks.onError(data.error);
+        return true;
+      }
+    } catch {
+      if (!dataStr.startsWith('{')) callbacks.onChunk(dataStr);
+    }
+
+    return false;
+  };
 
   try {
     while (true) {
@@ -72,34 +100,12 @@ async function parseSseResponse(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-        const dataStr = trimmed.slice(5).trim();
-        if (!dataStr || dataStr === '[DONE]') continue;
-
-        try {
-          const data = JSON.parse(dataStr) as Record<string, unknown>;
-          if (typeof data.text === 'string' && data.text) {
-            callbacks.onChunk(data.text);
-          } else if (typeof data.chunk === 'string' && data.chunk) {
-            callbacks.onChunk(data.chunk);
-          }
-
-          const ids = extractEventIds(data);
-          if (ids.length > 0) verifiedEventIds = ids;
-
-          if (typeof data.error === 'string' && data.error) {
-            callbacks.onError(data.error);
-            return;
-          }
-        } catch {
-          if (!dataStr.startsWith('{')) {
-            callbacks.onChunk(dataStr);
-          }
-        }
+        if (processLine(line)) return;
       }
     }
+
+    buffer += decoder.decode();
+    if (processLine(buffer)) return;
   } finally {
     reader.releaseLock();
   }
@@ -155,6 +161,15 @@ export async function streamAIAssistant(
     return () => {};
   }
 
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 60_000);
+  const reportTimeout = () => {
+    if (timedOut) callbacks.onError('La réponse de l’assistant prend trop de temps. Réessaie dans un instant.');
+  };
+
   (async () => {
     const sanitizedLocation = sanitizeLocation(options.userLocation ?? null);
 
@@ -201,6 +216,10 @@ export async function streamAIAssistant(
           response = null;
         }
       } catch (err) {
+        if (controller.signal.aborted) {
+          reportTimeout();
+          return;
+        }
         lastError = err instanceof Error ? err.message : 'Edge IA inaccessible';
         response = null;
       }
@@ -227,6 +246,10 @@ export async function streamAIAssistant(
               return;
             }
           } catch (err) {
+            if (controller.signal.aborted) {
+              reportTimeout();
+              return;
+            }
             lastError = err instanceof Error ? err.message : lastError || 'Proxy API inaccessible';
           }
         }
@@ -242,11 +265,17 @@ export async function streamAIAssistant(
         await parseJsonResponse(response, callbacks);
       } else {
         await parseSseResponse(response, callbacks, controller.signal);
+        reportTimeout();
       }
     } catch (err: unknown) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        reportTimeout();
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : 'Erreur inattendue';
       callbacks.onError(errorMsg);
+    } finally {
+      clearTimeout(timeoutId);
     }
   })();
 

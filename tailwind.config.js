@@ -25,15 +25,15 @@ export default {
           dark:  '#1A0040',
         },
         surface: {
-          bg:    '#EDE8FF',
+          bg:    '#F7F5F0',
           card:  '#FFFFFF',
           dark:  '#1A1A2E',
           darker:'#0D1117',
         },
       },
       fontFamily: {
-        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        display: ['Manrope', '-apple-system', 'system-ui', 'sans-serif'],
+        sans: ['Archivo', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        display: ['Archivo', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         '4xl': '2rem',

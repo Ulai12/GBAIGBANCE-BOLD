@@ -1,15 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --bg: #f4f1ff;
-    --bg-2: #efe7ff;
-    --safe-area-bg: #efe7ff;
-    --bg-3: #f9f7ff;
+    --bg: #f7f5f0;
+    --bg-2: #efede6;
+    --safe-area-bg: #f7f5f0;
+    --bg-3: #fbfaf7;
     --card: rgba(255, 255, 255, 0.72);
     --card-solid: #FFFFFF;
     --card-dark: #191b2d;
@@ -18,13 +16,13 @@
     --purple-3: #a78dfa;
     --purple-light: #f1ebff;
     --purple-muted: #d7c8ff;
-    --text: #171726;
-    --text-soft: #4d4d5d;
-    --text-muted: #7b7e8f;
+    --text: #242126;
+    --text-soft: #57515a;
+    --text-muted: #817b83;
     --text-on-dark: #FFFFFF;
     --border: rgba(102, 0, 255, 0.12);
 
-    --glass-intensity: 1;
+    --glass-intensity: 0.72;
     --glass-blur: calc(14px * var(--glass-intensity));
     --glass-saturate: calc(100% + 60% * var(--glass-intensity));
 
@@ -37,21 +35,21 @@
   }
 
   .dark {
-    --bg: #0c0a14;
-    --bg-2: #141022;
-    --safe-area-bg: #141022;
-    --bg-3: #08070d;
-    --card: rgba(26, 22, 41, 0.75);
-    --card-solid: #1b162b;
-    --card-dark: #120e20;
+    --bg: #141216;
+    --bg-2: #1c191f;
+    --safe-area-bg: #141216;
+    --bg-3: #100e12;
+    --card: rgba(35, 31, 38, 0.82);
+    --card-solid: #231f26;
+    --card-dark: #171419;
     --purple: #7a1aff;
     --purple-2: #8b5cf6;
     --purple-3: #c4b5fd;
     --purple-light: rgba(122, 26, 255, 0.18);
     --purple-muted: rgba(196, 181, 253, 0.25);
-    --text: #F4F3F8;
-    --text-soft: #D1CFDB;
-    --text-muted: #9490A5;
+    --text: #f4f0f4;
+    --text-soft: #d3cbd5;
+    --text-muted: #a69da9;
     --text-on-dark: #FFFFFF;
     --border: rgba(196, 181, 253, 0.14);
 
@@ -73,10 +71,7 @@
     -webkit-text-size-adjust: 100%;
     /* La safe area iOS reprend la même teinte que le départ du fond de l'app. */
     background-color: var(--safe-area-bg);
-    background-image:
-      radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.16), transparent 35%),
-      radial-gradient(circle at 85% 85%, rgba(96, 165, 250, 0.12), transparent 35%),
-      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background-image: linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
     background-repeat: no-repeat;
     min-height: 100%;
   }
@@ -88,28 +83,31 @@
 
   body {
     background-color: var(--safe-area-bg);
-    background:
-      radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.16), transparent 35%),
-      radial-gradient(circle at 85% 85%, rgba(96, 165, 250, 0.12), transparent 35%),
-      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background: var(--bg);
     background-repeat: no-repeat;
     color: var(--text);
-    font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100dvh;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   .dark body {
     background-color: var(--safe-area-bg);
-    background:
-      radial-gradient(circle at 15% 15%, rgba(122, 26, 255, 0.15), transparent 35%),
-      radial-gradient(circle at 85% 85%, rgba(79, 70, 229, 0.12), transparent 35%),
-      linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background: var(--bg);
     background-repeat: no-repeat;
   }
+
+  h1, h2, h3 {
+    font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  h1, h2 { font-weight: 700; }
+  h3 { font-weight: 600; }
 
   #root {
     min-height: 100dvh;
@@ -167,69 +165,65 @@
   .card {
     background: #FFFFFF;
     border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 20px rgba(76, 29, 149, 0.04);
+    border-radius: 1.125rem;
+    box-shadow: 0 2px 12px rgba(37, 28, 42, 0.035);
     transform: translateZ(0);
   }
   .dark .card {
-    background: linear-gradient(145deg, rgba(49, 39, 75, 0.72), rgba(20, 17, 34, 0.76));
-    border: 1px solid rgba(221, 214, 254, 0.14);
-    border-top-color: rgba(255, 255, 255, 0.24);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 14px 34px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(22px) saturate(155%);
-    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    background: var(--card-solid);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
     transform: translateZ(0);
   }
   .card-dark {
     background: linear-gradient(180deg, rgba(25, 27, 45, 0.94), rgba(17, 19, 31, 0.9));
     border: 1px solid rgba(169, 151, 255, 0.16);
-    border-radius: 1.75rem;
+    border-radius: 1.25rem;
     overflow: hidden;
-    box-shadow: 0 18px 42px rgba(20, 14, 42, 0.22);
+    box-shadow: 0 12px 28px rgba(20, 14, 42, 0.16);
   }
 
   .glass-surface,
   .glass {
-    background: linear-gradient(135deg, rgba(255,255,255,0.44), rgba(255,255,255,0.18));
-    border: 1px solid rgba(255,255,255,0.55);
-    box-shadow: 0 14px 34px rgba(78, 44, 116, 0.11), inset 0 1px 0 rgba(255,255,255,0.75);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(36, 33, 38, 0.08);
+    box-shadow: 0 8px 20px rgba(37, 28, 42, 0.045);
+    backdrop-filter: blur(calc(var(--glass-blur) * 0.65));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.65));
   }
 
   .glass-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.44), rgba(255,255,255,0.18));
-    border: 1px solid rgba(255,255,255,0.55);
-    box-shadow: 0 14px 34px rgba(78,44,116,0.11), inset 0 1px 0 rgba(255,255,255,0.75);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(36, 33, 38, 0.08);
+    box-shadow: 0 8px 20px rgba(37, 28, 42, 0.045);
+    backdrop-filter: blur(calc(var(--glass-blur) * 0.65));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.65));
   }
   .glass-strong {
-    background: rgba(255,255,255,0.68);
-    border: 1px solid rgba(255,255,255,0.82);
-    box-shadow: 0 18px 42px rgba(76,29,149,0.14), inset 0 1px 0 rgba(255,255,255,0.85);
-    backdrop-filter: blur(24px) saturate(1.2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(36, 33, 38, 0.08);
+    box-shadow: 0 10px 24px rgba(37, 28, 42, 0.06);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   /* Dark Liquid Glass — matériaux partagés pour toutes les cartes et surfaces. */
   .dark .glass-surface,
   .dark .glass,
   .dark .glass-card {
-    background: linear-gradient(145deg, rgba(67, 52, 99, 0.62), rgba(24, 20, 40, 0.72));
-    border-color: rgba(221, 214, 254, 0.16);
-    border-top-color: rgba(255, 255, 255, 0.24);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 38px rgba(0, 0, 0, 0.30);
-    backdrop-filter: blur(22px) saturate(160%);
-    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    background: rgba(39, 35, 43, 0.94);
+    border-color: rgba(255, 255, 255, 0.09);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .dark .glass-strong,
   .dark .glass-ios {
-    background: linear-gradient(145deg, rgba(77, 59, 112, 0.72), rgba(28, 23, 47, 0.82));
-    border-color: rgba(221, 214, 254, 0.20);
-    border-top-color: rgba(255, 255, 255, 0.30);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 42px rgba(0, 0, 0, 0.34);
+    background: rgba(39, 35, 43, 0.96);
+    border-color: rgba(255, 255, 255, 0.10);
+    border-top-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
   }
 
   .dark .form-surface,
@@ -395,7 +389,7 @@
   .text-purple { color: #6600FF; }
   .bg-purple-brand { background: #6600FF; }
   .border-purple-brand { border-color: #6600FF; }
-  .bg-lavender { background: #EDE8FF; }
+  .bg-lavender { background: #efede6; }
   .dark .bg-lavender { background: #161224; }
   .squircle { border-radius: 1.5rem; } /* fallback pour les navigateurs sans corner-shape */
   .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -529,21 +523,19 @@
 /* Matériau Verre Standard iOS */
 .glass-ios {
   background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-top-color: rgba(255, 255, 255, 0.75);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 12px 36px rgba(26, 26, 46, 0.08);
-  border-radius: 24px;
+  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  border: 1px solid rgba(36, 33, 38, 0.08);
+  box-shadow: 0 8px 20px rgba(37, 28, 42, 0.05);
+  border-radius: 18px;
 }
 
 .dark .glass-ios {
-  background: rgba(26, 22, 46, 0.68);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top-color: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 16px 40px rgba(0, 0, 0, 0.45);
+  background: rgba(39, 35, 43, 0.94);
+  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
 }
 
 /* Boutons circulaires en verre noir iOS / Cards 44px */
@@ -587,22 +579,20 @@
 
 /* Capsule de verre flottante (ex: barre d'achat fixe) */
 .glass-floating-bar {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-top-color: rgba(255, 255, 255, 0.95);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 44px rgba(26, 26, 46, 0.16);
-  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border: 1px solid rgba(36, 33, 38, 0.08);
+  box-shadow: 0 10px 26px rgba(37, 28, 42, 0.08);
+  border-radius: 20px;
 }
 
 .dark .glass-floating-bar {
-  background: rgba(20, 18, 34, 0.88);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-top-color: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 48px rgba(0, 0, 0, 0.6);
+  background: rgba(39, 35, 43, 0.96);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
 }
 
 /* Fallback sans support backdrop-filter */
@@ -616,7 +606,7 @@
   }
   .dark .glass-ios,
   .dark .glass-floating-bar {
-    background: rgba(26, 22, 46, 0.96) !important;
+    background: rgba(39, 35, 43, 0.98) !important;
   }
 }
 
