@@ -37,9 +37,9 @@ Deno.serve(async () => {
       .from('tickets')
       .select('user_id')
       .eq('event_id', ev.id)
-      .eq('status', 'active');
+      .in('status', ['valid', 'active', 'pending']);
 
-    const userIds = [...new Set((tickets || []).map((t) => t.user_id))];
+    const userIds = [...new Set((tickets || []).map((t) => t.user_id).filter(Boolean))];
 
     for (const userId of userIds) {
       const { data: prefs } = await supabase
