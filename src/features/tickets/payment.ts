@@ -5,6 +5,7 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import type { PaymentProvider } from '@/types';
 import { coreFinancialFees, type FinancialFeesResult } from '@/lib/rust-core';
+import { handleRpcResult } from '@/lib/rpcErrors';
 
 export interface TicketFeeQuote {
   currency: string;
@@ -35,6 +36,7 @@ export interface InitiatePaymentResult {
   fees?: TicketFeeQuote;
   message?: string;
   error?: string;
+  code?: string;
   idempotent?: boolean;
 }
 
@@ -73,9 +75,6 @@ function fromCore(res: FinancialFeesResult, quantity: number, feePayer: string):
   };
 }
 
-/**
- * Detail des frais pour affichage checkout (RPC serveur prioritaire).
- */
 export async function fetchTicketFeeQuote(params: {
   unitPriceXof: number;
   quantity?: number;
@@ -103,14 +102,14 @@ export async function fetchTicketFeeQuote(params: {
     }
   }
 
-  const core = await coreFinancialFees(unit, quantity, method === 'free' ? 'free' : method === 'card' ? 'card' : 'mobile_money');
+  const core = await coreFinancialFees(
+    unit,
+    quantity,
+    method === 'free' ? 'free' : method === 'card' ? 'card' : 'mobile_money'
+  );
   return fromCore(core, quantity, feePayer);
 }
 
-/**
- * Initie un paiement pending. Aucun billet emis.
- * Apres succes Mobile Money, le webhook appelle confirm_ticket_payment.
- */
 export async function initiateTicketPayment(params: {
   eventId: string;
   ticketOptionId: string;
@@ -121,7 +120,7 @@ export async function initiateTicketPayment(params: {
   feePayer?: 'buyer' | 'organizer';
 }): Promise<InitiatePaymentResult> {
   if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase non configure' };
+    return { success: false, error: 'Supabase non configuré', code: 'NETWORK' };
   }
 
   const quantity = Math.max(1, Math.min(10, params.quantity ?? 1));
@@ -138,31 +137,53 @@ export async function initiateTicketPayment(params: {
       p_fee_payer: params.feePayer || null,
     });
 
-    if (error) {
-      return { success: false, error: error.message };
+    const parsed = handleRpcResult(error, data, 'Impossible d’initier le paiement.');
+    if ('ok' in parsed && parsed.ok) {
+      const feesRaw = parsed.data.fees;
+      return {
+        success: true,
+        payment_id: typeof parsed.data.payment_id === 'string' ? parsed.data.payment_id : undefined,
+        status: typeof parsed.data.status === 'string' ? parsed.data.status : undefined,
+        provider: typeof parsed.data.provider === 'string' ? parsed.data.provider : undefined,
+        amount_face_xof:
+          typeof parsed.data.amount_face_xof === 'number' ? parsed.data.amount_face_xof : undefined,
+        platform_fee_xof:
+          typeof parsed.data.platform_fee_xof === 'number' ? parsed.data.platform_fee_xof : undefined,
+        amount_charged_xof:
+          typeof parsed.data.amount_charged_xof === 'number'
+            ? parsed.data.amount_charged_xof
+            : undefined,
+        organizer_payout_xof:
+          typeof parsed.data.organizer_payout_xof === 'number'
+            ? parsed.data.organizer_payout_xof
+            : undefined,
+        fee_payer: typeof parsed.data.fee_payer === 'string' ? parsed.data.fee_payer : undefined,
+        currency: typeof parsed.data.currency === 'string' ? parsed.data.currency : 'XOF',
+        quantity: typeof parsed.data.quantity === 'number' ? parsed.data.quantity : quantity,
+        message: typeof parsed.data.message === 'string' ? parsed.data.message : undefined,
+        idempotent: parsed.data.idempotent === true,
+        fees:
+          feesRaw && typeof feesRaw === 'object'
+            ? mapFees(feesRaw as Record<string, unknown>, 'rpc')
+            : undefined,
+      };
     }
 
-    const res = data as InitiatePaymentResult & { fees?: Record<string, unknown> };
-    if (!res?.success) {
-      return { success: false, error: res?.error || 'Initiation refusee' };
-    }
-
-    return {
-      ...res,
-      fees: res.fees ? mapFees(res.fees as Record<string, unknown>, 'rpc') : undefined,
-    };
-  } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Erreur initiation paiement',
+      error: parsed.error,
+      code: parsed.code,
+      payment_id: parsed.payment_id,
     };
+  } catch (err: unknown) {
+    const parsed = handleRpcResult(err, null, 'Erreur initiation paiement');
+    if ('ok' in parsed) {
+      return { success: false, error: 'Erreur initiation paiement' };
+    }
+    return { success: false, error: parsed.error, code: parsed.code };
   }
 }
 
-/**
- * Met a jour une option de billet (orga) : prix, stock, fee_payer, fenetre de vente.
- * Respecte le RLS organisateur existant.
- */
 export async function updateTicketOptionForOrganizer(
   optionId: string,
   patch: Partial<{
@@ -175,13 +196,19 @@ export async function updateTicketOptionForOrganizer(
     sales_start_at: string | null;
     sales_end_at: string | null;
   }>
-): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: false, error: 'Supabase non configure' };
+): Promise<{ success: boolean; error?: string; code?: string }> {
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase non configuré', code: 'NETWORK' };
   try {
     const { error } = await supabase.from('ticket_options').update(patch).eq('id', optionId);
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      const parsed = handleRpcResult(error, null, 'Erreur mise à jour de l’option');
+      if ('ok' in parsed) return { success: false, error: 'Erreur mise à jour de l’option' };
+      return { success: false, error: parsed.error, code: parsed.code };
+    }
     return { success: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Erreur maj option' };
+    const parsed = handleRpcResult(err, null, 'Erreur maj option');
+    if ('ok' in parsed) return { success: false, error: 'Erreur maj option' };
+    return { success: false, error: parsed.error, code: parsed.code };
   }
 }
