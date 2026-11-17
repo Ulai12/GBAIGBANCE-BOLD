@@ -34,17 +34,17 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 
 ## Tâche active — Fonctionnalités IA partiellement branchées
 
-**Objectif :** rendre effectifs les réglages de réponse visibles dans l’écran IA et faire respecter le choix de partage de localisation sur tous les parcours assistant.
+**Objectif :** rendre effectifs les réglages de réponse visibles, respecter le choix de partage de localisation et reconnecter les parcours IA cassés en production.
 
-**Livré le 2026-11-17 :** src/services/aiSettings.ts lit les préférences enregistrées au moment de chaque demande. Le réglage shareLocation est respecté par le concierge et les requêtes ponctuelles. src/constants/aiPreferences.ts normalise le style (concis/équilibré/détaillé), la température (0–1,5) et la longueur (256–4096 tokens). Ces valeurs sont envoyées dans aiAssistantService.ts et gemini.ts, puis appliquées côté serveur après validation dans la Supabase Edge Function et le serveur Express local; le proxy Vercel les transmet. Le prompt de vérité événementielle reste commun et inchangé.
+**Livré le 2026-11-17 :** src/services/aiSettings.ts lit les préférences enregistrées au moment de chaque demande. Le réglage shareLocation est respecté par le concierge et les requêtes ponctuelles. src/constants/aiPreferences.ts normalise le style (concis/équilibré/détaillé), la température (0–1,5) et la longueur (256–4096 tokens). Ces valeurs sont envoyées dans aiAssistantService.ts et gemini.ts, puis appliquées côté serveur après validation dans la Supabase Edge Function et le serveur Express local; le proxy Vercel les transmet. Le prompt de vérité événementielle reste commun et inchangé. Ajout de api/ai/generate.ts : la modale de conseil d’événement relaie sa question à l’Edge Function, demande get_event_details par ID et ignore les détails événementiels reçus du navigateur; les erreurs remontent à l’état d’erreur de la modale.
 
-**Commits :** 2f9bd6d (lecture du réglage de localisation), 42605f4 (application à l’envoi), 87906335c1046744801e719b47ee1dc64b9d842f (préférences de réponse de bout en bout), tous sur FRONTEND-iA. Aucun PR.
+**Commits :** 2f9bd6d (lecture du réglage de localisation), 42605f4 (application à l’envoi), 87906335c1046744801e719b47ee1dc64b9d842f (préférences de réponse), 855e6837667990f62a72012000d1e437a2049df1 (route conseiller événement), tous sur FRONTEND-iA. Aucun PR.
 
-**Vérifié :** relecture GitHub des sept fichiers concernés sur FRONTEND-iA; ESLint ciblé exit 0 (la fonction Edge est ignorée par la config ESLint); TypeScript isolé du normaliseur exit 0; exécution du normaliseur confirme style détaillé et plafonds 1,5 / 4096 pour des entrées hors limites. Preview Vercel du commit 8790633 READY, HTTP 200.
+**Vérifié :** relecture GitHub des fichiers concernés sur FRONTEND-iA; ESLint ciblé exit 0 (la fonction Edge est ignorée par la config); TypeScript isolé du normaliseur exit 0; exécution du normaliseur confirme les plafonds 1,5 / 4096. Test local simulé de api/ai/generate confirme flux SSE, ID événement, transfert du bearer et absence de confiance dans le titre navigateur. Preview Vercel du commit 8790633 READY/HTTP 200; preview du commit 855e683 READY et GET /api/ai/generate renvoie 405 avec Allow: POST, preuve que la route n’est plus 404.
 
 **Blocages / non vérifié :** npm run typecheck et npm run build locaux échouent sur jsqr, absent de node_modules malgré sa déclaration dans package.json; aucune dépendance touchée. Aucun script de test n’existe. Pas de test E2E avec session Gemini réelle; pas de contrôle visuel requis pour ce correctif de transport.
 
-**Prochaine priorité :** vérifier en production les voies IA ponctuelles (/api/ai/generate) et vocale (/live), puis poursuivre l’audit des pages, cartes, modals et performances en ne corrigeant que les défauts reproduits.
+**Prochaine priorité :** le GET /live renvoie la SPA sur la preview (aucune route HTTP visible); vérifier un véritable handshake WebSocket et l’activation Fluid Compute avant d’implémenter le endpoint vocal. Ensuite, poursuivre l’audit ciblé des pages, cartes, modals et performances.
 
 ## Tâche active — Feuille de réservation (thème + mobile)
 
