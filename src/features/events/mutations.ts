@@ -15,6 +15,20 @@ export async function uploadEventImage(file: File, userId: string): Promise<stri
   return data.publicUrl;
 }
 
+function normalizeAccessType(value?: EventAccessType | null): EventAccessType {
+  if (value === 'whatsapp' || value === 'external' || value === 'free' || value === 'tickets') {
+    return value;
+  }
+  return 'tickets';
+}
+
+function normalizeExternalUrl(url?: string | null): string | null {
+  const raw = (url || '').trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
 // ==================== CREATE EVENT WITH COLLABORATORS ====================
 
 export async function createEventWithCollaborators(
@@ -54,18 +68,27 @@ export async function createEventWithCollaborators(
   const validCollaborators = collaborators.filter((c) => c.user_id && c.user_id.trim());
   const validTicketTypes = ['free', 'standard', 'vip', 'vvip'];
   const validTickets = ticketOptions.filter((t) => t.label.trim() && validTicketTypes.includes(t.ticket_type));
-  
-  // Encodage propre des métadonnées (video_url, access_type, whatsapp, external tickets, unlimited) dans la description
+
+  const accessType = normalizeAccessType(eventData.access_type);
+  const externalUrl = normalizeExternalUrl(eventData.external_ticket_url);
+  if (accessType === 'external' && !externalUrl) {
+    throw new Error('Indiquez le lien de billetterie externe.');
+  }
+  if (accessType === 'whatsapp' && !(eventData.whatsapp_number || '').trim()) {
+    throw new Error('Indiquez le numéro WhatsApp pour les réservations.');
+  }
+
+  // Dual-write: colonnes natives + meta description (compat lecture ancienne)
   const finalDescription = injectCategoryMeta(
     eventData.description,
     eventData.subcategory,
     eventData.main_category,
     {
       video_url: eventData.video_url,
-      access_type: eventData.access_type,
+      access_type: accessType,
       whatsapp_number: eventData.whatsapp_number,
       whatsapp_message: eventData.whatsapp_message,
-      external_ticket_url: eventData.external_ticket_url,
+      external_ticket_url: externalUrl,
       unlimited_capacity: eventData.unlimited_capacity,
     }
   );
@@ -91,13 +114,21 @@ export async function createEventWithCollaborators(
       organizer_user_id: organizerUserId,
       created_by_role: eventData.created_by_role,
       status: validCollaborators.length > 0 ? 'pending' : 'published',
+      access_type: accessType,
+      external_ticket_url: externalUrl,
+      whatsapp_number: (eventData.whatsapp_number || '').trim() || null,
+      whatsapp_message: (eventData.whatsapp_message || '').trim() || null,
+      video_url: (eventData.video_url || '').trim() || null,
+      unlimited_capacity: Boolean(eventData.unlimited_capacity),
     })
     .select()
     .maybeSingle();
   if (eventError) throw new Error(eventError.message || "Erreur lors de la création de l'événement");
   const createdEvent = event as Event | null;
   if (!createdEvent) return null;
-  if (validTickets.length > 0) {
+
+  // Options de billets uniquement pour canal interne / free
+  if (validTickets.length > 0 && (accessType === 'tickets' || accessType === 'free')) {
     const optionsToInsert = validTickets.map((opt) => ({
       event_id: createdEvent.id,
       ticket_type: opt.ticket_type,
@@ -163,16 +194,25 @@ export async function updateEventFull(
   if (!eventData.title.trim()) throw new Error('Le titre est obligatoire.');
   if (!eventData.starts_at) throw new Error("La date et l'heure sont obligatoires.");
 
+  const accessType = normalizeAccessType(eventData.access_type);
+  const externalUrl = normalizeExternalUrl(eventData.external_ticket_url);
+  if (accessType === 'external' && !externalUrl) {
+    throw new Error('Indiquez le lien de billetterie externe.');
+  }
+  if (accessType === 'whatsapp' && !(eventData.whatsapp_number || '').trim()) {
+    throw new Error('Indiquez le numéro WhatsApp pour les réservations.');
+  }
+
   const finalDescription = injectCategoryMeta(
     eventData.description,
     eventData.subcategory,
     eventData.main_category,
     {
       video_url: eventData.video_url,
-      access_type: eventData.access_type,
+      access_type: accessType,
       whatsapp_number: eventData.whatsapp_number,
       whatsapp_message: eventData.whatsapp_message,
-      external_ticket_url: eventData.external_ticket_url,
+      external_ticket_url: externalUrl,
       unlimited_capacity: eventData.unlimited_capacity,
     }
   );
@@ -194,6 +234,12 @@ export async function updateEventFull(
     images: eventData.images || [],
     capacity: eventData.unlimited_capacity ? null : (eventData.capacity || null),
     updated_at: new Date().toISOString(),
+    access_type: accessType,
+    external_ticket_url: externalUrl,
+    whatsapp_number: (eventData.whatsapp_number || '').trim() || null,
+    whatsapp_message: (eventData.whatsapp_message || '').trim() || null,
+    video_url: (eventData.video_url || '').trim() || null,
+    unlimited_capacity: Boolean(eventData.unlimited_capacity),
   };
 
   if (eventData.status) {
@@ -211,8 +257,7 @@ export async function updateEventFull(
     throw new Error(updateError.message || "Erreur lors de la mise à jour de l'événement");
   }
 
-  // Sync ticket options if provided
-  if (ticketOptions && Array.isArray(ticketOptions)) {
+  if (ticketOptions && Array.isArray(ticketOptions) && (accessType === 'tickets' || accessType === 'free')) {
     const validTicketTypes = ['free', 'standard', 'vip', 'vvip'];
     const validTickets = ticketOptions.filter((t) => t.label.trim() && validTicketTypes.includes(t.ticket_type));
 
@@ -241,7 +286,6 @@ export async function updateEventFull(
     }
   }
 
-  // Sync collaborators if provided
   if (collaborators && Array.isArray(collaborators) && organizerUserId) {
     const validCollabs = collaborators.filter((c) => c.user_id && c.user_id.trim());
     for (const c of validCollabs) {
@@ -264,7 +308,7 @@ export async function updateEventFull(
     }
   }
 
-  return updated as Event | null;
+  return updated ? hydrateEventCategories(updated as Event) : null;
 }
 
 // ==================== DELETE & CANCEL EVENT ====================
