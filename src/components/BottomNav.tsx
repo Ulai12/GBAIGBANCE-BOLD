@@ -216,7 +216,7 @@ export function BottomNav({
             'relative z-10 mt-0.5 text-[11px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
             isActive
               ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
-              : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300',
+              : 'text-gray-500 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-white',
           ].join(' ')}
         >
           {label}
