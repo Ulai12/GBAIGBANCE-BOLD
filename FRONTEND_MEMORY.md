@@ -38,3 +38,13 @@
 ### Prochaine priorité
 - Vérifier le rendu réel sur mobile étroit, tablette et desktop, notamment les libellés longs, l'alignement des six parents et le retour à la ligne des sous-catégories.
 - Exécuter séparément typecheck, lint et tests ciblés lorsqu'un environnement de test local/CI sera disponible.
+
+
+## 2026-11-17 — Restauration et gel de l'apparence des cartes de catégorie
+- À la demande explicite de l'utilisateur, le bloc complet « Explorer par catégorie » de `src/screens/HomeScreen.tsx` a été restauré à l'identique depuis le commit de référence pré-modification `35d17160d4d90e1d7931762abecb2c95d8ad4565`.
+- Cela rétablit l'apparence verticale originale des cartes (icône au-dessus du libellé), les classes de dimensions/espacements et la grille originale (2 colonnes mobile, 3 à partir de sm, 6 à partir de lg), ainsi que l'affichage original des sous-catégories.
+- Préférence durable : ne plus modifier l'apparence, les proportions, la disposition ou le style des cartes de catégorie ni leur présentation dans « Explorer par catégorie », sauf demande explicite ultérieure de l'utilisateur.
+- Aucun autre parcours, donnée métier, filtrage, backend ou API n'a été modifié.
+- Commit de restauration : `996a6815550895f10b7ab5bcdfee82b9d9a676dd`, directement sur `FRONTEND-iA`; aucun PR.
+- Vérification : le bloc restauré provient exactement du commit de référence. Aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur n'a été exécuté après cette restauration.
+- Prochaine priorité : laisser les cartes de catégorie intactes ; ne les retoucher que sur demande explicite.
