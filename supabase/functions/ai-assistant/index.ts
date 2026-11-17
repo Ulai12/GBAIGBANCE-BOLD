@@ -10,6 +10,10 @@ import {
   VISIBLE_TICKET_STATUSES,
 } from '../_shared/aiCatalog.ts';
 import { AI_SYSTEM_INSTRUCTION } from '../../../src/constants/aiSystemPrompt.ts';
+import {
+  getAIAnswerStyleInstruction,
+  normalizeAIAssistantPreferences,
+} from '../../../src/constants/aiPreferences.ts';
 
 // ====================================================================
 // GBAIGBANCE — EDGE FUNCTION: ASSISTANT IA CONTEXTUEL & SÉCURISÉ
@@ -828,6 +832,8 @@ const handler = async (req: Request): Promise<Response> => {
     // 4. Validation et nettoyage du body
     const rawMessages = Array.isArray(body.messages) ? body.messages : [];
     const rawLocation = body.userLocation;
+    const preferences = normalizeAIAssistantPreferences(body.preferences);
+    const systemInstruction = `${SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
 
     log(reqId, 'BODY', `Received ${rawMessages.length} raw message(s). Has GPS location: ${Boolean(rawLocation)}`);
 
@@ -899,12 +905,12 @@ const handler = async (req: Request): Promise<Response> => {
       const geminiPayload = {
         contents,
         systemInstruction: {
-          parts: [{ text: SYSTEM_INSTRUCTION }],
+          parts: [{ text: systemInstruction }],
         },
         tools: GEMINI_TOOLS,
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 800,
+          temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
         },
       };
 
@@ -987,11 +993,11 @@ const handler = async (req: Request): Promise<Response> => {
     const streamPayload = {
       contents,
       systemInstruction: {
-        parts: [{ text: SYSTEM_INSTRUCTION }],
+        parts: [{ text: systemInstruction }],
       },
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 800,
+        temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
       },
     };
 

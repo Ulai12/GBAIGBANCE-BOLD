@@ -26,6 +26,10 @@ import {
   execRustServer,
   serverNearbyEvents,
 } from './src/server/rustServerCore.ts';
+import {
+  getAIAnswerStyleInstruction,
+  normalizeAIAssistantPreferences,
+} from './src/constants/aiPreferences.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -482,6 +486,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
   res.flushHeaders?.();
 
   const { messages = [], userLocation } = req.body ?? {};
+  const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
+  const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
@@ -525,9 +531,10 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
         model: 'gemini-3.8-flash',
         contents,
         config: {
-          systemInstruction: AI_SYSTEM_INSTRUCTION,
+          systemInstruction,
           tools: GEMINI_TOOLS,
-          temperature: 0.7,
+          temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
         },
       });
 
@@ -590,6 +597,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
 // Endpoint synchrone non-streaming
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
   const { prompt, currentEvent, userLocation } = req.body ?? {};
+  const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
+  const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
@@ -608,9 +617,10 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
       model: 'gemini-3.8-flash',
       contents: fullPrompt,
       config: {
-        systemInstruction: AI_SYSTEM_INSTRUCTION,
+        systemInstruction,
         tools: GEMINI_TOOLS,
-        temperature: 0.7,
+        temperature: preferences.temperature,
+        maxOutputTokens: preferences.maxOutputTokens,
       },
     });
 

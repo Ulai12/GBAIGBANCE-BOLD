@@ -77,6 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = (await readBody(req)) as {
     messages?: Array<{ role?: string; text?: string; content?: string }>;
     userLocation?: { lat?: number; lng?: number } | null;
+    preferences?: unknown;
   };
   const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
   const edgeHeaders: Record<string, string> = {
@@ -91,6 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content: String(m.text || m.content || '').slice(0, 1000),
     })),
     userLocation: body.userLocation || null,
+    preferences: body.preferences || null,
   };
   try {
     const edgeRes = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {

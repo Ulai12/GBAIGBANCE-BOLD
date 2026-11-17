@@ -1,4 +1,5 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
+import { getAIAssistantPreferences } from '@/services/aiSettings';
 
 // ====================================================================
 // GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (EDGE-FIRST + PROXY)
@@ -185,6 +186,7 @@ export async function streamAIAssistant(
           content: m.text.slice(0, 1000),
         })),
         userLocation: sanitizedLocation,
+        preferences: getAIAssistantPreferences(),
       };
 
       let response: Response | null = null;

@@ -7,6 +7,7 @@
 
 import type { Event } from '@/types';
 import { supabase } from '@/infrastructure/supabase';
+import { getAIAssistantPreferences, shouldShareLocationWithAssistant } from '@/services/aiSettings';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -147,9 +148,10 @@ export async function askGeminiAssistant(
       body: JSON.stringify({
         prompt: options.prompt,
         currentEvent: options.currentEvent,
-        userLocation: options.userLocation
+        userLocation: options.userLocation && shouldShareLocationWithAssistant()
           ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
           : null,
+        preferences: getAIAssistantPreferences(),
       }),
     });
 
