@@ -194,7 +194,7 @@ export function SettingsModal({
                       </span>
                     </div>
                     <p className="text-xs text-gray-400">
-                      Gérer la clé API, choix du modèle, concierge & lieux
+                      Choix du modèle Gemini 4, Google Maps Grounding & préférences
                     </p>
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export function SettingsModal({
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">Moteurs & APIs</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Supabase · Gemini 2.5/Flash
+                  Supabase · Gemini 4 · Google Maps
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">

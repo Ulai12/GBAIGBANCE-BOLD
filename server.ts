@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type, Modality } from '@google/genai';
-import type { LiveServerMessage } from '@google/genai';
+import type { Content, LiveServerMessage, Part } from '@google/genai';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import {
@@ -201,15 +201,133 @@ REFUS STRICT DE TOUTE RÉPONSE HORS DES OUTILS FOURNIS :
 3. N'INVENTE, N'ESTIME ET N'APPROXIME JAMAIS d'événement, de prix, de date, d'artiste ou de lieu absent des données d'outils.
 
 SORTIE EN TEXTE PUR ET CARTES :
-N'inclus JAMAIS d'image en markdown (![]) ni de lien web externe (http/https). L'interface affichera automatiquement des cartes interactives pour les événements vérifiés que tu recommandes.
+N'inclus JAMAIS d'image en markdown (![]) ni de lien web externe (http/https). L'interface de l'application affichera automatiquement des cartes interactives pour les événements vérifiés que tu recommandes et les fiches Google Maps officielles issues des données d'ancrage.
+
+LIEUX, ACCÈS & ALENTOURS VIA GOOGLE MAPS :
+Lorsque l'outil Google Maps est actif et que l'utilisateur pose une question pratique sur un lieu réel, un quartier, les accès, le stationnement, les restaurants, bars ou points d'intérêt autour d'un événement, appuie-toi exclusivement sur les résultats retournés par l'outil Google Maps intégré, sans jamais confondre ces lieux avec des événements Gbaigbance absents de 'public.events'.
 
 TON ET STYLE :
 Langue : Français soigné, chaleureux, dynamique et concis.
 Contexte géographique : Lomé et Afrique de l'Ouest, prix en FCFA (XOF).`;
 
-const GEMINI_TOOLS = [
-  {
-    functionDeclarations: [
+const GEMINI_DEFAULT_MODEL = 'gemini-4-hydrogen';
+const GEMINI_FAST_MODEL = 'gemini-3.1-flash-lite';
+const GEMINI_LIVE_MODEL = 'gemini-3.8-live';
+
+interface MapsGroundingPlace {
+  title: string;
+  uri: string;
+  placeId?: string;
+  reviewSnippets?: string[];
+}
+
+function collectMapsGroundingFromCandidate(
+  candidate: unknown,
+  targetMap: Map<string, MapsGroundingPlace>
+): void {
+  if (!candidate || typeof candidate !== 'object') return;
+  const gm = (candidate as { groundingMetadata?: { groundingChunks?: unknown[] } }).groundingMetadata;
+  const chunks = gm?.groundingChunks;
+  if (!Array.isArray(chunks)) return;
+
+  for (const rawChunk of chunks) {
+    if (!rawChunk || typeof rawChunk !== 'object') continue;
+    const maps = (rawChunk as {
+      maps?: {
+        uri?: string;
+        title?: string;
+        placeId?: string;
+        placeAnswerSources?: {
+          reviewSnippets?: Array<string | { content?: string; text?: string; author?: string }>;
+        };
+      };
+    }).maps;
+
+    if (!maps?.uri || typeof maps.uri !== 'string') continue;
+
+    const rawSnippets = maps.placeAnswerSources?.reviewSnippets;
+    const snippets: string[] = Array.isArray(rawSnippets)
+      ? rawSnippets
+          .map((s) => {
+            if (typeof s === 'string') return s.trim();
+            if (s && typeof s === 'object') {
+              return String(s.content || s.text || '').trim();
+            }
+            return '';
+          })
+          .filter(Boolean)
+      : [];
+
+    const existing = targetMap.get(maps.uri);
+    if (existing) {
+      if (snippets.length > 0) {
+        const merged = new Set([...(existing.reviewSnippets || []), ...snippets]);
+        existing.reviewSnippets = Array.from(merged).slice(0, 3);
+      }
+      continue;
+    }
+
+    targetMap.set(maps.uri, {
+      title: String(maps.title || 'Lieu sur Google Maps').trim(),
+      uri: maps.uri,
+      ...(maps.placeId ? { placeId: String(maps.placeId) } : {}),
+      ...(snippets.length > 0 ? { reviewSnippets: snippets.slice(0, 3) } : {}),
+    });
+  }
+}
+
+function parseLatLng(raw: unknown): { latitude: number; longitude: number } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as { lat?: unknown; lng?: unknown; latitude?: unknown; longitude?: unknown };
+  const lat = Number(obj.lat ?? obj.latitude);
+  const lng = Number(obj.lng ?? obj.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    return { latitude: lat, longitude: lng };
+  }
+  return undefined;
+}
+
+function formatGeminiError(err: unknown): { status: number; message: string } {
+  const raw = err instanceof Error ? err.message : String(err || 'Erreur serveur Gemini');
+  const statusObj = err as { status?: number; code?: number };
+  let status = typeof statusObj?.status === 'number' ? statusObj.status : 500;
+  let parsedMessage = raw;
+
+  const tryExtract = (text: string): string | null => {
+    try {
+      const json = JSON.parse(text) as { error?: { code?: number; message?: string; status?: string } };
+      if (json?.error?.code && status === 500) status = json.error.code;
+      if (json?.error?.message) {
+        const inner = json.error.message.trim();
+        if (inner.startsWith('{')) {
+          return tryExtract(inner) || inner;
+        }
+        return inner;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  if (raw.trim().startsWith('{')) {
+    parsedMessage = tryExtract(raw.trim()) || raw;
+  }
+
+  if (status === 429 || raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
+    return {
+      status: 429,
+      message: 'Quota temporaire de l’API Gemini atteint (429). Réessayez dans quelques instants.',
+    };
+  }
+
+  return {
+    status: status >= 400 && status < 600 ? status : 500,
+    message: parsedMessage.slice(0, 300),
+  };
+}
+
+const GEMINI_FUNCTION_DECLARATIONS = [
       {
         name: 'search_events',
         description: 'Recherche des événements publics actifs par mot-clé, catégorie, gratuité ou période.',
@@ -279,8 +397,12 @@ const GEMINI_TOOLS = [
           properties: {},
         },
       },
-    ],
-  },
+];
+
+const GEMINI_TOOLS_STANDARD = [{ functionDeclarations: GEMINI_FUNCTION_DECLARATIONS }];
+const GEMINI_TOOLS_HYBRID = [
+  { googleMaps: {} },
+  { functionDeclarations: GEMINI_FUNCTION_DECLARATIONS },
 ];
 
 async function executeToolCall(
@@ -532,20 +654,27 @@ app.use('/_vercel', (_req: Request, res: Response) => {
 app.get('/api/ai/status', (_req: Request, res: Response) => {
   res.json({
     active: true,
-    model: 'gemini-3.8-flash',
-    liveModel: 'gemini-3.8-live',
+    model: GEMINI_DEFAULT_MODEL,
+    fastModel: GEMINI_FAST_MODEL,
+    liveModel: GEMINI_LIVE_MODEL,
+    mapsGrounding: true,
     provider: 'GoogleGenAI',
   });
 });
 
-// Endpoint de streaming conversationnel (SSE)
+// Endpoint de streaming conversationnel (SSE) avec historique multi-tours et Google Maps Grounding
 app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const { messages = [], userLocation } = req.body ?? {};
+  const {
+    messages = [],
+    userLocation,
+    fastMode = false,
+    useMapsGrounding = true,
+  } = req.body ?? {};
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
@@ -553,32 +682,54 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
     res.end();
     return;
   }
+
   const turnEventIds = new Set<string>();
+  const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+  const resolvedLatLng = parseLatLng(userLocation);
+  const useFast = Boolean(fastMode);
+  const activeModel = useFast ? GEMINI_FAST_MODEL : GEMINI_DEFAULT_MODEL;
+  const enableMaps = !useFast && useMapsGrounding !== false;
 
   try {
-    // Construction de l'historique Gemini
-    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text?: string; functionCall?: unknown; functionResponse?: unknown }> }> = [];
+    const contents: Content[] = [];
 
-    // Contexte initial si fourni
-    if (userLocation?.lat && userLocation?.lng) {
+    if (resolvedLatLng) {
       contents.push({
         role: 'user',
-        parts: [{ text: `[Contexte GPS : lat=${userLocation.lat}, lng=${userLocation.lng}]` }],
+        parts: [{ text: `[Contexte GPS : lat=${resolvedLatLng.latitude}, lng=${resolvedLatLng.longitude}]` }],
       });
       contents.push({
         role: 'model',
-        parts: [{ text: 'Bien noté, je prends en compte votre localisation pour vos sorties.' }],
+        parts: [{ text: 'Bien noté, je prends en compte votre localisation pour vos sorties et les lieux autour.' }],
       });
     }
 
-    for (const msg of messages) {
-      contents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.text || '' }],
-      });
+    if (Array.isArray(messages)) {
+      for (const msg of messages) {
+        if (!msg || typeof msg !== 'object') continue;
+        const textVal = String((msg as { text?: string; content?: string }).text || (msg as { content?: string }).content || '').trim();
+        if (!textVal) continue;
+        contents.push({
+          role: (msg as { role?: string }).role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: textVal }],
+        });
+      }
     }
 
-    // Boucle de dialogue avec résolution des Function Calls
+    if (contents.length === 0) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: 'Aucun message fourni.' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const activeTools = enableMaps ? GEMINI_TOOLS_HYBRID : GEMINI_TOOLS_STANDARD;
+    const toolConfig = enableMaps
+      ? {
+          includeServerSideToolInvocations: true,
+          ...(resolvedLatLng ? { retrievalConfig: { latLng: resolvedLatLng } } : {}),
+        }
+      : undefined;
+
     let iterations = 0;
     const maxIterations = 5;
 
@@ -587,132 +738,352 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
 
       const ai = getAiClient();
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3.8-flash',
+        model: activeModel,
         contents,
         config: {
           systemInstruction: AI_SYSTEM_INSTRUCTION,
-          tools: GEMINI_TOOLS,
-          temperature: 0.7,
+          tools: activeTools,
+          ...(toolConfig ? { toolConfig } : {}),
         },
       });
 
-      let functionCallFound: { name: string; args: Record<string, unknown> } | null = null;
+      const collectedParts: Part[] = [];
+      const pendingCalls: Array<{ id?: string; name: string; args: Record<string, unknown> }> = [];
 
       for await (const chunk of responseStream) {
-        // Envoi des fragments de texte
+        const candidate = chunk.candidates?.[0];
+        collectMapsGroundingFromCandidate(candidate, mapsPlacesMap);
+
+        if (candidate?.content?.parts) {
+          for (const part of candidate.content.parts) {
+            collectedParts.push(part);
+          }
+        }
+
         if (chunk.text) {
           res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk.text })}\n\n`);
         }
 
-        // Détection d'un appel d'outil
         if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-          const fc = chunk.functionCalls[0];
-          functionCallFound = {
-            name: fc.name,
-            args: (fc.args as Record<string, unknown>) || {},
-          };
+          for (const fc of chunk.functionCalls) {
+            if (fc.name) {
+              pendingCalls.push({
+                ...(fc.id ? { id: fc.id } : {}),
+                name: fc.name,
+                args: (fc.args as Record<string, unknown>) || {},
+              });
+            }
+          }
         }
       }
 
-      // Si le modèle a demandé un outil, on l'exécute et on relance la boucle
-      if (functionCallFound) {
-        const { name, args } = functionCallFound;
-        const toolResult = await executeToolCall(name, args, {
-          userId: actor.userId,
-          client: actor.client,
-          userLocation,
-          turnEventIds,
-        });
-
-        contents.push({
+      if (pendingCalls.length > 0) {
+        const modelContent: Content = {
           role: 'model',
-          parts: [{ functionCall: { name, args } }],
-        });
+          parts:
+            collectedParts.length > 0
+              ? collectedParts
+              : pendingCalls.map((fc) => ({
+                  functionCall: { ...(fc.id ? { id: fc.id } : {}), name: fc.name, args: fc.args },
+                })),
+        };
+        contents.push(modelContent);
+
+        const responseParts: Part[] = [];
+        for (const call of pendingCalls) {
+          const toolResult = await executeToolCall(call.name, call.args, {
+            userId: actor.userId,
+            client: actor.client,
+            userLocation: resolvedLatLng
+              ? { lat: resolvedLatLng.latitude, lng: resolvedLatLng.longitude }
+              : null,
+            turnEventIds,
+          });
+          responseParts.push({
+            functionResponse: {
+              ...(call.id ? { id: call.id } : {}),
+              name: call.name,
+              response: { result: toolResult },
+            },
+          });
+        }
 
         contents.push({
           role: 'user',
-          parts: [{ functionResponse: { name, response: toolResult } }],
+          parts: responseParts,
         });
 
         continue;
       }
 
-      // Pas d'appel d'outil, fin du tour
       break;
     }
 
-    // Événement final avec les IDs vérifiés
-    res.write(`event: done\ndata: ${JSON.stringify({ verifiedEventIds: Array.from(turnEventIds) })}\n\n`);
+    const groundingPlaces = Array.from(mapsPlacesMap.values());
+    res.write(
+      `event: done\ndata: ${JSON.stringify({
+        verifiedEventIds: Array.from(turnEventIds),
+        groundingPlaces,
+        model: activeModel,
+      })}\n\n`
+    );
     res.end();
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la génération avec Gemini';
+    const formatted = formatGeminiError(err);
     console.error('[Gemini Stream Error]:', err);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.write(
+      `event: error\ndata: ${JSON.stringify({
+        error: formatted.message,
+        ...(formatted.status === 429 ? { reason: 'quota_exceeded' } : {}),
+      })}\n\n`
+    );
     res.end();
   }
 });
 
-// Endpoint synchrone non-streaming
+// Endpoint synchrone multi-tours (utilisé par EventAIAssistantModal & façades)
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
-  const { prompt, currentEvent, userLocation } = req.body ?? {};
+  const {
+    prompt,
+    history = [],
+    currentEvent,
+    userLocation,
+    fastMode = false,
+    useMapsGrounding = true,
+  } = req.body ?? {};
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
     res.status(429).json({ error: quota.message, reason: quota.reason });
     return;
   }
+
   const turnEventIds = new Set<string>();
+  const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+  const useFast = Boolean(fastMode);
+  const activeModel = useFast ? GEMINI_FAST_MODEL : GEMINI_DEFAULT_MODEL;
+  const enableMaps = !useFast && useMapsGrounding !== false;
+
+  const eventLatLng = currentEvent
+    ? parseLatLng({ lat: currentEvent.latitude, lng: currentEvent.longitude })
+    : undefined;
+  const userLatLng = parseLatLng(userLocation);
+  const retrievalLatLng = eventLatLng || userLatLng;
 
   try {
-    let fullPrompt = prompt || '';
-    if (currentEvent) {
-      fullPrompt = `À propos de l'événement "${currentEvent.title}" (${currentEvent.location_name || ''}, ${currentEvent.city || 'Lomé'}) : ${prompt}`;
+    const contents: Content[] = [];
+
+    if (currentEvent && typeof currentEvent === 'object') {
+      const eventSummary = [
+        `Événement consulté : "${currentEvent.title || ''}"`,
+        currentEvent.id ? `ID : ${currentEvent.id}` : '',
+        currentEvent.category ? `Catégorie : ${currentEvent.category}` : '',
+        currentEvent.starts_at ? `Début : ${currentEvent.starts_at}` : '',
+        currentEvent.location_name ? `Lieu : ${currentEvent.location_name}` : '',
+        currentEvent.location_address ? `Adresse : ${currentEvent.location_address}` : '',
+        currentEvent.city ? `Ville : ${currentEvent.city}` : '',
+        currentEvent.country ? `Pays : ${currentEvent.country}` : '',
+        typeof currentEvent.price_min === 'number'
+          ? `Tarif min : ${currentEvent.price_min} ${currentEvent.currency || 'XOF'}`
+          : '',
+        retrievalLatLng ? `Coordonnées : lat=${retrievalLatLng.latitude}, lng=${retrievalLatLng.longitude}` : '',
+        currentEvent.description ? `Description : ${String(currentEvent.description).slice(0, 600)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
+      contents.push({
+        role: 'user',
+        parts: [{ text: `[Contexte fiche événement Gbaigbance] ${eventSummary}` }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Parfait, je connais la fiche de cet événement et sa localisation exacte pour répondre à vos questions.' }],
+      });
+    } else if (retrievalLatLng) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `[Contexte GPS : lat=${retrievalLatLng.latitude}, lng=${retrievalLatLng.longitude}]` }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Bien noté, je prends en compte votre localisation.' }],
+      });
     }
 
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: fullPrompt,
-      config: {
-        systemInstruction: AI_SYSTEM_INSTRUCTION,
-        tools: GEMINI_TOOLS,
-        temperature: 0.7,
-      },
-    });
+    if (Array.isArray(history)) {
+      for (const h of history) {
+        if (!h || typeof h !== 'object') continue;
+        const msgText = String((h as { text?: string; content?: string }).text || (h as { content?: string }).content || '').trim();
+        if (!msgText) continue;
+        contents.push({
+          role: (h as { role?: string }).role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msgText }],
+        });
+      }
+    }
 
-    // Si function call, l'exécuter une fois
-    let text = response.text || '';
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      const fc = response.functionCalls[0];
-      const toolResult = await executeToolCall(fc.name, (fc.args as Record<string, unknown>) || {}, {
-        userId: actor.userId,
-        client: actor.client,
-        userLocation,
-        turnEventIds,
+    const cleanPrompt = String(prompt || '').trim();
+    if (cleanPrompt) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: cleanPrompt }],
       });
+    }
 
-      const second = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [
-          { role: 'user', parts: [{ text: fullPrompt }] },
-          { role: 'model', parts: [{ functionCall: { name: fc.name, args: fc.args } }] },
-          { role: 'user', parts: [{ functionResponse: { name: fc.name, response: toolResult } }] },
-        ],
+    if (contents.length === 0) {
+      res.status(400).json({ error: 'Prompt manquant.' });
+      return;
+    }
+
+    const activeTools = enableMaps ? GEMINI_TOOLS_HYBRID : GEMINI_TOOLS_STANDARD;
+    const toolConfig = enableMaps
+      ? {
+          includeServerSideToolInvocations: true,
+          ...(retrievalLatLng ? { retrievalConfig: { latLng: retrievalLatLng } } : {}),
+        }
+      : undefined;
+
+    const ai = getAiClient();
+    let finalText = '';
+    let iterations = 0;
+    const maxIterations = 5;
+
+    while (iterations < maxIterations) {
+      iterations++;
+      const response = await ai.models.generateContent({
+        model: activeModel,
+        contents,
         config: {
           systemInstruction: AI_SYSTEM_INSTRUCTION,
+          tools: activeTools,
+          ...(toolConfig ? { toolConfig } : {}),
         },
       });
-      text = second.text || text;
+
+      const candidate = response.candidates?.[0];
+      collectMapsGroundingFromCandidate(candidate, mapsPlacesMap);
+      if (response.text) {
+        finalText = response.text;
+      }
+
+      const functionCalls = response.functionCalls;
+      if (functionCalls && functionCalls.length > 0 && candidate?.content) {
+        contents.push(candidate.content);
+
+        const responseParts: Part[] = [];
+        for (const fc of functionCalls) {
+          if (!fc.name) continue;
+          const toolResult = await executeToolCall(
+            fc.name,
+            (fc.args as Record<string, unknown>) || {},
+            {
+              userId: actor.userId,
+              client: actor.client,
+              userLocation: retrievalLatLng
+                ? { lat: retrievalLatLng.latitude, lng: retrievalLatLng.longitude }
+                : null,
+              turnEventIds,
+            }
+          );
+          responseParts.push({
+            functionResponse: {
+              ...(fc.id ? { id: fc.id } : {}),
+              name: fc.name,
+              response: { result: toolResult },
+            },
+          });
+        }
+
+        contents.push({
+          role: 'user',
+          parts: responseParts,
+        });
+        continue;
+      }
+
+      break;
     }
 
     res.json({
-      text,
+      text: finalText || 'Aucune réponse générée.',
       verifiedEventIds: Array.from(turnEventIds),
+      groundingPlaces: Array.from(mapsPlacesMap.values()),
+      model: activeModel,
     });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erreur serveur';
+    const formatted = formatGeminiError(err);
     console.error('[Gemini Generate Error]:', err);
-    res.status(500).json({ error: errorMsg });
+    res.status(formatted.status).json({ error: formatted.message });
+  }
+});
+
+// Endpoint dédié Google Maps Grounding pour l'explorateur de lieu d'un événement (EventMapPreview)
+app.post('/api/ai/maps-insights', async (req: Request, res: Response) => {
+  const {
+    locationName,
+    locationAddress,
+    city,
+    country,
+    latitude,
+    longitude,
+    focus = 'overview',
+  } = req.body ?? {};
+
+  if (!locationName && !city && (!latitude || !longitude)) {
+    res.status(400).json({ error: 'Informations de lieu insuffisantes.' });
+    return;
+  }
+
+  const actor = await resolveRequestActor(req);
+  const quota = await checkAiQuota(actor, req);
+  if (!quota.allowed) {
+    res.status(429).json({ error: quota.message, reason: quota.reason });
+    return;
+  }
+
+  const retrievalLatLng = parseLatLng({ latitude, longitude });
+  const placeLabel = [locationName, locationAddress, city, country].filter(Boolean).join(', ');
+
+  let focusInstruction =
+    'Donne un aperçu pratique et vérifié de ce lieu et de ses environs immédiats : accès routier, repères pour taxi/zem, stationnement éventuel et 2-3 adresses sympas autour.';
+  if (focus === 'food') {
+    focusInstruction =
+      'Liste 3 à 5 restaurants, maquis, cafés ou bars bien situés et vérifiés sur Google Maps à proximité immédiate pour boire un verre ou dîner avant/après l’événement.';
+  } else if (focus === 'transport') {
+    focusInstruction =
+      'Explique comment rejoindre ce lieu facilement (grands axes, repères connus, dépose taxi ou zémidjan, stationnement et zones de prise en charge autour).';
+  }
+
+  const prompt = `Lieu cible : "${placeLabel}". ${
+    retrievalLatLng ? `(Coordonnées GPS : ${retrievalLatLng.latitude}, ${retrievalLatLng.longitude})` : ''
+  }\n${focusInstruction}`;
+
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: GEMINI_DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Tu es le guide géographique Gbaigbance pour l'Afrique de l'Ouest. Réponds en français clair, structuré et concis en Markdown. Utilise Google Maps pour vérifier tous les noms de lieux, adresses et points d'intérêt réels à proximité. N'invente aucun établissement. N'ajoute pas d'URL brute dans le texte (les liens Google Maps sont affichés automatiquement par l'interface).",
+        tools: [{ googleMaps: {} }],
+        ...(retrievalLatLng ? { toolConfig: { retrievalConfig: { latLng: retrievalLatLng } } } : {}),
+      },
+    });
+
+    const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+    collectMapsGroundingFromCandidate(response.candidates?.[0], mapsPlacesMap);
+
+    res.json({
+      text: response.text || 'Informations de localisation chargées.',
+      groundingPlaces: Array.from(mapsPlacesMap.values()),
+      model: GEMINI_DEFAULT_MODEL,
+    });
+  } catch (err: unknown) {
+    const formatted = formatGeminiError(err);
+    console.error('[Gemini Maps Insights Error]:', err);
+    res.status(formatted.status).json({ error: formatted.message });
   }
 });
 

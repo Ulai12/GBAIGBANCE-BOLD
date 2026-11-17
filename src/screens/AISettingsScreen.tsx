@@ -23,10 +23,8 @@ import { useApp } from '@/hooks/useApp';
    ===================================================================== */
 
 interface AISettings {
-  model: string;
-  temperature: number;
-  maxOutputTokens: number;
-  thinking: 'auto' | 'low' | 'high';
+  model: 'gemini-4-hydrogen' | 'gemini-3.1-flash-lite';
+  enableMapsGrounding: boolean;
   answerStyle: 'concise' | 'balanced' | 'detailed';
   shareLocation: boolean;
 }
@@ -34,23 +32,27 @@ interface AISettings {
 const SETTINGS_KEY = 'gbaigbance_ai_settings_v1';
 
 const DEFAULT_SETTINGS: AISettings = {
-  model: 'gemini-3.8-flash',
-  temperature: 0.7,
-  maxOutputTokens: 2048,
-  thinking: 'auto',
+  model: 'gemini-4-hydrogen',
+  enableMapsGrounding: true,
   answerStyle: 'balanced',
   shareLocation: true,
 };
 
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
-
 function loadSettings(): AISettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    const merged = { ...DEFAULT_SETTINGS, ...(raw ? (JSON.parse(raw) as Partial<AISettings>) : {}) };
-    merged.temperature = clamp(Number(merged.temperature) || 0, 0, 2);
-    merged.maxOutputTokens = clamp(Number(merged.maxOutputTokens) || 2048, 256, 8192);
-    return merged;
+    const parsed = raw ? (JSON.parse(raw) as Partial<AISettings>) : {};
+    const validModel: AISettings['model'] =
+      parsed.model === 'gemini-3.1-flash-lite' ? 'gemini-3.1-flash-lite' : 'gemini-4-hydrogen';
+    return {
+      model: validModel,
+      enableMapsGrounding: parsed.enableMapsGrounding !== false,
+      answerStyle:
+        parsed.answerStyle === 'concise' || parsed.answerStyle === 'detailed'
+          ? parsed.answerStyle
+          : 'balanced',
+      shareLocation: parsed.shareLocation !== false,
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -60,6 +62,7 @@ function saveSettings(patch: Partial<AISettings>): AISettings {
   const next = { ...loadSettings(), ...patch };
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event('gbaigbance_gemini_config_updated'));
   } catch {
     // Session fallback
   }
@@ -69,6 +72,7 @@ function saveSettings(patch: Partial<AISettings>): AISettings {
 function resetSettings(): AISettings {
   try {
     localStorage.removeItem(SETTINGS_KEY);
+    window.dispatchEvent(new Event('gbaigbance_gemini_config_updated'));
   } catch {
     // Ignoré
   }
@@ -135,7 +139,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
   }>({
     loading: true,
     online: false,
-    model: 'gemini-3.8-flash',
+    model: 'gemini-4-hydrogen',
     message: 'Vérification du service serveur...',
   });
 
@@ -147,7 +151,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
     setServerStatus({
       loading: false,
       online: res.success,
-      model: res.model || 'gemini-3.8-flash',
+      model: res.model || 'gemini-4-hydrogen',
       message: res.message,
     });
   };
@@ -261,6 +265,21 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
           </div>
 
           <div className="space-y-1.5">
+            <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Modèle Gemini actif</p>
+            <Segmented<AISettings['model']>
+              value={settings.model}
+              onChange={(v) => update('model', v)}
+              options={[
+                { value: 'gemini-4-hydrogen', label: 'Hydrogen · Maps' },
+                { value: 'gemini-3.1-flash-lite', label: 'Flash Lite · Rapide' },
+              ]}
+            />
+            <p className="text-[11px] text-gray-400 dark:text-zinc-500">
+              Hydrogen combine les outils Gbaigbance et Google Maps Grounding ; Flash Lite privilégie la latence minimale.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
             <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Style des réponses</p>
             <Segmented<AISettings['answerStyle']>
               value={settings.answerStyle}
@@ -273,37 +292,17 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
             />
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Créativité (température)</p>
-              <span className="text-xs font-mono text-[#6600FF] dark:text-[#A855F7]">{settings.temperature.toFixed(1)}</span>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <Sparkles className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Google Maps Grounding en direct</p>
+                <p className="text-[11px] text-gray-400 dark:text-zinc-500">
+                  Enrichit les réponses avec des adresses, avis et liens Google Maps vérifiés.
+                </p>
+              </div>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={1.5}
-              step={0.1}
-              value={settings.temperature}
-              onChange={(e) => update('temperature', Number(e.target.value))}
-              className="w-full accent-[#6600FF]"
-            />
-            <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-              Bas = rigoureux et factuel. Haut = suggestions plus imagées et expressives.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Longueur maximale de réponse</p>
-            <Segmented<string>
-              value={String(settings.maxOutputTokens)}
-              onChange={(v) => update('maxOutputTokens', Number(v))}
-              options={[
-                { value: '512', label: 'Courte' },
-                { value: '1024', label: 'Standard' },
-                { value: '2048', label: 'Longue' },
-                { value: '4096', label: 'Complète' },
-              ]}
-            />
+            <Toggle checked={settings.enableMapsGrounding} onChange={(v) => update('enableMapsGrounding', v)} />
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
@@ -312,7 +311,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
               <div>
                 <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Partager ma position avec l’assistant</p>
                 <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-                  {userLocation ? 'Permet de recommander automatiquement les événements les plus proches de vous.' : 'Position GPS inactive.'}
+                  {userLocation ? 'Permet de recommander automatiquement les événements et lieux les plus proches.' : 'Position GPS inactive.'}
                 </p>
               </div>
             </div>

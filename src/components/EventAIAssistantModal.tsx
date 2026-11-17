@@ -8,10 +8,12 @@ import {
   AlertCircle,
   MapPin,
   RotateCcw,
+  Zap,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { askGeminiAssistant } from '@/services/gemini';
+import { askGeminiAssistant, getGeminiConfig, type MapsGroundingPlace } from '@/services/gemini';
 import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
+import { MapsGroundingLinks } from '@/components/MapsGroundingLinks';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import type { Event } from '@/types';
@@ -29,6 +31,7 @@ interface EventAIMessage {
   role: 'user' | 'assistant';
   text: string;
   timestamp: Date;
+  groundingPlaces?: MapsGroundingPlace[];
 }
 
 export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
@@ -37,7 +40,10 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
   event,
   initialQuestion,
 }) => {
-  const { user, session } = useApp();
+  const { user, session, userLocation } = useApp();
+  const [fastMode, setFastMode] = useState<boolean>(
+    () => getGeminiConfig().model === 'gemini-3.1-flash-lite'
+  );
   const [messages, setMessages] = useState<EventAIMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,7 +69,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
       {
         id: `welcome-${event.id}`,
         role: 'assistant',
-        text: `Bonjour ! Je suis votre conseiller dédié pour **${event.title}** (${event.location_name || event.city || 'Lomé'}).\n\nPosez-moi vos questions sur le lieu, le stationnement, la météo, la tenue conseillée ou les horaires d'accès !`,
+        text: `Bonjour ! Je suis votre conseiller dédié pour **${event.title}** (${event.location_name || event.city || 'Lomé'}).\n\nPosez-moi vos questions sur le lieu, les itinéraires Google Maps, le stationnement, la tenue conseillée ou les adresses autour !`,
         timestamp: new Date(),
       },
     ]);
@@ -71,13 +77,11 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
     setInput('');
   }, [event.id, event.title, event.location_name, event.city]);
 
-  // Réinitialisation lors du changement d'événement ou lors de la connexion / déconnexion
   useEffect(() => {
     resetConversation();
     hasSentInitialRef.current = false;
   }, [event.id, user?.id, session?.user?.id, resetConversation]);
 
-  // Écoute de l'événement global de déconnexion ou connexion pour réinitialiser immédiatement les données de l'IA
   useEffect(() => {
     const handleAuthEvent = () => {
       resetConversation();
@@ -90,47 +94,68 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
     };
   }, [resetConversation]);
 
-  const handleSendMessage = useCallback(async (textToSend: string) => {
-    const cleanText = textToSend.trim();
-    if (!cleanText || loading) return;
+  const handleSendMessage = useCallback(
+    async (textToSend: string) => {
+      const cleanText = textToSend.trim();
+      if (!cleanText || loading) return;
 
-    haptic.selection();
-    setErrorMsg(null);
-    setInput('');
+      haptic.selection();
+      setErrorMsg(null);
+      setInput('');
 
-    const userMessage: EventAIMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text: cleanText,
-      timestamp: new Date(),
-    };
+      const historyPayload = messages
+        .filter((m) => !m.id.startsWith('welcome-') && m.text.trim().length > 0)
+        .slice(-10)
+        .map((m) => ({
+          role: m.role,
+          text: m.text,
+        }));
 
-    setMessages((prev) => [...prev, userMessage]);
-    setLoading(true);
-
-    try {
-      const result = await askGeminiAssistant({
-        prompt: cleanText,
-        currentEvent: event,
-      });
-
-      const assistantMessage: EventAIMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        text: result.text,
+      const userMessage: EventAIMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        text: cleanText,
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      haptic.success();
-    } catch (err: unknown) {
-      const errObj = err as { message?: string };
-      setErrorMsg(errObj?.message || 'Impossible de joindre le conseiller IA.');
-      haptic.error();
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, event]);
+      setMessages((prev) => [...prev, userMessage]);
+      setLoading(true);
+
+      try {
+        const result = await askGeminiAssistant({
+          prompt: cleanText,
+          history: historyPayload,
+          currentEvent: event,
+          userLocation:
+            userLocation?.isActual && typeof userLocation.latitude === 'number'
+              ? { latitude: userLocation.latitude, longitude: userLocation.longitude }
+              : null,
+          fastMode,
+          useMapsGrounding: !fastMode && getGeminiConfig().enableMapsGrounding,
+        });
+
+        const assistantMessage: EventAIMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          text: result.text,
+          timestamp: new Date(),
+          ...(result.groundingPlaces && result.groundingPlaces.length > 0
+            ? { groundingPlaces: result.groundingPlaces }
+            : {}),
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+        haptic.success();
+      } catch (err: unknown) {
+        const errObj = err as { message?: string };
+        setErrorMsg(errObj?.message || 'Impossible de joindre le conseiller IA.');
+        haptic.error();
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, messages, event, userLocation, fastMode]
+  );
 
   // Défilement automatique vers le bas à chaque nouveau message
   useEffect(() => {
@@ -149,8 +174,8 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
 
   const sampleQuestions = [
     "Comment s'y rendre et où se garer ?",
+    "Restaurants & bars sympas autour ?",
     "Quelle tenue est conseillée ?",
-    "Y a-t-il des bars ou restaurants autour ?",
     "Quels sont les horaires d'accès ?",
   ];
 
@@ -178,7 +203,7 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
         </div>
 
         {/* En-tête de la modale */}
-        <div className="px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between bg-white/70 dark:bg-[#181628]/70 backdrop-blur-md shrink-0">
+        <div className="px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between bg-white/70 dark:bg-[#181628]/70 backdrop-blur-md shrink-0 gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#9333EA] flex items-center justify-center text-white shadow-md shadow-[#6600FF]/25 shrink-0">
               <Sparkles className="w-5 h-5" />
@@ -188,9 +213,29 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                 <h3 id="event-ai-modal-title" className="text-sm font-extrabold text-[#17131D] dark:text-white truncate">
                   Conseiller IA de l'événement
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-[#6600FF]/15 text-[#6600FF] dark:text-[#A78BFA] text-[10px] font-black uppercase tracking-wider">
-                  Gemini Live
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setFastMode((prev) => !prev)}
+                  disabled={loading}
+                  title="Basculer entre Gemini 4 Hydrogen + Maps et Gemini 3.1 Flash Lite"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-colors cursor-pointer ${
+                    fastMode
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  }`}
+                >
+                  {fastMode ? (
+                    <>
+                      <Zap className="w-2.5 h-2.5" />
+                      <span>Flash Lite</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-2.5 h-2.5" />
+                      <span>Hydrogen · Maps</span>
+                    </>
+                  )}
+                </button>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-[#6600FF] dark:text-[#A78BFA] shrink-0" />
@@ -235,25 +280,31 @@ export const EventAIAssistantModal: React.FC<EventAIAssistantModalProps> = ({
                   </div>
                 )}
 
-                <div
-                  className={`max-w-[85%] rounded-[1.4rem] px-4 py-3 text-xs sm:text-sm shadow-xs ${
-                    isUser
-                      ? 'bg-[#6600FF] text-white rounded-tr-xs font-medium'
-                      : 'bg-white dark:bg-[#1A1829] text-[#17131D] dark:text-gray-100 border border-black/[0.06] dark:border-white/[0.08] rounded-tl-xs'
-                  }`}
-                >
-                  {isUser ? (
-                    <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                  ) : (
-                    <AIMarkdownRenderer content={m.text} />
-                  )}
-                  <span
-                    className={`block text-[9px] mt-1 font-bold ${
-                      isUser ? 'text-white/70 text-right' : 'text-gray-400 dark:text-gray-500'
+                <div className="max-w-[85%] space-y-2">
+                  <div
+                    className={`rounded-[1.4rem] px-4 py-3 text-xs sm:text-sm shadow-xs ${
+                      isUser
+                        ? 'bg-[#6600FF] text-white rounded-tr-xs font-medium'
+                        : 'bg-white dark:bg-[#1A1829] text-[#17131D] dark:text-gray-100 border border-black/[0.06] dark:border-white/[0.08] rounded-tl-xs'
                     }`}
                   >
-                    {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                    {isUser ? (
+                      <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                    ) : (
+                      <AIMarkdownRenderer content={m.text} />
+                    )}
+                    <span
+                      className={`block text-[9px] mt-1 font-bold ${
+                        isUser ? 'text-white/70 text-right' : 'text-gray-400 dark:text-gray-500'
+                      }`}
+                    >
+                      {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  {!isUser && m.groundingPlaces && m.groundingPlaces.length > 0 && (
+                    <MapsGroundingLinks places={m.groundingPlaces} compact />
+                  )}
                 </div>
               </div>
             );

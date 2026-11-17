@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Copy, Check } from 'lucide-react';
+import {
+  MapPin,
+  Navigation,
+  Copy,
+  Check,
+  Sparkles,
+  Utensils,
+  Compass,
+  Car,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { fetchVenueMapsInsights, type MapsGroundingPlace } from '@/services/gemini';
+import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
+import { MapsGroundingLinks } from '@/components/MapsGroundingLinks';
 
 /**
- * GBAIGBANCE — EventMapPreview (Mini-Carte & Navigation iOS)
- * 
- * Carte interactive avec :
- * - Chargement différé LAZY (IntersectionObserver) pour préserver les performances et la batterie
- * - Marqueur animé pulsant sur le lieu de l'événement
- * - Bouton « Itinéraire » principal violet (#6600FF)
- * - Bouton secondaire « Ouvrir dans Google Maps » en verre
- * - Bouton « Copier » avec retour visuel immédiat (coche émeraude)
+ * GBAIGBANCE — EventMapPreview (Mini-Carte, Navigation iOS & Google Maps Grounding IA)
  */
 
 interface EventMapPreviewProps {
@@ -21,6 +28,8 @@ interface EventMapPreviewProps {
   longitude?: number | null;
 }
 
+type InsightsFocus = 'overview' | 'food' | 'transport';
+
 export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
   locationName,
   locationAddress,
@@ -31,6 +40,13 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [focus, setFocus] = useState<InsightsFocus>('overview');
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [insightsCache, setInsightsCache] = useState<
+    Partial<Record<InsightsFocus, { text: string; places: MapsGroundingPlace[] }>>
+  >({});
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Lazy loading via IntersectionObserver
@@ -52,7 +68,6 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Construction de l'adresse complète
   const fullAddress = [locationName, locationAddress, city, country]
     .filter(Boolean)
     .join(', ');
@@ -79,6 +94,42 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
     }
   };
 
+  const loadMapsInsights = async (targetFocus: InsightsFocus) => {
+    setInsightsOpen(true);
+    setFocus(targetFocus);
+    setInsightsError(null);
+
+    if (insightsCache[targetFocus]) return;
+
+    setInsightsLoading(true);
+    try {
+      const result = await fetchVenueMapsInsights({
+        locationName,
+        locationAddress,
+        city,
+        country,
+        latitude,
+        longitude,
+        focus: targetFocus,
+      });
+      setInsightsCache((prev) => ({
+        ...prev,
+        [targetFocus]: {
+          text: result.text,
+          places: result.groundingPlaces,
+        },
+      }));
+    } catch (err: unknown) {
+      setInsightsError(
+        err instanceof Error ? err.message : 'Impossible de charger les informations Google Maps.'
+      );
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const activeInsight = insightsCache[focus];
+
   return (
     <div ref={containerRef} className="mt-3 space-y-3">
       {/* Zone Graphique de la Mini-Carte vectorielle stylisée */}
@@ -97,15 +148,10 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
             preserveAspectRatio="xMidYMid slice"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Terrain de fond */}
             <rect width="400" height="160" fill="#F3F0FA" />
-
-            {/* Zones de verdure / Parcs */}
             <rect x="20" y="16" width="75" height="46" rx="14" fill="#E2F4E9" opacity="0.85" />
             <rect x="285" y="20" width="100" height="52" rx="16" fill="#E2F4E9" opacity="0.85" />
             <circle cx="95" cy="115" r="26" fill="#E8F6EE" />
-
-            {/* Réseau routier secondaire */}
             <g stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95">
               <line x1="20" y1="40" x2="380" y2="40" />
               <line x1="10" y1="80" x2="390" y2="80" />
@@ -115,8 +161,6 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
               <line x1="250" y1="5" x2="250" y2="155" />
               <line x1="330" y1="5" x2="330" y2="155" />
             </g>
-
-            {/* Voie rapide principale */}
             <g stroke="#DFD7F5" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
               <path d="M195,-10 C198,40 200,80 202,170" />
@@ -125,12 +169,8 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
               <path d="M-10,75 C90,82 130,80 200,80 C270,80 320,74 410,78" />
               <path d="M195,-10 C198,40 200,80 202,170" />
             </g>
-
-            {/* Rond-point central */}
             <circle cx="200" cy="80" r="16" fill="#F4F3F9" stroke="#FFFFFF" strokeWidth="5" />
             <circle cx="200" cy="80" r="16" fill="none" stroke="#6600FF" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
-
-            {/* Bâtiments urbains */}
             <g fill="#D8D3E8" opacity="0.6">
               <rect x="110" y="24" width="24" height="14" rx="3" />
               <rect x="165" y="48" width="22" height="18" rx="3" />
@@ -140,21 +180,17 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
             </g>
           </svg>
         ) : (
-          /* Placeholder statique le temps du chargement IntersectionObserver */
           <div className="w-full h-full bg-gray-100 dark:bg-white/[0.04] flex items-center justify-center animate-pulse">
             <MapPin className="w-6 h-6 text-gray-300 dark:text-gray-600" />
           </div>
         )}
 
-        {/* Dégradé d'ambiance */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10 pointer-events-none" />
 
-        {/* Marqueur central avec radar pulsant */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10">
           <div className="relative flex items-center justify-center">
             <span className="absolute w-12 h-12 rounded-full bg-[#6600FF]/30 animate-ping" />
             <span className="absolute w-8 h-8 rounded-full bg-[#6600FF]/40 animate-pulse" />
-            
             <div className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6600FF] p-0.5 shadow-xl shadow-[#6600FF]/50 flex items-center justify-center text-white ring-2 ring-white">
               <MapPin className="w-5 h-5 fill-white text-white" />
             </div>
@@ -166,13 +202,8 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
         </div>
       </a>
 
-      {/* 
-        Actions épurées : 2 boutons distincts et non redondants (touch target ≥ 44px)
-        1. Itinéraire direct vers Google / Apple Maps
-        2. Copier l'adresse complète dans le presse-papier
-      */}
+      {/* Actions principales */}
       <div className="grid grid-cols-2 gap-2.5 pt-1">
-        {/* Bouton 1 : Itinéraire (Violet #6600FF) */}
         <a
           id="event-map-nav-action"
           href={navigationUrl}
@@ -184,7 +215,6 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
           <span>Itinéraire</span>
         </a>
 
-        {/* Bouton 2 : Copier l'adresse (Verre iOS / feedback coche) */}
         <button
           id="event-map-copy-address"
           type="button"
@@ -205,6 +235,84 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
             </>
           )}
         </button>
+      </div>
+
+      {/* Explorateur Google Maps Grounding */}
+      <div className="pt-1">
+        {!insightsOpen ? (
+          <button
+            type="button"
+            onClick={() => loadMapsInsights('overview')}
+            className="w-full min-h-[40px] px-3.5 py-2 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>Explorer les alentours avec Google Maps IA</span>
+          </button>
+        ) : (
+          <div className="p-3.5 rounded-2xl bg-white/75 dark:bg-[#171426]/85 border border-emerald-500/20 space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Autour de {locationName}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setInsightsOpen(false)}
+                className="text-[11px] font-bold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white cursor-pointer"
+              >
+                Masquer
+              </button>
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'overview' as const, label: 'Aperçu', icon: Compass },
+                { id: 'food' as const, label: 'Restaurants & Bars', icon: Utensils },
+                { id: 'transport' as const, label: 'Accès & Parking', icon: Car },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = focus === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => loadMapsInsights(tab.id)}
+                    disabled={insightsLoading}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                      active
+                        ? 'bg-[#6600FF] text-white shadow-xs'
+                        : 'bg-black/[0.05] dark:bg-white/[0.07] text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {insightsLoading && (
+              <div className="flex items-center gap-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin text-[#6600FF]" />
+                <span>Recherche Google Maps en direct...</span>
+              </div>
+            )}
+
+            {insightsError && (
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{insightsError}</span>
+              </div>
+            )}
+
+            {!insightsLoading && !insightsError && activeInsight && (
+              <div className="space-y-2.5">
+                <AIMarkdownRenderer content={activeInsight.text} />
+                <MapsGroundingLinks places={activeInsight.places} compact />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

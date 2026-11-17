@@ -8,12 +8,18 @@
 import type { Event } from '@/types';
 import { supabase } from '@/infrastructure/supabase';
 
+export interface MapsGroundingPlace {
+  title: string;
+  uri: string;
+  placeId?: string;
+  reviewSnippets?: string[];
+}
+
 export interface GeminiConfig {
   apiKey: string;
   enabled: boolean;
   model: string;
   enableMapsGrounding: boolean;
-  temperature: number;
 }
 
 export interface GeminiModelOption {
@@ -26,11 +32,17 @@ export interface GeminiModelOption {
 
 export const GEMINI_AVAILABLE_MODELS: GeminiModelOption[] = [
   {
-    id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash',
-    badge: 'Serveur Actif',
-    description: 'Modèle officiel ultra-rapide optimisé pour le concierge et la billetterie',
+    id: 'gemini-4-hydrogen',
+    name: 'Gemini 4 Hydrogen',
+    badge: 'Concierge & Maps',
+    description: 'Modèle principal avec Google Maps Grounding et outils temps réel',
     recommended: true,
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash Lite',
+    badge: 'Mode Rapide',
+    description: 'Réponses ultra-rapides pour les questions directes et légères',
   },
   {
     id: 'gemini-3.8-live',
@@ -65,12 +77,27 @@ export function isGeminiActive(): boolean {
 }
 
 export function getGeminiConfig(): GeminiConfig {
+  try {
+    const raw = localStorage.getItem('gbaigbance_ai_settings_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<{ model: string; enableMapsGrounding: boolean }>;
+      const validModel =
+        parsed.model === 'gemini-3.1-flash-lite' ? 'gemini-3.1-flash-lite' : 'gemini-4-hydrogen';
+      return {
+        apiKey: '',
+        enabled: true,
+        model: validModel,
+        enableMapsGrounding: parsed.enableMapsGrounding !== false,
+      };
+    }
+  } catch {
+    // Fallback
+  }
   return {
     apiKey: '',
     enabled: true,
-    model: 'gemini-3.8-flash',
+    model: 'gemini-4-hydrogen',
     enableMapsGrounding: true,
-    temperature: 0.7,
   };
 }
 
@@ -97,10 +124,16 @@ export function clearGeminiLocalConfig(): void {
 }
 
 export async function resolveAvailableGeminiModel(): Promise<string> {
-  return 'gemini-3.8-flash';
+  return getGeminiConfig().model;
 }
 
-export async function testGeminiApiKey(): Promise<{ success: boolean; message: string; model?: string }> {
+export async function testGeminiApiKey(): Promise<{
+  success: boolean;
+  message: string;
+  model?: string;
+  fastModel?: string;
+  mapsGrounding?: boolean;
+}> {
   try {
     const res = await fetch('/api/ai/status');
     if (res.ok) {
@@ -109,6 +142,8 @@ export async function testGeminiApiKey(): Promise<{ success: boolean; message: s
         success: true,
         message: `Service IA serveur opérationnel avec ${data.model} !`,
         model: data.model,
+        fastModel: data.fastModel,
+        mapsGrounding: Boolean(data.mapsGrounding),
       };
     }
     return {
@@ -125,19 +160,29 @@ export async function testGeminiApiKey(): Promise<{ success: boolean; message: s
 
 export interface AskAssistantOptions {
   prompt: string;
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>;
   contextEvents?: Event[];
   currentEvent?: Event;
   userLocation?: { latitude: number; longitude: number } | null;
+  fastMode?: boolean;
+  useMapsGrounding?: boolean;
 }
 
 /**
- * Appelle l'assistant IA serveur et retourne la réponse complète.
+ * Appelle l'assistant IA serveur (multi-tours + Google Maps Grounding) et retourne la réponse complète.
  */
 export async function askGeminiAssistant(
   options: AskAssistantOptions
-): Promise<{ text: string }> {
+): Promise<{
+  text: string;
+  groundingPlaces?: MapsGroundingPlace[];
+  verifiedEventIds?: string[];
+  model?: string;
+}> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
 
@@ -146,22 +191,74 @@ export async function askGeminiAssistant(
       headers,
       body: JSON.stringify({
         prompt: options.prompt,
+        history: options.history || [],
         currentEvent: options.currentEvent,
         userLocation: options.userLocation
           ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
           : null,
+        fastMode: Boolean(options.fastMode),
+        useMapsGrounding: options.useMapsGrounding !== false,
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      return { text: data.text || 'Aucune réponse reçue de l’assistant.' };
+      return {
+        text: data.text || 'Aucune réponse reçue de l’assistant.',
+        groundingPlaces: Array.isArray(data.groundingPlaces) ? data.groundingPlaces : [],
+        verifiedEventIds: Array.isArray(data.verifiedEventIds) ? data.verifiedEventIds : [],
+        model: typeof data.model === 'string' ? data.model : undefined,
+      };
     }
 
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Erreur serveur (${res.status})`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur de communication avec l’assistant';
-    return { text: `Désolé, une erreur est survenue : ${msg}` };
+    return { text: `Désolé, une erreur est survenue : ${msg}`, groundingPlaces: [] };
   }
+}
+
+export interface VenueMapsInsightsParams {
+  locationName: string;
+  locationAddress?: string | null;
+  city: string;
+  country: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  focus?: 'overview' | 'food' | 'transport';
+}
+
+/**
+ * Interroge Gemini 4 Hydrogen avec Google Maps Grounding sur les alentours d'un lieu d'événement.
+ */
+export async function fetchVenueMapsInsights(
+  params: VenueMapsInsightsParams
+): Promise<{
+  text: string;
+  groundingPlaces: MapsGroundingPlace[];
+  model?: string;
+}> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+  const res = await fetch('/api/ai/maps-insights', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Erreur Google Maps IA (${res.status})`);
+  }
+
+  return {
+    text: data.text || 'Aucune information Google Maps disponible pour ce lieu.',
+    groundingPlaces: Array.isArray(data.groundingPlaces) ? data.groundingPlaces : [],
+    model: typeof data.model === 'string' ? data.model : 'gemini-4-hydrogen',
+  };
 }

@@ -99,13 +99,13 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
                 <h3 className="text-sm font-extrabold text-[#1A1A2E] dark:text-white">
                   Conseiller IA de l'événement
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-[#A78BFA] border border-[#6600FF]/20">
-                  Gemini Live
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25">
+                  Gemini 4 · Maps
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span>Accès, stationnement, ambiance & conseils pratiques</span>
+                <span>Accès Google Maps, adresses autour & conseils pratiques</span>
               </p>
             </div>
           </div>

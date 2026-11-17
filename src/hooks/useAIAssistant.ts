@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { streamAIAssistant, type AIAssistantMessage } from '@/services/aiAssistantService';
+import { getGeminiConfig, type MapsGroundingPlace } from '@/services/gemini';
 import { supabase } from '@/infrastructure/supabase';
 import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
@@ -14,17 +15,22 @@ export interface ChatMessage {
   text: string;
   timestamp: Date;
   eventIds?: string[];
+  groundingPlaces?: MapsGroundingPlace[];
+  model?: string;
 }
 
 export function useAIAssistant() {
   const { user, session, userLocation } = useApp();
+  const [fastMode, setFastMode] = useState<boolean>(
+    () => getGeminiConfig().model === 'gemini-3.1-flash-lite'
+  );
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome',
       role: 'assistant',
       text: user
-        ? `Bonjour ${user.name ? user.name.split(' ')[0] : ''} ! Je suis votre concierge Gbaigbance. Envie de sortir ce week-end, de trouver un concert ou de consulter vos billets ?`
-        : 'Bonjour ! Je suis votre concierge Gbaigbance. Quel genre d’événement ou de concert recherchez-vous aujourd’hui ?',
+        ? `Bonjour ${user.name ? user.name.split(' ')[0] : ''} ! Je suis votre concierge Gbaigbance. Envie de sortir ce week-end, de trouver un concert, de repérer des lieux sur Google Maps ou de consulter vos billets ?`
+        : 'Bonjour ! Je suis votre concierge Gbaigbance. Quel genre d’événement, de concert ou d’adresse recherchez-vous aujourd’hui ?',
       timestamp: new Date(),
     },
   ]);
@@ -51,22 +57,20 @@ export function useAIAssistant() {
         id: `welcome-${Date.now()}`,
         role: 'assistant',
         text: activeUser
-          ? `Bonjour ${activeUser.name ? activeUser.name.split(' ')[0] : ''} ! Je suis votre concierge Gbaigbance. Envie de sortir ce week-end, de trouver un concert ou de consulter vos billets ?`
-          : 'Bonjour ! Je suis votre concierge Gbaigbance. Quel genre d’événement ou de concert recherchez-vous aujourd’hui ?',
+          ? `Bonjour ${activeUser.name ? activeUser.name.split(' ')[0] : ''} ! Je suis votre concierge Gbaigbance. Envie de sortir ce week-end, de trouver un concert, de repérer des lieux sur Google Maps ou de consulter vos billets ?`
+          : 'Bonjour ! Je suis votre concierge Gbaigbance. Quel genre d’événement, de concert ou d’adresse recherchez-vous aujourd’hui ?',
         timestamp: new Date(),
       },
     ]);
   }, []);
 
-  // Clé d'authentification unique : tout changement (connexion / déconnexion / changement d'utilisateur) déclenche la purge immédiate
+  // Clé d'authentification unique : tout changement déclenche la purge immédiate
   const authKey = `${user?.id || 'guest'}-${session?.user?.id || 'none'}`;
 
-  // Réinitialisation automatique et immédiate lors du passage invité <-> connecté ou déconnexion
   useEffect(() => {
     resetAllChatData(user);
   }, [authKey, resetAllChatData, user]);
 
-  // Écoute directe des événements système de connexion et déconnexion avec reset à 0ms
   useEffect(() => {
     const handleSignedOut = () => {
       resetAllChatData(null);
@@ -84,7 +88,6 @@ export function useAIAssistant() {
     };
   }, [resetAllChatData, user]);
 
-  // Nettoyage à la fermeture
   useEffect(() => {
     return () => {
       if (abortRef.current) {
@@ -93,7 +96,6 @@ export function useAIAssistant() {
     };
   }, []);
 
-  // Charge les événements retournés par les outils pour afficher des cartes natives sécurisées
   const loadVerifiedEvents = useCallback(async (eventIds: string[]) => {
     if (!eventIds || eventIds.length === 0) return;
 
@@ -136,7 +138,6 @@ export function useAIAssistant() {
         timestamp: new Date(),
       };
 
-      // Message assistant temporaire pour le streaming
       const assistantMsg: ChatMessage = {
         id: assistantMsgId,
         role: 'assistant',
@@ -147,15 +148,14 @@ export function useAIAssistant() {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsLoading(true);
 
-      // Préparation de l'historique récent
       const historyForApi: AIAssistantMessage[] = [...messages, userMsg]
-        .slice(-8)
+        .filter((m) => !m.id.startsWith('welcome') && m.text.trim().length > 0)
+        .slice(-12)
         .map((m) => ({
           role: m.role,
           text: m.text,
         }));
 
-      // Injection de la position si le GPS réel est consenti et actif
       const gpsLocation =
         userLocation?.isActual && typeof userLocation.latitude === 'number'
           ? { lat: userLocation.latitude, lng: userLocation.longitude }
@@ -167,6 +167,8 @@ export function useAIAssistant() {
         {
           messages: historyForApi,
           userLocation: gpsLocation,
+          fastMode,
+          useMapsGrounding: !fastMode && getGeminiConfig().enableMapsGrounding,
         },
         {
           onChunk: (chunk) => {
@@ -180,18 +182,25 @@ export function useAIAssistant() {
               )
             );
           },
-          onDone: (verifiedEventIds) => {
+          onDone: (verifiedEventIds, meta) => {
             setIsLoading(false);
             setIsStreaming(false);
 
+            const places = meta?.groundingPlaces || [];
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      ...(verifiedEventIds.length > 0 ? { eventIds: verifiedEventIds } : {}),
+                      ...(places.length > 0 ? { groundingPlaces: places } : {}),
+                      ...(meta?.model ? { model: meta.model } : {}),
+                    }
+                  : m
+              )
+            );
+
             if (verifiedEventIds.length > 0) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? { ...m, eventIds: verifiedEventIds }
-                    : m
-                )
-              );
               loadVerifiedEvents(verifiedEventIds);
             }
           },
@@ -203,7 +212,6 @@ export function useAIAssistant() {
               setQuotaExceeded(true);
             }
 
-            // Supprime le message assistant vide en cas d'erreur totale
             if (!accumulatedText) {
               setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
             }
@@ -213,7 +221,7 @@ export function useAIAssistant() {
 
       abortRef.current = cancel;
     },
-    [isLoading, isStreaming, messages, userLocation, loadVerifiedEvents]
+    [isLoading, isStreaming, messages, userLocation, fastMode, loadVerifiedEvents]
   );
 
   const clearHistory = useCallback(() => {
@@ -246,5 +254,7 @@ export function useAIAssistant() {
     quotaExceeded,
     verifiedEvents,
     isGuest: !user,
+    fastMode,
+    setFastMode,
   };
 }

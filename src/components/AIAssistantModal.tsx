@@ -15,15 +15,17 @@ import {
   Mic,
   MicOff,
   Volume2,
+  Zap,
 } from 'lucide-react';
 import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
+import { MapsGroundingLinks } from '@/components/MapsGroundingLinks';
 import { useAIAssistant, type ChatMessage } from '@/hooks/useAIAssistant';
 import { useApp } from '@/hooks/useApp';
 import { liveAudioClient } from '@/services/liveAudio';
 import type { Event } from '@/types';
 
 // ====================================================================
-// GBAIGBANCE — COMPOSANT AIAssistantModal (SERVEUR STREAMING & LIVE API)
+// GBAIGBANCE — COMPOSANT AIAssistantModal (STREAMING, MAPS & LIVE API)
 // ====================================================================
 
 interface AIAssistantModalProps {
@@ -37,9 +39,9 @@ interface AIAssistantModalProps {
 
 const QUICK_SUGGESTIONS = [
   'Qu’est-ce qui se passe ce week-end près de moi ?',
+  'Des restaurants ou bars sympas près de Lomé ?',
   'Des concerts gratuits ou abordables ?',
   'Rappelle-moi mes billets actifs',
-  'Quels sont mes événements favoris ?',
 ];
 
 export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
@@ -59,6 +61,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     quotaExceeded,
     verifiedEvents,
     isGuest,
+    fastMode,
+    setFastMode,
   } = useAIAssistant();
 
   const [input, setInput] = useState('');
@@ -160,32 +164,52 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
-        <div className="px-5 py-3.5 bg-gray-50 dark:bg-[#1C1C24] border-b border-black/[0.06] dark:border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#9333EA] flex items-center justify-center shadow-md shadow-[#6600FF]/30">
+        <div className="px-5 py-3.5 bg-gray-50 dark:bg-[#1C1C24] border-b border-black/[0.06] dark:border-white/5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#9333EA] flex items-center justify-center shadow-md shadow-[#6600FF]/30 shrink-0">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-extrabold text-[#17131D] dark:text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="text-sm font-extrabold text-[#17131D] dark:text-white tracking-tight truncate">
                   Concierge Gbaigbance IA
                 </h2>
-                <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                  En ligne
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setFastMode((prev) => !prev)}
+                  disabled={isLoading || isStreaming}
+                  title="Basculer entre Gemini 4 Hydrogen + Maps et Gemini 3.1 Flash Lite (mode rapide)"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors cursor-pointer ${
+                    fastMode
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  }`}
+                >
+                  {fastMode ? (
+                    <>
+                      <Zap className="w-2.5 h-2.5" />
+                      <span>Flash Lite</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-2.5 h-2.5" />
+                      <span>Hydrogen · Maps</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <p className="text-[11px] text-gray-500 dark:text-zinc-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                <span>
+              <p className="text-[11px] text-gray-500 dark:text-zinc-400 flex items-center gap-1 truncate">
+                <MapPin className="w-3 h-3 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">
                   {userLocation?.isActual
-                    ? 'Position GPS active (~1 km)'
-                    : 'Lomé & Togo par défaut'}
+                    ? 'Position GPS active (~1 km) · Google Maps'
+                    : 'Lomé & Togo · Google Maps actif'}
                 </span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Bouton bascule Mode Vocal Live */}
             <button
               type="button"
@@ -361,6 +385,11 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                         })}
                       </div>
                     </div>
+                  )}
+
+                  {/* Lieux vérifiés Google Maps Grounding */}
+                  {!isUser && msg.groundingPlaces && msg.groundingPlaces.length > 0 && (
+                    <MapsGroundingLinks places={msg.groundingPlaces} compact />
                   )}
                 </div>
 

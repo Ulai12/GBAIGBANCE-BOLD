@@ -1,7 +1,8 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
+import type { MapsGroundingPlace } from '@/services/gemini';
 
 // ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (EDGE-FIRST + PROXY)
+// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (STREAMING & MAPS)
 // ====================================================================
 
 export interface AIAssistantMessage {
@@ -9,15 +10,22 @@ export interface AIAssistantMessage {
   text: string;
 }
 
+export interface StreamDoneMeta {
+  groundingPlaces?: MapsGroundingPlace[];
+  model?: string;
+}
+
 export interface StreamCallbacks {
   onChunk: (text: string) => void;
-  onDone: (verifiedEventIds: string[]) => void;
+  onDone: (verifiedEventIds: string[], meta?: StreamDoneMeta) => void;
   onError: (error: string, isQuotaExceeded?: boolean) => void;
 }
 
 export interface SendMessageOptions {
   messages: AIAssistantMessage[];
   userLocation?: { lat: number; lng: number } | null;
+  fastMode?: boolean;
+  useMapsGrounding?: boolean;
 }
 
 function sanitizeLocation(
@@ -29,8 +37,8 @@ function sanitizeLocation(
     typeof userLocation.lng === 'number'
   ) {
     return {
-      lat: Number(userLocation.lat.toFixed(2)),
-      lng: Number(userLocation.lng.toFixed(2)),
+      lat: Number(userLocation.lat.toFixed(4)),
+      lng: Number(userLocation.lng.toFixed(4)),
     };
   }
   return null;
@@ -44,6 +52,14 @@ function extractEventIds(data: Record<string, unknown>): string[] {
     return data.event_ids.filter((id): id is string => typeof id === 'string');
   }
   return [];
+}
+
+function extractGroundingPlaces(data: Record<string, unknown>): MapsGroundingPlace[] {
+  if (!Array.isArray(data.groundingPlaces)) return [];
+  return data.groundingPlaces.filter(
+    (p): p is MapsGroundingPlace =>
+      Boolean(p && typeof p === 'object' && typeof (p as MapsGroundingPlace).uri === 'string')
+  );
 }
 
 async function parseSseResponse(
@@ -60,6 +76,8 @@ async function parseSseResponse(
   const decoder = new TextDecoder();
   let buffer = '';
   let verifiedEventIds: string[] = [];
+  let groundingPlaces: MapsGroundingPlace[] = [];
+  let modelName: string | undefined;
 
   try {
     while (true) {
@@ -89,6 +107,13 @@ async function parseSseResponse(
           const ids = extractEventIds(data);
           if (ids.length > 0) verifiedEventIds = ids;
 
+          const places = extractGroundingPlaces(data);
+          if (places.length > 0) groundingPlaces = places;
+
+          if (typeof data.model === 'string' && data.model) {
+            modelName = data.model;
+          }
+
           if (typeof data.error === 'string' && data.error) {
             callbacks.onError(data.error);
             return;
@@ -104,7 +129,7 @@ async function parseSseResponse(
     reader.releaseLock();
   }
 
-  callbacks.onDone(verifiedEventIds);
+  callbacks.onDone(verifiedEventIds, { groundingPlaces, model: modelName });
 }
 
 async function parseJsonResponse(
@@ -121,7 +146,10 @@ async function parseJsonResponse(
     (typeof data.message === 'string' && data.message) ||
     '';
   if (text) callbacks.onChunk(text);
-  callbacks.onDone(extractEventIds(data));
+  callbacks.onDone(extractEventIds(data), {
+    groundingPlaces: extractGroundingPlaces(data),
+    model: typeof data.model === 'string' ? data.model : undefined,
+  });
 }
 
 async function postAssistant(
@@ -140,9 +168,9 @@ async function postAssistant(
 
 /**
  * Envoie la conversation :
- * 1) Edge Function Supabase `ai-assistant` (chemin principal fiable)
- * 2) `/api/ai-assistant` (proxy Vercel plat, même pattern que api/events.ts)
- * 3) `/api/ai/assistant/stream` (compat Express local / ancien chemin)
+ * 1) `/api/ai/assistant/stream` (serveur Express Gemini 4 + Google Maps Grounding)
+ * 2) Edge Function Supabase `ai-assistant` (repli sans serveur Node local)
+ * 3) `/api/ai-assistant` (repli proxy Vercel plat)
  */
 export async function streamAIAssistant(
   options: SendMessageOptions,
@@ -166,71 +194,87 @@ export async function streamAIAssistant(
       const payload = {
         messages: options.messages.map((m) => ({
           role: m.role,
-          text: m.text.slice(0, 1000),
-          content: m.text.slice(0, 1000),
+          text: m.text.slice(0, 1500),
+          content: m.text.slice(0, 1500),
         })),
         userLocation: sanitizedLocation,
+        fastMode: Boolean(options.fastMode),
+        useMapsGrounding: options.useMapsGrounding !== false,
       };
 
       let response: Response | null = null;
       let lastError = '';
 
-      // 1) Edge Supabase en premier (prod fiable, testé live)
-      const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-      const edgeHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnonKey,
-      };
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session?.access_token) {
-        edgeHeaders.Authorization = `Bearer ${session.access_token}`;
-      } else {
-        edgeHeaders.Authorization = `Bearer ${supabaseAnonKey}`;
+        headers.Authorization = `Bearer ${session.access_token}`;
       }
 
+      // 1) Serveur applicatif local (/api/ai/assistant/stream) avec Gemini 4 Hydrogen + Maps Grounding
       try {
-        response = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
-        if (!response.ok) {
-          const errorData = await response.clone().json().catch(() => ({}));
+        const localRes = await postAssistant('/api/ai/assistant/stream', headers, payload, controller.signal);
+        if (localRes.ok) {
+          response = localRes;
+        } else {
+          const errorData = await localRes.clone().json().catch(() => ({}));
           lastError =
             (errorData as { error?: string }).error ||
             (errorData as { message?: string }).message ||
-            `Erreur edge IA (${response.status})`;
-          if (response.status === 429) {
+            `Erreur serveur IA (${localRes.status})`;
+          if (localRes.status === 429) {
             callbacks.onError(lastError, true);
             return;
           }
-          response = null;
         }
       } catch (err) {
-        lastError = err instanceof Error ? err.message : 'Edge IA inaccessible';
-        response = null;
+        lastError = err instanceof Error ? err.message : 'Serveur IA local inaccessible';
       }
 
-      // 2) Proxy Vercel plat puis nested
+      // 2) Repli Edge Function Supabase puis proxy plat Vercel si le chemin local n'est pas disponible
       if (!response) {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
-        }
-        for (const path of ['/api/ai-assistant', '/api/ai/assistant/stream']) {
-          try {
-            const res = await postAssistant(path, headers, payload, controller.signal);
-            if (res.ok) {
-              response = res;
-              break;
-            }
-            const errorData = await res.clone().json().catch(() => ({}));
+        const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
+        const edgeHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          apikey: supabaseAnonKey,
+          Authorization: session?.access_token
+            ? `Bearer ${session.access_token}`
+            : `Bearer ${supabaseAnonKey}`,
+        };
+
+        try {
+          const edgeRes = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
+          if (edgeRes.ok) {
+            response = edgeRes;
+          } else {
+            const errorData = await edgeRes.clone().json().catch(() => ({}));
             lastError =
               (errorData as { error?: string }).error ||
               (errorData as { message?: string }).message ||
-              `Erreur serveur (${res.status})`;
-            if (res.status === 429) {
+              lastError;
+            if (edgeRes.status === 429) {
               callbacks.onError(lastError, true);
               return;
             }
-          } catch (err) {
-            lastError = err instanceof Error ? err.message : lastError || 'Proxy API inaccessible';
           }
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : lastError;
+        }
+      }
+
+      if (!response) {
+        try {
+          const proxyRes = await postAssistant('/api/ai-assistant', headers, payload, controller.signal);
+          if (proxyRes.ok) {
+            response = proxyRes;
+          } else {
+            const errorData = await proxyRes.clone().json().catch(() => ({}));
+            lastError =
+              (errorData as { error?: string }).error ||
+              (errorData as { message?: string }).message ||
+              lastError;
+          }
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : lastError;
         }
       }
 
