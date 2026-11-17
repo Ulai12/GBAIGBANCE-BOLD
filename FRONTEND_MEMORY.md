@@ -112,3 +112,11 @@
 - Déploiement Vercel du commit : état `READY`.
 - Contrôle visuel manuel de la preview mobile après ce commit : carrousel affiché en français puis en anglais; badge, date, montant XOF, réservation, libellé accessible et indicateurs de diapositives traduits/formattés; affichage clair et sombre vérifiés. Langue française rétablie après vérification. Le navigateur a été redirigé depuis l'onboarding vers l'accueil avant le contrôle.
 - Aucun typecheck, lint ou test dédié exécuté. Aucun changement sur `main`, aucun PR créé ou fusionné.
+
+## 2026-11-17 — Localisation du carrousel tendances
+- Le bloc « Tendances » et ses cartes utilisent maintenant les catalogues français/anglais pour les titres, boutons, annonces de position, consignes, états favoris et libellés de lieu.
+- Les dates et tarifs XOF suivent la langue active. Le formatage de devise est partagé avec le carrousel vedette via `formatCurrency`.
+- Les images du carrousel demandent des variantes adaptées à la largeur de la carte; la logique de sélection, le comportement de glissement et les cartes de « Explorer par catégorie » restent inchangés.
+- Vérification : preview Vercel du commit `b84769cb697445a32ed66ab6cc1cb251c5259199` à l'état `READY`; contrôle visuel et d'accessibilité sur mobile en français et en anglais, montant/date et actions confirmés, français rétabli dans la preview.
+- Aucune suite de tests, aucun typecheck ni lint exécuté. La localisation globale des autres pages reste à poursuivre.
+- Mise à jour de périmètre confirmée par l'utilisateur : les textes de « Explorer par catégorie » peuvent être traduits; apparence, dimensions, animations, interactions et logique restent à préserver.
