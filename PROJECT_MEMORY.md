@@ -4,53 +4,54 @@ Mémoire de travail de GBAIGBANCE-BOLD. À lire en début de session, à mettre 
 
 ## Tâche active
 
-Aucune. Assistant IA stabilisé (edge v7 + client fallback + proxy Vercel).
+P4 UI/UX — Améliorations dock mobile et contrastes.
 
 ## Objectif
 
-Rendre l’assistant IA utilisable en production et en local.
+Améliorer la lisibilité et l’accessibilité de la navigation mobile (dock) et des catégories sur petits écrans.
 
 ## Progression
 
 - Terminé :
-  - Modèles Gemini corrigés (`gemini-2.0-flash` / live `gemini-2.0-flash-live-001`).
-  - `DEFAULT_SUPABASE_URL` + anon key alignés sur `lwwiolbofrqakvrdvbbj`.
-  - Client `aiAssistantService` : SSE + JSON + fallback Edge Function.
-  - Route Vercel `api/ai/assistant/stream.ts` (proxy vers edge + conversion SSE).
-  - Edge `ai-assistant` **v7** : cascade de modèles + retry 503/429, lecture `text`/`content`, CORS élargi, tools + Haversine.
-  - Test live edge OK (`gemini-2.5-flash`, HTTP 200).
-- Restant : attendre le déploiement Vercel de `api/ai/assistant/stream.ts` pour éviter le 502 sur la route principale (le fallback edge couvre déjà).
+  - Contraste des labels inactifs du dock amélioré en dark mode (`dark:text-gray-300` au lieu de `gray-500`).
+  - Commit direct sur main : `124e2504`.
+- En cours / restant :
+  - Vérifier visuellement le rendu sur 320px (catégories + dock).
+  - Éventuels ajustements supplémentaires de safe-area ou débordements si constatés.
+  - Confirmer le proxy Vercel `/api/ai/assistant/stream` après déploiement.
 
 ## Fichiers concernés
 
-- `server.ts`
-- `src/services/aiAssistantService.ts`
-- `api/ai/assistant/stream.ts`
-- `supabase/functions/ai-assistant/index.ts`
+- `src/components/BottomNav.tsx`
+- `src/screens/HomeScreen.tsx` (section catégories)
+- `PROJECT_MEMORY.md`
 
 ## Dernière action
 
-2026-11-16 — Edge v7 déployée + client/proxy commit main. Validation live edge réussie.
+2026-11-17 — Amélioration du contraste des micro-labels du dock mobile en mode sombre. Commit `124e2504`.
 
 ## Prochaine étape
 
-1. Après merge/deploy Vercel : retester `/api/ai/assistant/stream`.
-2. P4 UI/UX (dock mobile, débordements catégories 320px, contrastes) si IA stable en prod.
+1. Revue visuelle ciblée sur mobile 320px (dock + explorateur de catégories).
+2. Si nécessaire, ajuster `line-clamp` ou tailles de texte des shortLabels de catégories.
+3. Confirmer le déploiement de la route Vercel AI stream.
 
 ## Vérifications
 
-- Edge live : `POST .../functions/v1/ai-assistant` → 200, texte + `model`.
-- Prod Vercel route stream : encore 502 « function not found » tant que le fichier `api/ai/...` n’est pas déployé.
-- Plus de `gemini-3.8` ni de projet `qbngq…` dans `server.ts`.
+- Changement de classes Tailwind uniquement (aucun impact logique).
+- Labels inactifs plus lisibles en dark (`gray-300` vs précédent `gray-500`).
+- Hover encore plus contrasté.
+- Aucune troncature de fichier constatée.
 
 ## Backlog
 
-1. Confirmer le proxy Vercel après deploy.
-2. P4 UI — dock mobile / safe areas / débordements libellés.
+1. Confirmer le proxy Vercel AI après deploy.
+2. P4 — revue responsive 320px catégories + safe areas dock.
 3. Optionnel — stream token-par-token côté edge (SSE natif).
 
 ## Historique
 
+- 2026-11-17 — Contraste labels dock mobile amélioré.
 - 2026-11-16 — Edge ai-assistant v7 (retry modèles + text/content).
 - 2026-11-16 — Correctifs client + route Vercel stream.
 - 2026-11-16 — Base silencieuse alertes artistes.
