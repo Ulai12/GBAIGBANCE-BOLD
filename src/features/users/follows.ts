@@ -43,46 +43,61 @@ async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProf
 
 export async function toggleUserFollow(followerId: string, followingId: string): Promise<boolean> {
   if (followerId === followingId) return false;
-  
-  // 1. Sauvegarde locale persistante immédiate (garantie au rechargement)
+
   const localSet = getLocalFollowedUserIds(followerId);
-  const willFollow = !localSet.has(followingId);
-  if (willFollow) localSet.add(followingId);
+  const optimisticFollow = !localSet.has(followingId);
+  if (optimisticFollow) localSet.add(followingId);
   else localSet.delete(followingId);
   saveLocalFollowedUserIds(followerId, localSet);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent('gba-user-follow-changed', {
-        detail: { followerId, followingId, willFollow },
+        detail: { followerId, followingId, willFollow: optimisticFollow },
       })
     );
     window.dispatchEvent(
       new CustomEvent('gba-follows-updated', {
-        detail: { userId: followingId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'user' },
+        detail: {
+          userId: followingId,
+          eventType: optimisticFollow ? 'INSERT' : 'DELETE',
+          type: 'user',
+        },
       })
     );
   }
 
-  // 2. Synchronisation Supabase avec gestion d'erreur transparente
   try {
-    const { data: existing } = await supabase
-      .from('user_follows')
-      .select('id')
-      .eq('follower_id', followerId)
-      .eq('following_id', followingId)
-      .maybeSingle();
-
-    if (existing && !willFollow) {
-      await supabase.from('user_follows').delete().eq('id', existing.id);
-    } else if (!existing && willFollow) {
-      await supabase.from('user_follows').insert({ follower_id: followerId, following_id: followingId });
+    const { data, error } = await supabase.rpc('toggle_user_follow', {
+      p_following_id: followingId,
+    });
+    if (error) throw new Error(error.message);
+    const rec = data as { success?: boolean; following?: boolean; error?: string } | null;
+    if (!rec?.success) {
+      throw new Error(rec?.error || 'Impossible de mettre a jour le suivi');
     }
-  } catch {
-    // Le statut reste conservé localement
+    const willFollow = rec.following === true;
+    // Align local cache with server truth
+    const synced = getLocalFollowedUserIds(followerId);
+    if (willFollow) synced.add(followingId);
+    else synced.delete(followingId);
+    saveLocalFollowedUserIds(followerId, synced);
+    return willFollow;
+  } catch (err) {
+    // Rollback local optimistic state
+    const rollback = getLocalFollowedUserIds(followerId);
+    if (optimisticFollow) rollback.delete(followingId);
+    else rollback.add(followingId);
+    saveLocalFollowedUserIds(followerId, rollback);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('gba-user-follow-changed', {
+          detail: { followerId, followingId, willFollow: !optimisticFollow },
+        })
+      );
+    }
+    throw err;
   }
-
-  return willFollow;
 }
 
 export async function isFollowingUser(followerId: string, followingId: string): Promise<boolean> {
@@ -131,7 +146,6 @@ export async function fetchFollowingUsers(userId: string): Promise<Profile[]> {
     return [];
   }
 
-  // Mettre à jour le cache local avec l'état vérifié
   saveLocalFollowedUserIds(userId, new Set(targetIds));
 
   const profileMap = await fetchProfilesByIds(targetIds);
