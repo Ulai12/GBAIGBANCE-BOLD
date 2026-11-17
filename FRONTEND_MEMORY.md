@@ -59,3 +59,20 @@
 - Audit source exploratoire limité aux composants non-catégorie de l'accueil (EventCard, FeaturedCarousel, TrendingDeck, NearbyEventTile, BottomNav et App). Aucun défaut visuel certain ne justifiait une modification sans rendu navigateur réel ; aucun code source n'a été modifié.
 - Aucun PR, aucun changement de branche, aucun changement backend/API.
 - Prochaine étape recommandée : obtenir un environnement de test autorisé avec dépendances installées selon le workflow npm du projet (sans créer de lockfile), puis faire les contrôles visuels sur les sections non-catégorie uniquement. La section catégories reste gelée sauf demande explicite.
+
+
+## 2026-11-17 — Réduction du préchargement du carrousel vedette
+### Constat
+- `src/components/FeaturedCarousel.tsx` créait un nouvel objet `Image` pour chaque couverture de la liste vedette (jusqu'à six images) dès le montage du carrousel.
+- Ce chargement anticipé utilisait les URLs sources complètes, sans attendre que les diapositives soient affichées; il contournait donc le chargement responsive déjà géré par `SmartImage` et consommait des données/mémoire sur mobile.
+- La couverture visible reste chargée avec `loading="eager"` et `fetchPriority="high"` via `SmartImage`.
+
+### Intervention réalisée
+- Suppression du préchargement spéculatif de toutes les couvertures. Les diapositives, le défilement automatique, le glissement et la priorité de l'image visible restent inchangés.
+- Seul `src/components/FeaturedCarousel.tsx` a été modifié côté application. « Explorer par catégorie » et son code n'ont pas été touchés.
+- Commit direct sur `FRONTEND-iA` : `49772107e2a08c9af37a7c4580053c654ead2e11`.
+
+### Vérification et limites
+- Déploiement de prévisualisation Vercel du commit terminé avec le statut `success` le 17 novembre 2026.
+- Aucun typecheck, lint, test automatisé dédié ni contrôle visuel navigateur n'a été exécuté dans cette session; le déploiement confirme la compilation/déploiement configuré, pas ces contrôles additionnels.
+- Aucune modification de « Explorer par catégorie », du backend ou de `main`; aucun PR n'a été créé pendant cette intervention.
