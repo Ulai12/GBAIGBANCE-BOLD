@@ -5,6 +5,7 @@ import type {
   TicketType,
   PaymentProvider,
   Event,
+  EventStatus,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
 import { coreMergeIds, coreSignTicket } from '@/lib/rust-core';
@@ -497,4 +498,48 @@ export async function fetchUserTickets(
     if (t) merged.push(t);
   }
   return merged;
+}
+
+
+/** Met à jour le cycle de vie d'un événement via la RPC autorisée côté serveur. */
+export async function setEventStatus(
+  eventId: string,
+  status: Exclude<EventStatus, 'pending'>,
+  reason?: string
+): Promise<void> {
+  const { data, error } = await supabase.rpc('set_event_status', {
+    p_event_id: eventId,
+    p_status: status,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+  const result = data as { success?: boolean; error?: string } | null;
+  if (!result?.success) {
+    throw new Error(result?.error || 'Transition de statut impossible');
+  }
+}
+
+/** Délègue la validation d'un QR à la fonction serveur; aucun succès local n'est simulé. */
+export async function validateTicketQr(
+  qrCode: string,
+  eventId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  message?: string;
+  ticket?: Partial<Ticket>;
+  participant_name?: string;
+}> {
+  const { data, error } = await supabase.rpc('validate_ticket_qr', {
+    p_qr_code: qrCode,
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  return data as {
+    success: boolean;
+    error?: string;
+    message?: string;
+    ticket?: Partial<Ticket>;
+    participant_name?: string;
+  };
 }
