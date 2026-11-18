@@ -193,3 +193,25 @@
 - Faire rétablir les exports `setEventStatus` et `validateTicketQr` avec leur contrat exact, sans inventer de RPC ni affaiblir la validation des billets.
 - Une fois le build rétabli, reprendre la localisation FR/EN d'`EventDetailScreen`, puis poursuivre les optimisations de défilement et de cartes hors section catégories.
 
+
+
+## 2026-11-18 — Restauration des exports manquants bloquant la compilation
+### Diagnostic
+- PR #14 vers `main` : GitHub signale `mergeable_state: dirty`; la comparaison indique 150 commits d'avance et 16 de retard. La branche est donc divergente et présente des conflits à résoudre avant fusion.
+- Le statut Vercel du HEAD précédent `936f5f1a0847b1b860d3151ea9f0159234adee82` est `failure`.
+- `src/services/events.ts` réexporte `setEventStatus` et `validateTicketQr` depuis `@/features/tickets`, mais ces deux fonctions avaient été supprimées de `src/features/tickets/service.ts`. `src/features/tickets/index.ts` exporte le service via `export *`, donc les deux absences provoquent les erreurs de compilation.
+- La migration `20260906120000_gbaigbance_event_lifecycle_and_inventory.sql` définit bien la RPC `set_event_status` avec les paramètres `p_event_id`, `p_status`, `p_reason`.
+### Correctif réalisé
+- Restauration de `setEventStatus` dans `src/features/tickets/service.ts`, avec appel à la RPC serveur `set_event_status` et propagation des erreurs/résultats refusés.
+- Restauration de `validateTicketQr` dans le même service, avec appel à la RPC `validate_ticket_qr`; aucune validation positive locale ni contournement de sécurité n'est simulé.
+- Import du type `EventStatus` depuis `@/types`.
+- Commit direct sur `FRONTEND-iA` : `b76845e72f35c0bdb152e77158652285c41e46c8`.
+### Vérification et limites
+- HEAD de `FRONTEND-iA` contrôlé avant écriture : `936f5f1a0847b1b860d3151ea9f0159234adee82`; HEAD après écriture : commit du correctif ci-dessus.
+- Relecture du fichier modifié et présence des deux exports : à effectuer après ce commit.
+- Le statut Vercel du nouveau commit, le build, le typecheck, le lint et les tests restent à vérifier; aucun environnement local d'exécution n'est disponible via le connecteur GitHub.
+- La disponibilité réelle de la RPC `validate_ticket_qr` dans le projet Supabase n'a pas été confirmée pendant cette intervention; le client reprend le contrat déjà attendu par le scanner.
+- Aucun changement backend, migration ou donnée Supabase. Aucun changement à `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+- La divergence Git et les conflits de la PR #14 ne sont pas résolus par ce correctif. Aucun outil de fusion/résolution de conflits n'est exposé dans cette session; ne pas créer un merge commit artificiel ni réécrire l'historique.
+### Prochaine priorité
+- Obtenir un merge réel de `main` vers `FRONTEND-iA` avec résolution explicite des conflits, en protégeant les fichiers mémoire appartenant à d'autres agents; puis recontrôler la PR #14 et le build Vercel.
