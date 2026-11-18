@@ -11,7 +11,7 @@
 ## 2026-11-17 — Densité et hiérarchie de l'exploration par catégorie
 ### Constat avant intervention
 - La grille d'accueil passait de 2 à 3 puis 6 colonnes dès le breakpoint `lg`, avec six cartes verticales, une largeur plafonnée à 220 px et des hauteurs minimales croissantes.
-- Les libellés longs pouvaient s'empiler sous l'icône, ce qui augmentait la hauteur perçue et déséquilibrait la grille selon le viewport.
+- Les libellés longs pouvaient s'empiler sous l'icône, ce qui augmentait la hauteur perçue et déséquilibrerait la grille selon le viewport.
 - Les sous-catégories restaient en bande horizontale défilante à toutes les largeurs, sans libellé visuel explicitant leur relation à la catégorie parente.
 - Le fichier mémoire précédent ne contenait qu'un placeholder ; aucune décision frontend exploitable n'y était documentée.
 
@@ -146,3 +146,27 @@
 ### Prochaine étape
 - Poursuivre la localisation des autres écrans clés (EventDetail, Profile, etc.).
 - Vérifier le rendu réel de l'écran Billets en FR et EN sur mobile.
+
+## 2026-11-18 — Localisation de l'écran Profil
+### Intervention
+- Ajout des catalogues `src/locales/fr/profile.json` et `src/locales/en/profile.json`.
+- Enregistrement du domaine `profile` dans `src/locales/index.ts`.
+- `ProfileScreen.tsx` utilise désormais `t('profile', key)` pour tous les textes visibles : bienvenue, onglets, états vides, invitations, raccourcis, toasts, modale QR, etc.
+- Gestion des pluriels et placeholders via replace simple.
+- Section « Explorer par catégorie » non touchée.
+
+### Fichiers concernés
+- `src/screens/ProfileScreen.tsx`
+- `src/locales/fr/profile.json`
+- `src/locales/en/profile.json`
+- `src/locales/index.ts`
+- `FRONTEND_MEMORY.md`
+
+### Vérification
+- Commits : d7592ba8 (fr), 705fafe3 (en), ffd87923 (index), 84f77531 (ProfileScreen).
+- Contenu relecturé : appels t('profile', ...) présents, pas de troncature. OK.
+- Aucun typecheck/lint/test/rendu navigateur exécuté dans cette session.
+
+### Prochaine étape
+- Continuer la localisation d'EventDetailScreen et autres écrans clés.
+- Vérifier le rendu réel de l'écran Profil en FR et EN sur mobile.
