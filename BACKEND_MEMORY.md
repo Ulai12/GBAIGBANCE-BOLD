@@ -4,36 +4,37 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Ajout d'index sur les clés étrangères restantes non couvertes (advisors performance) pour tables critiques paiements, remboursements, présence, commentaires.
+Drop table `example` (validé) + optimisation progressive des policies RLS auth initplan sur tables critiques.
 
 ## Objectif
-Améliorer les performances des jointures futures sans impact sur le fonctionnement existant (base vide pour l'instant).
+Supprimer une table morte et réduire les warnings performance RLS en utilisant `(select auth.uid())` sur les tables les plus sollicitées (billets, paiements, profils, événements).
 
 ## Progression
-- Migration appliquée sur Supabase : 20261118120000_add_remaining_fk_indexes
-- Fichier versionné sur FRONTEND-iA
-- Index vérifiés par requête pg_indexes
+- Table `public.example` droppée (0 lignes confirmées).
+- Policies optimisées sur : profiles, tickets, payments, events, ticket_options.
+- Warnings auth_rls_initplan : ~66 → 50.
+- Migration appliquée et versionnée.
 
 ## Fichiers concernés
-- supabase/migrations/20261118120000_add_remaining_fk_indexes.sql (nouveau)
+- supabase/migrations/20261118143000_drop_example_and_optimize_rls_critical.sql (nouveau)
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-18 — Application migration indexes FK restants + commit bd6aa246.
+2026-11-18 — Drop example + optimisation RLS tables critiques (commit 47198613).
 
 ## Prochaine étape
-- Auditer et éventuellement corriger les policies RLS auth initplan (66 warnings) de façon progressive et sécurisée.
-- Vérifier liaisons front/back pour le nouveau flux tickets localisé.
-- Confirmer proxy Vercel AI et secret webhook.
+- Continuer l'optimisation RLS sur organizations, artists, follows, likes, comments, collaborators (lot suivant).
+- Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 
 ## Vérifications
-- Indexes créés : idx_payments_ticket_option_id, idx_ticket_refunds_*, idx_event_presence_badges_*, idx_comment_reactions_user_id, idx_event_comments_user_id, idx_notifications_actor_id, idx_artists_user_id, idx_event_artists_artist_id. OK.
-- Aucune troncature (taille fichier ~1706 o, contenu intact).
-- Advisors performance : unindexed FK réduits.
+- `to_regclass('public.example')` = null → table absente. OK.
+- Policies profiles/tickets/payments/events/ticket_options utilisent bien `( SELECT auth.uid() AS uid )`. OK.
+- Advisors performance : auth_rls_initplan passé de ~66 à 50. OK.
+- Relecture distante migration (taille ~4994 o). OK.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
-- profiles, organizations, artists, events (avec access_type, external_ticket_url, whatsapp_*, cycle de vie)
+- profiles, organizations, artists, events (access_type, external_ticket_url, whatsapp_*, cycle de vie)
 - tickets (status, recipient_*, claim_token, payment_id, ticket_option_id)
 - payments (ledger MM, idempotency_key)
 - ticket_refunds, event_presence_badges, comment_reactions
@@ -41,8 +42,8 @@ Tables principales (public, RLS activée) :
 - notifications, notification_preferences
 - ticket_options, event_collaborators, event_comments, etc.
 - platform_settings (1 ligne)
-- example (vide, RLS no policy — À VALIDER drop)
-- event_view_daily (RLS no policy)
+- event_view_daily (RLS no policy — à traiter plus tard)
+- ~~example~~ (supprimée 2026-11-18)
 
 Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur tables exposées.
 
@@ -52,30 +53,32 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
-- 20261118120000_add_remaining_fk_indexes (cette session) — rollback : DROP INDEX des 10 indexes.
-- Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon sur certaines fonctions.
+- 20261118143000_drop_example_and_optimize_rls_critical (cette session)
+- 20261118120000_add_remaining_fk_indexes
+- Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon.
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 - Configurer PAYMENT_WEBHOOK_SECRET dans le dashboard Supabase.
 - Confirmer le proxy Vercel AI en production.
 - Tester flux complet initiate/confirm/webhook en staging.
-- À VALIDER : drop table public.example (vide, no policy).
 
 ## Dette backend
-- Nombreux SECURITY DEFINER callable par anon/authenticated (advisors) — revue progressive des grants.
-- 66 auth RLS initplan warnings — optimisation progressive.
+- ~50 warnings auth RLS initplan restants (organizations, artists, follows, likes, comments, collaborators, schedule, questions…).
+- Nombreux SECURITY DEFINER callable par anon/authenticated — revue progressive des grants.
 - Extension pg_net in public.
+- event_view_daily : RLS activée sans policy.
 
 ## Incidents
-- Aucun cette session. Historique troncatures résolues précédemment.
+- Aucun cette session.
 
 ## Backlog
-- Optimisation RLS policies (select auth.uid()).
-- Audit liaisons restantes (notifications, follows, likes).
+- Lot 2 optimisation RLS (organizations, artists, follows, likes, comments).
+- Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
 
 ## Historique
-- 2026-11-18 : Indexes FK restants (paiements, remboursements, présence).
+- 2026-11-18 (après-midi) : Drop example + RLS critical tables optimisées.
+- 2026-11-18 (matin) : Indexes FK restants.
 - 2026-11-17 : Fondation paiements, P2 connecté, access_type, etc.
 
 ## Pour les autres automatisations
@@ -85,8 +88,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
 
 ## Taches À faire
-- [Automatisation frontend - session 2026-11-18] Continuer la localisation des écrans restants (EventDetailScreen prioritaire). Problème détecté : textes hardcodés en français dans plusieurs screens. Origine : développement continu intelligent.
-- [Automatisation backend / propriétaire] Configurer le secret PAYMENT_WEBHOOK_SECRET et tester le flux complet initiate/confirm/webhook en staging. Problème : secret non configuré, confirmation des billets bloquée sans lui.
-- [Automatisation Vercel] Vérifier et confirmer le fonctionnement du proxy /api/ai/assistant/stream en production après déploiement. Problème : statut non confirmé.
-- [Automatisation backend] Revue progressive des 66 warnings RLS auth initplan et des SECURITY DEFINER grants. Problème détecté par advisors Supabase.
-- [Automatisation backend] À VALIDER : drop de la table public.example (vide, no RLS policy).
+- [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
+- [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
+- [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
+- [Backend] Lot 2 optimisation RLS (organizations, artists, follows, likes, comments, collaborators).
