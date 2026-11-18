@@ -209,9 +209,16 @@
 ### Vérification et limites
 - HEAD de `FRONTEND-iA` contrôlé avant écriture : `936f5f1a0847b1b860d3151ea9f0159234adee82`; HEAD après écriture : commit du correctif ci-dessus.
 - Relecture du fichier modifié et présence des deux exports : à effectuer après ce commit.
-- Le statut Vercel du nouveau commit, le build, le typecheck, le lint et les tests restent à vérifier; aucun environnement local d'exécution n'est disponible via le connecteur GitHub.
+- Le déploiement Vercel du commit `b687962a0d926d4a1fa8424531dac3afd4deb0b4` a ensuite terminé en `READY` (déploiement `dpl_6k8EkYRtCTu2uzQT8GLpJjWNn93S`); les logs confirment `vite build && tsx scripts/generate-preview.ts`, 3 299 modules transformés, build Vite terminé en 3,99 s et génération PWA/preview terminée. Le statut Vercel du commit est `success`.
 - La disponibilité réelle de la RPC `validate_ticket_qr` dans le projet Supabase n'a pas été confirmée pendant cette intervention; le client reprend le contrat déjà attendu par le scanner.
 - Aucun changement backend, migration ou donnée Supabase. Aucun changement à `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
 - La divergence Git et les conflits de la PR #14 ne sont pas résolus par ce correctif. Aucun outil de fusion/résolution de conflits n'est exposé dans cette session; ne pas créer un merge commit artificiel ni réécrire l'historique.
 ### Prochaine priorité
 - Obtenir un merge réel de `main` vers `FRONTEND-iA` avec résolution explicite des conflits, en protégeant les fichiers mémoire appartenant à d'autres agents; puis recontrôler la PR #14 et le build Vercel.
+
+
+### Contrôle complémentaire après le correctif (2026-11-18)
+- Relecture distante de `src/features/tickets/service.ts` : les exports `setEventStatus` et `validateTicketQr` sont présents.
+- Déploiement Vercel du commit `b687962` : `READY`; statut Vercel : `success`. Cela valide la compilation Vite configurée, pas un typecheck, lint ou test dédié.
+- PR #14 toujours `mergeable: false`; la divergence reste à 152 commits d'avance et 16 de retard. Le statut `dirty` indique des conflits non résolus.
+- Aucun merge de branches n'a été effectué. La session ne dispose pas d'un workflow de résolution/merge de branches qui permette de fusionner proprement les changements de `main` vers `FRONTEND-iA`; aucun merge commit artificiel n'a été créé.
