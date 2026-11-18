@@ -120,3 +120,31 @@
 - Vérification : preview Vercel du commit `b84769cb697445a32ed66ab6cc1cb251c5259199` à l'état `READY`; contrôle visuel et d'accessibilité sur mobile en français et en anglais, montant/date et actions confirmés, français rétabli dans la preview.
 - Aucune suite de tests, aucun typecheck ni lint exécuté. La localisation globale des autres pages reste à poursuivre.
 - Mise à jour de périmètre confirmée par l'utilisateur : les textes de « Explorer par catégorie » peuvent être traduits; apparence, dimensions, animations, interactions et logique restent à préserver.
+
+
+## 2026-11-18 — Localisation de l'écran Mes billets
+### Intervention
+- Ajout des catalogues  et .
+- Intégration du domaine  dans .
+-  utilise désormais  pour le titre, les onglets, les états vides, la bannière hors-ligne, la modale de réclamation et tous les toasts.
+- L'écran suit la langue active de l'application (FR/EN).
+- Section « Explorer par catégorie » non touchée (gel confirmé).
+
+### Fichiers concernés
+- 
+- 
+- 
+- 
+- 
+
+### Vérification
+- Commit initial des JSON + index : 
+- Incident temporaire de troncature sur TicketsScreen.tsx (placeholder) — restauré immédiatement via API GitHub.
+- Commit de restauration/final : 
+- Relecture distante : taille ~19383 octets, contenu contient bien les appels , pas de placeholder. OK.
+- Aucun typecheck/lint/test/rendu navigateur exécuté dans cette session.
+
+### Prochaine étape
+- Poursuivre la localisation des autres écrans clés (EventDetail, Profile, etc.).
+- Vérifier le rendu réel de l'écran Billets en FR et EN sur mobile.
+
