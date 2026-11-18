@@ -170,3 +170,26 @@
 ### Prochaine étape
 - Continuer la localisation d'EventDetailScreen et autres écrans clés.
 - Vérifier le rendu réel de l'écran Profil en FR et EN sur mobile.
+
+## 2026-11-18 — Blocage P0 du build Vercel avant reprise de la localisation
+### Constat
+- Branche distante vérifiée : `FRONTEND-iA`, HEAD `4a23de457b1c394d8a5545c91481d2b7cff88d7b`.
+- Le commit HEAD ne modifie que `BACKEND_MEMORY.md` (documentation) ; il ne contient aucun changement frontend susceptible d'expliquer l'échec de compilation.
+- Le déploiement Vercel associé à ce HEAD est en état `ERROR`. Vite 8.3.7 transforme 3 299 modules puis échoue avec quatre erreurs `MISSING_EXPORT`.
+- Deux fonctions manquent dans le graphe d'exports :
+  - `setEventStatus` est réexportée depuis `src/services/events.ts` via `@/features/tickets`, mais n'existe pas dans `src/features/tickets/service.ts` ni dans les modules de statut/mutations de `src/features/events`. `EventManagementModal.tsx` l'importe également depuis `src/services/events.ts`.
+  - `validateTicketQr` est importée par `src/services/ticketScannerService.ts`, mais n'est pas exportée par `src/features/tickets/service.ts` et aucune implémentation correspondante n'a été trouvée dans les modules tickets présents sur cette branche.
+- Les quatre diagnostics Vite sont donc deux exports manquants référencés à plusieurs endroits, pas quatre problèmes indépendants.
+### Décision et périmètre
+- Aucun correctif improvisé : `validateTicketQr` participe à la validation des billets à l'entrée et son contrat de sécurité/RPC doit être confirmé avant toute réimplémentation. Le contrat de `setEventStatus` doit également être rétabli depuis sa source propriétaire.
+- Aucun fichier applicatif, service backend/API ou schéma Supabase modifié pendant cette session.
+- La section « Explorer par catégorie » reste gelée et n'a pas été touchée.
+- UIAudit et Superdesign ne sont pas disponibles dans le catalogue des outils/skills de cette session ; aucun audit ou draft de ces outils n'est revendiqué.
+### Vérifications et limites
+- Diagnostic confirmé par les logs du déploiement Vercel `dpl_5kX9k1GBQNmUnnrTpvwJeA3Mzxi5` et par la lecture des imports/exports sur `FRONTEND-iA`.
+- Aucun build, typecheck, lint, test automatisé ou contrôle visuel n'a pu valider une nouvelle modification, car le build existant est déjà bloqué avant déploiement.
+- Aucun changement de branche, aucun PR et aucune écriture sur `main`.
+### Prochaine priorité
+- Faire rétablir les exports `setEventStatus` et `validateTicketQr` avec leur contrat exact, sans inventer de RPC ni affaiblir la validation des billets.
+- Une fois le build rétabli, reprendre la localisation FR/EN d'`EventDetailScreen`, puis poursuivre les optimisations de défilement et de cartes hors section catégories.
+
