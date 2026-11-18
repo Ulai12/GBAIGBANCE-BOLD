@@ -82,4 +82,11 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Branche unique FRONTEND-iA.
 - Ne pas toucher aux fichiers visuels ni FRONTEND_MEMORY.md.
 - Paiements : secret webhook requis pour confirmer billets.
-- Localisation TicketsScreen faite côté frontend, liaisons intactes.
+- Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
+
+## Taches À faire
+- [Automatisation frontend - session 2026-11-18] Continuer la localisation des écrans restants (EventDetailScreen prioritaire). Problème détecté : textes hardcodés en français dans plusieurs screens. Origine : développement continu intelligent.
+- [Automatisation backend / propriétaire] Configurer le secret PAYMENT_WEBHOOK_SECRET et tester le flux complet initiate/confirm/webhook en staging. Problème : secret non configuré, confirmation des billets bloquée sans lui.
+- [Automatisation Vercel] Vérifier et confirmer le fonctionnement du proxy /api/ai/assistant/stream en production après déploiement. Problème : statut non confirmé.
+- [Automatisation backend] Revue progressive des 66 warnings RLS auth initplan et des SECURITY DEFINER grants. Problème détecté par advisors Supabase.
+- [Automatisation backend] À VALIDER : drop de la table public.example (vide, no RLS policy).
