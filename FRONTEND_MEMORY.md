@@ -121,30 +121,28 @@
 - Aucune suite de tests, aucun typecheck ni lint exécuté. La localisation globale des autres pages reste à poursuivre.
 - Mise à jour de périmètre confirmée par l'utilisateur : les textes de « Explorer par catégorie » peuvent être traduits; apparence, dimensions, animations, interactions et logique restent à préserver.
 
-
 ## 2026-11-18 — Localisation de l'écran Mes billets
 ### Intervention
-- Ajout des catalogues  et .
-- Intégration du domaine  dans .
--  utilise désormais  pour le titre, les onglets, les états vides, la bannière hors-ligne, la modale de réclamation et tous les toasts.
+- Ajout des catalogues `src/locales/fr/tickets.json` et `src/locales/en/tickets.json`.
+- Intégration du domaine `tickets` dans `src/locales/index.ts`.
+- `TicketsScreen.tsx` utilise désormais `t('tickets', key)` pour le titre, les onglets, les états vides, la bannière hors-ligne, la modale de réclamation et tous les toasts.
 - L'écran suit la langue active de l'application (FR/EN).
 - Section « Explorer par catégorie » non touchée (gel confirmé).
 
 ### Fichiers concernés
-- 
-- 
-- 
-- 
-- 
+- `src/screens/TicketsScreen.tsx`
+- `src/locales/fr/tickets.json`
+- `src/locales/en/tickets.json`
+- `src/locales/index.ts`
+- `FRONTEND_MEMORY.md`
 
 ### Vérification
-- Commit initial des JSON + index : 
+- Commit initial des JSON + index : `4f17ab55...`
 - Incident temporaire de troncature sur TicketsScreen.tsx (placeholder) — restauré immédiatement via API GitHub.
-- Commit de restauration/final : 
-- Relecture distante : taille ~19383 octets, contenu contient bien les appels , pas de placeholder. OK.
+- Commit de restauration/final : `358dd57aef240d0cecb5631da7619d0e19f204f2`
+- Relecture distante : taille ~19383 octets, contenu contient bien les appels `t('tickets', ...)`, pas de placeholder. OK.
 - Aucun typecheck/lint/test/rendu navigateur exécuté dans cette session.
 
 ### Prochaine étape
 - Poursuivre la localisation des autres écrans clés (EventDetail, Profile, etc.).
 - Vérifier le rendu réel de l'écran Billets en FR et EN sur mobile.
-
