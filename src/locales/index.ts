@@ -4,10 +4,12 @@ import frCommon from '@/locales/fr/common.json';
 import frEvents from '@/locales/fr/events.json';
 import frAuth from '@/locales/fr/auth.json';
 import frSettings from '@/locales/fr/settings.json';
+import frTickets from '@/locales/fr/tickets.json';
 import enCommon from '@/locales/en/common.json';
 import enEvents from '@/locales/en/events.json';
 import enAuth from '@/locales/en/auth.json';
 import enSettings from '@/locales/en/settings.json';
+import enTickets from '@/locales/en/tickets.json';
 
 const translations: Record<Language, Record<string, Record<string, unknown>>> = {
   fr: {
@@ -15,12 +17,14 @@ const translations: Record<Language, Record<string, Record<string, unknown>>> = 
     events: frEvents,
     auth: frAuth,
     settings: frSettings,
+    tickets: frTickets,
   },
   en: {
     common: enCommon,
     events: enEvents,
     auth: enAuth,
     settings: enSettings,
+    tickets: enTickets,
   },
 };
 
