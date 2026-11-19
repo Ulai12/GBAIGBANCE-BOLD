@@ -944,7 +944,7 @@ export function HomeScreen({
 
       {/* SECTION 8: Artistes du moment (vrais comptes artistes) */}
       {artists.length > 0 && (
-        <section className="mt-8" aria-label="Artistes du moment">
+        <section className="mt-8" aria-label={t('events', 'home.artistsNow')}>
           <div className="px-5 flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -952,10 +952,10 @@ export function HomeScreen({
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
-                  Artistes du moment
+                  {t('events', 'home.artistsNow')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                  Talents et créateurs de la communauté
+                  {t('events', 'home.artistsSubtitle')}
                 </p>
               </div>
             </div>
@@ -974,10 +974,9 @@ export function HomeScreen({
             <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
                 const followersCount = artist.followers_count ?? 0;
-                const fansText =
-                  followersCount > 1000
-                    ? `${(followersCount / 1000).toFixed(1)}K fans`
-                    : `${followersCount} fan${followersCount > 1 ? 's' : ''}`;
+                const fansText = followersCount > 1000
+                  ? `${(followersCount / 1000).toFixed(1)}K ${t('events', 'home.fans')}`
+                  : `${followersCount} ${t('events', followersCount > 1 ? 'home.fans' : 'home.fan')}`;
                 return (
                   <button
                     type="button"
@@ -1011,7 +1010,7 @@ export function HomeScreen({
 
       {/* SECTION 9: Organisateurs officiels (vrais comptes organisateurs) */}
       {organizations.length > 0 && (
-        <section className="mt-8" aria-label="Organisateurs officiels">
+        <section className="mt-8" aria-label={t('events', 'home.officialOrganizers')}>
           <div className="px-5 flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -1019,10 +1018,10 @@ export function HomeScreen({
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
-                  Organisateurs officiels
+                  {t('events', 'home.officialOrganizers')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                  Collectifs et créateurs d’expériences
+                  {t('events', 'home.organizersSubtitle')}
                 </p>
               </div>
             </div>
@@ -1041,7 +1040,7 @@ export function HomeScreen({
             <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {organizations.map((org) => {
                 const count = org.events_count ?? 0;
-                const countText = `${count} événement${count > 1 ? 's' : ''}`;
+                const countText = `${count} ${t('events', count > 1 ? 'eventPlural' : 'event')}`;
                 return (
                   <button
                     type="button"
