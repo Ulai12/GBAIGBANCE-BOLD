@@ -583,7 +583,15 @@
       "noArtistDescription": "Aucun artiste ne correspond à votre recherche",
       "noOrganizer": "Aucun organisateur trouvé",
       "noOrganizerDescription": "Aucun organisateur ne correspond à votre recherche",
-      "noEventsDescription": "Aucun événement ne correspond à ce filtre pour le moment"
+      "noEventsDescription": "Aucun événement ne correspond à ce filtre pour le moment",
+      "back": "Retour",
+      "artist": "artiste",
+      "artists": "artistes",
+      "organizer": "organisateur",
+      "organizers": "organisateurs",
+      "searchArtist": "Rechercher un artiste...",
+      "searchOrganizer": "Rechercher un organisateur...",
+      "allGenres": "Tous les genres"
     },
     "nearbyEvent": "Événement à proximité : {title}",
     "defaultCity": "Lomé",
@@ -643,7 +651,8 @@
     "artistsNow": "Artistes du moment",
     "artistsSubtitle": "Talents et créateurs de la communauté",
     "officialOrganizers": "Organisateurs officiels",
-    "organizersSubtitle": "Collectifs et créateurs d’expériences"
+    "organizersSubtitle": "Collectifs et créateurs d’expériences",
+    "greeting": "Bonjour"
   },
   "cardStatus": {
     "cancelled": "Annulé",
