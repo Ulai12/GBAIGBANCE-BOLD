@@ -75,7 +75,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user, t } = useApp();
+  const { user, t, language } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -546,10 +546,10 @@ export function HomeScreen({
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Bonjour';
-    if (hour >= 12 && hour < 18) return 'Salut';
-    if (hour >= 18 && hour < 23) return 'Bonsoir';
-    return 'Douce nuit';
+    if (hour >= 5 && hour < 12) return t('events', 'home.greetingMorning');
+    if (hour >= 12 && hour < 18) return t('events', 'home.greetingAfternoon');
+    if (hour >= 18 && hour < 23) return t('events', 'home.greetingEvening');
+    return t('events', 'home.greetingNight');
   };
 
   return (
@@ -575,7 +575,7 @@ export function HomeScreen({
   <div className="flex items-center justify-between mb-4 mr-2">
     <div>
       <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-        <span>{t('events', 'home.greeting')} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
+        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
         <span className="text-xl"> 👋</span>
         </span>
       </h1>
