@@ -256,7 +256,7 @@ export function HomeScreen({
     } catch {
       if (typeof navigator !== 'undefined' && !navigator.onLine && !silent) {
         onToastRef.current({
-          message: 'Mode hors-ligne : données sauvegardées affichées',
+          message: t('events', 'home.offline'),
           type: 'info',
         });
       }
@@ -472,8 +472,8 @@ export function HomeScreen({
 
     // Plafonnement strict à 12 événements max pour garder le flux fini et performant
     return {
-      title: 'À proximité de vous',
-      subtitle: `Autour de votre position (${userLocation.cityName || 'GPS'})`,
+      title: t('events', 'home.nearbyTitle'),
+      subtitle: t('events', 'home.nearbyAround').replace('{city}', userLocation.cityName || 'GPS'),
       events: selected.slice(0, 12),
       isActual: true,
     };
@@ -566,7 +566,7 @@ export function HomeScreen({
     />
     <div className="leading-tight">
       <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
-      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
+      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase"{t('events', 'home.brandTagline')}</p>
     </div>
   </div>
 
@@ -575,11 +575,11 @@ export function HomeScreen({
   <div className="flex items-center justify-between mb-4 mr-2">
     <div>
       <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}
+        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
         <span className="text-xl"> 👋</span>
         </span>
       </h1>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5"{t('events', 'home.greetingSubtitle')}</p>
     </div>
 
     {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
@@ -591,8 +591,8 @@ export function HomeScreen({
           id="home-strategic-settings-btn"
           type="button"
           onClick={onOpenSettings}
-          aria-label="Paramètres de l'application"
-          title="Paramètres"
+          aria-label={t('events', 'home.settings')}
+          title={t('events', 'home.settings')}
           className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
         >
           <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
@@ -602,12 +602,12 @@ export function HomeScreen({
       <button
         onClick={onProfileClick}
         className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-        aria-label="Profil"
+        aria-label={t('events', 'home.profile')}
       >
         <UserAvatar
           id={user?.id}
           src={user?.avatar_url}
-          name={user?.name || 'Invité'}
+          name={user?.name || t('events', 'home.guest')}
           role={user?.role || 'attendee'}
           size="sm"
           className="w-full h-full"
@@ -626,7 +626,7 @@ export function HomeScreen({
       {/* ✅ px-4 py-3, gap-3 et texte responsive d'origine */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
         <Search className="w-4 h-4 text-gray-400" />
-        <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
+        <span className="text-xs sm:text-sm text-gray-400 font-medium"{t('events', 'home.searchPlaceholder')}</span>
       </div>
     </button>
 
@@ -637,8 +637,8 @@ export function HomeScreen({
       type="button"
       onClick={onOpenAIAssistant}
       className="w-12 h-12 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
-      aria-label="Assistant IA Gbaigbance"
-      title="Assistant IA Gbaigbance"
+      aria-label={t('events', 'home.aiAssistant')}
+      title={t('events', 'home.aiAssistant')}
     >
       <div className="relative flex items-center justify-center">
         <Sparkles className="w-5 h-5 text-[#6600FF] transition-transform group-hover:scale-110" />
@@ -649,7 +649,7 @@ export function HomeScreen({
 </header>
 
       {/* SECTION 1: Événements à la une */}
-      <section className="mt-3 px-5" aria-label="Événements à la une">
+      <section className="mt-3 px-5" aria-label={t('events', 'featured')}>
         {loading && featured.length === 0 ? (
           <FeaturedCarouselSkeleton />
         ) : featured.length > 0 ? (
@@ -662,12 +662,12 @@ export function HomeScreen({
       </section>
 
       {/* SECTION 2: Explorer par catégorie */}
-      <section className="mt-6 mx-auto w-full max-w-[1320px] px-5" aria-label="Explorer les catégories d'événements">
+      <section className="mt-6 mx-auto w-full max-w-[1320px] px-5" aria-label={t('events', 'home.exploreCategories')}>
         <h2 className="mb-2.5 text-center text-base font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-lg">
-          Explorer par catégorie
+          {t('events', 'home.exploreCategories')}
         </h2>
 
-        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label="Catégories principales">
+        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label={t('events', 'home.mainCategories')}>
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -688,7 +688,7 @@ export function HomeScreen({
               >
                 <Icon className={`h-4 w-4 shrink-0 sm:h-[17px] sm:w-[17px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
                 <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
-                  {main.shortLabel}
+                  {t('events', `explore.search.mainCategoriesLabels.${main.id}`)}
                 </span>
               </button>
             );
@@ -703,7 +703,7 @@ export function HomeScreen({
             <div
               className="flex flex-wrap items-center justify-center gap-1.5"
               role="group"
-              aria-label={'Sous-catégories de ' + selectedMainCategory.shortLabel}
+              aria-label={t('events', 'home.subcategoriesOf').replace('{category}', t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`))}
             >
               <button
                 type="button"
@@ -716,7 +716,7 @@ export function HomeScreen({
                     : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200')
                 }
               >
-                Toutes
+                {t('events', 'home.allSubcategories')}
               </button>
               {selectedMainCategory.subcategories.map((sub) => {
                 const isSelected = selectedCategory === sub.id;
@@ -733,7 +733,7 @@ export function HomeScreen({
                         : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200')
                     }
                   >
-                    {sub.shortLabel}
+                    {t('events', `explore.search.subcategoriesLabels.${sub.id}`)}
                   </button>
                 );
               })}
@@ -749,7 +749,7 @@ export function HomeScreen({
             <h2 className="text-lg sm:text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
                 ? selectedMainCategory.shortLabel
-                : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
+                : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || t('events', 'event')}
             </h2>
             <button
               type="button"
@@ -764,7 +764,7 @@ export function HomeScreen({
               {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
             </div>
           ) : categoryEvents.length === 0 ? (
-            <EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />
+            <EmptyState title={t('events', 'noEvents')} description={t('events', 'home.noCategoryEvents')} />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {categoryEvents.map((event) => (
@@ -777,11 +777,11 @@ export function HomeScreen({
 
       {/* SECTION 3: Tendances de la semaine (placé sous la section catégorie) */}
       {loading && trending.length === 0 ? (
-        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
           <TrendingDeckSkeleton />
         </section>
       ) : trending.length > 0 ? (
-        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
           <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
         </section>
       ) : null}
@@ -806,7 +806,7 @@ export function HomeScreen({
                 onClick={() => setSeeMoreType('nearby')}
                 className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
               >
-                <span>Voir plus</span>
+                <span>{t('events', 'home.seeMore')}</span>
                 <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
               </button>
             </div>
@@ -836,7 +836,7 @@ export function HomeScreen({
 
       {/* SECTION 5: Recommandé pour vous (Algorithme fondé sur les goûts, affinités et tendances) */}
       {recommendedEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Recommandations personnalisées">
+        <section className="mt-9 px-5" aria-label={t('events', 'recommended')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -844,10 +844,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  Recommandé pour vous
+                  {t('events', 'recommended')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Sélection intelligente selon vos goûts et affinités
+                  {t('events', 'home.recommendationSubtitle')}
                 </p>
               </div>
             </div>
@@ -857,7 +857,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('preferences')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -872,7 +872,7 @@ export function HomeScreen({
 
       {/* SECTION 6: Événements 100% Gratuits */}
       {freeEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Événements gratuits">
+        <section className="mt-9 px-5" aria-label={t('events', 'home.freeEvents')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -880,10 +880,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  Événements Gratuits
+                  {t('events', 'home.freeEvents')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Entrée 100% libre sans frais
+                  {t('events', 'home.freeEventsSubtitle')}
                 </p>
               </div>
             </div>
@@ -893,7 +893,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('free')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -908,7 +908,7 @@ export function HomeScreen({
 
       {/* SECTION 7: À ne pas manquer */}
       {unmissableEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="À ne pas manquer">
+        <section className="mt-9 px-5" aria-label={t('events', 'home.unmissable')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -916,10 +916,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  À ne pas manquer
+                  {t('events', 'home.unmissable')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Les événements les plus attendus
+                  {t('events', 'home.unmissableSubtitle')}
                 </p>
               </div>
             </div>
@@ -929,7 +929,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('unmissable')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -965,7 +965,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('artists')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -1032,7 +1032,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('organizations')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
