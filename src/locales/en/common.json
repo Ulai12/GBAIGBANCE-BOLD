@@ -30,5 +30,34 @@
   "theme": "Theme",
   "light": "Light",
   "dark": "Dark",
-  "notifications": "Notifications"
+  "notifications": "Notifications",
+  "homeScreen": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Hi",
+      "evening": "Good evening",
+      "night": "Good night"
+    },
+    "guest": "Guest",
+    "subtitle": "Find your next outing",
+    "settingsAria": "App settings",
+    "settingsTitle": "Settings",
+    "aiAssistantTitle": "Gbaigbance AI Assistant",
+    "profileAria": "Profile",
+    "nearbyTitle": "Near you",
+    "nearbySubtitle": "Around your location ({city})",
+    "recommended": "Personalized recommendations",
+    "freeEvents": "Free events",
+    "unmissable": "Don't miss",
+    "artistsSpotlight": "Artists in the spotlight",
+    "verifiedOrgs": "Verified organizers",
+    "exploreCategories": "Explore by category",
+    "mainCategories": "Main categories",
+    "allCategories": "All",
+    "noEventsInCategory": "No events",
+    "noEventsInCategoryDesc": "No events in this category right now",
+    "offlineMode": "Offline mode: showing saved data",
+    "ticketingEvents": "Ticketing & Events",
+    "concertsParties": "Concerts, parties, festivals..."
+  }
 }
