@@ -191,7 +191,7 @@ export function EventPreviewModal({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Tarif</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-600 dark:text-gray-300 block">Tarif</span>
                   <span className="text-sm font-black text-[#6600FF] dark:text-purple-300">
                     {event.access_type === 'free' || event.price_min === 0
                       ? 'Gratuit'
@@ -202,7 +202,7 @@ export function EventPreviewModal({
 
               {/* Description */}
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">À propos</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">À propos</h4>
                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
                   {event.description || 'Aucune description rédigée pour le moment.'}
                 </p>
@@ -210,7 +210,7 @@ export function EventPreviewModal({
 
               {/* Access Mode Dedicated Widget */}
               <div className="p-4 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02] space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                   Modalité d'accès & Billetterie
                 </h4>
 
@@ -280,7 +280,7 @@ export function EventPreviewModal({
               {/* Programme / Schedule items */}
               {scheduleItems.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                     <ListOrdered className="w-3.5 h-3.5" />
                     <span>Programme ({scheduleItems.length} temps forts)</span>
                   </h4>
@@ -301,7 +301,7 @@ export function EventPreviewModal({
               {/* Collaborators preview */}
               {collaborators.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
                     <span>Artistes & Collaborateurs</span>
                   </h4>

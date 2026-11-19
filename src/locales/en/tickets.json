@@ -1,5 +1,8 @@
 {
   "title": "My tickets",
+  "bookingTitle": "Book tickets",
+  "giftSuccessTitle": "Gifted ticket",
+  "orderSuccessTitle": "Order confirmed",
   "loginTitle": "Your event tickets",
   "loginDescription": "Sign in to find all your passes, gifted tickets and secure access QR codes.",
   "loginButton": "Sign in",

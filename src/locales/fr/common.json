@@ -59,5 +59,6 @@
     "offlineMode": "Mode hors-ligne : données sauvegardées affichées",
     "ticketingEvents": "Billetterie & Événements",
     "concertsParties": "Concerts, soirées, festivals..."
-  }
+  },
+  "dialog": "Boîte de dialogue"
 }

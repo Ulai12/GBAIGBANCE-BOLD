@@ -6,6 +6,24 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
+window.addEventListener('vite:preloadError', (event) => {
+  const retryKey = 'gba-vite-preload-retry-at';
+  const now = Date.now();
+  let shouldReload = false;
+
+  try {
+    const lastRetry = Number(sessionStorage.getItem(retryKey));
+    shouldReload = !lastRetry || now - lastRetry > 30_000;
+    if (shouldReload) sessionStorage.setItem(retryKey, String(now));
+  } catch (error) {
+    console.error('[app] Unable to retry a failed module load because session storage is unavailable.', error);
+  }
+
+  if (!shouldReload) return;
+  event.preventDefault();
+  window.location.reload();
+});
+
 // Enregistrement PWA avec détection rapide et application automatique des mises à jour.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   const updateSW = registerSW({

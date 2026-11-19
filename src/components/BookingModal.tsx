@@ -34,7 +34,7 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ open, event, initialOptionId, onClose, onSuccess }: BookingModalProps) {
-  const { user } = useApp();
+  const { user, t } = useApp();
   const [options, setOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -359,7 +359,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     const isGift = purchaseTarget === 'friend';
 
     return (
-      <Modal open={open} onClose={handleCloseModal} title="">
+      <Modal
+        open={open}
+        onClose={handleCloseModal}
+        ariaLabel={purchaseTarget === 'friend' ? t('tickets', 'giftSuccessTitle') : t('tickets', 'orderSuccessTitle')}
+      >
         <div className="flex flex-col items-center justify-center py-6 text-center text-[#1A1A2E] dark:text-white space-y-4">
           <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center animate-bounce-in motion-reduce:animate-none">
             <Check className="w-10 h-10 text-emerald-600 dark:text-emerald-300" strokeWidth={3} />
@@ -434,7 +438,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }
 
   return (
-    <Modal open={open} onClose={handleCloseModal} title="Réserver des billets">
+    <Modal open={open} onClose={handleCloseModal} title={t('tickets', 'bookingTitle')}>
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {/* En-tête de l'événement compact */}
         <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 dark:bg-white/5 rounded-2xl">
@@ -442,8 +446,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             <img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{event.city} · {event.location_name}</p>
+            <h3 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 truncate">{event.city} · {event.location_name}</p>
           </div>
         </div>
 
@@ -451,7 +455,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm font-semibold text-[#171726] dark:text-white">Réservation indisponible</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
@@ -483,7 +487,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
           <>
             {/* 1. Choix du pass */}
             <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">1. Catégorie de pass</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">1. Catégorie de pass</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {options.map((opt) => {
                   const optAvailable = Math.max(0, (Number(opt.quantity_total) || 0) - (Number(opt.quantity_sold) || 0));
@@ -507,9 +511,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     >
                       <div>
                         <p className="font-bold text-xs text-[#1A1A2E] dark:text-white">{opt.label || opt.ticket_type.toUpperCase()}</p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-300">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
                       </div>
-                      <span className="font-extrabold text-[#6600FF] text-xs">
+                      <span className="font-extrabold text-[#5200CC] dark:text-[#C4B5FD] text-xs">
                         {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} F`}
                       </span>
                     </button>
@@ -521,7 +525,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* 2. Destination du billet : Pour moi OU Offrir à un ami */}
             {selectedOption && available > 0 && (
               <div className="space-y-2.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">2. Titulaire du billet</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">2. Titulaire du billet</p>
 
                 {/* Segmented Control Apple Style */}
                 <div className="grid grid-cols-2 p-1 bg-gray-100 dark:bg-white/10 rounded-2xl" role="radiogroup" aria-label="Titulaire du billet">
@@ -676,13 +680,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* Bénéficiaires supplémentaires si quantité > 1 */}
             {selectedOption && quantity > 1 && (
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1">
                   <Users className="w-3.5 h-3.5" /> Noms des titulaires ({quantity} places)
                 </p>
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
                     <div key={i} className="p-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-12">#{i + 1}</span>
+                      <span className="text-xs font-bold text-gray-600 dark:text-gray-300 w-12">#{i + 1}</span>
                       <input
                         type="text"
                         value={r.recipient_name}
@@ -703,7 +707,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* 4. Paiement Mobile Money — inutile pour un pass gratuit */}
             {selectedOption && available > 0 && !isFreeCheckout && (
               <div className="space-y-2.5 pt-1">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5" /> 3. Règlement Mobile Money
                 </p>
 
@@ -743,7 +747,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     placeholder="Ex: 90 12 34 56"
                     className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                   />
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
+                  <span className="text-[10px] text-gray-600 dark:text-gray-300 block">
                     L'acheteur reste la référence financière pour tout remboursement éventuel.
                   </span>
                 </div>
@@ -772,7 +776,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 dark:text-gray-400 block">Total à payer</span>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                    <span className="text-[10px] text-gray-600 dark:text-gray-300">
                       {isFreeCheckout ? 'Confirmation immédiate, sans débit' : 'Débit Mobile Money sur le numéro indiqué'}
                     </span>
                   </div>

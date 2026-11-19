@@ -59,5 +59,6 @@
     "offlineMode": "Offline mode: showing saved data",
     "ticketingEvents": "Ticketing & Events",
     "concertsParties": "Concerts, parties, festivals..."
-  }
+  },
+  "dialog": "Dialog"
 }

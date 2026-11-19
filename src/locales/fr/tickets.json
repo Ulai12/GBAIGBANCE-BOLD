@@ -1,5 +1,8 @@
 {
   "title": "Mes billets",
+  "bookingTitle": "Réserver des billets",
+  "giftSuccessTitle": "Billet offert",
+  "orderSuccessTitle": "Commande validée",
   "loginTitle": "Vos billets d’événements",
   "loginDescription": "Connectez-vous pour retrouver l'ensemble de vos pass, billets offerts et QR codes d'accès sécurisés.",
   "loginButton": "Se connecter",

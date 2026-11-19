@@ -19,12 +19,14 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { haptic } from '@/hooks/useHaptics';
 import { GlassPanel } from '@/components/glass';
+import { useApp } from '@/hooks/useApp';
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   title?: string;
+  ariaLabel?: string;
   /** Permet de surcharger la largeur maximale (ex. max-w-lg) */
   maxWidthClass?: string;
 }
@@ -50,7 +52,8 @@ function releaseScrollLock() {
   }
 }
 
-export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-md' }: ModalProps) {
+export function Modal({ open, onClose, children, title, ariaLabel, maxWidthClass = 'max-w-md' }: ModalProps) {
+  const { t } = useApp();
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
@@ -149,6 +152,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? titleId : undefined}
+          aria-label={!title ? ariaLabel || t('common', 'dialog') : undefined}
         >
           {/* Arrière-plan assombri avec flou progressif */}
           <motion.div

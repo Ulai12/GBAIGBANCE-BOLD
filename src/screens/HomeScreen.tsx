@@ -75,7 +75,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user, t } = useApp();
+  const { user } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -996,7 +996,7 @@ export function HomeScreen({
                       <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
                         {artist.name}
                       </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-semibold text-center truncate w-full leading-tight">
                         {fansText}
                       </span>
                     </div>
@@ -1060,7 +1060,7 @@ export function HomeScreen({
                       <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
                         {org.name}
                       </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-semibold text-center truncate w-full leading-tight">
                         {countText}
                       </span>
                     </div>
