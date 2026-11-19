@@ -222,3 +222,38 @@
 - Déploiement Vercel du commit `b687962` : `READY`; statut Vercel : `success`. Cela valide la compilation Vite configurée, pas un typecheck, lint ou test dédié.
 - PR #14 toujours `mergeable: false`; la divergence reste à 152 commits d'avance et 16 de retard. Le statut `dirty` indique des conflits non résolus.
 - Aucun merge de branches n'a été effectué. La session ne dispose pas d'un workflow de résolution/merge de branches qui permette de fusionner proprement les changements de `main` vers `FRONTEND-iA`; aucun merge commit artificiel n'a été créé.
+
+## 2026-11-19 — Rééquilibrage responsive d’Explorer par catégorie
+### Constat
+- Le parcours est rendu dans `src/screens/HomeScreen.tsx`; les six catégories métier et leurs sous-catégories restent définies dans `src/constants/categories.ts`.
+- La grille basculait à six colonnes dès `lg` (1024 px), ce qui réduisait la largeur utile de chaque carte et provoquait des retours à la ligne prématurés sur les libellés.
+- Les cartes avaient des min-heights croissantes par breakpoint et un padding vertical qui amplifiait la hauteur des lignes.
+- Les sous-catégories étaient forcées sur une seule ligne avec défilement horizontal; les éléments longs restaient partiellement masqués.
+- Le mapping d’icônes de l’accueil ne contenait pas `Sparkles`, icône de la catégorie « Loisirs & Découvertes », qui tombait donc sur l’icône de secours Palette.
+
+### Intervention réalisée
+- Grille parentale désormais équilibrée en 2 colonnes sur mobile, 3 de `sm` à `lg`, puis 6 à `xl`; la grille intermédiaire est plafonnée à 780 px afin de garder des cartes regroupées plutôt qu’étirées.
+- Cartes parentes ramenées à une hauteur minimale de 48 px avec padding vertical réduit; les libellés gardent leur retour à la ligne naturel et peuvent augmenter la hauteur uniquement si nécessaire.
+- Sous-catégories passées en retour à la ligne responsive, sans défilement horizontal obligatoire; les boutons gardent une cible tactile minimale de 44 px et acceptent les libellés longs.
+- Ajout d’un intitulé de sous-catégories lié à la catégorie parente, réutilisant le catalogue FR/EN existant.
+- Ajout de `Sparkles` au mapping des icônes de l’accueil.
+- Identifiants, ordre, libellés métier, couleurs, états actifs, callbacks, filtrage et données inchangés. Aucun backend/API ni `src/constants/categories.ts` modifié.
+- Cette intervention suit la demande explicite de ce chantier, qui réautorise l’ajustement visuel après le gel précédent des cartes.
+
+### Fichiers concernés
+- `src/screens/HomeScreen.tsx`
+- `FRONTEND_MEMORY.md`
+
+### Vérifications et limites
+- Branche cible contrôlée avant intervention : `FRONTEND-iA`, HEAD de départ `e27b4085177e5dc61397e2339c205a1e4721cd84`.
+- Contrôles statiques du diff : une seule section remplacée; grille responsive présente; ancien breakpoint six colonnes dès `lg` absent; min-height/padding compacts; sous-catégories enveloppées; sélection parent/enfant conservée; données métier intactes.
+- Prévisualisation Vercel du commit candidat `6dc12d8eef9f9221d3318b41209de6de7503f8b7` : état `READY`; Vite 8.3.7 a transformé 3 303 modules et terminé le build en 4,11 s; PWA 63 entrées précachées; 14 fichiers de preview synchronisés. Le commit de branche final reprend exactement le même code applicatif; seule cette mémoire diffère.
+- Le contrôle TypeScript Vercel a signalé `api/ai/assistant/stream.ts(1,25): TS5097`; le même diagnostic apparaît déjà sur le déploiement de référence du HEAD précédent `e27b4085177e5dc61397e2339c205a1e4721cd84`, qui est lui aussi `READY`. Ce problème préexistant n’est pas causé par ce chantier et le fichier API n’a pas été modifié.
+- `npm run typecheck`, lint et tests dédiés non exécutés séparément.
+- Contrôle visuel navigateur non réalisé : le navigateur connecté n’était pas accessible. La capture reçue pendant cette exécution concernait la résolution de conflits PR #14, pas le bloc catégories; aucune capture de ce bloc n’était disponible.
+- UIAudit et Superdesign non disponibles dans les outils/skills exposés; aucun audit ni maquette de ces outils n’est revendiqué.
+- Aucun changement à `main`, aucune autre branche, aucun PR; `PROJECT_MEMORY.md` n’a pas été lu ni modifié.
+
+### Prochaine priorité
+- Vérifier visuellement la section sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), surtout les libellés longs et la répartition des sous-catégories.
+- Traiter séparément le diagnostic TypeScript TS5097 de `api/ai/assistant/stream.ts` dans un chantier autorisé, sans le mélanger à cette correction UI.
