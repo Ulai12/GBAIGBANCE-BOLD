@@ -652,7 +652,12 @@
     "artistsSubtitle": "Talented artists and creators from the community",
     "officialOrganizers": "Official organizers",
     "organizersSubtitle": "Collectives and experience creators",
-    "greeting": "Hello"
+    "greeting": "Hello",
+    "greetingMorning": "Good morning",
+    "greetingAfternoon": "Hello",
+    "greetingEvening": "Good evening",
+    "greetingNight": "Good night",
+    "verifiedAccount": "Verified account"
   },
   "cardStatus": {
     "cancelled": "Cancelled",
