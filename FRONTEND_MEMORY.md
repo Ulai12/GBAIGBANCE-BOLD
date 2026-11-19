@@ -314,3 +314,9 @@
 
 ### Prochaine priorité
 - Exécuter un build et un typecheck dans l'environnement autorisé, puis vérifier visuellement les versions FR et EN de Home sur mobile et desktop, en contrôlant notamment les longueurs de libellés et les débordements sans modifier le design.
+
+
+### Complément de périmètre — composants secondaires de la modale « Voir plus »
+- `src/components/NearbySeeMoreCard.tsx` : date/prix localisés, libellés accessibles, partage et lieu de secours.
+- `src/components/OrganizerCard.tsx` : partage, région de secours, compteur d'événements, abonnés et actions Suivre/Suivi.
+- Ces composants conservent leurs classes, dimensions, animations, structure et interactions.
