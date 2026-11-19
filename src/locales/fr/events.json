@@ -566,6 +566,18 @@
     "freeEventsSubtitle": "Entrée 100% libre sans frais",
     "unmissable": "À ne pas manquer",
     "unmissableSubtitle": "Les événements les plus attendus",
-    "seeMore": "Voir plus"
+    "seeMore": "Voir plus",
+    "nearbyEvent": "Événement à proximité : {title}",
+    "defaultCity": "Lomé",
+    "defaultCategory": "Sortie",
+    "notifications": "Notifications"
+  },
+  "cardStatus": {
+    "cancelled": "Annulé",
+    "postponed": "Reporté",
+    "ended": "Terminé",
+    "reservation": "Sur réservation",
+    "official": "Site officiel",
+    "freeEntry": "Entrée libre"
   }
 }
