@@ -15,6 +15,7 @@ import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { formatDistance, getAccurateTravelEstimate } from '@/utils/geo';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { useApp } from '@/hooks/useApp';
 
 interface NearbySeeMoreCardProps {
   event: Event & { distanceKm?: number };
@@ -45,6 +46,7 @@ function formatAttendees(count: number) {
 }
 
 export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCardProps) {
+  const { language } = useApp();
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -62,7 +64,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
       onShare(event);
       return;
     }
-    const status = await shareEventNative(event);
+    const status = await shareEventNative(event, undefined, language);
     if (status !== 'shared' && status !== 'cancelled') {
       setShowShareModal(true);
     }

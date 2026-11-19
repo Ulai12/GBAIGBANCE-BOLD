@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, MapPin, Settings, ChevronRight, MessageSquareQuote } from 'lucide-react';
 import { isGeminiActive } from '@/services/gemini';
 import { EventAIAssistantModal } from '@/components/EventAIAssistantModal';
+import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
 
 /**
@@ -21,6 +22,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
   event,
   onOpenSettings,
 }) => {
+  const { t } = useApp();
   const [active, setActive] = useState(isGeminiActive);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -32,12 +34,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
     return () => window.removeEventListener('gbaigbance_gemini_config_updated', handler);
   }, []);
 
-  const sampleQuestions = [
-    "Comment s'y rendre & parking ?",
-    "Quelle tenue est conseillée ?",
-    "Restaurants & bars sympas autour ?",
-    "Quels sont les horaires d'accès ?",
-  ];
+  const sampleQuestions = [0, 1, 2, 3].map((index) => t('events', `detail.ai.questions.${index}`));
 
   const handleOpenWithQuestion = (question: string) => {
     setSelectedQuestion(question);
@@ -57,13 +54,13 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
             </div>
             <div>
               <p className="font-extrabold text-sm text-[#1A1A2E] dark:text-white flex items-center gap-1.5">
-                <span>Conseiller IA de l'événement</span>
+                <span>{t('events', 'detail.ai.title')}</span>
                 <span className="px-2 py-0.5 rounded-full bg-[#6600FF] text-white text-[10px] font-bold">
                   Bêta
                 </span>
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                Activez votre conseiller pour obtenir des astuces sur ce lieu, la météo et l'ambiance.
+                {t('events', 'detail.ai.description')}
               </p>
             </div>
           </div>
@@ -72,10 +69,10 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
             type="button"
             onClick={onOpenSettings}
             className="min-h-[44px] px-4 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-            aria-label="Configurer le conseiller IA"
+            aria-label={t('events', 'detail.ai.configure')}
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>Activer</span>
+            <span>{t('events', 'detail.ai.enable')}</span>
           </button>
         </div>
       </div>
@@ -97,7 +94,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-extrabold text-[#1A1A2E] dark:text-white">
-                  Conseiller IA de l'événement
+                  {t('events', 'detail.ai.title')}
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-[#A78BFA] border border-[#6600FF]/20">
                   Gemini Live
@@ -105,7 +102,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span>Accès, stationnement, ambiance & conseils pratiques</span>
+                <span>{t('events', 'detail.ai.subtitle')}</span>
               </p>
             </div>
           </div>
@@ -114,8 +111,8 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
             type="button"
             onClick={onOpenSettings}
             className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-[#6600FF] transition-colors cursor-pointer"
-            title="Paramètres de l'assistant IA"
-            aria-label="Ouvrir les paramètres IA"
+            title={t('events', 'detail.ai.settings')}
+            aria-label={t('events', 'detail.ai.openSettings')}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -146,7 +143,7 @@ export const EventAIInsights: React.FC<EventAIInsightsProps> = ({
           className="w-full min-h-[44px] px-4 py-3 rounded-2xl bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-[#6600FF] dark:text-[#A78BFA] text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
         >
           <MessageSquareQuote className="w-4 h-4" />
-          <span>Ouvrir la conversation avec le conseiller IA</span>
+          <span>{t('events', 'detail.ai.openConversation')}</span>
           <ChevronRight className="w-4 h-4 ml-auto" />
         </button>
       </div>

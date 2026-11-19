@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Copy, Check } from 'lucide-react';
+import { useApp } from '@/hooks/useApp';
 
 /**
  * GBAIGBANCE — EventMapPreview (Mini-Carte & Navigation iOS)
@@ -29,6 +30,7 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
   latitude,
   longitude,
 }) => {
+  const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
         href={navigationUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`Ouvrir l'itinéraire vers ${locationName} dans Google Maps`}
+        aria-label={t('events', 'detail.map.directions').replace('{location}', locationName)}
         className="relative block h-44 w-full overflow-hidden rounded-[22px] border border-black/10 dark:border-white/10 select-none group cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#6600FF] shadow-inner"
       >
         {isVisible ? (
@@ -181,7 +183,7 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
           className="min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] active:scale-[0.98] text-white text-xs font-extrabold transition-all shadow-md shadow-[#6600FF]/25 cursor-pointer"
         >
           <Navigation className="w-4 h-4 fill-white" />
-          <span>Itinéraire</span>
+          <span>{t('events', 'detail.map.directionsButton')}</span>
         </a>
 
         {/* Bouton 2 : Copier l'adresse (Verre iOS / feedback coche) */}
@@ -189,19 +191,21 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
           id="event-map-copy-address"
           type="button"
           onClick={handleCopyAddress}
-          title="Copier l'adresse complète"
-          aria-label="Copier l'adresse du lieu"
+          title={t('events', 'detail.map.copyAddress')}
+          aria-label={t('events', 'detail.map.copyAddressButton')}
           className="min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl glass-ios hover:bg-white/80 dark:hover:bg-white/15 active:scale-[0.98] text-xs font-bold transition-all shadow-2xs cursor-pointer border border-black/10 dark:border-white/10"
         >
           {copied ? (
             <>
               <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">Adresse copiée</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">
+                {t('events', 'detail.map.copied')}
+              </span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
-              <span className="text-gray-700 dark:text-gray-200">Copier l'adresse</span>
+              <span className="text-gray-700 dark:text-gray-200">{t('events', 'detail.map.copyAddress')}</span>
             </>
           )}
         </button>

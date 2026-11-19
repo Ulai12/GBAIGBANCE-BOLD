@@ -1,0 +1,29 @@
+{
+  "eyebrow": "Centre d'activité",
+  "title": "Notifications",
+  "description": "Suivi de vos réservations, alertes artistes et actualités en direct",
+  "loginTitle": "Restez informé en temps réel",
+  "loginDescription": "Connectez-vous pour recevoir vos confirmations de réservation, alertes artistes et rappels d'événements.",
+  "loginButton": "Se connecter à mon compte",
+  "back": "Retour",
+  "markAllRead": "Tout lire",
+  "unreadCount": "{count} non lue(s)",
+  "receivedCount": "{count} reçue(s)",
+  "all": "Toutes ({count})",
+  "unread": "Non lues ({count})",
+  "emptyTitle": "Aucune notification",
+  "emptyUnreadTitle": "Aucune notification non lue",
+  "emptyDescription": "Vos notifications apparaîtront ici quand quelqu’un interagira avec vos événements ou répondra à vos questions.",
+  "emptyUnreadDescription": "Vous êtes à jour avec toutes vos alertes.",
+  "loadError": "Erreur de chargement des notifications",
+  "error": "Une erreur est survenue",
+  "allReadToast": "Toutes les notifications sont lues",
+  "actions": {
+    "comment_reply": "a répondu à votre commentaire",
+    "new_comment": "a commenté votre événement",
+    "new_question": "a posé une question",
+    "question_answered": "a répondu à votre question",
+    "new_follower": "a commencé à vous suivre",
+    "invite_accepted": "a accepté votre invitation"
+  }
+}

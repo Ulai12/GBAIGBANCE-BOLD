@@ -30,7 +30,7 @@ interface EventInteractionPanelProps {
 }
 
 export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInteractionPanelProps) {
-  const { user } = useApp();
+  const { user, language, t } = useApp();
   const [tab, setTab] = useState<Tab>('comments');
   const [comments, setComments] = useState<EventComment[]>([]);
   const [reactions, setReactions] = useState<EventReaction[]>([]);
@@ -84,7 +84,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       console.error('addEventComment error:', err);
       setComments((prev) => prev.filter((c) => c.id !== optimistic.id));
       setCommentText(text);
-      onToast({ message: 'Impossible d\'envoyer le commentaire', type: 'error' });
+      onToast({ message: t('events', 'detail.interaction.commentError'), type: 'error' });
     } finally {
       setSubmittingComment(false);
     }
@@ -97,13 +97,13 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
     } catch (err) {
       console.error('deleteEventComment error:', err);
       loadComments();
-      onToast({ message: 'Suppression impossible', type: 'error' });
+      onToast({ message: t('events', 'detail.interaction.deleteError'), type: 'error' });
     }
   };
 
   const handleReaction = async (emoji: string) => {
     if (!user) {
-      onToast({ message: 'Connectez-vous pour réagir', type: 'info' });
+      onToast({ message: t('events', 'detail.interaction.loginToReact'), type: 'info' });
       return;
     }
     try {
@@ -111,7 +111,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       loadReactions();
     } catch (err) {
       console.error('toggleEventReaction error:', err);
-      onToast({ message: 'Erreur lors de la réaction', type: 'error' });
+      onToast({ message: t('events', 'detail.interaction.reactionError'), type: 'error' });
     }
   };
 
@@ -135,12 +135,12 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
     try {
       await addEventQuestion(event.id, user.id, text);
       loadQuestions();
-      onToast({ message: 'Question posée à l\'organisateur !', type: 'success' });
+      onToast({ message: t('events', 'detail.interaction.questionSent'), type: 'success' });
     } catch (err) {
       console.error('addEventQuestion error:', err);
       setQuestions((prev) => prev.filter((q) => q.id !== optimistic.id));
       setQuestionText(text);
-      onToast({ message: 'Impossible d\'envoyer la question', type: 'error' });
+      onToast({ message: t('events', 'detail.interaction.questionError'), type: 'error' });
     } finally {
       setSubmittingQuestion(false);
     }
@@ -154,10 +154,10 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       setAnsweringId(null);
       setAnswerDraft('');
       loadQuestions();
-      onToast({ message: 'Réponse officielle publiée !', type: 'success' });
+      onToast({ message: t('events', 'detail.interaction.answerSent'), type: 'success' });
     } catch (err) {
       console.error('answerEventQuestion error:', err);
-      onToast({ message: 'Impossible de publier la réponse', type: 'error' });
+      onToast({ message: t('events', 'detail.interaction.answerError'), type: 'error' });
     } finally {
       setSubmittingAnswer(false);
     }
@@ -176,23 +176,23 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
       {/* Contrôle segmenté en verre iOS */}
       <div
         role="tablist"
-        aria-label="Interactions de l'événement"
+        aria-label={t('events', 'detail.interaction.commentsArea')}
         className="grid grid-cols-3 p-1.5 rounded-2xl glass-ios shadow-xs gap-1"
       >
         {[
-          { id: 'comments' as Tab, label: 'Avis', icon: MessageCircle, count: comments.length },
-          { id: 'reactions' as Tab, label: 'Réactions', icon: Flame, count: totalReactions },
-          { id: 'qa' as Tab, label: 'Q & R', icon: HelpCircle, count: questions.length },
-        ].map((t) => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
+          { id: 'comments' as Tab, label: t('events', 'detail.interaction.tabComments'), icon: MessageCircle, count: comments.length },
+          { id: 'reactions' as Tab, label: t('events', 'detail.interaction.tabReactions'), icon: Flame, count: totalReactions },
+          { id: 'qa' as Tab, label: t('events', 'detail.interaction.tabQuestions'), icon: HelpCircle, count: questions.length },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = tab === item.id;
           return (
             <button
-              key={t.id}
+              key={item.id}
               role="tab"
               aria-selected={isActive}
-              aria-controls={`panel-${t.id}`}
-              onClick={() => setTab(t.id)}
+              aria-controls={`panel-${item.id}`}
+              onClick={() => setTab(item.id)}
               className={`min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none active:scale-[0.98] ${
                 isActive
                   ? 'bg-[#6600FF] text-white shadow-sm shadow-[#6600FF]/30'
@@ -200,8 +200,8 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              <span className="truncate">{t.label}</span>
-              {t.count > 0 && (
+              <span className="truncate">{item.label}</span>
+              {item.count > 0 && (
                 <span
                   className={`text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums ${
                     isActive
@@ -209,7 +209,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                       : 'bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300'
                   }`}
                 >
-                  {t.count}
+                  {item.count}
                 </span>
               )}
             </button>
@@ -224,10 +224,10 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
             <div className="text-center py-7 px-4 rounded-[22px] glass-ios space-y-1.5">
               <MessageCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
               <p className="text-sm font-bold text-[#1A1A2E] dark:text-white">
-                Soyez le premier à commenter !
+                {t('events', 'detail.interaction.firstComment')}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Partagez votre enthousiasme ou posez vos questions à la communauté.
+                {t('events', 'detail.interaction.commentPrompt')}
               </p>
             </div>
           ) : (
@@ -245,7 +245,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     <UserAvatar
                       id={c.user_id}
                       src={c.profile?.avatar_url}
-                      name={c.profile?.name || 'Membre'}
+                      name={c.profile?.name || t('events', 'detail.interaction.member')}
                       role={c.is_organizer_reply ? 'organizer' : (c.profile?.role || 'participant')}
                       size="sm"
                       className="shrink-0 mt-0.5"
@@ -253,14 +253,14 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-extrabold text-[#1A1A2E] dark:text-white">
-                          {c.profile?.name || 'Anonyme'}
+                          {c.profile?.name || t('events', 'detail.interaction.anonymous')}
                         </span>
                         <span className="text-[11px] text-gray-400">
-                          · {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          · {new Date(c.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' })}
                         </span>
                         {c.is_organizer_reply && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/15 px-2 py-0.5 rounded-full">
-                            <BadgeCheck className="w-3 h-3" /> Organisateur
+                            <BadgeCheck className="w-3 h-3" /> {t('events', 'detail.interaction.organizer')}
                           </span>
                         )}
                         {!c.id.startsWith('temp-') && (c.user_id === user?.id || isOrganizer) && (
@@ -268,7 +268,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                             type="button"
                             onClick={() => handleDeleteComment(c.id)}
                             className="ml-auto text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                            aria-label="Supprimer le commentaire"
+                            aria-label={t('events', 'detail.interaction.deleteComment')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -304,7 +304,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     handleAddComment();
                   }
                 }}
-                placeholder="Ajouter un commentaire sur l'événement..."
+                placeholder={t('events', 'detail.interaction.commentPlaceholder')}
                 className="flex-1 px-3.5 py-2.5 bg-white/70 dark:bg-white/[0.08] rounded-xl text-xs sm:text-sm text-[#1A1A2E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 resize-none min-h-[44px] max-h-24 border border-black/5 dark:border-white/10"
                 rows={1}
               />
@@ -313,7 +313,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 onClick={handleAddComment}
                 disabled={!commentText.trim() || submittingComment}
                 className="w-11 h-11 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
-                aria-label="Envoyer le commentaire"
+                aria-label={t('events', 'detail.interaction.sendComment')}
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -324,7 +324,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 <Lock className="w-4 h-4" />
               </div>
               <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                Connectez-vous pour participer à la discussion
+                {t('events', 'detail.interaction.loginToDiscuss')}
               </p>
             </div>
           )}
@@ -358,7 +358,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
 
           {!user && (
             <p className="text-center text-xs text-gray-500 dark:text-gray-400 pt-1 font-medium">
-              Connectez-vous pour ajouter votre réaction en direct.
+              {t('events', 'detail.interaction.loginToReactPrompt')}
             </p>
           )}
         </div>
@@ -371,10 +371,10 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
             <div className="text-center py-7 px-4 rounded-[22px] glass-ios space-y-1.5">
               <HelpCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
               <p className="text-sm font-bold text-[#1A1A2E] dark:text-white">
-                Aucune question pour le moment
+                {t('events', 'detail.interaction.noQuestions')}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Posez la première question directement à l'organisateur.
+                {t('events', 'detail.interaction.firstQuestion')}
               </p>
             </div>
           ) : (
@@ -389,7 +389,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                   <div className="flex items-start gap-3">
                     <UserAvatar
                       src={q.profile?.avatar_url}
-                      name={q.profile?.name || 'Anonyme'}
+                      name={q.profile?.name || t('events', 'detail.interaction.anonymous')}
                       role="attendee"
                       size="xs"
                       className="shrink-0 mt-0.5"
@@ -397,19 +397,19 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-extrabold text-[#1A1A2E] dark:text-white">
-                          {q.profile?.name || 'Anonyme'}
+                          {q.profile?.name || t('events', 'detail.interaction.anonymous')}
                         </span>
                         {q.answer ? (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" /> Répondu
+                            <CheckCircle2 className="w-3 h-3" /> {t('events', 'detail.interaction.answered')}
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-full">
-                            En attente de réponse
+                            {t('events', 'detail.interaction.pendingAnswer')}
                           </span>
                         )}
                         <span className="text-[10px] text-gray-400 ml-auto">
-                          {new Date(q.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          {new Date(q.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' })}
                         </span>
                       </div>
 
@@ -425,7 +425,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                       <div className="flex items-center gap-1.5 mb-1">
                         <Reply className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-300" />
                         <span className="text-xs font-bold text-[#6600FF] dark:text-purple-300">
-                          {q.answerer?.name || 'Organisateur'}
+                          {q.answerer?.name || t('events', 'detail.interaction.organizer')}
                         </span>
                       </div>
                       <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -442,7 +442,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                           <input
                             type="text"
                             autoFocus
-                            placeholder="Votre réponse officielle..."
+                            placeholder={t('events', 'detail.interaction.answerPlaceholder')}
                             value={answerDraft}
                             onChange={(e) => setAnswerDraft(e.target.value)}
                             onKeyDown={(e) => {
@@ -460,7 +460,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                             disabled={submittingAnswer || !answerDraft.trim()}
                             className="min-h-[40px] px-3.5 py-1.5 bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold rounded-xl disabled:opacity-40 transition-transform active:scale-95 shrink-0 cursor-pointer"
                           >
-                            Publier
+                            {t('events', 'detail.interaction.publish')}
                           </button>
                           <button
                             type="button"
@@ -482,7 +482,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                           }}
                           className="flex items-center gap-1.5 text-xs font-bold text-[#6600FF] dark:text-purple-400 hover:underline cursor-pointer"
                         >
-                          <Reply className="w-3.5 h-3.5" /> Répondre à cette question
+                          <Reply className="w-3.5 h-3.5" /> {t('events', 'detail.interaction.reply')}
                         </button>
                       )}
                     </div>
@@ -509,7 +509,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAskQuestion();
                 }}
-                placeholder="Poser une question à l'organisateur..."
+                placeholder={t('events', 'detail.interaction.askPlaceholder')}
                 className="flex-1 min-h-[44px] px-3.5 py-2 bg-white/70 dark:bg-white/[0.08] rounded-xl text-xs sm:text-sm text-[#1A1A2E] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 border border-black/5 dark:border-white/10"
               />
               <button
@@ -517,7 +517,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 onClick={handleAskQuestion}
                 disabled={!questionText.trim() || submittingQuestion}
                 className="w-11 h-11 rounded-full bg-[#6600FF] hover:bg-[#5200cc] flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm shadow-[#6600FF]/30"
-                aria-label="Envoyer la question"
+                aria-label={t('events', 'detail.interaction.sendQuestion')}
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -528,7 +528,7 @@ export function EventInteractionPanel({ event, isOrganizer, onToast }: EventInte
                 <Lock className="w-4 h-4" />
               </div>
               <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                Connectez-vous pour poser une question à l'organisateur
+                {t('events', 'detail.interaction.loginToAsk')}
               </p>
             </div>
           )}

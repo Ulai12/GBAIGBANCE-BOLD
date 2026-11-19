@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronDown,
@@ -155,8 +154,8 @@ export function EventDetailScreen({
   onToast,
   onUserClick,
 }: EventDetailScreenProps) {
-  const navigate = useNavigate();
-  const { user, theme, language } = useApp();
+  const { user, theme, language, t } = useApp();
+  const detailText = (key: string) => t('events', `detail.${key}`);
   const { isLiked, toggleLike, toggleFollowUser, isFollowingUser } = useFavorites();
   const liked = isLiked(event.id);
   const { isScrolled: showCompactHeader } = useScrollGlass(260);
@@ -210,19 +209,19 @@ export function EventDetailScreen({
 
   const handleToggleFollowAttendee = async (targetUserId: string): Promise<boolean> => {
     if (!user?.id) {
-      onToast({ message: 'Connectez-vous pour suivre ce profil', type: 'info' });
+      onToast({ message: detailText('followProfileLogin'), type: 'info' });
       return false;
     }
     try {
       const isNowFollowing = await toggleFollowUser(targetUserId);
       onToast({
-        message: isNowFollowing ? 'Abonnement réussi !' : 'Désabonnement effectué',
+        message: isNowFollowing ? detailText('followedProfile') : detailText('unfollowedProfile'),
         type: 'success',
       });
       return isNowFollowing;
     } catch (err) {
       console.error('Erreur lors du suivi:', err);
-      onToast({ message: 'Action impossible pour le moment', type: 'error' });
+      onToast({ message: detailText('actionUnavailable'), type: 'error' });
       return false;
     }
   };
@@ -395,13 +394,13 @@ export function EventDetailScreen({
   const canBook = displayEvent.status === 'published' && !eventHasEnded;
   const statusLabel =
     displayEvent.status === 'paused'
-      ? 'Ventes en pause'
+      ? detailText('status.paused')
       : displayEvent.status === 'suspended'
-      ? 'Événement suspendu'
+      ? detailText('status.suspended')
       : displayEvent.status === 'cancelled'
-      ? 'Événement annulé'
+      ? detailText('status.cancelled')
       : displayEvent.status === 'completed' || eventHasEnded
-      ? 'Événement terminé'
+      ? detailText('status.completed')
       : null;
 
   const galleryImages = Array.from(
@@ -426,7 +425,7 @@ export function EventDetailScreen({
 
   const handleShare = async () => {
     haptic.selection();
-    const shared = await shareEventNative(displayEvent, onToast);
+    const shared = await shareEventNative(displayEvent, onToast, language);
     if (!shared) {
       setShowShareModal(true);
     }
@@ -436,10 +435,10 @@ export function EventDetailScreen({
     toggleLike(event.id);
     if (!liked) {
       haptic.success();
-      onToast({ message: 'Ajouté à vos favoris', type: 'success' });
+      onToast({ message: detailText('favoriteAdded'), type: 'success' });
     } else {
       haptic.light();
-      onToast({ message: 'Retiré de vos favoris', type: 'info' });
+      onToast({ message: detailText('favoriteRemoved'), type: 'info' });
     }
   };
 
@@ -452,26 +451,29 @@ export function EventDetailScreen({
   const eventDateObj = new Date(targetDateForCountdown || '');
   const isDateValid = !isNaN(eventDateObj.getTime());
 
-  let dateMainText = 'Date à confirmer';
-  let dateSubText = 'Date officielle';
+  let dateMainText = detailText('dateToConfirm');
+  let dateSubText = detailText('officialDate');
   if (isDateValid) {
-    const weekday = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
-    const day = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric' });
-    const month = eventDateObj.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' });
+    const dateLocale = language === 'fr' ? 'fr-FR' : 'en-US';
+    const weekday = eventDateObj.toLocaleDateString(dateLocale, { weekday: 'short' });
+    const day = eventDateObj.toLocaleDateString(dateLocale, { day: 'numeric' });
+    const month = eventDateObj.toLocaleDateString(dateLocale, { month: 'short' });
     const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    dateMainText = `${capitalizedWeekday} ${day} ${month}`;
+    dateMainText = language === 'fr'
+      ? `${capitalizedWeekday} ${day} ${month}`
+      : `${capitalizedWeekday}, ${month} ${day}`;
     dateSubText = `${eventDateObj.getFullYear()}`;
   }
 
   const startTimeStr = isDateValid ? formatTime(targetDateForCountdown) : '';
   const endTimeStr = displayEvent.ends_at ? formatTime(displayEvent.ends_at) : '';
   const timeMainText = startTimeStr
-    ? (endTimeStr ? `${startTimeStr} - ${endTimeStr}` : `Dès ${startTimeStr}`)
-    : 'Horaire à confirmer';
-  const timeSubText = startTimeStr ? 'Heure locale (GMT)' : 'À préciser';
+    ? (endTimeStr ? `${startTimeStr} - ${endTimeStr}` : detailText('fromTime').replace('{time}', startTimeStr))
+    : detailText('timeToConfirm');
+  const timeSubText = startTimeStr ? detailText('localTime') : detailText('toSpecify');
   const formattedDate = isDateValid
     ? formatFullDate(targetDateForCountdown, language)
-    : 'Date à confirmer';
+    : detailText('dateToConfirm');
 
   // Le hook ne met à jour l'état qu'au franchissement du seuil, après le hero
 
@@ -513,7 +515,7 @@ export function EventDetailScreen({
               haptic.light();
               onBack();
             }}
-            aria-label="Retour"
+            aria-label={detailText('back')}
             className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#1A1A2E] dark:text-white active:scale-90 transition-transform shrink-0 cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -523,7 +525,7 @@ export function EventDetailScreen({
               {displayEvent.title}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {displayEvent.city} · {displayEvent.price_min === 0 ? 'Gratuit' : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
+              {displayEvent.city} · {displayEvent.price_min === 0 ? detailText('free') : `${displayEvent.price_min.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} FCFA`}
             </p>
           </div>
         </div>
@@ -533,8 +535,8 @@ export function EventDetailScreen({
           <button
             type="button"
             onClick={() => setShowReportModal(true)}
-            aria-label="Signaler cet événement"
-            title="Signaler cet événement"
+            aria-label={detailText('report.title')}
+            title={detailText('report.title')}
             className="w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 active:scale-90 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white transition-all shrink-0 cursor-pointer"
           >
             <Flag className="w-4 h-4 text-amber-400" />
@@ -542,7 +544,7 @@ export function EventDetailScreen({
           <button
             type="button"
             onClick={handleShare}
-            aria-label="Partager cet événement"
+            aria-label={detailText('share.modalTitle')}
             className="w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 active:scale-90 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white transition-all shrink-0 cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
@@ -550,7 +552,7 @@ export function EventDetailScreen({
           <button
             type="button"
             onClick={handleLike}
-            aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            aria-label={detailText(liked ? 'removeFavorite' : 'addFavorite')}
             className="w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 active:scale-90 backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all shrink-0 cursor-pointer"
           >
             <Heart className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
@@ -636,7 +638,7 @@ export function EventDetailScreen({
                   <Calendar className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#6600FF] dark:text-[#A78BFA]">
-                  Date
+                  {detailText('date')}
                 </span>
               </div>
               <div>
@@ -656,7 +658,7 @@ export function EventDetailScreen({
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#6600FF] dark:text-[#A78BFA]">
-                  Horaire
+                  {detailText('schedule')}
                 </span>
               </div>
               <div>
@@ -677,7 +679,7 @@ export function EventDetailScreen({
             <div className="flex items-center gap-2 text-[#6600FF] dark:text-purple-400">
               <MapPin className="w-4 h-4" />
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Lieu & Accès
+                {detailText('locationAccess')}
               </span>
             </div>
             <p className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
@@ -717,27 +719,27 @@ export function EventDetailScreen({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
-                    Réservation sur WhatsApp
+                    {detailText('whatsapp.title')}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Les réservations sont gérées directement par l'organisateur
+                    {detailText('whatsapp.organizerManaged')}
                   </p>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-black/30 border border-emerald-500/20 text-xs text-gray-700 dark:text-gray-300 space-y-2">
                 <p>
-                  Pour garantir votre place à cet événement, envoyez directement un message à l'organisateur avec vos coordonnées.
+                  {detailText('whatsapp.instructions')}
                 </p>
                 {displayEvent.whatsapp_number && (
                   <p className="font-bold text-[#1A1A2E] dark:text-white flex items-center gap-1.5">
-                    <span>Numéro officiel :</span>
+                    <span>{detailText('whatsapp.officialNumber')}</span>
                     <span className="text-[#25D366]">{displayEvent.whatsapp_number}</span>
                   </p>
                 )}
                 {displayEvent.unlimited_capacity && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    ✨ Événement sans limite stricte de jauge
+                    ✨ {detailText('whatsapp.unlimited')}
                   </p>
                 )}
               </div>
@@ -745,14 +747,14 @@ export function EventDetailScreen({
               {toWhatsAppNumber(displayEvent.whatsapp_number).length >= 11 && (
                 <a
                   href={`https://wa.me/${toWhatsAppNumber(displayEvent.whatsapp_number)}?text=${encodeURIComponent(
-                    displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
+                    displayEvent.whatsapp_message || detailText('whatsapp.defaultMessage').replace('{title}', displayEvent.title)
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/25 transition-transform active:scale-98"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Contacter l'organisateur sur WhatsApp</span>
+                  <span>{detailText('whatsapp.contact')}</span>
                 </a>
               )}
             </div>
@@ -764,21 +766,21 @@ export function EventDetailScreen({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
-                    Billetterie sur site dédié
+                    {detailText('external.title')}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Les tickets sont vendus sur la plateforme officielle dédiée
+                    {detailText('external.officialPlatform')}
                   </p>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-black/30 border border-[#6600FF]/20 text-xs text-gray-700 dark:text-gray-300 space-y-2">
                 <p>
-                  Cet événement dispose de sa propre plateforme de billetterie en ligne. Cliquez ci-dessous pour accéder au guichet officiel.
+                  {detailText('external.instructions')}
                 </p>
                 {displayEvent.unlimited_capacity && (
                   <p className="text-[11px] text-purple-600 dark:text-purple-300 font-semibold">
-                    ✨ Événement sans restriction de jauge
+                    ✨ {detailText('external.unlimited')}
                   </p>
                 )}
               </div>
@@ -791,7 +793,7 @@ export function EventDetailScreen({
                   className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span>Accéder à la billetterie officielle</span>
+                  <span>{detailText('external.open')}</span>
                 </a>
               )}
             </div>
@@ -803,16 +805,16 @@ export function EventDetailScreen({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-[#1A1A2E] dark:text-white">
-                    Entrée libre & gratuite
+                    {detailText('freeAccess.title')}
                   </h3>
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                    Aucun billet requis à l'entrée
+                    {detailText('freeAccess.noTicket')}
                   </p>
                 </div>
               </div>
 
               <p className="text-xs text-gray-600 dark:text-gray-300">
-                Cet événement est ouvert à tous sans réservation obligatoire. Venez sur place à l'heure du rendez-vous !
+                {detailText('freeAccess.description')}
               </p>
             </div>
           ) : (
@@ -834,7 +836,7 @@ export function EventDetailScreen({
                   <Film className="w-4 h-4" />
                 </div>
                 <h2 className="text-base font-black tracking-tight">
-                  Médias & Teaser officiel
+                  {detailText('media')}
                 </h2>
               </div>
 
@@ -844,7 +846,7 @@ export function EventDetailScreen({
                   {videoInfo.isEmbed ? (
                     <iframe
                       src={videoInfo.url}
-                      title="Teaser de l'événement"
+                      title={detailText('videoTitle')}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       className="w-full h-full border-0"
@@ -869,7 +871,7 @@ export function EventDetailScreen({
                       key={image}
                       onClick={() => openLightbox(index)}
                       className="h-20 w-28 shrink-0 overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 hover:opacity-90 active:scale-95 transition-all cursor-zoom-in relative group"
-                      aria-label={`Agrandir la photo ${index + 1}`}
+                      aria-label={detailText('enlargePhoto').replace('{number}', String(index + 1))}
                     >
                       <img src={image} alt="" className="h-full w-full object-cover" />
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
@@ -885,7 +887,7 @@ export function EventDetailScreen({
           */}
           <div className="pt-2 space-y-2.5">
             <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
-              À propos de cet événement
+              {detailText('about')}
             </h2>
             {displayEvent.description ? (
               <div>
@@ -913,7 +915,7 @@ export function EventDetailScreen({
                     }}
                     className="mt-2 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] hover:underline cursor-pointer inline-flex items-center gap-1.5 active:scale-95 transition-transform"
                   >
-                    <span>{isDescriptionExpanded ? 'Afficher moins' : 'Lire la suite'}</span>
+                    <span>{detailText(isDescriptionExpanded ? 'readLess' : 'readMore')}</span>
                     <ChevronDown
                       className={`w-3.5 h-3.5 transition-transform duration-300 ${
                         isDescriptionExpanded ? 'rotate-180' : ''
@@ -924,7 +926,7 @@ export function EventDetailScreen({
               </div>
             ) : (
               <p className="text-xs sm:text-sm text-gray-400 italic">
-                Aucune description détaillée n'a été fournie pour cet événement.
+                {detailText('noDescription')}
               </p>
             )}
           </div>
@@ -935,7 +937,7 @@ export function EventDetailScreen({
           {artists.length > 0 && (
             <div className="pt-2 space-y-3">
               <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
-                Artistes à l'affiche
+                {detailText('lineup')}
               </h2>
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
                 {artists.map((artist) => (
@@ -967,7 +969,7 @@ export function EventDetailScreen({
           {fullEvent?.organizer && (
             <div className="pt-2 space-y-2.5">
               <h2 className="text-base font-black text-[#1A1A2E] dark:text-white">
-                Organisateur
+                {detailText('organizer')}
               </h2>
               <div className="p-4 rounded-[22px] glass-ios flex items-center gap-3">
                 <UserAvatar
@@ -999,7 +1001,7 @@ export function EventDetailScreen({
               <div className="flex items-center gap-2 text-[#1A1A2E] dark:text-white">
                 <Users className="w-4 h-4 text-[#6600FF] dark:text-purple-400" />
                 <h2 className="text-base font-black tracking-tight">
-                  Collaborateurs & Partenaires
+                  {detailText('collaborators')}
                 </h2>
               </div>
               <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
@@ -1010,12 +1012,12 @@ export function EventDetailScreen({
                   >
                     <UserAvatar
                       src={c.artist?.photo_url || c.profile?.avatar_url || null}
-                      name={c.artist?.name || c.profile?.name || 'Partenaire'}
+                      name={c.artist?.name || c.profile?.name || detailText('partner')}
                       size="sm"
                     />
                     <div>
                       <p className="text-xs font-bold text-[#1A1A2E] dark:text-white line-clamp-1">
-                        {c.artist?.name || c.profile?.name || 'Partenaire'}
+                        {c.artist?.name || c.profile?.name || detailText('partner')}
                       </p>
                       <span className="text-[10px] text-gray-500 capitalize">{c.role}</span>
                     </div>
@@ -1057,19 +1059,19 @@ export function EventDetailScreen({
       <div className="fixed bottom-4 inset-x-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            {displayEvent.access_type === 'free' ? 'Tarif' : 'À partir de'}
+            {displayEvent.access_type === 'free' ? detailText('price') : detailText('from')}
           </p>
           <p className="text-lg sm:text-xl font-black text-[#1A1A2E] dark:text-white tracking-tight">
             {displayEvent.access_type === 'free' || displayEvent.price_min === 0
-              ? 'Gratuit'
-              : `${displayEvent.price_min.toLocaleString('fr-FR')} FCFA`}
+              ? detailText('free')
+              : `${displayEvent.price_min.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} FCFA`}
           </p>
         </div>
 
         {displayEvent.access_type === 'whatsapp' && toWhatsAppNumber(displayEvent.whatsapp_number).length >= 11 ? (
           <a
             href={`https://wa.me/${toWhatsAppNumber(displayEvent.whatsapp_number)}?text=${encodeURIComponent(
-              displayEvent.whatsapp_message || `Bonjour, je souhaite réserver ma place pour "${displayEvent.title}" sur Gbaigbance.`
+              displayEvent.whatsapp_message || detailText('whatsapp.defaultMessage').replace('{title}', displayEvent.title)
             )}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -1077,7 +1079,7 @@ export function EventDetailScreen({
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#25D366]/35 active:scale-95 cursor-pointer"
           >
             <MessageCircle className="w-4 h-4" />
-            <span>Réserver sur WhatsApp</span>
+            <span>{detailText('whatsapp.reserve')}</span>
           </a>
         ) : displayEvent.access_type === 'external' && displayEvent.external_ticket_url ? (
           <a
@@ -1088,12 +1090,12 @@ export function EventDetailScreen({
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 cursor-pointer"
           >
             <ExternalLink className="w-4 h-4" />
-            <span>Billetterie officielle</span>
+            <span>{detailText('external.button')}</span>
           </a>
         ) : displayEvent.access_type === 'free' ? (
           <div className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-emerald-600 text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30">
             <Check className="w-4 h-4" />
-            <span>Entrée libre</span>
+            <span>{detailText('freeAccess.button')}</span>
           </div>
         ) : (
           <button
@@ -1106,7 +1108,7 @@ export function EventDetailScreen({
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
             <Ticket className="w-4 h-4" />
-            <span>{canBook ? 'Prendre un billet' : statusLabel || 'Indisponible'}</span>
+            <span>{canBook ? detailText('reserveTicket') : statusLabel || detailText('unavailable')}</span>
           </button>
         )}
       </div>

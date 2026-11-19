@@ -122,6 +122,12 @@ function getWarmExploreEvents(): Event[] {
 
 export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps) {
   const { user: currentUser, t } = useApp();
+  const searchText = (key: string) => t('events', `explore.search.${key}`);
+  const categoryText = (group: 'mainCategoriesLabels' | 'subcategoriesLabels', id: string, fallback: string) => {
+    const key = `explore.search.${group}.${id}`;
+    const value = t('events', key);
+    return value === key ? fallback : value;
+  };
   const { isFollowingUser, toggleFollowUser } = useFavorites();
 
   // Mode de recherche : événements ou participants/amis
@@ -279,20 +285,20 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       {/* Header harmonisé style Favoris & Tickets */}
       <div className="px-5 pt-safe-header pb-2">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-          Découverte & Exploration
+          {searchText('eyebrow')}
         </p>
         <div className="mt-1 flex items-center justify-between gap-3">
           <h1 className="min-w-0 text-[1.7rem] font-black leading-none tracking-tight text-[#17131D] dark:text-white min-[380px]:text-3xl">
-            Recherche
+            {searchText('title')}
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
             {searchMode === 'events'
-              ? `${events.length} résultat${events.length > 1 ? 's' : ''}`
-              : `${participants.length} profil${participants.length > 1 ? 's' : ''}`}
+              ? searchText('results').replace('{count}', String(events.length))
+              : searchText('profiles').replace('{count}', String(participants.length))}
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Trouvez des concerts, festivals, artistes et amis à proximité
+          {searchText('description')}
         </p>
       </div>
 
@@ -313,7 +319,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Événements</span>
+            <span>{searchText('events')}</span>
           </button>
           <button
             type="button"
@@ -328,8 +334,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             }`}
           >
             <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className="min-[400px]:hidden">Amis</span>
-            <span className="hidden min-[400px]:inline">Amis & Participants</span>
+            <span className="min-[400px]:hidden">{searchText('friends')}</span>
+            <span className="hidden min-[400px]:inline">{searchText('participants')}</span>
           </button>
         </div>
 
@@ -343,10 +349,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               onChange={(e) => setQuery(e.target.value)}
               placeholder={
                 searchMode === 'events'
-                  ? (t('events', 'searchPlaceholder') && !t('events', 'searchPlaceholder').includes('searchPlaceholder')
-                      ? t('events', 'searchPlaceholder')
-                      : 'Rechercher un concert, festival, artiste...')
-                  : 'Rechercher un ami ou participant...'
+                  ? t('events', 'searchPlaceholder')
+                  : searchText('peoplePlaceholder')
               }
               className="min-h-11 w-full rounded-2xl border border-black/[0.05] bg-black/[0.03] py-3 pl-10 pr-12 text-xs font-semibold text-[#17131D] shadow-2xs backdrop-blur-xl transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-white sm:text-sm"
             />
@@ -354,7 +358,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Effacer la recherche"
+                aria-label={searchText('clear')}
                 className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:hover:text-gray-200"
               >
                 <X className="w-4 h-4" />
@@ -366,7 +370,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <button
               type="button"
               onClick={() => setShowFilters(true)}
-              aria-label="Filtres avancés"
+              aria-label={searchText('advancedFilters')}
               className={`relative flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-2xl transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                 hasActiveFilters
                   ? 'bg-[#6600FF] text-white shadow-purple'
@@ -386,7 +390,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div
               className="flex snap-x snap-mandatory gap-2 overflow-x-auto pt-1 no-scrollbar"
               role="group"
-              aria-label="Catégories principales"
+              aria-label={searchText('mainCategories')}
             >
               <button
                 type="button"
@@ -399,7 +403,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
+                <span>{t('events', 'categories.all')}</span>
               </button>
               {MAIN_CATEGORIES.map((main) => {
                 const Icon = CATEGORY_ICONS[main.iconName] || Palette;
@@ -418,7 +422,9 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="whitespace-nowrap">{main.shortLabel}</span>
+                    <span className="whitespace-nowrap">
+                      {categoryText('mainCategoriesLabels', main.id, main.shortLabel)}
+                    </span>
                   </button>
                 );
               })}
@@ -428,7 +434,10 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               <div
                 className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
                 role="group"
-                aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
+                aria-label={searchText('subcategories').replace(
+                  '{category}',
+                  categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                )}
               >
                 <button
                   type="button"
@@ -440,7 +449,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                       : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
                   }`}
                 >
-                  Toutes
+                  {searchText('all')}
                 </button>
                 {selectedMainCategory.subcategories.map((sub) => {
                   const isSelected = selectedCategory === sub.id;
@@ -456,7 +465,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                           : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
                       }`}
                     >
-                      {sub.shortLabel}
+                      {categoryText('subcategoriesLabels', sub.id, sub.shortLabel)}
                     </button>
                   );
                 })}
@@ -478,8 +487,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           ) : events.length === 0 ? (
             <div className="mt-8">
               <EmptyState
-                title="Aucun événement trouvé"
-                description="Essayez de modifier vos filtres, votre mot-clé ou élargissez la ville."
+                title={searchText('noEvents')}
+                description={searchText('noEventsDescription')}
                 action={
                   hasActiveFilters ? (
                     <button
@@ -487,7 +496,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                       onClick={resetFilters}
                       className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all cursor-pointer"
                     >
-                      Réinitialiser les filtres
+                      {searchText('resetFilters')}
                     </button>
                   ) : undefined
                 }
@@ -522,11 +531,11 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div className="mt-8">
               <EmptyState
                 icon={<Users className="w-10 h-10 text-[#6600FF]" />}
-                title={query.trim().length < 2 ? 'Cherchez une personne' : 'Aucun participant trouvé'}
+                title={query.trim().length < 2 ? searchText('searchPerson') : searchText('noParticipants')}
                 description={
                   query.trim().length < 2
-                    ? 'Saisissez au moins 2 lettres du prénom ou du nom.'
-                    : 'Aucun profil ne correspond. Essayez une autre orthographe.'
+                    ? searchText('searchPersonDescription')
+                    : searchText('noParticipantsDescription')
                 }
               />
             </div>
@@ -560,7 +569,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                               <span>{person.city}</span>
                             </>
                           ) : (
-                            <span>Participant Gbaigbance</span>
+                            <span>{searchText('participant')}</span>
                           )}
                         </p>
                       </div>
@@ -578,12 +587,12 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                       {isFollowing ? (
                         <>
                           <UserCheck className="w-3.5 h-3.5 text-[#6600FF] dark:text-white" />
-                          <span>Abonné</span>
+                          <span>{searchText('following')}</span>
                         </>
                       ) : (
                         <>
                           <Heart className="w-3.5 h-3.5" />
-                          <span>Suivre</span>
+                          <span>{searchText('follow')}</span>
                         </>
                       )}
                     </button>
@@ -596,11 +605,11 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       </div>
 
       {/* BottomSheet Filtres avancés pour les événements */}
-      <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title="Filtres de recherche">
+      <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title={searchText('filterTitle')}>
         <div className="space-y-5 text-[#17131D] dark:text-white max-w-2xl mx-auto">
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              Catégorie
+              {searchText('category')}
             </h3>
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
               {MAIN_CATEGORIES.map((main) => {
@@ -620,7 +629,9 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="whitespace-nowrap">{main.shortLabel}</span>
+                    <span className="whitespace-nowrap">
+                      {categoryText('mainCategoriesLabels', main.id, main.shortLabel)}
+                    </span>
                   </button>
                 );
               })}
@@ -628,12 +639,18 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             {selectedMainCategory && (
               <div className="pt-3">
                 <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                  Sous-catégories · {selectedMainCategory.shortLabel}
+                  {searchText('subcategories').replace(
+                    '{category}',
+                    categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                  )}
                 </p>
                 <div
                   className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
                   role="group"
-                  aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
+                  aria-label={searchText('subcategories').replace(
+                    '{category}',
+                    categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                  )}
                 >
                   <button
                     type="button"
@@ -645,7 +662,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                         : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
                   >
-                    Toutes
+                    {searchText('all')}
                   </button>
                   {selectedMainCategory.subcategories.map((sub) => {
                     const isSelected = selectedCategory === sub.id;
@@ -661,7 +678,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                             : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                         }`}
                       >
-                        {sub.shortLabel}
+                        {categoryText('subcategoriesLabels', sub.id, sub.shortLabel)}
                       </button>
                     );
                   })}
@@ -672,7 +689,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
           <div>
             <h3 className="flex items-center gap-1 text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              <MapPin className="w-3.5 h-3.5" /> Ville
+              <MapPin className="w-3.5 h-3.5" /> {searchText('city')}
             </h3>
             <div className="flex flex-wrap gap-2">
               {CITIES.map((city) => {
@@ -698,7 +715,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              Tarif
+              {searchText('price')}
             </h3>
             <div className="flex gap-2">
               {(['any', 'free', 'paid'] as const).map((p) => {
@@ -728,14 +745,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               onClick={resetFilters}
               className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-gray-100 py-3 text-xs font-black text-gray-700 transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:bg-white/10 dark:text-gray-300"
             >
-              Réinitialiser
+              {searchText('reset')}
             </button>
             <button
               type="button"
               onClick={() => setShowFilters(false)}
               className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-[#6600FF] py-3 text-xs font-black text-white shadow-md transition-colors hover:bg-[#5200cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2"
             >
-              Voir les résultats
+              {searchText('viewResults')}
             </button>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { haptic } from '@/hooks/useHaptics';
+import { useApp } from '@/hooks/useApp';
 
 export interface LightboxProps {
   src?: string;
@@ -54,12 +55,15 @@ export function Lightbox({
   images = [],
   initialIndex = 0,
   alt = '',
-  eventTitle = "Détail de l'image",
+  eventTitle,
   eventDate,
   eventLocation,
   onClose,
   onToast,
 }: LightboxProps) {
+  const { t } = useApp();
+  const text = (key: string) => t('events', `detail.lightbox.${key}`);
+  const resolvedTitle = eventTitle || text('defaultTitle');
   // Détermination de la liste unifiée d'images
   const allImages = useMemo(() => {
     return images.length > 0 ? images : src ? [src] : [];
@@ -118,12 +122,12 @@ export function Lightbox({
     if (w > 0 && h > 0) {
       const mp = ((w * h) / 1000000).toFixed(1);
       const ratio = w / h;
-      let ratioLabel = 'Format Personnalisé';
-      if (Math.abs(ratio - 1) < 0.05) ratioLabel = 'Carré 1:1';
-      else if (Math.abs(ratio - 4 / 5) < 0.08) ratioLabel = 'Flyer Portrait 4:5';
-      else if (Math.abs(ratio - 9 / 16) < 0.08) ratioLabel = 'Story / Écran 9:16';
-      else if (Math.abs(ratio - 16 / 9) < 0.08) ratioLabel = 'Paysage 16:9';
-      else if (Math.abs(ratio - 3 / 2) < 0.08) ratioLabel = 'Photo 3:2';
+      let ratioLabel = text('customRatio');
+      if (Math.abs(ratio - 1) < 0.05) ratioLabel = text('square');
+      else if (Math.abs(ratio - 4 / 5) < 0.08) ratioLabel = text('portrait');
+      else if (Math.abs(ratio - 9 / 16) < 0.08) ratioLabel = text('story');
+      else if (Math.abs(ratio - 16 / 9) < 0.08) ratioLabel = text('landscape');
+      else if (Math.abs(ratio - 3 / 2) < 0.08) ratioLabel = text('photo');
 
       // Extension devinée
       const cleanUrl = currentImage.split('?')[0].toLowerCase();
@@ -323,8 +327,8 @@ export function Lightbox({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: eventTitle,
-          text: `Affiche et visuels pour ${eventTitle} sur Gbaïgbancê`,
+          title: resolvedTitle,
+          text: text('shareText').replace('{title}', resolvedTitle),
           url: currentImage,
         });
       } catch {
@@ -335,7 +339,7 @@ export function Lightbox({
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2200);
       onToast?.({
-        message: 'Lien du visuel copié dans le presse-papier !',
+        message: text('copiedToast'),
         type: 'success',
       });
     }
@@ -346,7 +350,7 @@ export function Lightbox({
     haptic.success();
     const link = document.createElement('a');
     link.href = currentImage;
-    link.download = `gbaigbance-${eventTitle.toLowerCase().replace(/[^a-z0-9]/g, '-')}-hd.jpg`;
+    link.download = `gbaigbance-${resolvedTitle.toLowerCase().replace(/[^a-z0-9]/g, '-')}-hd.jpg`;
     link.target = '_blank';
     link.rel = 'noreferrer noopener';
     document.body.appendChild(link);
@@ -354,7 +358,7 @@ export function Lightbox({
     document.body.removeChild(link);
 
     onToast?.({
-      message: 'Téléchargement du visuel haute précision lancé',
+      message: text('downloadToast'),
       type: 'success',
     });
   };
@@ -372,7 +376,7 @@ export function Lightbox({
       ref={containerRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`Visionneuse d'image : ${eventTitle}`}
+      aria-label={text('viewer').replace('{title}', resolvedTitle)}
       className="fixed inset-0 z-[120] overflow-hidden select-none bg-[#07060D] touch-none transition-colors duration-200"
       style={{
         backgroundColor: `rgba(7, 6, 13, ${backdropOpacity})`,
@@ -414,7 +418,7 @@ export function Lightbox({
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Fermer la vue précision"
+            aria-label={text('close')}
             className="pointer-events-auto h-11 w-11 rounded-full bg-black/60 dark:bg-black/70 hover:bg-black/85 text-white backdrop-blur-2xl border border-white/20 flex items-center justify-center shadow-xl active:scale-90 transition-all cursor-pointer ring-1 ring-white/10"
           >
             <X className="w-5 h-5 text-white" />
@@ -425,10 +429,12 @@ export function Lightbox({
             <Sparkles className="w-3.5 h-3.5 text-[#A855F7] shrink-0 hidden sm:block" />
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-bold text-white truncate leading-tight">
-                {eventTitle}
+                {resolvedTitle}
               </p>
               <p className="text-[10px] text-zinc-400 font-medium">
-                {allImages.length > 1 ? `Visuel ${currentIndex + 1} sur ${allImages.length}` : 'Affiche officielle HD'}
+                {allImages.length > 1
+                  ? text('assetCount').replace('{current}', String(currentIndex + 1)).replace('{count}', String(allImages.length))
+                  : text('officialPoster')}
               </p>
             </div>
           </div>
@@ -439,7 +445,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={cycleZoom}
-              aria-label={`Niveau de zoom actuel : ${Math.round(scale * 100)}%`}
+              aria-label={text('zoomLevel').replace('{percent}', String(Math.round(scale * 100)))}
               className="h-10 px-3 rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-2xl border border-white/15 flex items-center gap-1.5 shadow-lg active:scale-95 transition-all text-xs font-bold"
             >
               {scale === 1 ? (
@@ -457,7 +463,7 @@ export function Lightbox({
                 haptic.selection();
                 setShowInfoSheet((prev) => !prev);
               }}
-              aria-label="Afficher la fiche de précision"
+              aria-label={text('details')}
               className={`h-10 w-10 rounded-full backdrop-blur-2xl border flex items-center justify-center shadow-lg active:scale-95 transition-all ${
                 showInfoSheet
                   ? 'bg-[#6600FF] border-white/40 text-white shadow-[#6600FF]/40'
@@ -471,7 +477,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={handleShare}
-              aria-label="Partager ce visuel"
+              aria-label={text('share')}
               className="h-10 w-10 rounded-full bg-black/60 hover:bg-black/85 text-zinc-300 hover:text-white backdrop-blur-2xl border border-white/15 flex items-center justify-center shadow-lg active:scale-95 transition-all"
             >
               {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
@@ -481,7 +487,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={handleDownload}
-              aria-label="Télécharger en haute résolution"
+              aria-label={text('download')}
               className="h-10 w-10 rounded-full bg-black/60 hover:bg-black/85 text-zinc-300 hover:text-white backdrop-blur-2xl border border-white/15 flex items-center justify-center shadow-lg active:scale-95 transition-all hidden sm:flex"
             >
               <Download className="w-4 h-4" />
@@ -511,7 +517,7 @@ export function Lightbox({
           >
             <img
               src={currentImage}
-              alt={alt || eventTitle}
+              alt={alt || resolvedTitle}
               onLoad={handleImageLoad}
               draggable={false}
               className="max-w-full max-h-full object-contain select-none will-change-transform rounded-xl shadow-2xl transition-transform duration-75 ease-out"
@@ -533,7 +539,7 @@ export function Lightbox({
                 e.stopPropagation();
                 handlePrev();
               }}
-              aria-label="Image précédente"
+              aria-label={text('previous')}
               className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-black/55 hover:bg-black/80 text-white backdrop-blur-2xl border border-white/15 flex items-center justify-center active:scale-90 transition-all shadow-2xl cursor-pointer ring-1 ring-white/10"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
@@ -544,7 +550,7 @@ export function Lightbox({
                 e.stopPropagation();
                 handleNext();
               }}
-              aria-label="Image suivante"
+              aria-label={text('next')}
               className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-black/55 hover:bg-black/80 text-white backdrop-blur-2xl border border-white/15 flex items-center justify-center active:scale-90 transition-all shadow-2xl cursor-pointer ring-1 ring-white/10"
             >
               <ChevronRight className="w-6 h-6 text-white" />
@@ -577,7 +583,7 @@ export function Lightbox({
                     haptic.selection();
                     setCurrentIndex(idx);
                   }}
-                  aria-label={`Aller au visuel ${idx + 1}`}
+                  aria-label={text('thumbnail').replace('{number}', String(idx + 1))}
                   className={`relative shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? 'ring-2 ring-[#7A1AFF] scale-105 shadow-[0_0_16px_rgba(122,26,255,0.7)]'
@@ -618,8 +624,8 @@ export function Lightbox({
                     <Maximize2 className="w-3.5 h-3.5 text-purple-300" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white leading-tight">Fiche de Précision du Visuel</h3>
-                    <p className="text-[11px] text-zinc-400">Qualité studio & métadonnées d'affichage</p>
+                    <h3 className="text-sm font-black text-white leading-tight">{text('sheetTitle')}</h3>
+                    <p className="text-[11px] text-zinc-400">{text('sheetDescription')}</p>
                   </div>
                 </div>
                 <button
@@ -628,6 +634,7 @@ export function Lightbox({
                     haptic.light();
                     setShowInfoSheet(false);
                   }}
+                  aria-label={text('close')}
                   className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -637,22 +644,22 @@ export function Lightbox({
               {/* Grille de métadonnées visuelles */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-3 rounded-2xl bg-white/[0.05] border border-white/[0.08]">
-                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Résolution native</p>
+                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{text('nativeResolution')}</p>
                   <p className="text-[13px] font-bold text-white mt-0.5 tabular-nums">
-                    {imageMeta ? `${imageMeta.width} × ${imageMeta.height} px` : 'Chargement...'}
+                    {imageMeta ? `${imageMeta.width} × ${imageMeta.height} px` : text('loading')}
                   </p>
                   <span className="text-[10px] text-emerald-400 font-medium">
-                    {imageMeta?.megaPixels || 'Qualité originale'}
+                    {imageMeta?.megaPixels || text('originalQuality')}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-white/[0.05] border border-white/[0.08]">
-                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Format d'affichage</p>
+                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{text('displayFormat')}</p>
                   <p className="text-[13px] font-bold text-white mt-0.5">
-                    {imageMeta?.aspectRatio || 'Proportions exactes'}
+                    {imageMeta?.aspectRatio || text('exactRatio')}
                   </p>
                   <span className="text-[10px] text-purple-300 font-medium">
-                    Format : {imageMeta?.format || 'HD'}
+                    {text('formatLabel')} {imageMeta?.format || 'HD'}
                   </span>
                 </div>
               </div>
@@ -661,9 +668,9 @@ export function Lightbox({
               <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] space-y-1">
                 <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Visuel officiel Gbaïgbancê</span>
+                  <span>{text('officialVisual')}</span>
                 </div>
-                <p className="text-xs font-bold text-white truncate">{eventTitle}</p>
+                <p className="text-xs font-bold text-white truncate">{resolvedTitle}</p>
                 {(eventDate || eventLocation) && (
                   <p className="text-[11px] text-zinc-400 truncate">
                     {[eventDate, eventLocation].filter(Boolean).join(' • ')}
@@ -684,7 +691,7 @@ export function Lightbox({
                   className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>{copiedLink ? 'Lien copié !' : 'Copier le lien'}</span>
+                  <span>{copiedLink ? text('copied') : text('copyLink')}</span>
                 </button>
 
                 <button
@@ -693,7 +700,7 @@ export function Lightbox({
                   className="py-2.5 px-3 rounded-xl bg-[#6600FF] hover:bg-[#5500DD] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-[#6600FF]/30"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Télécharger HD</span>
+                  <span>{text('downloadHd')}</span>
                 </button>
               </div>
             </div>

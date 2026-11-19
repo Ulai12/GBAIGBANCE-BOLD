@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Share2, Heart, Edit3, Settings, Film, Flag } from 'lucide-react';
 import type { Event } from '@/types';
+import { useApp } from '@/hooks/useApp';
 
 /**
  * GBAIGBANCE — ProgressiveBlurHero (iOS Liquid Glass)
@@ -42,6 +43,8 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
   onOpenManage,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { t } = useApp();
+  const detailText = (key: string) => t('events', `detail.${key}`);
 
   return (
     <div className="relative h-[56vh] min-h-[420px] max-h-[580px] w-full overflow-hidden bg-[#f7f5f0] dark:bg-[#141216] select-none">
@@ -53,7 +56,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
         type="button"
         onClick={() => onOpenLightbox(coverImage)}
         className="absolute inset-0 z-0 block w-full h-full cursor-zoom-in group text-left focus:outline-hidden"
-        aria-label={`Agrandir la photo de couverture de ${event.title}`}
+        aria-label={detailText('hero.enlargeCover').replace('{title}', event.title)}
       >
         <img
           src={coverImage}
@@ -96,7 +99,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Retour à la liste des événements"
+          aria-label={detailText('hero.backToEvents')}
           className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
         >
           <ChevronLeft className="w-5 h-5 text-white" />
@@ -108,11 +111,11 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             <button
               type="button"
               onClick={() => onEditEvent(event)}
-              aria-label="Modifier cet événement"
+              aria-label={detailText('hero.editEvent')}
               className="h-11 px-4 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center gap-1.5 text-xs font-bold text-white cursor-pointer transition-all shrink-0"
             >
               <Edit3 className="w-4 h-4" />
-              <span className="hidden xs:inline">Modifier</span>
+              <span className="hidden xs:inline">{detailText('hero.edit')}</span>
             </button>
           )}
 
@@ -120,7 +123,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             <button
               type="button"
               onClick={onOpenManage}
-              aria-label="Gérer l'événement et les entrées"
+              aria-label={detailText('hero.manage')}
               className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
             >
               <Settings className="w-5 h-5 text-white" />
@@ -132,8 +135,8 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             <button
               type="button"
               onClick={onReport}
-              aria-label="Signaler cet événement"
-              title="Signaler cet événement"
+              aria-label={detailText('report.title')}
+              title={detailText('report.title')}
               className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
             >
               <Flag className="w-4 h-4 text-white" />
@@ -144,7 +147,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
           <button
             type="button"
             onClick={onShare}
-            aria-label="Partager l'événement"
+            aria-label={detailText('share.modalTitle')}
             className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
           >
             <Share2 className="w-4 h-4 text-white" />
@@ -154,7 +157,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
           <button
             type="button"
             onClick={onLike}
-            aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            aria-label={detailText(liked ? 'removeFavorite' : 'addFavorite')}
             className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 active:scale-92 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/30 flex items-center justify-center text-white cursor-pointer transition-all shrink-0"
           >
             <Heart
@@ -175,10 +178,10 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
             type="button"
             onClick={() => onOpenLightbox(coverImage)}
             className="px-3.5 py-1.5 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
-            aria-label={`Voir les ${galleryCount} photos de la galerie`}
+            aria-label={detailText('hero.viewGallery').replace('{count}', String(galleryCount))}
           >
             <Film className="w-3.5 h-3.5 text-[#6600FF] dark:text-purple-400" />
-            <span>{galleryCount} photos</span>
+            <span>{detailText('hero.photos').replace('{count}', String(galleryCount))}</span>
           </button>
         </div>
       )}

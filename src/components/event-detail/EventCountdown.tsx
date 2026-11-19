@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, CheckCircle2 } from 'lucide-react';
+import { useApp } from '@/hooks/useApp';
 
 /**
  * GBAIGBANCE — EventCountdown (Tuiles en Verre Sombre Apple)
@@ -28,12 +29,14 @@ export const EventCountdown: React.FC<CountdownProps> = ({
   hasEnded = false,
   isValid = true,
 }) => {
+  const { t } = useApp();
+
   if (hasEnded) {
     return (
       <div className="p-4 rounded-2xl bg-[#1A1A2E]/90 dark:bg-[#151226]/90 backdrop-blur-xl border border-white/10 text-white shadow-lg flex items-center justify-center gap-2.5">
         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
         <span className="text-sm font-bold text-gray-200">
-          Cet événement est désormais terminé.
+          {t('events', 'detail.countdown.ended')}
         </span>
       </div>
     );
@@ -48,7 +51,7 @@ export const EventCountdown: React.FC<CountdownProps> = ({
             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
           </span>
           <p className="text-sm font-black tracking-wide text-white uppercase">
-            Événement en direct actuellement
+            {t('events', 'detail.countdown.liveNow')}
           </p>
         </div>
         <Sparkles className="w-4 h-4 text-purple-300 animate-pulse" />
@@ -62,10 +65,10 @@ export const EventCountdown: React.FC<CountdownProps> = ({
   const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
 
   const units = [
-    { label: 'Jours', value: safeDays, isSec: false },
-    { label: 'Heures', value: safeHours, isSec: false },
-    { label: 'Min', value: safeMinutes, isSec: false },
-    { label: 'Sec', value: safeSeconds, isSec: true },
+    { label: t('events', 'detail.countdown.days'), value: safeDays, isSec: false },
+    { label: t('events', 'detail.countdown.hours'), value: safeHours, isSec: false },
+    { label: t('events', 'detail.countdown.minutes'), value: safeMinutes, isSec: false },
+    { label: t('events', 'detail.countdown.seconds'), value: safeSeconds, isSec: true },
   ];
 
   return (
@@ -73,10 +76,10 @@ export const EventCountdown: React.FC<CountdownProps> = ({
       <div className="flex items-center justify-between px-1 mb-2.5">
         <div className="flex items-center gap-1.5 text-xs font-bold text-[#6600FF] dark:text-purple-200">
           <Sparkles className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA] animate-pulse" />
-          <span>Début de l'événement dans</span>
+          <span>{t('events', 'detail.countdown.title')}</span>
         </div>
         <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:bg-white/10 dark:text-purple-200 border border-[#6600FF]/15 dark:border-white/10">
-          Temps réel
+          {t('events', 'detail.countdown.realTime')}
         </span>
       </div>
       <div className="grid grid-cols-4 gap-2 sm:gap-2.5 text-center">

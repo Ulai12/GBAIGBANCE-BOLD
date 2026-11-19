@@ -19,6 +19,7 @@ import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { useApp } from '@/hooks/useApp';
 
 interface EventCardProps {
   event: Event;
@@ -50,6 +51,7 @@ function formatAttendees(count?: number | null) {
 }
 
 export const EventCard = memo(function EventCard({ event, onClick, onShare }: EventCardProps) {
+  const { language } = useApp();
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -74,7 +76,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
       onShare(event);
       return;
     }
-    const status = await shareEventNative(event);
+    const status = await shareEventNative(event, undefined, language);
     if (status !== 'shared' && status !== 'cancelled') {
       setShowShareModal(true);
     }

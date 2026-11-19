@@ -4,17 +4,17 @@ import { fetchEventSponsors } from '@/services/events';
 import { useApp } from '@/hooks/useApp';
 import type { Event, EventSponsor, SponsorTier } from '@/types';
 
-const TIER_CONFIG: Record<SponsorTier, { label: string; color: string; dot: string }> = {
-  gold: { label: 'Or', color: 'text-yellow-600', dot: '#eab308' },
-  silver: { label: 'Argent', color: 'text-gray-500', dot: '#9ca3af' },
-  bronze: { label: 'Bronze', color: 'text-orange-600', dot: '#ea580c' },
-  partner: { label: 'Partenaire', color: 'text-[#6600FF]', dot: '#6600FF' },
+const TIER_CONFIG: Record<SponsorTier, { color: string; dot: string }> = {
+  gold: { color: 'text-yellow-600', dot: '#eab308' },
+  silver: { color: 'text-gray-500', dot: '#9ca3af' },
+  bronze: { color: 'text-orange-600', dot: '#ea580c' },
+  partner: { color: 'text-[#6600FF]', dot: '#6600FF' },
 };
 
 const TIER_ORDER: SponsorTier[] = ['gold', 'silver', 'bronze', 'partner'];
 
 export function EventSponsors({ event, isDark }: { event: Event; isDark?: boolean }) {
-  const { language } = useApp();
+  const { t } = useApp();
   const [sponsors, setSponsors] = useState<EventSponsor[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +41,7 @@ export function EventSponsors({ event, isDark }: { event: Event; isDark?: boolea
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Award className="w-4 h-4 text-[#6600FF] shrink-0" />
-        <h2 className={`text-base font-extrabold ${textMain}`}>{language === 'fr' ? 'Sponsors & Partenaires' : 'Sponsors & Partners'}</h2>
+        <h2 className={`text-base font-extrabold ${textMain}`}>{t('events', 'detail.sponsors.title')}</h2>
         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[#6600FF]" style={{ background: isDark ? 'rgba(102,0,255,0.12)' : 'rgba(102,0,255,0.08)' }}>
           {sponsors.length}
         </span>
@@ -54,7 +54,9 @@ export function EventSponsors({ event, isDark }: { event: Event; isDark?: boolea
             <div key={tier}>
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: config.dot }} />
-                <span className={`text-[10px] font-bold ${config.color}`}>{config.label.toUpperCase()}</span>
+                <span className={`text-[10px] font-bold ${config.color}`}>
+                  {t('events', `detail.sponsors.${tier}`).toUpperCase()}
+                </span>
                 <span className={`text-[9px] ${textMuted}`}>({items.length})</span>
               </div>
               <div className="flex flex-wrap gap-2">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Video, ExternalLink, Radio } from 'lucide-react';
 import { fetchEventLiveLinks } from '@/services/events';
+import { useApp } from '@/hooks/useApp';
 import type { Event, EventLiveLink } from '@/types';
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -13,6 +14,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 };
 
 export function EventLiveLinks({ event, isDark }: { event: Event; isDark?: boolean }) {
+  const { t } = useApp();
   const [links, setLinks] = useState<EventLiveLink[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,10 +37,10 @@ export function EventLiveLinks({ event, isDark }: { event: Event; isDark?: boole
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Video className="w-5 h-5 text-[#6600FF]" />
-        <h2 className={`text-lg font-extrabold ${textMain}`}>Live streaming</h2>
+        <h2 className={`text-lg font-extrabold ${textMain}`}>{t('events', 'detail.live.title')}</h2>
         {hasLive && (
           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold animate-pulse">
-            <Radio className="w-3 h-3" /> En direct
+            <Radio className="w-3 h-3" /> {t('events', 'detail.live.live')}
           </span>
         )}
       </div>
@@ -63,7 +65,7 @@ export function EventLiveLinks({ event, isDark }: { event: Event; isDark?: boole
                 <span className={`text-sm font-bold ${textMain}`}>{link.platform}</span>
                 {link.is_live && (
                   <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-500">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> {t('events', 'detail.live.live')}
                   </span>
                 )}
               </div>

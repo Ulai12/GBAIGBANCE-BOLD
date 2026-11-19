@@ -1,5 +1,6 @@
-import type { Event } from '@/types';
+import type { Event, Language } from '@/types';
 import type { ToastData } from '@/components/Toast';
+import { translate } from '@/locales';
 
 export interface EventShareData {
   title: string;
@@ -16,9 +17,9 @@ export function triggerAppToast(toast: Omit<ToastData, 'id'>) {
   }
 }
 
-export function formatEventShareDate(dateString: string): string {
+export function formatEventShareDate(dateString: string, language: Language = 'fr'): string {
   try {
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -30,22 +31,26 @@ export function formatEventShareDate(dateString: string): string {
   }
 }
 
-export function getEventShareData(event: Event): EventShareData {
+export function getEventShareData(event: Event, language: Language = 'fr'): EventShareData {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://gbaigbance.app';
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
   const url = `${origin}${pathname}?event=${encodeURIComponent(event.id)}`;
 
-  const formattedDate = formatEventShareDate(event.starts_at);
-  const formattedLocation = event.location_name || event.city || 'Afrique de l’Ouest';
+  const formattedDate = formatEventShareDate(event.starts_at, language);
+  const formattedLocation = event.location_name || event.city || (language === 'fr' ? 'Afrique de l’Ouest' : 'West Africa');
   const formattedPrice =
     event.price_min === 0
-      ? 'Entrée Gratuite'
-      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
+      ? translate(language, 'events', 'detail.share.free')
+      : `${event.price_min.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} FCFA`;
 
-  const text = `🔥 Rejoins-moi pour "${event.title}" !\n📅 ${formattedDate}\n📍 ${formattedLocation}\n🎟️ ${formattedPrice}\n\nDécouvre tous les détails et réserve ta place sur Gbaigbance :`;
+  const text = translate(language, 'events', 'detail.share.text')
+    .replace('{title}', event.title)
+    .replace('{date}', formattedDate)
+    .replace('{location}', formattedLocation)
+    .replace('{price}', formattedPrice);
 
   return {
-    title: `${event.title} · Gbaigbance`,
+    title: translate(language, 'events', 'detail.share.title').replace('{title}', event.title),
     text,
     url,
     formattedDate,
@@ -56,9 +61,10 @@ export function getEventShareData(event: Event): EventShareData {
 
 export async function shareEventNative(
   event: Event,
-  onToast?: (toast: Omit<ToastData, 'id'>) => void
+  onToast?: (toast: Omit<ToastData, 'id'>) => void,
+  language: Language = 'fr'
 ): Promise<'shared' | 'cancelled' | 'unsupported' | 'failed'> {
-  const shareData = getEventShareData(event);
+  const shareData = getEventShareData(event, language);
   const notify = onToast || triggerAppToast;
 
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -75,7 +81,7 @@ export async function shareEventNative(
 
       await navigator.share(payload);
       notify({
-        message: 'Événement partagé avec succès !',
+        message: translate(language, 'events', 'detail.share.success'),
         type: 'success',
       });
       return 'shared';
@@ -93,9 +99,10 @@ export async function shareEventNative(
 
 export async function copyEventToClipboard(
   event: Event,
-  onToast?: (toast: Omit<ToastData, 'id'>) => void
+  onToast?: (toast: Omit<ToastData, 'id'>) => void,
+  language: Language = 'fr'
 ): Promise<boolean> {
-  const shareData = getEventShareData(event);
+  const shareData = getEventShareData(event, language);
   const notify = onToast || triggerAppToast;
   const fullContent = `${shareData.text}\n${shareData.url}`;
 
@@ -103,7 +110,7 @@ export async function copyEventToClipboard(
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(fullContent);
       notify({
-        message: 'Lien et détails de l’événement copiés !',
+        message: translate(language, 'events', 'detail.share.copied'),
         type: 'success',
       });
       return true;
@@ -120,13 +127,13 @@ export async function copyEventToClipboard(
       document.execCommand('copy');
       document.body.removeChild(textarea);
       notify({
-        message: 'Lien copié dans le presse-papiers !',
+        message: translate(language, 'events', 'detail.share.copied'),
         type: 'success',
       });
       return true;
     } catch {
       notify({
-        message: 'Impossible de copier automatiquement le lien.',
+        message: translate(language, 'events', 'detail.share.copyFailed'),
         type: 'error',
       });
       return false;
