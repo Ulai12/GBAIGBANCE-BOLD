@@ -12,7 +12,7 @@ interface OrganizerCardProps {
 }
 
 export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
-  const { language } = useApp();
+  const { language, t } = useApp();
   const { isFollowingOrg, toggleFollowOrg } = useFavorites();
   const following = isFollowingOrg(organization.id);
   const isVerified = organization.verification_status === 'verified';
@@ -24,8 +24,8 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const title = `${organization.name} sur Gbaïgbancê`;
-    const text = `Découvrez les événements organisés par ${organization.name} !`;
+    const title = t('events', 'organizer.shareTitle').replace('{name}', organization.name);
+    const text = t('events', 'organizer.shareDescription').replace('{name}', organization.name);
     const url = window.location.href;
 
     if (navigator.share) {
@@ -66,7 +66,7 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3 text-gray-400" />
-                <span className="truncate">{organization.city || 'Afrique'}</span>
+                <span className="truncate">{organization.city || t('events', 'home.defaultRegion')}</span>
               </p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
             type="button"
             onClick={handleShare}
             className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 flex items-center justify-center hover:bg-[#6600FF]/10 hover:text-[#6600FF] transition-colors shrink-0"
-            title="Partager l'organisateur"
+            title={t('events', 'organizer.shareProfile')}
           >
             <Share2 className="w-3.5 h-3.5" />
           </button>
@@ -92,9 +92,9 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
         <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1 font-semibold">
             <Calendar className="w-3.5 h-3.5 text-[#6600FF] dark:text-[#A78BFA]" />
-            {formatNumber(organization.events_count, language)} évts
+            {formatNumber(organization.events_count, language)} {t('events', (organization.events_count ?? 0) > 1 ? 'eventPlural' : 'event')}
           </span>
-          <span className="font-semibold">{formatNumber(liveFollowersCount, language)} abonnés</span>
+          <span className="font-semibold">{formatNumber(liveFollowersCount, language)} {t('events', 'organizer.followers')}</span>
         </div>
 
         <button
@@ -112,12 +112,12 @@ export function OrganizerCard({ organization, onClick }: OrganizerCardProps) {
           {following ? (
             <>
               <UserCheck className="w-3.5 h-3.5" />
-              <span>Suivi</span>
+              <span>{t('events', 'organizer.following')}</span>
             </>
           ) : (
             <>
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Suivre</span>
+              <span>{t('events', 'organizer.follow')}</span>
             </>
           )}
         </button>
