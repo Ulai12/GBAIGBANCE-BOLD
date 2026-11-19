@@ -462,7 +462,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       }
 
       if (isSupabaseConfigured && userId) {
-        apiToggleEventLike(eventId, userId).catch(() => {
+        apiToggleEventLike(eventId).catch(() => {
           // Rollback transparent en cas d'échec
           setLikedEventIds((prev) => {
             const next = new Set(prev);

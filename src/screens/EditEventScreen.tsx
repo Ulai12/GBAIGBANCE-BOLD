@@ -101,36 +101,71 @@ function toLocalDateTimeInput(dateStr?: string | null): string {
 function getCategoryIcon(value: string) {
   switch (value) {
     case 'cultural_artistic':
-      return <Palette className="w-5 h-5" />;
+      return <Palette className="w-3.5 h-3.5" />;
     case 'commercial_professional':
-      return <Landmark className="w-5 h-5" />;
+      return <Landmark className="w-3.5 h-3.5" />;
     case 'festive_nightlife':
-      return <PartyPopper className="w-5 h-5" />;
+      return <PartyPopper className="w-3.5 h-3.5" />;
     case 'sports':
-      return <Trophy className="w-5 h-5" />;
+      return <Trophy className="w-3.5 h-3.5" />;
     case 'private_family':
-      return <Lock className="w-5 h-5" />;
+      return <Lock className="w-3.5 h-3.5" />;
     case 'leisure_discovery':
-      return <Sparkles className="w-5 h-5" />;
+      return <Sparkles className="w-3.5 h-3.5" />;
     case 'concert':
-      return <Music className="w-5 h-5" />;
+      return <Music className="w-3.5 h-3.5" />;
     case 'festival':
-      return <PartyPopper className="w-5 h-5" />;
+      return <PartyPopper className="w-3.5 h-3.5" />;
     case 'conference':
-      return <Mic className="w-5 h-5" />;
+      return <Mic className="w-3.5 h-3.5" />;
     case 'formation':
-      return <GraduationCap className="w-5 h-5" />;
+      return <GraduationCap className="w-3.5 h-3.5" />;
     case 'exposition':
-      return <Palette className="w-5 h-5" />;
+      return <Palette className="w-3.5 h-3.5" />;
     case 'spectacle':
-      return <Theater className="w-5 h-5" />;
+      return <Theater className="w-3.5 h-3.5" />;
     case 'cultural':
-      return <Landmark className="w-5 h-5" />;
+      return <Landmark className="w-3.5 h-3.5" />;
     case 'private':
-      return <Lock className="w-5 h-5" />;
+      return <Lock className="w-3.5 h-3.5" />;
     default:
-      return <Music className="w-5 h-5" />;
+      return <Music className="w-3.5 h-3.5" />;
   }
+}
+
+const categoryChipClass = (selected: boolean) =>
+  [
+    'inline-flex min-h-11 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-bold',
+    'transition-colors motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 cursor-pointer',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1A1829]',
+    selected
+      ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+      : 'border border-black/[0.05] bg-black/[0.03] text-gray-700 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-200',
+  ].join(' ');
+
+// Navigation clavier conforme aux groupes radio horizontaux.
+function handleRadioGroupKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  const key = event.key;
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return;
+
+  const radioButtons = Array.from(
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]') || []
+  );
+  if (radioButtons.length === 0) return;
+
+  const currentIndex = radioButtons.indexOf(event.currentTarget);
+  const nextIndex =
+    key === 'Home'
+      ? 0
+      : key === 'End'
+        ? radioButtons.length - 1
+        : key === 'ArrowRight'
+          ? (currentIndex + 1) % radioButtons.length
+          : (currentIndex - 1 + radioButtons.length) % radioButtons.length;
+
+  event.preventDefault();
+  radioButtons[nextIndex]?.focus();
+  radioButtons[nextIndex]?.click();
 }
 
 // Extract YouTube ID if valid
@@ -156,6 +191,7 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
   const [mainCategory, setMainCategory] = useState<MainCategoryId>('cultural_artistic');
   const [subcategory, setSubcategory] = useState<SubCategoryId>('concerts_spectacles');
   const [status, setStatus] = useState<EventStatus>('published');
+  const selectedSubcategoryDefinition = getSubcategoryById(subcategory);
 
   // Location & Dates
   const [locationName, setLocationName] = useState('');
@@ -193,6 +229,13 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const subcategoryRailRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (subcategoryRailRef.current) {
+      subcategoryRailRef.current.scrollLeft = 0;
+    }
+  }, [mainCategory]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -828,16 +871,24 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
             {/* Taxonomie commune avec la création et Explorer */}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                <p id="edit-main-category" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Catégorie principale *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="edit-main-category"
+                  className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
+                >
                   {MAIN_CATEGORIES.map((main) => {
                     const selected = mainCategory === main.id;
                     return (
                       <button
                         key={main.id}
                         type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={selected ? 0 : -1}
+                        onKeyDown={handleRadioGroupKeyDown}
                         onClick={() => {
                           const firstSub = main.subcategories[0];
                           setMainCategory(main.id);
@@ -846,40 +897,52 @@ export function EditEventScreen({ eventId, onBack, onSaved, onToast }: EditEvent
                             setCategory(firstSub.defaultLegacyCategory);
                           }
                         }}
-                        className={`min-h-[76px] rounded-2xl border p-3 text-xs font-bold flex flex-col items-center justify-center gap-2 transition-all ${
-                          selected
-                            ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-sm shadow-[#6600FF]/30'
-                            : 'bg-white/80 dark:bg-white/[0.055] border-black/[0.07] dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:border-[#6600FF]/40'
-                        }`}
+                        className={categoryChipClass(selected)}
                       >
-                        <span className={`rounded-xl p-2 ${selected ? 'bg-white/20 text-white' : 'bg-[#6600FF]/10 text-[#6600FF] dark:text-violet-300'}`}>
-                          {getCategoryIcon(main.id)}
-                        </span>
-                        <span className="w-full text-center leading-tight">{main.shortLabel}</span>
+                        <span aria-hidden="true">{getCategoryIcon(main.id)}</span>
+                        <span>{main.shortLabel}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                  Sous-catégorie *
-                </label>
-                <select
-                  value={subcategory}
-                  onChange={(e) => {
-                    const nextSub = e.target.value as SubCategoryId;
-                    const definition = getSubcategoryById(nextSub);
-                    if (!definition) return;
-                    setSubcategory(nextSub);
-                    setCategory(definition.defaultLegacyCategory);
-                  }}
-                  className="w-full rounded-2xl border border-black/[0.08] bg-white px-4 py-3.5 text-sm font-semibold text-[#17131D] shadow-xs dark:border-white/[0.12] dark:bg-[#211a32] dark:text-white"
+                <p id="edit-subcategory" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Sous-catégorie précise *
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="edit-subcategory"
+                  ref={subcategoryRailRef}
+                  className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
                 >
-                  {(getMainCategoryById(mainCategory)?.subcategories || []).map((sub) => (
-                    <option key={sub.id} value={sub.id}>{sub.label}</option>
-                  ))}
-                </select>
+                  {(getMainCategoryById(mainCategory)?.subcategories || []).map((sub) => {
+                    const selected = subcategory === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={selected ? 0 : -1}
+                        onKeyDown={handleRadioGroupKeyDown}
+                        onClick={() => {
+                          setSubcategory(sub.id);
+                          setCategory(sub.defaultLegacyCategory);
+                        }}
+                        className={categoryChipClass(selected)}
+                      >
+                        {sub.shortLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedSubcategoryDefinition && (
+                  <p className="mt-2 rounded-xl border border-purple-500/10 bg-purple-500/[0.04] p-2.5 text-xs leading-relaxed text-gray-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
+                    <span className="font-semibold text-gray-900 dark:text-white">{selectedSubcategoryDefinition.label}.</span>{" "}
+                    {selectedSubcategoryDefinition.description}
+                  </p>
+                )}
               </div>
             </div>
 

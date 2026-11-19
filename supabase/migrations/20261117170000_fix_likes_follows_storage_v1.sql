@@ -1,0 +1,3 @@
+-- toggle_event_like / toggle_user_follow / toggle_artist_follow / toggle_organization_follow
+-- grants likes/views
+-- storage buckets avatars + covers (public read, owner write)

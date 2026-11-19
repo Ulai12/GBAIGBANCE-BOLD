@@ -44,7 +44,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
-    <div className="relative h-[56vh] min-h-[420px] max-h-[580px] w-full overflow-hidden bg-[#f4f1ff] dark:bg-[#0c0a14] select-none">
+    <div className="relative h-[56vh] min-h-[420px] max-h-[580px] w-full overflow-hidden bg-[#f7f5f0] dark:bg-[#141216] select-none">
       {/* 
         Image Hero avec placeholder blur-up basse résolution
         et zoom subtil au survol
@@ -80,7 +80,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
       {/* 
         Dégradé bas très discret (h-8) pour adoucir le raccord sans couvrir la photo
       */}
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#f4f1ff]/50 to-transparent dark:from-[#0c0a14]/50 to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#f7f5f0]/50 to-transparent dark:from-[#141216]/50 to-transparent pointer-events-none z-10" />
 
       {/* 
         BARRE D'OUTILS FLOTTANTE SUPÉRIEURE iOS

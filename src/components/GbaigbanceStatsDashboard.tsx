@@ -6,6 +6,7 @@ import {
   DollarSign,
   UserRoundCheck,
   Contact,
+  Eye,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
 import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
@@ -15,7 +16,7 @@ export interface GbaigbanceStatsDashboardProps {
   platformStats?: PlatformStats;
 }
 
-type Period = 'current_month' | 'last_month' | 'quarter';
+type Period = 'current_month' | 'last_month' | 'quarter' | 'all';
 type MetricType = 'tickets' | 'revenue' | 'attendees' | 'events';
 
 interface MonthlyDataPoint {
@@ -87,6 +88,7 @@ export function GbaigbanceStatsDashboard({
       profiles: platformStats?.totalProfiles ?? 0,
       participantAccounts: platformStats?.totalParticipantAccounts ?? 0,
       events: platformStats?.totalEvents ?? 0,
+      views: platformStats?.totalViews ?? 0,
     };
   }, [platformStats]);
 
@@ -100,9 +102,51 @@ export function GbaigbanceStatsDashboard({
       price_paid: ticket.price_paid || 0,
       status: 'valid',
     }));
-    coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
+    if (period === 'all') {
+      // Historique complet : les filtres mensuels/trimestriels peuvent être vides
+      // alors que la plateforme possède déjà des données plus anciennes.
+      const timestamps = [
+        ...timelineEvents.map((event) => event.starts_at_ms),
+        ...tickets.map((ticket) => ticket.created_at_ms),
+      ].filter((timestamp) => Number.isFinite(timestamp) && timestamp > 0 && timestamp <= Date.now());
+      const now = new Date();
+      const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const earliest = timestamps.length
+        ? new Date(Math.min(...timestamps))
+        : currentMonth;
+      const firstMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+      const monthCount = Math.max(1, Math.min(120,
+        (currentMonth.getFullYear() - firstMonth.getFullYear()) * 12 +
+        currentMonth.getMonth() - firstMonth.getMonth() + 1
+      ));
+      const buckets = Array.from({ length: monthCount }, (_, index) => {
+        const date = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
+        return { year: date.getFullYear(), month: date.getMonth() + 1, week: null, tickets: 0, revenue: 0, attendees: 0, events: 0 };
+      });
+      const indexFor = (timestamp: number) => {
+        const date = new Date(timestamp);
+        return (date.getFullYear() - firstMonth.getFullYear()) * 12 + date.getMonth() - firstMonth.getMonth();
+      };
+      timelineEvents.forEach((event) => {
+        const index = indexFor(event.starts_at_ms);
+        if (index >= 0 && index < buckets.length && event.starts_at_ms > 0 && event.starts_at_ms <= Date.now()) {
+          buckets[index].events += 1;
+          buckets[index].attendees += Math.max(0, event.attendees || 0);
+        }
+      });
+      tickets.forEach((ticket) => {
+        const index = indexFor(ticket.created_at_ms);
+        if (index >= 0 && index < buckets.length && ticket.created_at_ms > 0 && ticket.created_at_ms <= Date.now()) {
+          buckets[index].tickets += 1;
+          buckets[index].revenue += Math.max(0, ticket.price_paid || 0);
+        }
+      });
       if (!cancelled) setTimelineBuckets(buckets);
-    });
+    } else {
+      coreTimeline({ period, nowMs: Date.now(), tickets, events: timelineEvents }).then((buckets) => {
+        if (!cancelled) setTimelineBuckets(buckets);
+      });
+    }
     return () => {
       cancelled = true;
     };
@@ -266,6 +310,13 @@ export function GbaigbanceStatsDashboard({
 
     return [m1Data, m2Data, m3Data];
   }, [period, totals, timelineEvents, platformStats?.ticketsTimeline, timelineBuckets]);
+
+  // Totaux correspondant exactement à la période sélectionnée.
+  const periodTotals = useMemo(() => monthlyTimeline.reduce((sum, item) => ({
+    tickets: sum.tickets + item.tickets,
+    revenue: sum.revenue + item.revenue,
+    events: sum.events + item.events,
+  }), { tickets: 0, revenue: 0, events: 0 }), [monthlyTimeline]);
 
   // Répartition par catégorie basée sur les vrais événements
   const categoriesBreakdown = useMemo(() => {
@@ -491,6 +542,20 @@ export function GbaigbanceStatsDashboard({
           <button
             type="button"
             onClick={() =>
+              setPeriod('all')
+            }
+            className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
+              period === 'all'
+                ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#6600FF] dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+            }`}
+          >
+            Tout
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
               setPeriod('quarter')
             }
             className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
@@ -532,15 +597,15 @@ export function GbaigbanceStatsDashboard({
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.tickets)}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(periodTotals.tickets)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Billets totaux vendus dans l'app
+            Billets vendus sur la période
           </p>
         </button>
 
-        {/* Revenus - Montant total des ventes de billets dans l'app */}
+        {/* Revenus - Paiements confirmés uniquement de billets dans l'app */}
         <button
           type="button"
           onClick={() =>
@@ -566,10 +631,10 @@ export function GbaigbanceStatsDashboard({
           <p className="truncate text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
             {platformStats?.isAvailable === false || !platformStats
               ? '—'
-              : totals.revenue >= 1000000
-                ? `${(totals.revenue / 1000000).toFixed(1)}M`
-                : totals.revenue > 0
-                  ? totals.revenue.toLocaleString('fr-FR')
+              : periodTotals.revenue >= 1000000
+                ? `${(periodTotals.revenue / 1000000).toFixed(1)}M`
+                : periodTotals.revenue > 0
+                  ? periodTotals.revenue.toLocaleString('fr-FR')
                   : '0'}{' '}
             <span className="text-xs font-bold text-gray-400">
               FCFA
@@ -577,9 +642,30 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Montant total des ventes
+            Montant vendu sur la période
           </p>
         </button>
+
+        <details className="col-span-2 rounded-2xl border border-black/[0.06] bg-white/45 p-3 dark:border-white/10 dark:bg-white/[0.035]">
+          <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-[#17131D] dark:text-white [&::-webkit-details-marker]:hidden">
+            <span>Plus d'indicateurs</span>
+            <span className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA]">Données globales</span>
+          </summary>
+          <p className="mb-3 text-[11px] text-gray-500 dark:text-gray-400">Totaux cumulés depuis le lancement de la plateforme, indépendamment de la période choisie.</p>
+          <div className="grid grid-cols-2 gap-3">
+        {/* Vues : indicateur agrégé depuis les compteurs d'événements. */}
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-black/[0.04] bg-gray-50/65 p-3.5 text-left backdrop-blur-xl dark:border-white/[0.11] dark:bg-white/[0.075]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <Eye className="h-3.5 w-3.5 text-[#6600FF]" />
+              Vues cumulées
+            </span>
+          </div>
+          <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.views)}
+          </p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Visiteurs uniques par événement et par jour</p>
+        </div>
 
         {/* Comptes Auth : tous les rôles, participants et organisateurs compris. */}
         <div
@@ -612,7 +698,7 @@ export function GbaigbanceStatsDashboard({
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
             {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.attendees)}
           </p>
-          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Total déclaré par les événements · non dédupliqué</p>
+          <p className="mt-0.5 text-[10px] font-medium text-gray-400">Billets valides enregistrés</p>
         </div>
 
         {/* Profils : distincts des comptes Auth. */}
@@ -628,6 +714,9 @@ export function GbaigbanceStatsDashboard({
           </p>
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">Fiches associées aux comptes</p>
         </div>
+
+          </div>
+        </details>
 
         {/* Événements créés - Actifs uniquement */}
         <button
@@ -653,16 +742,22 @@ export function GbaigbanceStatsDashboard({
           </div>
 
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
-            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(totals.events)}
+            {platformStats?.isAvailable === false || !platformStats ? '—' : formatNumber(periodTotals.events)}
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Événements créés en cours
+            Événements sur la période
           </p>
         </button>
 
       </div>
 
+      <details className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/45 dark:border-white/10 dark:bg-white/[0.035]">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-bold text-[#17131D] dark:text-white [&::-webkit-details-marker]:hidden">
+          <span>Explorer les statistiques</span>
+          <span className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA]">Graphique et catégories</span>
+        </summary>
+        <div className="border-t border-black/[0.05] pt-4 dark:border-white/10">
       {/* Graphique */}
       <div className="mb-4 px-5">
         <div className="rounded-[1.8rem] border border-white/65 bg-gradient-to-b from-white/55 to-white/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl dark:border-white/[0.12] dark:from-[#8B5CF6]/20 dark:via-[#251d35]/35 dark:to-white/[0.035] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
@@ -879,7 +974,7 @@ export function GbaigbanceStatsDashboard({
 
         <div className="mb-2.5 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {platformStats?.categoryBasis === 'revenue' ? 'Part des ventes par catégorie' : 'Répartition du catalogue'}
+            {platformStats?.categoryBasis === 'revenue' ? 'Part des ventes par catégorie' : 'Répartition du catalogue (tous événements)'}
           </span>
 
           <span className="text-[11px] font-semibold text-[#6600FF]">
@@ -985,6 +1080,8 @@ export function GbaigbanceStatsDashboard({
         )}
 
       </div>
+        </div>
+      </details>
     </div>
   );
 }

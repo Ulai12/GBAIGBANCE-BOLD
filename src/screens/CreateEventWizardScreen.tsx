@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  Briefcase,
   Building2,
   Calendar,
   Check,
@@ -8,6 +9,8 @@ import {
   Clock,
   ExternalLink,
   Eye,
+  Flame,
+  Heart,
   ImagePlus,
   Info,
   Layers,
@@ -16,13 +19,16 @@ import {
   MessageCircle,
   Music2,
   Navigation,
+  Palette,
   Plus,
   Search,
   Smartphone,
   Sparkles,
   Ticket as TicketIcon,
   Trash2,
+  Trophy,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { EventOptionalSteps, type LiveItem, type ScheduleItem, type SponsorItem } from '@/components/EventOptionalSteps';
 import { useApp } from '@/hooks/useApp';
@@ -42,7 +48,8 @@ import {
   addEventSponsor,
   getFaviconUrl,
 } from '@/services/events';
-import type { Artist, Event, EventCategory, EventAccessType, Organization, MainCategoryId, SubCategoryId } from '@/types';
+import type { Artist, Event, EventCategory, EventAccessType, Organization } from '@/types';
+import type { MainCategoryId, SubCategoryId } from '@/constants/categories';
 import type { ToastData } from '@/components/Toast';
 import { EventPreviewModal } from '@/components/EventPreviewModal';
 import { EventCard } from '@/components/EventCard';
@@ -68,6 +75,25 @@ const STEPS: Step[] = ['Infos', 'Lieu & Dates', 'Photos', 'Billets', 'Collaborat
 
 const fieldClass =
   'w-full max-w-full min-w-0 box-border px-4 py-3.5 bg-white dark:bg-[#1A1829] border border-black/[0.07] dark:border-white/[0.08] rounded-2xl text-[#171726] dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 text-sm font-medium transition-all shadow-xs';
+
+const WIZARD_CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Palette,
+  Briefcase,
+  Flame,
+  Trophy,
+  Heart,
+  Sparkles,
+};
+
+const categoryChipClass = (selected: boolean) =>
+  [
+    'inline-flex min-h-11 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-bold',
+    'transition-colors motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 cursor-pointer',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]',
+    selected
+      ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+      : 'border border-black/[0.05] bg-black/[0.03] text-gray-700 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-200',
+  ].join(' ');
 
 function getSplitDateTime(val: string) {
   if (!val) return { date: '', time: '' };
@@ -606,65 +632,76 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+              <p id="wizard-main-category" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Catégorie principale *
-              </label>
-              <select
-                className={fieldClass}
-                value={form.main_category}
-                onChange={(e) => {
-                  const nextMain = e.target.value as MainCategoryId;
-                  const targetMain = getMainCategoryById(nextMain);
-                  const firstSub = targetMain?.subcategories[0];
-                  setForm((prev) => ({
-                    ...prev,
-                    main_category: nextMain,
-                    subcategory: firstSub ? firstSub.id : prev.subcategory,
-                    category: firstSub ? firstSub.defaultLegacyCategory : prev.category,
-                  }));
-                }}
+              </p>
+              <div
+                role="radiogroup"
+                aria-labelledby="wizard-main-category"
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
               >
-                {MAIN_CATEGORIES.map((main) => (
-                  <option key={main.id} value={main.id}>
-                    {main.label}
-                  </option>
-                ))}
-              </select>
+                {MAIN_CATEGORIES.map((main) => {
+                  const Icon = WIZARD_CATEGORY_ICONS[main.iconName] || Palette;
+                  const selected = form.main_category === main.id;
+                  return (
+                    <button
+                      key={main.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        const firstSub = main.subcategories[0];
+                        setForm((prev) => ({
+                          ...prev,
+                          main_category: main.id,
+                          subcategory: firstSub ? firstSub.id : prev.subcategory,
+                          category: firstSub ? firstSub.defaultLegacyCategory : prev.category,
+                        }));
+                      }}
+                      className={categoryChipClass(selected)}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span>{main.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Sous-catégorie précise *
-                </label>
-                {currentSubDef && (
-                  <span className="text-[11px] text-[#6600FF] dark:text-purple-400 font-bold">
-                    {currentSubDef.shortLabel}
-                  </span>
-                )}
-              </div>
-              <select
-                className={fieldClass}
-                value={form.subcategory}
-                onChange={(e) => {
-                  const nextSub = e.target.value as SubCategoryId;
-                  const subDef = getSubcategoryById(nextSub);
-                  setForm((prev) => ({
-                    ...prev,
-                    subcategory: nextSub,
-                    category: subDef ? subDef.defaultLegacyCategory : prev.category,
-                  }));
-                }}
+              <p id="wizard-subcategory" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Sous-catégorie précise *
+              </p>
+              <div
+                role="radiogroup"
+                aria-labelledby="wizard-subcategory"
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
               >
-                {activeSubcategories.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.label}
-                  </option>
-                ))}
-              </select>
+                {activeSubcategories.map((sub) => {
+                  const selected = form.subcategory === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          subcategory: sub.id,
+                          category: sub.defaultLegacyCategory,
+                        }));
+                      }}
+                      className={categoryChipClass(selected)}
+                    >
+                      {sub.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
               {currentSubDef && (
-                <p className="mt-2 text-xs text-gray-600 dark:text-gray-300 leading-relaxed bg-purple-500/[0.04] dark:bg-white/[0.04] border border-purple-500/10 dark:border-white/10 rounded-xl p-2.5">
-                  💡 <span className="font-semibold text-gray-900 dark:text-white">{currentSubDef.label} :</span> {currentSubDef.description}
+                <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300 bg-purple-500/[0.04] dark:bg-white/[0.04] border border-purple-500/10 dark:border-white/10 rounded-xl p-2.5">
+                  <span className="font-semibold text-gray-900 dark:text-white">{currentSubDef.label}.</span> {currentSubDef.description}
                 </p>
               )}
             </div>

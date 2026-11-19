@@ -3,6 +3,7 @@ import { streamAIAssistant, type AIAssistantMessage } from '@/services/aiAssista
 import { getGeminiConfig, type MapsGroundingPlace } from '@/services/gemini';
 import { supabase } from '@/infrastructure/supabase';
 import { useApp } from '@/hooks/useApp';
+import { shouldShareLocationWithAssistant } from '@/services/aiSettings';
 import type { Event } from '@/types';
 
 // ====================================================================
@@ -157,7 +158,10 @@ export function useAIAssistant() {
         }));
 
       const gpsLocation =
-        userLocation?.isActual && typeof userLocation.latitude === 'number'
+        shouldShareLocationWithAssistant() &&
+        userLocation?.isActual &&
+        typeof userLocation.latitude === 'number' &&
+        typeof userLocation.longitude === 'number'
           ? { lat: userLocation.latitude, lng: userLocation.longitude }
           : null;
 

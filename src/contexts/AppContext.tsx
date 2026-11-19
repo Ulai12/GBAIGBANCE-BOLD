@@ -13,6 +13,7 @@ import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
 import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
 import { clearLocalUserTickets } from '@/services/events';
 import type { Profile, Language } from '@/types';
+import { applyDocumentTheme, getSystemTheme } from '@/app-shell/Theme';
 import { translate } from '@/locales';
 import {
   type UserLocationState,
@@ -20,6 +21,16 @@ import {
   getCurrentUserLocation,
   requestUserLocation,
 } from '@/utils/geo';
+
+function readSavedTheme(): 'light' | 'dark' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = window.localStorage.getItem('gba_theme');
+    return saved === 'dark' || saved === 'light' ? saved : null;
+  } catch {
+    return null;
+  }
+}
 
 export function performSignOutCleanup(userId?: string | null): void {
   try {
@@ -156,11 +167,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('gba_lang') as Language) || 'fr';
   });
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('gba_theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => readSavedTheme() || getSystemTheme());
+  const [hasManualTheme, setHasManualTheme] = useState(() => readSavedTheme() !== null);
 
   const [userLocation, setUserLocation] = useState<UserLocationState>({
     latitude: LOME_CENTER.latitude,
@@ -185,11 +193,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const activeUserIdRef = useRef<string | null>(getLocalProfile()?.id || null);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-    localStorage.setItem('gba_theme', theme);
+    applyDocumentTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = (event: MediaQueryListEvent) => {
+      if (!hasManualTheme) setTheme(event.matches ? 'dark' : 'light');
+    };
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', syncSystemTheme);
+      return () => media.removeEventListener('change', syncSystemTheme);
+    }
+    media.addListener(syncSystemTheme);
+    return () => media.removeListener(syncSystemTheme);
+  }, [hasManualTheme]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -266,8 +285,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-  }, []);
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    setHasManualTheme(true);
+    try {
+      localStorage.setItem('gba_theme', next);
+    } catch {
+      // Le thème reste utilisable même si le stockage local est indisponible.
+    }
+  }, [theme]);
 
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured) {

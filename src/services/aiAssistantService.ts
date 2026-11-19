@@ -1,9 +1,6 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
+import { getAIAssistantPreferences } from '@/services/aiSettings';
 import type { MapsGroundingPlace } from '@/services/gemini';
-
-// ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (STREAMING & MAPS)
-// ====================================================================
 
 export interface AIAssistantMessage {
   role: 'user' | 'assistant';
@@ -57,8 +54,8 @@ function extractEventIds(data: Record<string, unknown>): string[] {
 function extractGroundingPlaces(data: Record<string, unknown>): MapsGroundingPlace[] {
   if (!Array.isArray(data.groundingPlaces)) return [];
   return data.groundingPlaces.filter(
-    (p): p is MapsGroundingPlace =>
-      Boolean(p && typeof p === 'object' && typeof (p as MapsGroundingPlace).uri === 'string')
+    (place): place is MapsGroundingPlace =>
+      Boolean(place && typeof place === 'object' && typeof (place as MapsGroundingPlace).uri === 'string')
   );
 }
 
@@ -79,6 +76,39 @@ async function parseSseResponse(
   let groundingPlaces: MapsGroundingPlace[] = [];
   let modelName: string | undefined;
 
+  const processLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data:')) return false;
+
+    const dataStr = trimmed.slice(5).trim();
+    if (!dataStr || dataStr === '[DONE]') return false;
+
+    try {
+      const data = JSON.parse(dataStr) as Record<string, unknown>;
+      if (typeof data.text === 'string' && data.text) {
+        callbacks.onChunk(data.text);
+      } else if (typeof data.chunk === 'string' && data.chunk) {
+        callbacks.onChunk(data.chunk);
+      }
+
+      const ids = extractEventIds(data);
+      if (ids.length > 0) verifiedEventIds = ids;
+
+      const places = extractGroundingPlaces(data);
+      if (places.length > 0) groundingPlaces = places;
+
+      if (typeof data.model === 'string' && data.model) modelName = data.model;
+      if (typeof data.error === 'string' && data.error) {
+        callbacks.onError(data.error);
+        return true;
+      }
+    } catch {
+      if (!dataStr.startsWith('{')) callbacks.onChunk(dataStr);
+    }
+
+    return false;
+  };
+
   try {
     while (true) {
       if (signal.aborted) return;
@@ -88,43 +118,13 @@ async function parseSseResponse(
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-        const dataStr = trimmed.slice(5).trim();
-        if (!dataStr || dataStr === '[DONE]') continue;
-
-        try {
-          const data = JSON.parse(dataStr) as Record<string, unknown>;
-          if (typeof data.text === 'string' && data.text) {
-            callbacks.onChunk(data.text);
-          } else if (typeof data.chunk === 'string' && data.chunk) {
-            callbacks.onChunk(data.chunk);
-          }
-
-          const ids = extractEventIds(data);
-          if (ids.length > 0) verifiedEventIds = ids;
-
-          const places = extractGroundingPlaces(data);
-          if (places.length > 0) groundingPlaces = places;
-
-          if (typeof data.model === 'string' && data.model) {
-            modelName = data.model;
-          }
-
-          if (typeof data.error === 'string' && data.error) {
-            callbacks.onError(data.error);
-            return;
-          }
-        } catch {
-          if (!dataStr.startsWith('{')) {
-            callbacks.onChunk(dataStr);
-          }
-        }
+        if (processLine(line)) return;
       }
     }
+
+    buffer += decoder.decode();
+    if (buffer && processLine(buffer)) return;
   } finally {
     reader.releaseLock();
   }
@@ -166,12 +166,6 @@ async function postAssistant(
   });
 }
 
-/**
- * Envoie la conversation :
- * 1) `/api/ai/assistant/stream` (serveur Express Gemini 4 + Google Maps Grounding)
- * 2) Edge Function Supabase `ai-assistant` (repli sans serveur Node local)
- * 3) `/api/ai-assistant` (repli proxy Vercel plat)
- */
 export async function streamAIAssistant(
   options: SendMessageOptions,
   callbacks: StreamCallbacks
@@ -183,98 +177,77 @@ export async function streamAIAssistant(
     return () => {};
   }
 
-  (async () => {
-    const sanitizedLocation = sanitizeLocation(options.userLocation ?? null);
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 60_000);
+  const reportTimeout = () => {
+    if (timedOut) callbacks.onError('La réponse de l’assistant prend trop de temps. Réessaie dans un instant.');
+  };
 
+  (async () => {
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
+      const token = session?.access_token || supabaseAnonKey;
       const payload = {
-        messages: options.messages.map((m) => ({
-          role: m.role,
-          text: m.text.slice(0, 1500),
-          content: m.text.slice(0, 1500),
+        messages: options.messages.map((message) => ({
+          role: message.role,
+          text: message.text.slice(0, 1500),
+          content: message.text.slice(0, 1500),
         })),
-        userLocation: sanitizedLocation,
+        userLocation: sanitizeLocation(options.userLocation ?? null),
         fastMode: Boolean(options.fastMode),
         useMapsGrounding: options.useMapsGrounding !== false,
+        preferences: getAIAssistantPreferences(),
       };
+      const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
+      const candidates: Array<{ url: string; headers: Record<string, string> }> = [
+        {
+          url: '/api/ai/assistant/stream',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        },
+        {
+          url: edgeUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        {
+          url: '/api/ai-assistant',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        },
+      ];
 
       let response: Response | null = null;
       let lastError = '';
+      for (const candidate of candidates) {
+        try {
+          const result = await postAssistant(candidate.url, candidate.headers, payload, controller.signal);
+          if (result.ok) {
+            response = result;
+            break;
+          }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-
-      // 1) Serveur applicatif local (/api/ai/assistant/stream) avec Gemini 4 Hydrogen + Maps Grounding
-      try {
-        const localRes = await postAssistant('/api/ai/assistant/stream', headers, payload, controller.signal);
-        if (localRes.ok) {
-          response = localRes;
-        } else {
-          const errorData = await localRes.clone().json().catch(() => ({}));
+          const errorData = (await result.clone().json().catch(() => ({}))) as Record<string, unknown>;
           lastError =
-            (errorData as { error?: string }).error ||
-            (errorData as { message?: string }).message ||
-            `Erreur serveur IA (${localRes.status})`;
-          if (localRes.status === 429) {
+            (typeof errorData.error === 'string' && errorData.error) ||
+            (typeof errorData.message === 'string' && errorData.message) ||
+            `Erreur serveur IA (${result.status})`;
+          if (result.status === 429) {
             callbacks.onError(lastError, true);
             return;
           }
-        }
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : 'Serveur IA local inaccessible';
-      }
-
-      // 2) Repli Edge Function Supabase puis proxy plat Vercel si le chemin local n'est pas disponible
-      if (!response) {
-        const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-        const edgeHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
-          apikey: supabaseAnonKey,
-          Authorization: session?.access_token
-            ? `Bearer ${session.access_token}`
-            : `Bearer ${supabaseAnonKey}`,
-        };
-
-        try {
-          const edgeRes = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
-          if (edgeRes.ok) {
-            response = edgeRes;
-          } else {
-            const errorData = await edgeRes.clone().json().catch(() => ({}));
-            lastError =
-              (errorData as { error?: string }).error ||
-              (errorData as { message?: string }).message ||
-              lastError;
-            if (edgeRes.status === 429) {
-              callbacks.onError(lastError, true);
-              return;
-            }
+        } catch (error) {
+          if (controller.signal.aborted) {
+            reportTimeout();
+            return;
           }
-        } catch (err) {
-          lastError = err instanceof Error ? err.message : lastError;
-        }
-      }
-
-      if (!response) {
-        try {
-          const proxyRes = await postAssistant('/api/ai-assistant', headers, payload, controller.signal);
-          if (proxyRes.ok) {
-            response = proxyRes;
-          } else {
-            const errorData = await proxyRes.clone().json().catch(() => ({}));
-            lastError =
-              (errorData as { error?: string }).error ||
-              (errorData as { message?: string }).message ||
-              lastError;
-          }
-        } catch (err) {
-          lastError = err instanceof Error ? err.message : lastError;
+          lastError = error instanceof Error ? error.message : lastError || 'Service IA inaccessible';
         }
       }
 
@@ -283,20 +256,22 @@ export async function streamAIAssistant(
         return;
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
+      if ((response.headers.get('content-type') || '').includes('application/json')) {
         await parseJsonResponse(response, callbacks);
       } else {
         await parseSseResponse(response, callbacks, controller.signal);
+        reportTimeout();
       }
-    } catch (err: unknown) {
-      if (controller.signal.aborted) return;
-      const errorMsg = err instanceof Error ? err.message : 'Erreur inattendue';
-      callbacks.onError(errorMsg);
+    } catch (error: unknown) {
+      if (controller.signal.aborted) {
+        reportTimeout();
+        return;
+      }
+      callbacks.onError(error instanceof Error ? error.message : 'Erreur inattendue');
+    } finally {
+      clearTimeout(timeoutId);
     }
   })();
 
-  return () => {
-    controller.abort();
-  };
+  return () => controller.abort();
 }

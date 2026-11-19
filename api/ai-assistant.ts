@@ -32,7 +32,6 @@ function readBody(req: VercelRequest): Promise<unknown> {
     }
     return Promise.resolve(req.body);
   }
-
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
@@ -63,7 +62,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'Access-Control-Allow-Headers',
     'authorization, apikey, content-type, x-client-info, x-gemini-api-key, x-request-id',
   );
-
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -72,24 +70,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Allow', 'POST, OPTIONS');
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
-
   const supabaseUrl = (
     process.env.VITE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     DEFAULT_SUPABASE_URL
   ).replace(/\/+$/, '');
-
   const anonKey =
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     DEFAULT_SUPABASE_ANON_KEY;
-
   const body = (await readBody(req)) as {
     messages?: Array<{ role?: string; text?: string; content?: string }>;
     userLocation?: { lat?: number; lng?: number } | null;
+    preferences?: unknown;
   };
 
   const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
@@ -98,7 +94,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     apikey: anonKey,
     Authorization: authHeader.startsWith('Bearer ') ? authHeader : `Bearer ${anonKey}`,
   };
-
   const edgePayload = {
     messages: (body.messages || []).map((m) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
@@ -106,6 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content: String(m.text || m.content || '').slice(0, 1000),
     })),
     userLocation: body.userLocation || null,
+    preferences: body.preferences || null,
   };
 
   try {
@@ -114,7 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: edgeHeaders,
       body: JSON.stringify(edgePayload),
     });
-
     const contentType = edgeRes.headers.get('content-type') || '';
 
     if (contentType.includes('text/event-stream') && edgeRes.body) {
@@ -131,7 +126,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.end();
       return;
     }
-
     const data = (await edgeRes.json().catch(() => ({}))) as Record<string, unknown>;
 
     if (!edgeRes.ok) {
@@ -141,7 +135,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `Erreur assistant IA (${edgeRes.status})`;
       return res.status(edgeRes.status === 429 ? 429 : 502).json({ error: message });
     }
-
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -155,7 +148,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : Array.isArray(data.verifiedEventIds)
         ? data.verifiedEventIds
         : [];
-
     if (text) {
       writeSse(res, { text, done: false });
     }

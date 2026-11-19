@@ -13,6 +13,16 @@ async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProf
   return map;
 }
 
+function assertRpcOk(error: { message?: string } | null, data: unknown, fallback: string): Record<string, unknown> {
+  if (error) throw new Error(error.message || fallback);
+  if (!data || typeof data !== 'object') throw new Error(fallback);
+  const rec = data as Record<string, unknown>;
+  if (rec.success === false) {
+    throw new Error(typeof rec.error === 'string' ? rec.error : fallback);
+  }
+  return rec;
+}
+
 export async function fetchEventComments(eventId: string): Promise<EventComment[]> {
   const { data, error } = await supabase
     .from('event_comments')
@@ -110,37 +120,21 @@ export async function toggleOrganizationFollow(organizationId: string, userId: s
   if (!UUID_REGEX.test(organizationId) || !UUID_REGEX.test(userId)) {
     return true;
   }
-  const { data: existing } = await supabase
-    .from('organization_follows')
-    .select('id')
-    .eq('organization_id', organizationId)
-    .eq('user_id', userId)
-    .maybeSingle();
 
-  if (existing) {
-    await supabase.from('organization_follows').delete().eq('organization_id', organizationId).eq('user_id', userId);
-    return false;
-  }
-  await supabase.from('organization_follows').insert({ organization_id: organizationId, user_id: userId });
-  return true;
+  const { data, error } = await supabase.rpc('toggle_organization_follow', {
+    p_organization_id: organizationId,
+  });
+  const rec = assertRpcOk(error, data, 'Impossible de suivre cette organisation');
+  return rec.following === true;
 }
 
-export async function toggleEventLike(eventId: string, userId: string): Promise<boolean> {
-  const { data: existing } = await supabase
-    .from('event_likes')
-    .select('*')
-    .eq('event_id', eventId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from('event_likes').delete().eq('event_id', eventId).eq('user_id', userId);
-    await supabase.rpc('decrement_likes_count', { event_id: eventId });
-    return false;
-  }
-  await supabase.from('event_likes').insert({ event_id: eventId, user_id: userId });
-  await supabase.rpc('increment_likes_count', { event_id: eventId });
-  return true;
+/** Favori / like evenement — RPC atomique (RLS + compteur). */
+export async function toggleEventLike(eventId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('toggle_event_like', {
+    p_event_id: eventId,
+  });
+  const rec = assertRpcOk(error, data, 'Impossible de mettre en favori');
+  return rec.liked === true;
 }
 
 export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
@@ -148,19 +142,12 @@ export async function toggleArtistFollow(artistId: string, userId: string): Prom
   if (!UUID_REGEX.test(artistId) || !UUID_REGEX.test(userId)) {
     return true;
   }
-  const { data: existing } = await supabase
-    .from('artist_follows')
-    .select('artist_id')
-    .eq('artist_id', artistId)
-    .eq('user_id', userId)
-    .maybeSingle();
 
-  if (existing) {
-    await supabase.from('artist_follows').delete().eq('artist_id', artistId).eq('user_id', userId);
-    return false;
-  }
-  await supabase.from('artist_follows').insert({ artist_id: artistId, user_id: userId });
-  return true;
+  const { data, error } = await supabase.rpc('toggle_artist_follow', {
+    p_artist_id: artistId,
+  });
+  const rec = assertRpcOk(error, data, 'Impossible de suivre cet artiste');
+  return rec.following === true;
 }
 
 export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {
@@ -173,12 +160,33 @@ export async function isFollowingArtist(artistId: string, userId: string): Promi
   return !!data;
 }
 
+const ANALYTICS_VISITOR_KEY = 'gba_analytics_visitor_v1';
+
+function getAnalyticsVisitorKey(): string {
+  try {
+    const existing = localStorage.getItem(ANALYTICS_VISITOR_KEY);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    localStorage.setItem(ANALYTICS_VISITOR_KEY, created);
+    return created;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
 export async function incrementEventViews(eventId: string): Promise<void> {
   if (!isSupabaseConfigured || !eventId) return;
   try {
-    await supabase.rpc('increment_event_views', { p_event_id: eventId });
-  } catch {
-    // Ignore error
+    const { error } = await supabase.rpc('record_event_view', {
+      p_event_id: eventId,
+      p_visitor_key: getAnalyticsVisitorKey(),
+    });
+    if (error) {
+      // Fallback simple si la dedup daily echoue
+      await supabase.rpc('increment_event_views', { p_event_id: eventId });
+    }
+  } catch (error) {
+    console.warn('[event-views] Unable to record view:', error);
   }
 }
 

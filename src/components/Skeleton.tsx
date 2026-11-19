@@ -400,7 +400,7 @@ export function SubscriptionsScreenSkeleton() {
 export function UserProfileScreenSkeleton() {
   return (
     <div className="min-h-screen pb-32 animate-fade-in" aria-busy="true">
-      <div className="relative h-48 bg-gradient-to-br from-[#6600FF]/15 via-[#9D4EDD]/10 to-[#EDE8FF] dark:to-[#120E20]">
+      <div className="relative h-48 bg-gradient-to-br from-[#6600FF]/12 via-[#9D4EDD]/8 to-[#efede6] dark:to-[#1c191f]">
         <div className="absolute top-4 left-0 right-0 px-5">
           <Skeleton className="w-10 h-10 rounded-full" />
         </div>

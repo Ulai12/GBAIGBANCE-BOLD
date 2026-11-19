@@ -1,123 +1,53 @@
 # FRONTEND_MEMORY.md
 
-## Périmètre
-Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité du chantier frontend. `PROJECT_MEMORY.md` est consulté uniquement en lecture seule pour le contexte backend.
-
-## Gouvernance
+## Projet et périmètre
 - Dépôt : `Ulai12/GBAIGBANCE-BOLD`.
-- Branche d'écriture exclusive : `FRONTEND-iA`. Ne jamais écrire sur `main`, ne jamais fusionner vers `main`, ne jamais faire de force push.
-- Le 2026-11-13, la branche exacte `FRONTEND-iA` a été créée depuis `main` car elle n'existait pas. La branche `FRONTEND-iA` est distincte et n'a pas été modifiée.
-- PR #9 — Frontend: équilibrer les catégories sur mobile — fusionnée dans `main` par le propriétaire. PR de suivi actuelle : [#11 — Frontend: évolutions UI/UX continues](https://github.com/Ulai12/GBAIGBANCE-BOLD/pull/11), ouverte en brouillon vers `main`, jamais fusionnée par cet agent.
-- Lire ce fichier en entier au début de chaque session et reprendre la tâche active.
-- Le code distant et l'état Git font autorité si cette mémoire diverge.
-- Ne pas modifier `package.json`, les lockfiles ou les dépendances sans autorisation explicite.
-- Après chaque écriture : relire depuis GitHub sur `FRONTEND-iA`, vérifier le commit, la taille, le contenu et l'absence de troncature.
-- Ne jamais prétendre qu'un build, lint, typecheck, test ou contrôle visuel a réussi s'il n'a pas été exécuté.
-- Une amélioration principale significative par session ; préserver les changements préexistants.
+- Branche de travail autorisée : `FRONTEND-iA` uniquement.
+- Frontend observé : React 18, TypeScript, Vite, Tailwind CSS 3.4.
+- Le parcours « Explorer par catégorie » de l'accueil est implémenté dans `src/screens/HomeScreen.tsx`.
+- Les six catégories parentes et leurs sous-catégories sont définies dans `src/constants/categories.ts`. Les identifiants et l'ordre de cette hiérarchie constituent les données métier à préserver.
+- Le filtrage de la liste utilise déjà `selectedCategory`, `selectedMainCategory` et `eventMatchesCategoryFilter`; le chantier UI ne nécessite pas de changement backend/API.
 
-## Projet
-- Stack : React 18, TypeScript, Vite, Tailwind CSS, Motion, Lucide, React Router, Supabase.
-- Identité : violet `#6600FF` / `#8B5CF6`, thèmes clair et sombre, surfaces Liquid Glass.
-- Public : mobile-first, Android d'entrée de gamme, iPhone, réseaux mobiles parfois lents.
+## 2026-11-17 — Densité et hiérarchie de l'exploration par catégorie
+### Constat avant intervention
+- La grille d'accueil passait de 2 à 3 puis 6 colonnes dès le breakpoint `lg`, avec six cartes verticales, une largeur plafonnée à 220 px et des hauteurs minimales croissantes.
+- Les libellés longs pouvaient s'empiler sous l'icône, ce qui augmentait la hauteur perçue et déséquilibrerait la grille selon le viewport.
+- Les sous-catégories restaient en bande horizontale défilante à toutes les largeurs, sans libellé visuel explicitant leur relation à la catégorie parente.
+- Le fichier mémoire précédent ne contenait qu'un placeholder ; aucune décision frontend exploitable n'y était documentée.
 
-## Tâche active — proportions de l'explorateur de catégories (Accueil)
-**Objectif :** rendre les catégories principales plus compactes et équilibrées, puis présenter les sous-catégories dans une rangée horizontale homogène et utilisable au tactile, sans modifier la taxonomie ni le filtrage des événements.
+### Intervention réalisée
+- Recomposition des cartes parentes en lignes compactes : icône dans un support discret, libellé aligné à gauche et retour à la ligne naturel.
+- Grille adaptée : 2 colonnes sur petit écran, 3 sur tablette et écran intermédiaire, 6 à partir de `xl`; largeur maximale par carte portée à 280 px pour éviter l'étirement excessif en grille à 3 colonnes.
+- Hauteur minimale des cartes ramenée à 48 px, tout en laissant le contenu long déterminer la hauteur réelle.
+- Ajout d'un intitulé « Sous-catégories · [parent] » ; les sous-catégories gardent une cible tactile minimale de 44 px, défilent sur mobile et passent en retour à la ligne à partir de `sm`.
+- Préservation des IDs, labels, icônes métier existantes, états actifs, callbacks, logique de sélection et filtrage. Aucun changement backend/API.
 
-**Progression :**
-- Terminé le 2026-11-13 : réduction de la hauteur minimale des cartes principales de 104px à 80px ; icônes de 20px à 18px ; libellés resserrés et centrés ; grille 2 colonnes sur petit écran, 3 dès `sm`, 5 dès `xl`.
-- Terminé : sous-catégories passées d'un groupe flex-wrap irrégulier à une rangée horizontale scrollable avec snap, hauteur minimale uniforme de 36px, libellés sans retour à la ligne.
-- Terminé : focus visible ajouté aux contrôles de catégorie et libellés de groupe accessibles.
-- À faire : vérifier le rendu réel aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, en clair/sombre et sur iPhone ; ajuster uniquement sur constat.
-- À faire : exécuter build, lint et typecheck dans un environnement avec le dépôt et ses dépendances.
+### Fichiers concernés
+- `src/screens/HomeScreen.tsx` — présentation de la grille parent/enfant.
+- `FRONTEND_MEMORY.md` — mémoire frontend initialisée puis mise à jour avec les observations et résultats du chantier.
 
-**Fichiers concernés :**
-- `src/screens/HomeScreen.tsx` — section « Explorer par catégorie ».
-- `src/constants/categories.ts` — taxonomie partagée, consultée sans modification.
+### Vérification et limites
+- Lecture des sources et vérification du HEAD effectuées sur `FRONTEND-iA`; HEAD de départ : `35d17160d4d90e1d7931762abecb2c95d8ad4565`.
+- Diff Git limité à `src/screens/HomeScreen.tsx` et `FRONTEND_MEMORY.md`.
+- Prévisualisation Vercel construite avec succès sur le code UI de ce chantier : état `READY`, commande `vite build && tsx scripts/generate-preview.ts`, 3 291 modules transformés, build terminé en 14 s, 63 entrées PWA précachées et 14 fichiers de preview synchronisés.
+- Le pipeline Vercel n'a pas exécuté explicitement `npm run typecheck`, `npm run lint` ni une suite de tests dédiée ; ne pas les considérer comme validés.
+- Aucun contrôle visuel navigateur n'a été réalisé : le navigateur connecté n'est pas accessible dans ce contexte d'exécution. Les breakpoints et états doivent encore être vérifiés sur captures réelles.
+- Aucun audit UIAudit/Superdesign n'a été exécuté : ces outils/workflows ne sont pas exposés dans l'environnement courant.
+- Aucun changement backend/API, aucun PR et aucun changement de branche secondaire.
 
-**Dernière action :** reprise de validation le 2026-11-13 ; comparaison `main...FRONTEND-iA` confirmant `behind_by: 0`, vérification des contrôles GitHub et mise à jour de cette mémoire. Commit mémoire `ccbf22d161224926c24971ec89f7da4c7a323b31`, relu à distance avec contenu identique ; `HomeScreen.tsx` inchangé.
-
-**Prochaine étape :** lancer les vérifications automatisées et effectuer une revue responsive réelle depuis un environnement d'exécution ou un navigateur connecté ; ne pas commencer un autre chantier avant validation ou blocage documenté.
-
-## Design system — décisions à préserver
-- Couleurs principales : violet `#6600FF`, violet secondaire `#8B5CF6`, surfaces sombres existantes `#14121E` / `#17131D`.
-- Typographie : hiérarchie Tailwind existante ; titres de section compacts, libellés de catégories 11–12px sur mobile.
-- Espacements : grille catégorie gap 8px mobile ; sous-catégories gap 8px ; padding horizontal de page 20px (classes `px-5`).
-- Rayons : cartes de catégories `rounded-2xl`, sous-catégories en capsules `rounded-full`.
-- Cibles tactiles : conserver au moins 44px pour les actions importantes ; les chips de sous-catégorie sont à 36px de hauteur visuelle et doivent rester confortables à toucher, à réévaluer lors du contrôle réel.
-- Focus : anneau violet visible avec offset adapté au thème sombre.
-- Mouvement : transitions courtes et ciblées ; respecter `prefers-reduced-motion`.
-- Responsive actuel : grille catégories 2 colonnes par défaut, 3 à `sm`, 5 à `xl` ; sous-catégories défilantes horizontalement.
-- Performance : éviter les effets coûteux et préserver les images lazy-loadées ; ne pas ajouter de dépendance pour une amélioration CSS.
-
-## Cartographie des écrans
-| Écran / zone | Statut | Notes |
-|---|---|---|
-| Accueil — explorateur de catégories | En cours | Proportions mises à jour ; contrôle responsive réel restant |
-| Accueil — dock mobile | À revoir | Labels 11px, dock 62px, bouton Créer 44px ; contrôle visuel restant |
-| Thème sombre / réduction de transparence | À revoir | Correctif CSS présent ; contrôle réel restant |
-| Explorer / recherche | À auditer | Hiérarchie catégories et résultats à recontrôler |
-| Création / modification d'événement | À auditer | Taxonomie partagée ; dernier commit main alignant l'édition sur la taxonomie |
-| Billets / portefeuille | À auditer | Aucun changement dans cette session |
-| Profil / favoris / notifications | À auditer | Aucun changement dans cette session |
-| Dashboard organisateur / statistiques | À revoir | Correctifs stats/analytics déjà présents dans l'historique |
-
-## Dette UI
-- **P1** — Contrôler les débordements des libellés et des capsules de sous-catégories sur 320px.
-- **P2** — Valider l'équilibre visuel de la grille catégories sur tablette et grands écrans.
-- **P2** — Vérifier les contrastes en thème clair/sombre et la lisibilité avec réduction de transparence.
-- **P2** — Contrôler le dock mobile et les safe areas iOS.
-- **P3** — Harmoniser progressivement les états vides, chargement et erreur entre les écrans.
-
-## Incidents d'écriture
-- Aucun incident de troncature constaté pendant la session du 2026-11-13.
-- Protocole de vérification distant appliqué au commit `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
-
-## Vérifications
-- **Session du 2026-11-13 (reprise) :** branche `FRONTEND-iA` présente ; comparaison `main...FRONTEND-iA` = `ahead_by: 3`, `behind_by: 0` ; PR #9 toujours ouverte vers `main`.
-- **Session du 2026-11-13 (reprise) :** contrôle GitHub du commit `e9192442628b74c5c0853feb0dbc931ecb68f133` : Vercel Preview Comments `success`, Supabase Preview `skipped` ; aucune GitHub Actions run trouvée pour `FRONTEND-iA`.
-- **Non vérifié :** build, lint, typecheck, tests et rendu navigateur lors de cette reprise. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine ; aucun environnement local de build n'est fourni par le connecteur GitHub.
-- **Vérifié :** relecture GitHub distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`, hash du blob `64a8975cf457d5fa479c0923adef143fee62faac`, commit retrouvé dans l'historique.
-- **Vérifié :** taille du fichier augmentée de 819 caractères et de 4 lignes ; aucune diminution ni référence d'espace réservé.
-- **Non vérifié :** build, lint, typecheck, tests automatisés et rendu navigateur ; le connecteur GitHub distant ne fournit pas ici un environnement d'exécution frontend.
-- **Non vérifié :** rendu aux largeurs 320, 360, 375, 414, 768, 1024 et 1440px, orientations tablette, thème clair/sombre et iPhone.
-
-## Backlog
-1. P1 — Vérification build, lint, typecheck et tests existants.
-2. P1 — Revue responsive réelle de l'explorateur de catégories sur petits mobiles, notamment 320px.
-3. P2 — Contrôle dock mobile, safe areas iOS et mode réduction de transparence.
-4. P2 — Revue progressive des pages Explorer et création/modification d'événement.
-5. P3 — Audit ciblé des états de chargement, vide, erreur et hors-ligne.
-
-## Historique
-### 2026-11-13 — Accueil : proportions des catégories
-- Réduction de la hauteur minimale des cartes principales de 104px à 80px et des icônes à 18px.
-- Sous-catégories uniformisées en rangée horizontale scrollable avec snap.
-- Focus visible et sémantique de groupe ajoutés.
-- Commit : `5bfe0a46ba7a292a3f5105871be27fb0c2dddf7a`.
-- Relecture distante réussie ; validation build/lint/typecheck et rendu visuel non exécutés.
-
-### 2026-11-12 — FRONTEND-iA : verre sombre et dock
-- `prefers-reduced-transparency` : surcharge `.dark` dans `src/index.css` pour garder des surfaces sombres.
-- Dock mobile (`src/components/BottomNav.tsx`) : labels 11px, dock 62px, aria-label du badge billets avec pluralisation fr/en.
-- Validation navigateur (320, 375, 414, 768, 1024, 1440) et build/lint : non exécutés dans la session distante.
-
-### 2026-11-12 — FRONTED-iA : cartes, catégories, stats
-- `EventCard.tsx` : suppression du bouton imbriqué dans un `article role="button"`, overlay de découverte distinct, suppression de `min-h-[full]`.
-- `BottomNav.tsx` : bouton Créer 44×44px, focus clavier, `prefers-reduced-motion`.
-- Explorateur de catégories : hiérarchie parent/sous-catégorie, catalogue publié complet, plus de flicker ni de polling.
-- Stats/analytics : historique organisateur par mois, pas d'échantillon partiel, repli JavaScript typé, billets uniques.
-
-### 2026-11-13 — Fusion des historiques frontend
-- L'ancien journal documentait une fusion `FRONTED-iA` vers `FRONTEND-iA` et la PR #6.
-- La branche de travail exacte a été recréée depuis `main` au début de cette session, conformément à la consigne lorsque `FRONTEND-iA` est absente.
+### Prochaine priorité
+- Vérifier le rendu réel sur mobile étroit, tablette et desktop, notamment les libellés longs, l'alignement des six parents et le retour à la ligne des sous-catégories.
+- Exécuter séparément typecheck, lint et tests ciblés lorsqu'un environnement de test local/CI sera disponible.
 
 
-### 2026-11-13 — Synchronisation de main vers FRONTEND-iA
-- Analyse des 8 commits manquants depuis `main` ; les modifications entrantes concernaient `FRONTEND_MEMORY.md`, `src/screens/EditEventScreen.tsx` et `src/screens/HomeScreen.tsx`.
-- Résolution documentée : `src/screens/HomeScreen.tsx` reprend la version main qui contient la grille catégories 2/3/5 colonnes, les tuiles compactes de 80px et la rangée horizontale de sous-catégories. `src/screens/EditEventScreen.tsx` conserve la version FRONTEND-iA, qui garde l'import `Trophy` nécessaire et le fallback de catégorie legacy. La mémoire reprend le journal main, corrige le nom exact de la branche et conserve le blocage précédent ainsi que sa résolution.
-- PR temporaire #10 fermée sans fusion ; elle n'a modifié aucune branche.
-- Merge commit créé avec deux parents (branche de travail et main) ; aucune réécriture d'historique ni force push.
-- Prochaine étape : valider build, lint, typecheck, tests et rendu responsive avant toute nouvelle retouche UI.
+## 2026-11-17 — Restauration et gel de l'apparence des cartes de catégorie
+- À la demande explicite de l'utilisateur, le bloc complet « Explorer par catégorie » de `src/screens/HomeScreen.tsx` a été restauré à l'identique depuis le commit de référence pré-modification `35d17160d4d90e1d7931762abecb2c95d8ad4565`.
+- Cela rétablit l'apparence verticale originale des cartes (icône au-dessus du libellé), les classes de dimensions/espacements et la grille originale (2 colonnes mobile, 3 à partir de sm, 6 à partir de lg), ainsi que l'affichage original des sous-catégories.
+- Préférence durable : ne plus modifier l'apparence, les proportions, la disposition ou le style des cartes de catégorie ni leur présentation dans « Explorer par catégorie », sauf demande explicite ultérieure de l'utilisateur.
+- Aucun autre parcours, donnée métier, filtrage, backend ou API n'a été modifié.
+- Commit de restauration : `996a6815550895f10b7ab5bcdfee82b9d9a676dd`, directement sur `FRONTEND-iA`; aucun PR.
+- Vérification : le bloc restauré provient exactement du commit de référence. Aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur n'a été exécuté après cette restauration.
+- Prochaine priorité : laisser les cartes de catégorie intactes ; ne les retoucher que sur demande explicite.
 
 - PR de suivi #11 créée le 2026-11-13 depuis `FRONTEND-iA` vers `main`, ouverte en brouillon ; aucune fusion demandée ni effectuée.
 
@@ -129,3 +59,175 @@ Mémoire du travail frontend de GBAIGBANCE-BOLD. Ce fichier est la continuité d
 - L'en-tête de `main` est déjà identique au rendu de référence : `HomeScreen.tsx` conserve le logo, le bloc d'identité, le titre de salutation et les actions; `index.html` conserve `theme-color #f4f1ff` en clair; `src/index.css` conserve le fond racine `var(--bg)` sans la variable safe-area personnalisée ajoutée sur FRONTEND-iA. Aucun changement superflu sur ces fichiers.
 - Commit direct sur `main` : `080f3e40b65f7c7db5e5de2b1e37c4e9c13a1f20`.
 - Aucun changement backend, dépendance ou lockfile. Aucune PR. Build, tests et capture visuelle après changement non exécutés dans cette session.
+## 2026-11-17 — Contrôle qualité hors section catégories
+- Demande utilisateur : poursuivre le contrôle responsive/qualité sans toucher à « Explorer par catégorie ». Gel confirmé : aucun fichier source de cette section, aucune carte parent/enfant, aucun style, dimension, espacement, breakpoint, libellé ou comportement de catégorie n'a été modifié pendant cette session.
+- Branche vérifiée : `FRONTEND-iA` existe ; HEAD observé avant cette note : `86df65016a7db8caade02ddd3682d28abd25d728`.
+- Déploiement Vercel associé au commit de restauration source `996a6815550895f10b7ab5bcdfee82b9d9a676dd` : `READY`. Logs : Vite 8.3.7, 3 291 modules transformés, build Vite terminé en 6,43 s, PWA 63 entrées précachées, 14 fichiers preview synchronisés. Statut Vercel du HEAD mémoire `86df65016a7db8caade02ddd3682d28abd25d728` : success ; déploiement associé : `READY`.
+- Limite importante de l'environnement : le dépôt contient `bun.lock` mais pas de `package-lock.json`. Le build Vercel observé a utilisé Bun 1.4.4 et a généré son lockfile dans l'environnement de build. Conformément à la règle npm-only (et à l'interdiction de créer/modifier des lockfiles), aucun `npm install`, `bun install` ou contournement de lockfile n'a été tenté. `npm ci`, `npm run typecheck` et `npm run lint` n'ont donc pas pu être exécutés dans un environnement propre ; typecheck et lint restent non vérifiés.
+- Contrôle visuel multi-viewport non effectué : l'extension navigateur n'était pas accessible depuis cette session. Aucun résultat de test visuel n'est revendiqué.
+- Audit source exploratoire limité aux composants non-catégorie de l'accueil (EventCard, FeaturedCarousel, TrendingDeck, NearbyEventTile, BottomNav et App). Aucun défaut visuel certain ne justifiait une modification sans rendu navigateur réel ; aucun code source n'a été modifié.
+- Aucun PR, aucun changement de branche, aucun changement backend/API.
+- Prochaine étape recommandée : obtenir un environnement de test autorisé avec dépendances installées selon le workflow npm du projet (sans créer de lockfile), puis faire les contrôles visuels sur les sections non-catégorie uniquement. La section catégories reste gelée sauf demande explicite.
+
+
+## 2026-11-17 — Réduction du préchargement du carrousel vedette
+### Constat
+- `src/components/FeaturedCarousel.tsx` créait un nouvel objet `Image` pour chaque couverture de la liste vedette (jusqu'à six images) dès le montage du carrousel.
+- Ce chargement anticipé utilisait les URLs sources complètes, sans attendre que les diapositives soient affichées; il contournait donc le chargement responsive déjà géré par `SmartImage` et consommait des données/mémoire sur mobile.
+- La couverture visible reste chargée avec `loading="eager"` et `fetchPriority="high"` via `SmartImage`.
+
+### Intervention réalisée
+- Suppression du préchargement spéculatif de toutes les couvertures. Les diapositives, le défilement automatique, le glissement et la priorité de l'image visible restent inchangés.
+- Seul `src/components/FeaturedCarousel.tsx` a été modifié côté application. « Explorer par catégorie » et son code n'ont pas été touchés.
+- Commit direct sur `FRONTEND-iA` : `49772107e2a08c9af37a7c4580053c654ead2e11`.
+
+### Vérification et limites
+- Déploiement de prévisualisation Vercel du commit terminé avec le statut `success` le 17 novembre 2026.
+- Aucun typecheck, lint, test automatisé dédié ni contrôle visuel navigateur n'a été exécuté dans cette session; le déploiement confirme la compilation/déploiement configuré, pas ces contrôles additionnels.
+- Aucune modification de « Explorer par catégorie », du backend ou de `main`; aucun PR n'a été créé pendant cette intervention.
+
+
+## 2026-11-17 — Fluidité du défilement, autoplay et thème système
+### Constats
+- `useScrollGlass` mettait à jour un état `scrollY` à chaque événement de défilement. Sur la fiche événement, seule la bascule de l'en-tête après 260 px était nécessaire.
+- Le carrousel vedette continuait son intervalle en arrière-plan et avec la préférence système de réduction des animations.
+- Le thème persisté était appliqué, mais une première visite sans choix enregistré démarrait toujours en clair et ne suivait pas un changement du thème système.
+
+### Interventions
+- Le hook de défilement ne met désormais à jour React que lorsque le seuil franchit; la parallaxe CSS existante reste indépendante et planifiée avec `requestAnimationFrame`.
+- L'en-tête compact de la fiche événement utilise ce seuil de 260 px.
+- L'autoplay du carrousel s'arrête lorsque l'onglet est masqué, lorsque l'utilisateur réduit les animations ou pendant une interaction; il reprend lorsqu'il est pertinent.
+- Sans préférence enregistrée, le thème initial reprend le réglage système et suit ses changements. Le bouton de thème existant constitue le choix manuel et le conserve.
+- Fichiers modifiés : `src/hooks/useScrollGlass.ts`, `src/screens/EventDetailScreen.tsx`, `src/components/FeaturedCarousel.tsx`, `src/contexts/AppContext.tsx`.
+- Commit direct sur `FRONTEND-iA` : `ec8509da0d7eb858cd64509fff145125d43e3db6`. La section « Explorer par catégorie » n'a pas été modifiée.
+
+### Vérification et limites
+- Déploiement Vercel du commit : état `READY`.
+- L'URL de preview est protégée et a redirigé le navigateur vers la connexion Vercel; aucun rendu visuel n'a donc été confirmé.
+- Pas de typecheck, lint ou tests automatisés exécutés; l'état `READY` confirme le build/déploiement configuré, pas ces contrôles supplémentaires.
+- Aucun changement sur `main`; aucun PR créé ou fusionné pendant cette intervention.
+
+
+## 2026-11-17 — Traduction et chargement du carrousel vedette
+### Intervention
+- Le carrousel s'appuie maintenant sur les traductions centralisées pour le badge, le prix d'entrée, l'action de réservation, le libellé accessible et les indicateurs de diapositives.
+- Les dates et montants XOF utilisent la locale française ou anglaise. Les identifiants de catégories connus réutilisent les traductions déjà disponibles.
+- Le fond flouté réutilisait la couverture à sa résolution source et ajoutait une couche GPU floutée. Il a été remplacé par un dégradé statique; la couverture responsive principale et son chargement prioritaire restent en place.
+- Clés ajoutées dans les fichiers d'événements FR/EN; « Explorer par catégorie » reste intacte.
+- Fichiers concernés : `src/components/FeaturedCarousel.tsx`, `src/locales/fr/events.json`, `src/locales/en/events.json`.
+- Commit direct sur `FRONTEND-iA` : `d0d765802d12800fdc6b347317b2f96ac98de78c`.
+
+### Vérification et limites
+- Déploiement Vercel du commit : état `READY`.
+- Contrôle visuel manuel de la preview mobile après ce commit : carrousel affiché en français puis en anglais; badge, date, montant XOF, réservation, libellé accessible et indicateurs de diapositives traduits/formattés; affichage clair et sombre vérifiés. Langue française rétablie après vérification. Le navigateur a été redirigé depuis l'onboarding vers l'accueil avant le contrôle.
+- Aucun typecheck, lint ou test dédié exécuté. Aucun changement sur `main`, aucun PR créé ou fusionné.
+
+## 2026-11-17 — Localisation du carrousel tendances
+- Le bloc « Tendances » et ses cartes utilisent maintenant les catalogues français/anglais pour les titres, boutons, annonces de position, consignes, états favoris et libellés de lieu.
+- Les dates et tarifs XOF suivent la langue active. Le formatage de devise est partagé avec le carrousel vedette via `formatCurrency`.
+- Les images du carrousel demandent des variantes adaptées à la largeur de la carte; la logique de sélection, le comportement de glissement et les cartes de « Explorer par catégorie » restent inchangés.
+- Vérification : preview Vercel du commit `b84769cb697445a32ed66ab6cc1cb251c5259199` à l'état `READY`; contrôle visuel et d'accessibilité sur mobile en français et en anglais, montant/date et actions confirmés, français rétabli dans la preview.
+- Aucune suite de tests, aucun typecheck ni lint exécuté. La localisation globale des autres pages reste à poursuivre.
+- Mise à jour de périmètre confirmée par l'utilisateur : les textes de « Explorer par catégorie » peuvent être traduits; apparence, dimensions, animations, interactions et logique restent à préserver.
+
+## 2026-11-18 — Localisation de l'écran Mes billets
+### Intervention
+- Ajout des catalogues `src/locales/fr/tickets.json` et `src/locales/en/tickets.json`.
+- Intégration du domaine `tickets` dans `src/locales/index.ts`.
+- `TicketsScreen.tsx` utilise désormais `t('tickets', key)` pour le titre, les onglets, les états vides, la bannière hors-ligne, la modale de réclamation et tous les toasts.
+- L'écran suit la langue active de l'application (FR/EN).
+- Section « Explorer par catégorie » non touchée (gel confirmé).
+
+### Fichiers concernés
+- `src/screens/TicketsScreen.tsx`
+- `src/locales/fr/tickets.json`
+- `src/locales/en/tickets.json`
+- `src/locales/index.ts`
+- `FRONTEND_MEMORY.md`
+
+### Vérification
+- Commit initial des JSON + index : `4f17ab55...`
+- Incident temporaire de troncature sur TicketsScreen.tsx (placeholder) — restauré immédiatement via API GitHub.
+- Commit de restauration/final : `358dd57aef240d0cecb5631da7619d0e19f204f2`
+- Relecture distante : taille ~19383 octets, contenu contient bien les appels `t('tickets', ...)`, pas de placeholder. OK.
+- Aucun typecheck/lint/test/rendu navigateur exécuté dans cette session.
+
+### Prochaine étape
+- Poursuivre la localisation des autres écrans clés (EventDetail, Profile, etc.).
+- Vérifier le rendu réel de l'écran Billets en FR et EN sur mobile.
+
+## 2026-11-18 — Localisation de l'écran Profil
+### Intervention
+- Ajout des catalogues `src/locales/fr/profile.json` et `src/locales/en/profile.json`.
+- Enregistrement du domaine `profile` dans `src/locales/index.ts`.
+- `ProfileScreen.tsx` utilise désormais `t('profile', key)` pour tous les textes visibles : bienvenue, onglets, états vides, invitations, raccourcis, toasts, modale QR, etc.
+- Gestion des pluriels et placeholders via replace simple.
+- Section « Explorer par catégorie » non touchée.
+
+### Fichiers concernés
+- `src/screens/ProfileScreen.tsx`
+- `src/locales/fr/profile.json`
+- `src/locales/en/profile.json`
+- `src/locales/index.ts`
+- `FRONTEND_MEMORY.md`
+
+### Vérification
+- Commits : d7592ba8 (fr), 705fafe3 (en), ffd87923 (index), 84f77531 (ProfileScreen).
+- Contenu relecturé : appels t('profile', ...) présents, pas de troncature. OK.
+- Aucun typecheck/lint/test/rendu navigateur exécuté dans cette session.
+
+### Prochaine étape
+- Continuer la localisation d'EventDetailScreen et autres écrans clés.
+- Vérifier le rendu réel de l'écran Profil en FR et EN sur mobile.
+
+## 2026-11-18 — Blocage P0 du build Vercel avant reprise de la localisation
+### Constat
+- Branche distante vérifiée : `FRONTEND-iA`, HEAD `4a23de457b1c394d8a5545c91481d2b7cff88d7b`.
+- Le commit HEAD ne modifie que `BACKEND_MEMORY.md` (documentation) ; il ne contient aucun changement frontend susceptible d'expliquer l'échec de compilation.
+- Le déploiement Vercel associé à ce HEAD est en état `ERROR`. Vite 8.3.7 transforme 3 299 modules puis échoue avec quatre erreurs `MISSING_EXPORT`.
+- Deux fonctions manquent dans le graphe d'exports :
+  - `setEventStatus` est réexportée depuis `src/services/events.ts` via `@/features/tickets`, mais n'existe pas dans `src/features/tickets/service.ts` ni dans les modules de statut/mutations de `src/features/events`. `EventManagementModal.tsx` l'importe également depuis `src/services/events.ts`.
+  - `validateTicketQr` est importée par `src/services/ticketScannerService.ts`, mais n'est pas exportée par `src/features/tickets/service.ts` et aucune implémentation correspondante n'a été trouvée dans les modules tickets présents sur cette branche.
+- Les quatre diagnostics Vite sont donc deux exports manquants référencés à plusieurs endroits, pas quatre problèmes indépendants.
+### Décision et périmètre
+- Aucun correctif improvisé : `validateTicketQr` participe à la validation des billets à l'entrée et son contrat de sécurité/RPC doit être confirmé avant toute réimplémentation. Le contrat de `setEventStatus` doit également être rétabli depuis sa source propriétaire.
+- Aucun fichier applicatif, service backend/API ou schéma Supabase modifié pendant cette session.
+- La section « Explorer par catégorie » reste gelée et n'a pas été touchée.
+- UIAudit et Superdesign ne sont pas disponibles dans le catalogue des outils/skills de cette session ; aucun audit ou draft de ces outils n'est revendiqué.
+### Vérifications et limites
+- Diagnostic confirmé par les logs du déploiement Vercel `dpl_5kX9k1GBQNmUnnrTpvwJeA3Mzxi5` et par la lecture des imports/exports sur `FRONTEND-iA`.
+- Aucun build, typecheck, lint, test automatisé ou contrôle visuel n'a pu valider une nouvelle modification, car le build existant est déjà bloqué avant déploiement.
+- Aucun changement de branche, aucun PR et aucune écriture sur `main`.
+### Prochaine priorité
+- Faire rétablir les exports `setEventStatus` et `validateTicketQr` avec leur contrat exact, sans inventer de RPC ni affaiblir la validation des billets.
+- Une fois le build rétabli, reprendre la localisation FR/EN d'`EventDetailScreen`, puis poursuivre les optimisations de défilement et de cartes hors section catégories.
+
+
+
+## 2026-11-18 — Restauration des exports manquants bloquant la compilation
+### Diagnostic
+- PR #14 vers `main` : GitHub signale `mergeable_state: dirty`; la comparaison indique 150 commits d'avance et 16 de retard. La branche est donc divergente et présente des conflits à résoudre avant fusion.
+- Le statut Vercel du HEAD précédent `936f5f1a0847b1b860d3151ea9f0159234adee82` est `failure`.
+- `src/services/events.ts` réexporte `setEventStatus` et `validateTicketQr` depuis `@/features/tickets`, mais ces deux fonctions avaient été supprimées de `src/features/tickets/service.ts`. `src/features/tickets/index.ts` exporte le service via `export *`, donc les deux absences provoquent les erreurs de compilation.
+- La migration `20260906120000_gbaigbance_event_lifecycle_and_inventory.sql` définit bien la RPC `set_event_status` avec les paramètres `p_event_id`, `p_status`, `p_reason`.
+### Correctif réalisé
+- Restauration de `setEventStatus` dans `src/features/tickets/service.ts`, avec appel à la RPC serveur `set_event_status` et propagation des erreurs/résultats refusés.
+- Restauration de `validateTicketQr` dans le même service, avec appel à la RPC `validate_ticket_qr`; aucune validation positive locale ni contournement de sécurité n'est simulé.
+- Import du type `EventStatus` depuis `@/types`.
+- Commit direct sur `FRONTEND-iA` : `b76845e72f35c0bdb152e77158652285c41e46c8`.
+### Vérification et limites
+- HEAD de `FRONTEND-iA` contrôlé avant écriture : `936f5f1a0847b1b860d3151ea9f0159234adee82`; HEAD après écriture : commit du correctif ci-dessus.
+- Relecture du fichier modifié et présence des deux exports : à effectuer après ce commit.
+- Le déploiement Vercel du commit `b687962a0d926d4a1fa8424531dac3afd4deb0b4` a ensuite terminé en `READY` (déploiement `dpl_6k8EkYRtCTu2uzQT8GLpJjWNn93S`); les logs confirment `vite build && tsx scripts/generate-preview.ts`, 3 299 modules transformés, build Vite terminé en 3,99 s et génération PWA/preview terminée. Le statut Vercel du commit est `success`.
+- La disponibilité réelle de la RPC `validate_ticket_qr` dans le projet Supabase n'a pas été confirmée pendant cette intervention; le client reprend le contrat déjà attendu par le scanner.
+- Aucun changement backend, migration ou donnée Supabase. Aucun changement à `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+- La divergence Git et les conflits de la PR #14 ne sont pas résolus par ce correctif. Aucun outil de fusion/résolution de conflits n'est exposé dans cette session; ne pas créer un merge commit artificiel ni réécrire l'historique.
+### Prochaine priorité
+- Obtenir un merge réel de `main` vers `FRONTEND-iA` avec résolution explicite des conflits, en protégeant les fichiers mémoire appartenant à d'autres agents; puis recontrôler la PR #14 et le build Vercel.
+
+
+### Contrôle complémentaire après le correctif (2026-11-18)
+- Relecture distante de `src/features/tickets/service.ts` : les exports `setEventStatus` et `validateTicketQr` sont présents.
+- Déploiement Vercel du commit `b687962` : `READY`; statut Vercel : `success`. Cela valide la compilation Vite configurée, pas un typecheck, lint ou test dédié.
+- PR #14 toujours `mergeable: false`; la divergence reste à 152 commits d'avance et 16 de retard. Le statut `dirty` indique des conflits non résolus.
+- Aucun merge de branches n'a été effectué. La session ne dispose pas d'un workflow de résolution/merge de branches qui permette de fusionner proprement les changements de `main` vers `FRONTEND-iA`; aucun merge commit artificiel n'a été créé.

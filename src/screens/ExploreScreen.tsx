@@ -281,8 +281,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
           Découverte & Exploration
         </p>
-        <div className="flex items-center justify-between mt-1">
-          <h1 className="text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-[1.7rem] font-black leading-none tracking-tight text-[#17131D] dark:text-white min-[380px]:text-3xl">
             Recherche
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
@@ -306,10 +306,10 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               haptic.selection();
               setSearchMode('events');
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-black transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] min-[380px]:text-xs ${
               searchMode === 'events'
-                ? 'bg-white dark:bg-[#1A1829] text-[#5900E6] dark:text-white shadow-xs'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-white text-[#6600FF] shadow-xs dark:bg-[#1A1829] dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -321,14 +321,15 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               haptic.selection();
               setSearchMode('participants');
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-black transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] min-[380px]:text-xs ${
               searchMode === 'participants'
-                ? 'bg-white dark:bg-[#1A1829] text-[#5900E6] dark:text-white shadow-xs'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-white text-[#6600FF] shadow-xs dark:bg-[#1A1829] dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Amis & Participants</span>
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span className="min-[400px]:hidden">Amis</span>
+            <span className="hidden min-[400px]:inline">Amis & Participants</span>
           </button>
         </div>
 
@@ -347,14 +348,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                       : 'Rechercher un concert, festival, artiste...')
                   : 'Rechercher un ami ou participant...'
               }
-              className="w-full pl-10 pr-9 py-3 rounded-2xl bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl border border-black/[0.05] dark:border-white/[0.08] text-[#17131D] dark:text-white text-xs sm:text-sm font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5900E6]/30 transition-all shadow-2xs"
+              className="min-h-11 w-full rounded-2xl border border-black/[0.05] bg-black/[0.03] py-3 pl-10 pr-12 text-xs font-semibold text-[#17131D] shadow-2xs backdrop-blur-xl transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-white sm:text-sm"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Effacer"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-1"
+                aria-label="Effacer la recherche"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:hover:text-gray-200"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -366,55 +367,101 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               type="button"
               onClick={() => setShowFilters(true)}
               aria-label="Filtres avancés"
-              className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
+              className={`relative flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-2xl transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                 hasActiveFilters
-                  ? 'bg-[#5900E6] text-white shadow-purple'
-                  : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl border border-black/[0.05] dark:border-white/[0.08] text-gray-700 dark:text-gray-200 hover:bg-black/[0.06] dark:hover:bg-white/10'
+                  ? 'bg-[#6600FF] text-white shadow-purple'
+                  : 'border border-black/[0.05] bg-black/[0.03] text-gray-700 backdrop-blur-xl hover:bg-black/[0.06] dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-200 dark:hover:bg-white/10'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               {hasActiveFilters && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white motion-reduce:animate-none animate-pulse" />
               )}
             </button>
           )}
         </div>
 
-        {/* Barre de catégories horizontales si mode événements */}
         {searchMode === 'events' && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1 -mx-5 px-5">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                !selectedCategory
-                  ? 'bg-[#5900E6] text-white shadow-xs'
-                  : 'bg-black/[0.03] dark:bg-white/[0.06] backdrop-blur-xl text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
-              }`}
+          <div className="space-y-2">
+            <div
+              className="flex snap-x snap-mandatory gap-2 overflow-x-auto pt-1 no-scrollbar"
+              role="group"
+              aria-label="Catégories principales"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
-            </button>
-            {MAIN_CATEGORIES.map((main) => {
-              const Icon = CATEGORY_ICONS[main.iconName] || Palette;
-              const isActive = selectedCategory === main.id;
-              return (
+              <button
+                type="button"
+                aria-pressed={!selectedCategory}
+                onClick={() => setSelectedCategory(null)}
+                className={`flex min-h-11 shrink-0 snap-start cursor-pointer items-center gap-1.5 rounded-full px-4 text-xs font-black transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                  !selectedCategory
+                    ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+                    : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 backdrop-blur-xl dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
+              </button>
+              {MAIN_CATEGORIES.map((main) => {
+                const Icon = CATEGORY_ICONS[main.iconName] || Palette;
+                const isFamily = selectedMainCategory?.id === main.id;
+                const isExact = selectedCategory === main.id;
+                return (
+                  <button
+                    key={main.id}
+                    type="button"
+                    aria-pressed={isFamily}
+                    onClick={() => setSelectedCategory(isExact ? null : main.id)}
+                    className={`flex min-h-11 shrink-0 snap-start cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-bold transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                      isFamily
+                        ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
+                        : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="whitespace-nowrap">{main.shortLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedMainCategory && (
+              <div
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
+                role="group"
+                aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
+              >
                 <button
-                  key={main.id}
                   type="button"
-                  aria-pressed={isActive}
-                  onClick={() => setSelectedCategory(isActive ? null : main.id)}
-                  className={`min-h-[40px] px-4 py-2 rounded-2xl text-xs font-bold transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] shrink-0 cursor-pointer flex items-center gap-2 ${
-                    isActive
-                      ? 'bg-[#5900E6] text-white shadow-xs'
-                      : 'bg-black/[0.03] dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 border border-black/[0.05] dark:border-white/[0.08] hover:bg-black/[0.06]'
+                  aria-pressed={selectedCategory === selectedMainCategory.id}
+                  onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                  className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                    selectedCategory === selectedMainCategory.id
+                      ? 'bg-[#6600FF] text-white'
+                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{main.shortLabel}</span>
+                  Toutes
                 </button>
-              );
-            })}
+                {selectedMainCategory.subcategories.map((sub) => {
+                  const isSelected = selectedCategory === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                      className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                        isSelected
+                          ? 'bg-[#6600FF] text-white'
+                          : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                      }`}
+                    >
+                      {sub.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -555,67 +602,72 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
               Catégorie
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
               {MAIN_CATEGORIES.map((main) => {
                 const Icon = CATEGORY_ICONS[main.iconName] || Palette;
-                const isSelected = selectedCategory === main.id;
+                const isFamily = selectedMainCategory?.id === main.id;
+                const isExact = selectedCategory === main.id;
                 return (
                   <button
                     key={main.id}
                     type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedCategory(isSelected ? null : main.id)}
-                    className={`min-h-[40px] px-3 py-2 rounded-2xl text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer ${
-                      isSelected
+                    aria-pressed={isFamily}
+                    onClick={() => setSelectedCategory(isExact ? null : main.id)}
+                    className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                      isFamily
                         ? 'bg-[#6600FF] text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{main.shortLabel}</span>
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="whitespace-nowrap">{main.shortLabel}</span>
                   </button>
                 );
               })}
-              {selectedMainCategory && (
-                <div className="basis-full pt-2">
-                  <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                    Sous-catégories · {selectedMainCategory.shortLabel}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={selectedCategory === selectedMainCategory.id}
-                      onClick={() => setSelectedCategory(selectedMainCategory.id)}
-                      className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                        selectedCategory === selectedMainCategory.id
-                          ? 'bg-[#6600FF] text-white'
-                          : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      Toutes
-                    </button>
-                    {selectedMainCategory.subcategories.map((sub) => {
-                      const isSelected = selectedCategory === sub.id;
-                      return (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          aria-pressed={isSelected}
-                          onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                          className={`min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                            isSelected
-                              ? 'bg-[#6600FF] text-white'
-                              : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          {sub.shortLabel}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
+            {selectedMainCategory && (
+              <div className="pt-3">
+                <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  Sous-catégories · {selectedMainCategory.shortLabel}
+                </p>
+                <div
+                  className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+                  role="group"
+                  aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={selectedCategory === selectedMainCategory.id}
+                    onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                    className={`inline-flex min-h-11 shrink-0 snap-start items-center rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                      selectedCategory === selectedMainCategory.id
+                        ? 'bg-[#6600FF] text-white'
+                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
+                    }`}
+                  >
+                    Toutes
+                  </button>
+                  {selectedMainCategory.subcategories.map((sub) => {
+                    const isSelected = selectedCategory === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                        className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                          isSelected
+                            ? 'bg-[#6600FF] text-white'
+                            : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
+                        }`}
+                      >
+                        {sub.shortLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -630,11 +682,12 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     key={city.value}
                     type="button"
                     onClick={() => setSelectedCity(isSelected ? null : city.value)}
-                    className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-full px-3.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
+                    aria-pressed={isSelected}
                   >
                     {city.value}
                   </button>
@@ -655,11 +708,12 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     key={p}
                     type="button"
                     onClick={() => setPriceFilter(p)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
+                    className={`min-h-11 flex-1 cursor-pointer rounded-xl px-2 py-2 text-center text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
+                    aria-pressed={isSelected}
                   >
                     {t('events', `filters.${p}`)}
                   </button>
@@ -672,14 +726,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <button
               type="button"
               onClick={resetFilters}
-              className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 font-black text-xs hover:bg-gray-200 transition-colors cursor-pointer"
+              className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-gray-100 py-3 text-xs font-black text-gray-700 transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:bg-white/10 dark:text-gray-300"
             >
               Réinitialiser
             </button>
             <button
               type="button"
               onClick={() => setShowFilters(false)}
-              className="flex-1 py-3 rounded-2xl bg-[#6600FF] text-white font-black text-xs shadow-md hover:bg-[#5200cc] transition-colors cursor-pointer"
+              className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-[#6600FF] py-3 text-xs font-black text-white shadow-md transition-colors hover:bg-[#5200cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2"
             >
               Voir les résultats
             </button>

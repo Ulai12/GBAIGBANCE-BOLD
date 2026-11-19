@@ -7,6 +7,7 @@
 
 import type { Event } from '@/types';
 import { supabase } from '@/infrastructure/supabase';
+import { getAIAssistantPreferences, shouldShareLocationWithAssistant } from '@/services/aiSettings';
 
 export interface MapsGroundingPlace {
   title: string;
@@ -193,11 +194,12 @@ export async function askGeminiAssistant(
         prompt: options.prompt,
         history: options.history || [],
         currentEvent: options.currentEvent,
-        userLocation: options.userLocation
+        userLocation: options.userLocation && shouldShareLocationWithAssistant()
           ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
           : null,
         fastMode: Boolean(options.fastMode),
         useMapsGrounding: options.useMapsGrounding !== false,
+        preferences: getAIAssistantPreferences(),
       }),
     });
 
@@ -215,7 +217,7 @@ export async function askGeminiAssistant(
     throw new Error(err.error || `Erreur serveur (${res.status})`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur de communication avec l’assistant';
-    return { text: `Désolé, une erreur est survenue : ${msg}`, groundingPlaces: [] };
+    throw new Error(msg);
   }
 }
 

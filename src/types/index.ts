@@ -15,20 +15,34 @@ export type MainCategoryId =
   | 'commercial_professional'
   | 'festive_nightlife'
   | 'sports'
-  | 'private_family';
+  | 'private_family'
+  | 'leisure_discovery';
 
 export type SubCategoryId =
+  // Événements culturels et artistiques
   | 'concerts_spectacles'
   | 'festivals'
   | 'expositions_vernissages'
+  // Événements commerciaux et professionnels
   | 'foires_salons'
   | 'conferences_seminaires'
   | 'lancements_galas'
+  // Événements festifs et vie nocturne
   | 'clubbing_soirees'
   | 'fetes_carnavals'
+  // Événements sportifs
   | 'competitions_matchs'
   | 'fan_zones'
-  | 'celebrations_personnelles';
+  // Événements privés et familiaux
+  | 'celebrations_personnelles'
+  | 'mariages_receptions'
+  | 'anniversaires'
+  | 'ceremonies_familiales'
+  | 'evenements_vip_prives'
+  // Loisirs et expériences
+  | 'gaming_esport'
+  | 'loisirs_sorties'
+  | 'bien_etre_lifestyle';
 
 export type EventStatus = 'draft' | 'pending' | 'published' | 'paused' | 'suspended' | 'cancelled' | 'postponed' | 'completed';
 export type EventSalesState = 'open' | 'not_started' | 'closed' | 'sold_out' | 'unavailable';

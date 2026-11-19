@@ -1,0 +1,4 @@
+-- Liaison manquantes front/back (2026-11-17)
+-- user_follows, notification_preferences, likes/views RPCs,
+-- main_category/subcategory, tickets recipient_*, profiles cover/genres,
+-- statut ticket valid, book_ticket aligne

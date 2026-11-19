@@ -21,7 +21,7 @@ import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
-import { MAIN_CATEGORIES, eventMatchesCategoryFilter } from '@/constants';
+import { MAIN_CATEGORIES, eventMatchesCategoryFilter, hydrateEventCategories } from '@/constants';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
 import {
@@ -149,14 +149,20 @@ export function HomeScreen({
     }
 
     try {
-      const [feat, up, trend, art, orgs, stats] = await Promise.all([
+      // Charger les statistiques en indépendant : une erreur sur les cartes de découverte
+      // ne doit pas empêcher la section « GBAIGBANCE en chiffres » de recevoir ses données.
+      const statsPromise = fetchPlatformStats().then((stats) => {
+        setPlatformStats(stats);
+        return stats;
+      });
+      const [feat, up, trend, art, orgs] = await Promise.all([
         fetchFeaturedEvents(),
         fetchUpcomingEvents(),
         fetchTrendingEvents(),
         fetchFeaturedArtists(),
         fetchVerifiedOrganizations(),
-        fetchPlatformStats(),
       ]);
+      const stats = await statsPromise;
 
       // Algorithme de score de tendance basé sur l'engagement réel et la proximité temporelle
       const calculateTrendingScore = (e: Event): number => {
@@ -353,12 +359,12 @@ export function HomeScreen({
     };
   }, [refreshHomeData]);
 
-  // Unified list of all unique active published events
+  // Unified list of all unique active published events, hydratés pour le filtrage par catégorie
   const allActiveEvents = useMemo(() => {
     const map = new Map<string, Event>();
     [...allEvents, ...featured, ...trending, ...nearby].forEach((e) => {
       if (e && e.id && isEventActive(e) && !isEventTerminated(e)) {
-        map.set(e.id, e);
+        map.set(e.id, hydrateEventCategories(e));
       }
     });
     return Array.from(map.values());
@@ -684,12 +690,12 @@ export function HomeScreen({
       </section>
 
       {/* SECTION 2: Explorer par catégorie */}
-      <section className="mt-7 px-5" aria-label="Explorer les catégories d'événements">
-        <h2 className="mb-3 text-center text-lg font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-xl">
+      <section className="mt-6 mx-auto w-full max-w-[1320px] px-5" aria-label="Explorer les catégories d'événements">
+        <h2 className="mb-2.5 text-center text-base font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-lg">
           Explorer par catégorie
         </h2>
 
-        <div className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-5" aria-label="Catégories principales">
+        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label="Catégories principales">
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -702,13 +708,13 @@ export function HomeScreen({
                   haptic.selection();
                   setSelectedCategory(selectedCategory === main.id ? null : main.id);
                 }}
-                className={`flex min-h-[80px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-3 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
+                className={`flex min-h-14 w-full max-w-[220px] min-w-0 justify-self-center flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2.5 sm:min-h-[60px] 2xl:min-h-16 transition-[background-color,color,transform,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] cursor-pointer ${
                   isActive
                     ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
                     : 'border border-black/5 bg-white/90 text-[#6600FF] dark:border-white/10 dark:bg-white/10 dark:text-purple-300'
                 }`}
               >
-                <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
+                <Icon className={`h-4 w-4 shrink-0 sm:h-[17px] sm:w-[17px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
                 <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
                   {main.shortLabel}
                 </span>
@@ -719,7 +725,7 @@ export function HomeScreen({
 
         {selectedMainCategory && (
           <div
-            className="-mx-5 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 no-scrollbar"
+            className="mt-2.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 no-scrollbar"
             role="group"
             aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
           >
@@ -727,7 +733,7 @@ export function HomeScreen({
               type="button"
               aria-pressed={selectedCategory === selectedMainCategory.id}
               onClick={() => setSelectedCategory(selectedMainCategory.id)}
-              className={`min-h-9 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+              className={`min-h-11 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
                 selectedCategory === selectedMainCategory.id
                   ? 'bg-[#6600FF] text-white'
                   : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
@@ -743,7 +749,7 @@ export function HomeScreen({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                  className={`min-h-9 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
+                  className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
                     isSelected
                       ? 'bg-[#6600FF] text-white'
                       : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
@@ -759,9 +765,9 @@ export function HomeScreen({
 
       {/* RÉSULTATS CATÉGORIE SÉLECTIONNÉE */}
       {selectedCategory && (
-        <section className="mt-6 px-5 animate-slide-up">
+        <section className="mt-5 px-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
+            <h2 className="text-lg sm:text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
                 ? selectedMainCategory.shortLabel
                 : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
@@ -835,7 +841,7 @@ export function HomeScreen({
           </div>
 
           {/* Tuiles défilables horizontales modernes compactes */}
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 -mx-5 px-5">
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5">
             {nearbySectionData.events.map((event) => (
               <NearbyEventTile
                 key={event.id}

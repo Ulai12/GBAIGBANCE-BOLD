@@ -69,7 +69,7 @@ export function ProfileScreen({
   onOpenAISettings,
   onToast,
 }: ProfileScreenProps) {
-  const { user, session, refreshProfile } = useApp();
+  const { user, session, refreshProfile, t } = useApp();
   const { followedArtistIds, followedOrgIds, followedUserIds } = useFavorites();
   const [myEvents, setMyEvents] = useState<Event[]>(() => getInitialMyEvents(user?.id));
   const [loading, setLoading] = useState(false);
@@ -199,11 +199,11 @@ export function ProfileScreen({
       setInvitations(invitations.filter((i) => i.id !== invId));
       refreshProfile();
       onToast({
-        message: status === 'accepted' ? 'Invitation acceptée !' : 'Invitation refusée.',
+        message: status === 'accepted' ? t('profile', 'invitationAccepted') : t('profile', 'invitationDeclined'),
         type: 'success',
       });
     } catch {
-      onToast({ message: 'Impossible de répondre à l’invitation.', type: 'error' });
+      onToast({ message: t('profile', 'invitationError'), type: 'error' });
     } finally {
       setResponding(null);
     }
@@ -216,13 +216,13 @@ export function ProfileScreen({
           <Calendar className="w-12 h-12 text-[#6600FF]" />
         </div>
         <h1 className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white mb-2">
-          Bienvenue sur Gbaigbance
+          {t('profile', 'welcomeTitle')}
         </h1>
         <p className="text-gray-500 text-center mb-8 max-w-xs text-sm">
-          Connectez-vous pour réserver vos billets, suivre vos artistes et créer vos événements.
+          {t('profile', 'welcomeSubtitle')}
         </p>
         <button onClick={onLogin} className="btn-purple px-8 py-3.5 max-w-xs w-full rounded-full font-bold">
-          Se connecter
+          {t('profile', 'loginButton')}
         </button>
       </div>
     );
@@ -232,6 +232,8 @@ export function ProfileScreen({
     return <ProfileScreenSkeleton />;
   }
 
+  const plural = ticketsCount > 1 ? 's' : '';
+
   return (
     <div className="w-full">
       <div className="max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto">
@@ -239,7 +241,7 @@ export function ProfileScreen({
         <div className="px-5 pt-safe-header flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-lg font-black text-[#17131D] dark:text-white tracking-tight">
-              Mon Espace
+              {t('profile', 'mySpace')}
             </span>
           </div>
 
@@ -248,9 +250,9 @@ export function ProfileScreen({
             id="profile-strategic-settings-btn"
             type="button"
             onClick={() => setSettingsOpen(true)}
-            aria-label="Ouvrir les Paramètres de l'application"
+            aria-label={t('profile', 'openSettingsAria')}
             className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
-            title="Paramètres de l'application"
+            title={t('profile', 'settingsTitle')}
           >
             <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
           </button>
@@ -285,14 +287,14 @@ export function ProfileScreen({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <p className="font-black text-sm tracking-tight">
-                      {user.role === 'artist' ? 'Espace Artiste Pro' : 'Dashboard Organisateur'}
+                      {user.role === 'artist' ? t('profile', 'artistSpace') : t('profile', 'organizerDashboard')}
                     </p>
                     <span className="px-1.5 py-0.5 rounded-full bg-white/25 text-[9px] font-black uppercase">
-                      Admin
+                      {t('profile', 'adminBadge')}
                     </span>
                   </div>
                   <p className="text-xs text-white/80">
-                    Gérez vos billetteries, collaborateurs & statistiques
+                    {t('profile', 'manageTicketsCollab')}
                   </p>
                 </div>
               </div>
@@ -313,7 +315,9 @@ export function ProfileScreen({
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              {isCreator ? `Mes Événements (${myEvents.length})` : `Mes Billets (${ticketsCount})`}
+              {isCreator
+                ? t('profile', 'myEventsTab').replace('{count}', String(myEvents.length))
+                : t('profile', 'myTicketsTab').replace('{count}', String(ticketsCount))}
             </button>
             <button
               type="button"
@@ -324,7 +328,7 @@ export function ProfileScreen({
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              Invitations
+              {t('profile', 'invitationsTab')}
               {invitations.length > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-black">
                   {invitations.length}
@@ -340,7 +344,7 @@ export function ProfileScreen({
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              Raccourcis
+              {t('profile', 'shortcutsTab')}
             </button>
           </div>
         </div>
@@ -354,10 +358,10 @@ export function ProfileScreen({
                   <Ticket className="w-7 h-7" />
                 </div>
                 <p className="text-base font-extrabold text-[#17131D] dark:text-white">
-                  Vous avez {ticketsCount} billet{ticketsCount > 1 ? 's' : ''} actif{ticketsCount > 1 ? 's' : ''}
+                  {t('profile', 'ticketsActive').replace('{count}', String(ticketsCount)).replace('{plural}', plural)}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
-                  Consultez vos pass et présentez vos QR codes directement à l'entrée des événements.
+                  {t('profile', 'ticketsActiveDesc')}
                 </p>
                 {onOpenTickets && (
                   <button
@@ -365,7 +369,7 @@ export function ProfileScreen({
                     onClick={onOpenTickets}
                     className="mt-4 px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-bold hover:bg-[#5800DC] shadow-purple transition-all inline-flex items-center gap-1.5 cursor-pointer"
                   >
-                    <QrCode className="w-4 h-4" /> Voir tous mes billets
+                    <QrCode className="w-4 h-4" /> {t('profile', 'viewAllTickets')}
                   </button>
                 )}
               </div>
@@ -375,10 +379,10 @@ export function ProfileScreen({
                   <Ticket className="w-7 h-7" />
                 </div>
                 <p className="text-base font-extrabold text-[#17131D] dark:text-white">
-                  Aucun billet pour le moment
+                  {t('profile', 'noTickets')}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
-                  Vos réservations de concerts, festivals et soirées apparaîtront ici dès vos premiers achats.
+                  {t('profile', 'noTicketsDesc')}
                 </p>
               </div>
             )}
@@ -400,10 +404,10 @@ export function ProfileScreen({
                   <Calendar className="w-7 h-7" />
                 </div>
                 <p className="text-base font-extrabold text-[#17131D] dark:text-white">
-                  Aucun événement publié
+                  {t('profile', 'noEvents')}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
-                  Créez des concerts, soirées ou festivals et vendez vos billets facilement.
+                  {t('profile', 'noEventsDesc')}
                 </p>
                 {isCreator && (
                   <button
@@ -411,7 +415,7 @@ export function ProfileScreen({
                     onClick={onOrganizerDashboard}
                     className="mt-4 px-5 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-bold hover:bg-[#5800DC] shadow-purple transition-all inline-flex items-center gap-1.5"
                   >
-                    <PlusCircle className="w-4 h-4" /> Créer mon premier événement
+                    <PlusCircle className="w-4 h-4" /> {t('profile', 'createFirstEvent')}
                   </button>
                 )}
               </div>
@@ -438,10 +442,10 @@ export function ProfileScreen({
                   <UserCheck className="w-7 h-7" />
                 </div>
                 <p className="text-sm font-extrabold text-[#17131D] dark:text-white">
-                  Aucune invitation en attente
+                  {t('profile', 'noInvitations')}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Les demandes de collaboration pour co-organiser ou jouer lors d'un festival apparaîtront ici.
+                  {t('profile', 'noInvitationsDesc')}
                 </p>
               </div>
             ) : (
@@ -461,7 +465,7 @@ export function ProfileScreen({
                         {inv.event?.title}
                       </p>
                       <p className="text-xs text-[#6600FF] font-semibold mt-0.5">
-                        {inv.role === 'performer' ? 'Artiste invité' : 'Co-organisateur'}
+                        {inv.role === 'performer' ? t('profile', 'invitedArtist') : t('profile', 'coOrganizer')}
                       </p>
                     </div>
                   </div>
@@ -476,7 +480,7 @@ export function ProfileScreen({
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
-                          <Check className="w-4 h-4" /> Accepter
+                          <Check className="w-4 h-4" /> {t('profile', 'accept')}
                         </>
                       )}
                     </button>
@@ -486,7 +490,7 @@ export function ProfileScreen({
                       disabled={responding === inv.id}
                       className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-50"
                     >
-                      <X className="w-4 h-4" /> Refuser
+                      <X className="w-4 h-4" /> {t('profile', 'decline')}
                     </button>
                   </div>
                 </div>
@@ -511,10 +515,10 @@ export function ProfileScreen({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                      Mes Artistes & Abonnements
+                      {t('profile', 'myArtistsSubscriptions')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Notifications des prochaines dates
+                      {t('profile', 'notificationsNextDates')}
                     </p>
                   </div>
                 </div>
@@ -533,10 +537,10 @@ export function ProfileScreen({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                      Rappels de Billetterie
+                      {t('profile', 'ticketReminders')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Alertes d'accès avant le jour J
+                      {t('profile', 'accessAlerts')}
                     </p>
                   </div>
                 </div>
@@ -555,10 +559,10 @@ export function ProfileScreen({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                      Intelligence Artificielle (Gemini)
+                      {t('profile', 'aiGemini')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Assistant IA & Maps Grounding
+                      {t('profile', 'aiAssistant')}
                     </p>
                   </div>
                 </div>
@@ -577,10 +581,10 @@ export function ProfileScreen({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                      Centre de contrôle complet
+                      {t('profile', 'controlCenter')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Thème, langue, sécurité & compte
+                      {t('profile', 'themeLangSecurity')}
                     </p>
                   </div>
                 </div>
@@ -612,7 +616,7 @@ export function ProfileScreen({
       />
 
       {/* Modale Pass QR personnel */}
-      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title="Pass d'accès membre">
+      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={t('profile', 'memberPass')}>
         <div className="p-6 text-center space-y-4">
           <div className="w-48 h-48 mx-auto bg-white p-4 rounded-3xl border-2 border-dashed border-[#6600FF]/30 flex items-center justify-center shadow-lg">
             <QrCode className="w-40 h-40 text-[#17131D]" />
@@ -622,18 +626,18 @@ export function ProfileScreen({
               {user.name}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
-              Identifiant membre : #GB-{user.id.slice(0, 8).toUpperCase()}
+              {t('profile', 'memberId').replace('{id}', user.id.slice(0, 8).toUpperCase())}
             </p>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
-            Présentez ce QR Code aux entrées sécurisées des événements Gbaigbance pour vérifier votre identité et vos billets réservés.
+            {t('profile', 'qrDesc')}
           </p>
           <button
             type="button"
             onClick={() => setQrOpen(false)}
             className="w-full py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm"
           >
-            Fermer mon pass
+            {t('profile', 'closePass')}
           </button>
         </div>
       </Modal>

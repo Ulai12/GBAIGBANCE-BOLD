@@ -6,19 +6,9 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Register Service Worker for PWA with prompt update
+// Enregistrement PWA avec détection rapide et application automatique des mises à jour.
 if ('serviceWorker' in navigator) {
-  if (import.meta.env.PROD) {
-    const updateSW = registerSW({
-      immediate: true,
-      onNeedRefresh() {
-        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { update: () => updateSW(true) } }));
-      },
-      onOfflineReady() {
-        console.log('[PWA] Prêt pour le mode hors ligne.');
-      },
-    });
-  } else {
+  if (!import.meta.env.PROD) {
     navigator.serviceWorker.getRegistrations().then(async (regs) => {
       let unregistered = false;
       for (const reg of regs) {
@@ -29,8 +19,8 @@ if ('serviceWorker' in navigator) {
         const keys = await caches.keys().catch(() => [] as string[]);
         await Promise.all(
           keys
-            .filter((k) => k.includes('workbox') || k.includes('vite') || k.includes('precache'))
-            .map((k) => caches.delete(k).catch(() => false))
+            .filter((key) => key.includes('workbox') || key.includes('vite') || key.includes('precache'))
+            .map((key) => caches.delete(key).catch(() => false))
         );
       }
       if (unregistered && !sessionStorage.getItem('gba_sw_cleaned')) {
@@ -38,6 +28,40 @@ if ('serviceWorker' in navigator) {
         window.location.reload();
       }
     }).catch(() => {});
+  } else {
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        window.dispatchEvent(
+          new CustomEvent('pwa-update-available', {
+            detail: { update: () => updateSW(true) },
+          }),
+        );
+      },
+      onRegisteredSW(_swUrl, registration) {
+        if (!registration) return;
+
+        let lastCheck = 0;
+        const checkForUpdate = () => {
+          if (!navigator.onLine || document.visibilityState !== 'visible') return;
+
+          const now = Date.now();
+          if (now - lastCheck < 10_000) return;
+          lastCheck = now;
+
+          void registration.update().catch(() => {});
+        };
+
+        window.setInterval(checkForUpdate, 30_000);
+        document.addEventListener('visibilitychange', checkForUpdate);
+        window.addEventListener('focus', checkForUpdate);
+        window.addEventListener('online', checkForUpdate);
+        checkForUpdate();
+      },
+      onOfflineReady() {
+        console.log('[PWA] Prêt pour le mode hors ligne.');
+      },
+    });
   }
 }
 

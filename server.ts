@@ -26,6 +26,11 @@ import {
   execRustServer,
   serverNearbyEvents,
 } from './src/server/rustServerCore.ts';
+import {
+  getAIAnswerStyleInstruction,
+  normalizeAIAssistantPreferences,
+} from './src/constants/aiPreferences.ts';
+import { AI_SYSTEM_INSTRUCTION } from './src/constants/aiSystemPrompt.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,9 +55,9 @@ function getAiClient(): GoogleGenAI {
   return aiInstance;
 }
 
-const DEFAULT_SUPABASE_URL = 'https://qbngqstyhusndngkours.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://lwwiolbofrqakvrdvbbj.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibmdxc3R5aHVzbmRuZ2tvdXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDk2MjEsImV4cCI6MjEwMDUyNTYyMX0.FjxlwhFLJe9rgio0FmP48ae8maMNuWwn3yZv2g_p8dM';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3d2lvbGJvZnJxYWt2cmR2YmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNTIzNjIsImV4cCI6MjEwNDcyODM2Mn0.TCCj8D-K_CmVwlFK1yiE2WL6kQRcjvPR_Bq3QrCLalw';
 
 function getUrlProjectRef(url?: string): string | null {
   if (!url) return null;
@@ -180,35 +185,6 @@ async function checkAiQuota(
     return { allowed: true };
   }
 }
-
-const AI_SYSTEM_INSTRUCTION = `Tu es l'assistant concierge intelligent officiel de Gbaigbance, l'application de billetterie d'événements leader en Afrique de l'Ouest (Togo, Bénin, Côte d'Ivoire).
-Tu aides chaleureusement, avec précision et rigueur, les utilisateurs à découvrir leurs sorties et à gérer leurs réservations.
-
-OBLIGATION STRICTE D'UTILISATION DES OUTILS POUR LES ÉVÉNEMENTS (ZÉRO CONNAISSANCE EXTERNE) :
-1. Pour toute question portant sur des événements, sorties, concerts, festivals, spectacles, conférences, dates, lieux, artistes, disponibilités ou tarifs, tu as l'OBLIGATION ABSOLUE d'appeler l'un des outils fournis ('search_events', 'get_event_details', 'get_nearby_events').
-2. Il t'est FORMELLEMENT INTERDIT de t'appuyer sur tes connaissances pré-entraînées ou des informations externes au système pour décrire, recommander, dater, tarifer ou confirmer un événement. Toutes les informations sur les événements doivent provenir exclusivement et en temps réel de la table 'public.events' via les outils.
-
-RECROISEMENT SYSTÉMATIQUE DU CONTEXTE UTILISATEUR AVEC LA TABLE 'public.events' :
-1. Dès qu'un contexte utilisateur est fourni (coordonnées GPS lat/lng, ville/pays, informations de profil, favoris, ou billets) :
-   - Tu DOIS IMPÉRATIVEMENT recroiser ce contexte utilisateur avec les données réelles de la table 'public.events' via les outils appropriés.
-   - Si la position géographique (GPS ou ville) est fournie, appelle 'get_nearby_events' (avec lat/lng) ou 'search_events' (avec la ville/zone) pour ne proposer que des événements réels proches ou pertinents pour cette localisation.
-   - Si l'utilisateur demande une recommandation selon ses goûts ou préférences, appelle 'get_my_favorites' (et si nécessaire 'get_my_profile_lite'), puis recroise IMMÉDIATEMENT en appelant 'search_events' pour vérifier quels événements actuels et publiés dans 'public.events' correspondent à ces goûts.
-2. Ne recommande JAMAIS un événement qui n'a pas été explicitement validé et retourné par une requête d'outil sur la table 'public.events' lors du tour de conversation en cours.
-
-REFUS STRICT DE TOUTE RÉPONSE HORS DES OUTILS FOURNIS :
-1. RÈGLE DE REFUS CATÉGORIQUE : Si l'utilisateur pose une question sur un événement, un artiste, une date, un lieu ou un tarif qui ne figure pas ou n'est pas vérifié dans les données retournées par les outils de la table 'public.events' (ou si l'outil renvoie 0 résultat), tu DOIS EXPLICITEMENT REFUSER de fournir des informations non confirmées ou d'extrapoler.
-2. Formule ton refus poliment et sans ambiguïté : "Cet événement (ou cette information) ne figure pas dans le catalogue officiel et vérifié des événements de Gbaigbance ('public.events'). Afin de garantir des informations fiables et exactes, je ne peux communiquer aucun détail non validé par nos outils en direct."
-3. N'INVENTE, N'ESTIME ET N'APPROXIME JAMAIS d'événement, de prix, de date, d'artiste ou de lieu absent des données d'outils.
-
-SORTIE EN TEXTE PUR ET CARTES :
-N'inclus JAMAIS d'image en markdown (![]) ni de lien web externe (http/https). L'interface de l'application affichera automatiquement des cartes interactives pour les événements vérifiés que tu recommandes et les fiches Google Maps officielles issues des données d'ancrage.
-
-LIEUX, ACCÈS & ALENTOURS VIA GOOGLE MAPS :
-Lorsque l'outil Google Maps est actif et que l'utilisateur pose une question pratique sur un lieu réel, un quartier, les accès, le stationnement, les restaurants, bars ou points d'intérêt autour d'un événement, appuie-toi exclusivement sur les résultats retournés par l'outil Google Maps intégré, sans jamais confondre ces lieux avec des événements Gbaigbance absents de 'public.events'.
-
-TON ET STYLE :
-Langue : Français soigné, chaleureux, dynamique et concis.
-Contexte géographique : Lomé et Afrique de l'Ouest, prix en FCFA (XOF).`;
 
 const GEMINI_DEFAULT_MODEL = 'gemini-4-hydrogen';
 const GEMINI_FAST_MODEL = 'gemini-3.1-flash-lite';
@@ -675,6 +651,8 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
     fastMode = false,
     useMapsGrounding = true,
   } = req.body ?? {};
+  const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
+  const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
@@ -741,9 +719,11 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
         model: activeModel,
         contents,
         config: {
-          systemInstruction: AI_SYSTEM_INSTRUCTION,
+          systemInstruction,
           tools: activeTools,
           ...(toolConfig ? { toolConfig } : {}),
+          temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
         },
       });
 
@@ -851,6 +831,8 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
     fastMode = false,
     useMapsGrounding = true,
   } = req.body ?? {};
+  const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
+  const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
   const quota = await checkAiQuota(actor, req);
   if (!quota.allowed) {
@@ -955,9 +937,11 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
         model: activeModel,
         contents,
         config: {
-          systemInstruction: AI_SYSTEM_INSTRUCTION,
+          systemInstruction,
           tools: activeTools,
           ...(toolConfig ? { toolConfig } : {}),
+          temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
         },
       });
 

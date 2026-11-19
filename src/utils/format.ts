@@ -1,3 +1,16 @@
+export function formatCurrency(amount: number, currency: string = 'XOF', lang: string = 'fr'): string {
+  const locale = lang === 'en' ? 'en-US' : 'fr-FR';
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${Math.round(amount).toLocaleString(locale)} ${currency}`;
+  }
+}
+
 export function formatPrice(price: number, currency: string = 'XOF'): string {
   if (!price || price <= 0) return 'Gratuit';
   const formatted = new Intl.NumberFormat('fr-FR', {

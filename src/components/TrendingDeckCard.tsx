@@ -6,6 +6,8 @@ import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { formatDate } from '@/utils/format';
 import { getDefaultEventCover } from '@/utils/defaultImages';
+import { useApp } from '@/hooks/useApp';
+import { formatCurrency } from '@/utils/format';
 
 interface TrendingDeckCardProps {
   event: Event;
@@ -22,6 +24,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   ref
 ) {
   const { isLiked, toggleLike } = useFavorites();
+  const { language, t } = useApp();
   const liked = isLiked(event.id);
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-260, 0, 260], [-10, 0, 10]);
@@ -79,13 +82,16 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       onClick={() => {
         if (!dragging.current) onOpen();
       }}
-      aria-label={`Découvrir ${event.title}`}
+      role="group"
+      aria-label={t('events', 'discoverEvent').replace('{title}', event.title)}
     >
       <motion.div className="absolute inset-0" style={{ scale: active ? imageScale : 1 }}>
         <SmartImage
           src={event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)}
           alt={event.title}
           className="h-full w-full object-cover"
+          widths={[480, 768, 1080, 1440]}
+          sizes="(max-width: 640px) calc(100vw - 2rem), 90vw"
         />
       </motion.div>
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.10)_20%,rgba(10,7,15,.35)_42%,rgba(10,7,15,.95)_100%)]" />
@@ -93,11 +99,11 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       {/* Top Bar */}
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 z-10">
         <span className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white backdrop-blur-md">
-          Tendance {String(index + 1).padStart(2, '0')}
+          {t('events', 'trendNumber').replace('{number}', String(index + 1).padStart(2, '0'))}
         </span>
         <button
           type="button"
-          aria-label={liked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          aria-label={liked ? t('events', 'removeFavorite') : t('events', 'addFavorite')}
           onClick={(e) => {
             e.stopPropagation();
             toggleLike(event.id);
@@ -109,7 +115,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       </div>
 
       <motion.div style={{ opacity: likeOpacity }} className="absolute left-5 top-20 rounded-full border border-lime-300/50 bg-lime-400/30 px-3.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-lime-200 backdrop-blur-xl">
-        À découvrir
+        {t('events', 'discover')}
       </motion.div>
 
       {/* Bottom Content */}
@@ -117,7 +123,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         <div className="mb-2.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-white/85">
           <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/30 px-2.5 py-1 backdrop-blur-xl">
             <CalendarDays className="h-3.5 w-3.5 text-[#A78BFA]" /> 
-            {formatDate(event.starts_at)}
+            {formatDate(event.starts_at, language)}
           </span>
           <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/30 px-2.5 py-1 backdrop-blur-xl">
             <Map className="h-3.5 w-3.5 text-[#A78BFA]" />
@@ -131,14 +137,12 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
           <div>
             <p className="flex items-center gap-1.5 text-xs text-white/70">
               <MapPin className="h-3.5 w-3.5" />
-              {event.location_name || 'Lieu à confirmer'}
+              {event.location_name || t('events', 'locationToConfirm')}
             </p>
             <p className="mt-1 text-[1.3em] font-black text-[#A78BFA]">
-              {event.price_min === 0
-                ? 'Entrée libre'
-                : event.price_min != null
-                  ? `${Number(event.price_min).toLocaleString('fr-FR')} FCFA`
-                  : 'Entrée libre'}
+              {event.price_min == null || Number(event.price_min) === 0
+                ? t('events', 'free')
+                : formatCurrency(Number(event.price_min), 'XOF', language)}
             </p>
           </div>
           <button
@@ -150,7 +154,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
             className="flex h-11 items-center gap-2 rounded-full bg-white/90 border border-1 border-[#6600FF]/10
              px-5 uppercase text-sm font-black text-[#17131D] transition-all hover:bg-gray-100 hover:scale-105 active:scale-95 shadow-lg"
           >
-            <Ticket className="h-4 w-4 text-[#6600FF]" /> Réserver
+            <Ticket className="h-4 w-4 text-[#6600FF]" /> {t('events', 'bookNow')}
           </button>
         </div>
       </div>

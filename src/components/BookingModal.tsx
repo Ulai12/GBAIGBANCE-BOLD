@@ -394,16 +394,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
     return (
       <Modal open={open} onClose={handleCloseModal} title="">
-        <div className="flex flex-col items-center justify-center py-6 text-center text-[#1A1A2E] space-y-4">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce-in">
-            <Check className="w-10 h-10 text-emerald-600" strokeWidth={3} />
+        <div className="flex flex-col items-center justify-center py-6 text-center text-[#1A1A2E] dark:text-white space-y-4">
+          <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center animate-bounce-in motion-reduce:animate-none">
+            <Check className="w-10 h-10 text-emerald-600 dark:text-emerald-300" strokeWidth={3} />
           </div>
 
           <div>
             <h3 className="text-xl font-black">
               {isGift ? `Billet offert à ${friendName || 'votre ami'} !` : 'Commande validée !'}
             </h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
               {isGift
                 ? `L'achat est confirmé. Le pass est attribué à votre ami et enregistré dans votre onglet « Billets offerts ».`
                 : quantity === 1
@@ -429,7 +429,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
                     if (waNumber) window.open(waUrl, '_blank');
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
+                  className="min-h-11 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all motion-reduce:transition-none shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>Sur WhatsApp</span>
@@ -443,7 +443,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     haptic.selection();
                     setTimeout(() => setCopiedLink(false), 2000);
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-white text-[#6600FF] border border-purple-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  className="min-h-11 py-2.5 px-3 rounded-xl bg-white text-[#6600FF] border border-purple-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:bg-[#14121E] dark:text-[#C4B5FD] dark:border-purple-400/30 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedLink ? 'Lien copié !' : 'Copier lien'}</span>
@@ -458,7 +458,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               onSuccess(firstQr);
               handleCloseModal();
             }}
-            className="w-full py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-transform shadow-lg shadow-purple-900/20"
+            className="w-full min-h-12 py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-transform motion-reduce:transition-none shadow-lg shadow-purple-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
           >
             {isGift ? 'Voir dans mes billets offerts' : 'Accéder à mes billets'}
           </button>
@@ -471,47 +471,47 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     <Modal open={open} onClose={handleCloseModal} title="Réserver des billets">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {/* En-tête de l'événement compact */}
-        <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 rounded-2xl">
+        <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 dark:bg-white/5 rounded-2xl">
           <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
             <img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="font-bold text-[#1A1A2E] text-sm truncate">{event.title}</h4>
-            <p className="text-xs text-gray-500 truncate">{event.city} · {event.location_name}</p>
+            <h4 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{event.city} · {event.location_name}</p>
           </div>
         </div>
 
         {eventUnavailable ? (
           <div className="text-center py-8">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#171726]">Réservation indisponible</p>
-            <p className="text-xs text-gray-400 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
+            <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-[#171726] dark:text-white">Réservation indisponible</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-[#6600FF] animate-spin" />
+            <Loader2 className="w-6 h-6 text-[#6600FF] animate-spin motion-reduce:animate-none" />
           </div>
         ) : fetchError ? (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#171726]">Inventaire indisponible</p>
+            <p className="text-sm font-semibold text-[#171726] dark:text-white">Inventaire indisponible</p>
             <button
               type="button"
               onClick={loadOptions}
-              className="mt-3 px-6 py-2 rounded-full bg-[#6600FF] text-white text-xs font-bold inline-flex items-center gap-2"
+              className="mt-3 min-h-11 px-6 py-2 rounded-full bg-[#6600FF] text-white text-xs font-bold inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
             >
               <RotateCw className="w-3.5 h-3.5" /> Réessayer
             </button>
           </div>
         ) : options.length === 0 ? (
           <div className="text-center py-8">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Aucune option de billet configurée.</p>
+            <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Aucune option de billet configurée.</p>
           </div>
         ) : soldOut ? (
           <div className="text-center py-8">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-red-500">Événement complet</p>
+            <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-red-500 dark:text-red-300">Événement complet</p>
           </div>
         ) : (
           <>
@@ -532,15 +532,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                         handleQuantityChange(1);
                       }}
                       disabled={optAvailable <= 0}
-                      className={`p-3 rounded-2xl border-2 transition-all text-left flex items-center justify-between ${
+                      aria-pressed={isSelected}
+                      className={`min-h-11 p-3 rounded-2xl border-2 transition-colors motion-reduce:transition-none text-left flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                         isSelected
                           ? 'border-[#6600FF] bg-[#6600FF]/10'
-                          : 'border-gray-200 hover:border-[#6600FF]/30'
+                          : 'border-gray-200 hover:border-[#6600FF]/30 dark:border-white/[0.12] dark:hover:border-[#A78BFA]/40'
                       }`}
                     >
                       <div>
-                        <p className="font-bold text-xs text-[#1A1A2E]">{opt.label || opt.ticket_type.toUpperCase()}</p>
-                        <p className="text-[10px] text-gray-500">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
+                        <p className="font-bold text-xs text-[#1A1A2E] dark:text-white">{opt.label || opt.ticket_type.toUpperCase()}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
                       </div>
                       <span className="font-extrabold text-[#6600FF] text-xs">
                         {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} F`}
@@ -557,14 +558,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400">2. Titulaire du billet</p>
 
                 {/* Segmented Control Apple Style */}
-                <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl">
+                <div className="grid grid-cols-2 p-1 bg-gray-100 dark:bg-white/10 rounded-2xl" role="radiogroup" aria-label="Titulaire du billet">
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={purchaseTarget === 'self'}
                     onClick={() => handleTogglePurchaseTarget('self')}
-                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    className={`min-h-11 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       purchaseTarget === 'self'
-                        ? 'bg-white text-[#17131D] shadow-xs'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#14121E] dark:text-white'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }`}
                   >
                     <Ticket className="w-3.5 h-3.5" /> Pour moi
@@ -572,11 +575,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={purchaseTarget === 'friend'}
                     onClick={() => handleTogglePurchaseTarget('friend')}
-                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    className={`min-h-11 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       purchaseTarget === 'friend'
-                        ? 'bg-white text-[#6600FF] shadow-xs'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white text-[#6600FF] shadow-xs dark:bg-[#14121E] dark:text-[#C4B5FD]'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }`}
                   >
                     <Gift className="w-3.5 h-3.5 text-[#6600FF]" /> Offrir à un ami
@@ -585,9 +590,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
                 {/* Formulaire si Offrir à un ami */}
                 {purchaseTarget === 'friend' && (
-                  <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-[#6600FF]/10 border border-purple-200/80 dark:border-purple-400/25 space-y-3">
                     <div className="space-y-1">
-                      <label htmlFor="friend_name_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
+                      <label htmlFor="friend_name_input" className="text-[11px] font-bold text-gray-700 dark:text-gray-200 block cursor-pointer">
                         Nom & prénom de votre ami(e)
                       </label>
                       <input
@@ -604,14 +609,14 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           handleUpdateRecipient(0, 'recipient_name', val);
                         }}
                         placeholder="Ex: Koffi Mensah"
-                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
+                        className="w-full min-h-11 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#14121E] border border-purple-200 dark:border-purple-400/30 text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                       />
                     </div>
 
                     {/* Suggestions d'amis suivis positionnées SOUS le champ nom pour ne jamais déplacer l'input ni fermer le clavier */}
                     {followingFriends.length > 0 && (
                       <div className="space-y-1.5 pt-0.5">
-                        <span className="text-[10px] font-semibold text-gray-500 block">
+                        <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 block">
                           Suggestions parmi vos amis :
                         </span>
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -625,10 +630,10 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => handleSelectFollowedFriend(f)}
-                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                                  className={`flex items-center min-h-11 gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors motion-reduce:transition-none border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                                     isSelected
                                       ? 'bg-[#6600FF] text-white border-[#6600FF] shadow-xs'
-                                      : 'bg-white text-gray-700 border-purple-200 hover:border-[#6600FF]/40'
+                                      : 'bg-white text-gray-700 border-purple-200 hover:border-[#6600FF]/40 dark:bg-[#14121E] dark:text-gray-200 dark:border-white/[0.12]'
                                   }`}
                                 >
                                   <UserAvatar id={f.id} name={f.name} src={f.avatar_url} size="xs" ring={false} />
@@ -641,7 +646,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     )}
 
                     <div className="space-y-1">
-                      <label htmlFor="friend_phone_input" className="text-[11px] font-bold text-gray-700 block cursor-pointer">
+                      <label htmlFor="friend_phone_input" className="text-[11px] font-bold text-gray-700 dark:text-gray-200 block cursor-pointer">
                         Numéro de téléphone de l'ami (WhatsApp / Appel)
                       </label>
                       <input
@@ -657,11 +662,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           handleUpdateRecipient(0, 'recipient_phone', val);
                         }}
                         placeholder="Ex: 90 12 34 56"
-                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
+                        className="w-full min-h-11 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#14121E] border border-purple-200 dark:border-purple-400/30 text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                       />
                     </div>
 
-                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
                       💡 Le pass sera généré pour votre ami(e). Vous retrouverez la confirmation d'achat dans votre onglet « Billets offerts ».
                     </p>
                   </div>
@@ -671,10 +676,10 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
             {/* 3. Sélecteur de Quantité */}
             {selectedOption && available > 1 && (
-              <div className="p-3 rounded-2xl bg-gray-50 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#1A1A2E] block">Quantité</span>
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-xs font-bold text-[#1A1A2E] dark:text-white block">Quantité</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
                     {purchaseTarget === 'friend' ? 'Billets pour des amis' : 'Places pour vous ou accompagnateurs'}
                   </span>
                 </div>
@@ -684,17 +689,17 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
                     aria-label="Diminuer la quantité"
-                    className="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
+                    className="w-11 h-11 rounded-full bg-white dark:bg-[#14121E] dark:text-white shadow-sm border border-gray-200 dark:border-white/[0.12] flex items-center justify-center disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-bold text-sm min-w-[1.5rem] text-center tabular-nums">{quantity}</span>
+                  <span className="font-bold text-sm min-w-[1.5rem] text-center tabular-nums text-[#1A1A2E] dark:text-white">{quantity}</span>
                   <button
                     type="button"
                     onClick={() => handleQuantityChange(Math.min(available, quantity + 1))}
                     disabled={quantity >= available || quantity >= 10}
                     aria-label="Augmenter la quantité"
-                    className="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
+                    className="w-11 h-11 rounded-full bg-white dark:bg-[#14121E] dark:text-white shadow-sm border border-gray-200 dark:border-white/[0.12] flex items-center justify-center disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -710,8 +715,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 </p>
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
-                    <div key={i} className="p-2.5 rounded-xl border border-gray-200 bg-white flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-400 w-12">#{i + 1}</span>
+                    <div key={i} className="p-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-12">#{i + 1}</span>
                       <input
                         type="text"
                         value={r.recipient_name}
@@ -721,7 +726,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           if (purchaseTarget === 'friend' && i === 0) setFriendName(value);
                         }}
                         placeholder={`Bénéficiaire place #${i + 1}`}
-                        className="flex-1 min-h-[44px] px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF]"
+                        className="flex-1 min-h-11 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#0c0a14] text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] transition-colors motion-reduce:transition-none"
                       />
                     </div>
                   ))}
@@ -736,7 +741,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   <Smartphone className="w-3.5 h-3.5" /> 3. Règlement Mobile Money
                 </p>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Opérateur Mobile Money">
                   {[
                     { id: 'tmoney', name: 'T-Money' },
                     { id: 'flooz', name: 'Flooz' },
@@ -744,11 +749,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     <button
                       key={op.id}
                       type="button"
+                      role="radio"
+                      aria-checked={paymentProvider === op.id}
                       onClick={() => setPaymentProvider(op.id as PaymentProvider)}
-                      className={`min-h-[44px] py-2 px-3 rounded-xl border text-xs text-center font-bold transition-all ${
+                      className={`min-h-11 py-2 px-3 rounded-xl border text-xs text-center font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                         paymentProvider === op.id
-                          ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF]'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          ? 'border-[#6600FF] bg-[#6600FF]/10 text-[#6600FF] dark:text-[#C4B5FD]'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-white/[0.12] dark:text-gray-300 dark:hover:border-white/25'
                       }`}
                     >
                       {op.name}
@@ -757,7 +764,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="buyer_phone_input" className="text-[11px] font-semibold text-gray-600 flex items-center gap-1 cursor-pointer">
+                  <label htmlFor="buyer_phone_input" className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1 cursor-pointer">
                     <Phone className="w-3 h-3 text-[#6600FF]" /> Numéro de débit (Acheteur)
                   </label>
                   <input
@@ -768,9 +775,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     value={paymentPhone}
                     onChange={(e) => setPaymentPhone(e.target.value)}
                     placeholder="Ex: 90 12 34 56"
-                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#6600FF]/25 focus:border-[#6600FF] transition-all"
+                    className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                   />
-                  <span className="text-[10px] text-gray-400 block">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
                     L'acheteur reste la référence financière pour tout remboursement éventuel.
                   </span>
                 </div>
@@ -778,15 +785,15 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             )}
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-fade-in">
+              <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-400/30 text-rose-700 dark:text-rose-200 text-xs flex items-center justify-between gap-2 animate-fade-in motion-reduce:animate-none">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-300" />
                   <span className="font-semibold">{error}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setError(null)}
-                  className="text-[11px] font-bold text-rose-600 underline hover:text-rose-800"
+                  className="min-h-11 px-2 text-[11px] font-bold text-rose-600 dark:text-rose-200 underline hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 rounded-lg"
                 >
                   Fermer
                 </button>
@@ -795,11 +802,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
             {/* Total et Bouton Final */}
             {selectedOption && available > 0 && (
-              <div className="border-t pt-3 space-y-3">
+              <div className="border-t border-black/[0.06] dark:border-white/[0.08] pt-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-gray-500 block">Total à payer</span>
-                    <span className="text-[10px] text-gray-400 block">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Total à payer</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
                       {isFreeCheckout ? 'Confirmation immédiate, sans débit' : 'Débit Mobile Money sur le numéro indiqué'}
                     </span>
                     {!isFreeCheckout && feeBreakdown && feeBreakdown.total_amount > 0 && (
@@ -813,7 +820,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                       </span>
                     )}
                   </div>
-                  <span className="text-xl font-black text-[#1A1A2E]">
+                  <span className="text-xl font-black text-[#1A1A2E] dark:text-white">
                     {isFreeCheckout ? 'Gratuit' : `${(feeBreakdown?.total_amount ?? totalPrice).toLocaleString('fr-FR')} F CFA`}
                   </span>
                 </div>
@@ -822,11 +829,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   type="button"
                   onClick={handleBook}
                   disabled={booking}
-                  className="w-full min-h-[48px] py-3.5 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all shadow-md shadow-purple-900/20"
+                  className="w-full min-h-12 py-3.5 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all motion-reduce:transition-none shadow-md shadow-purple-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   {booking ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
                       Génération du billet...
                     </>
                   ) : (
