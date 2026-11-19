@@ -477,7 +477,7 @@ export function HomeScreen({
       events: selected.slice(0, 12),
       isActual: true,
     };
-  }, [allEventsWithDistance, userLocation]);
+  }, [allEventsWithDistance, userLocation, t]);
 
   // Section: Recommandations personnalisées (Algorithme fondé sur les préférences, abonnements, favoris et popularité)
   const recommendedEvents = useMemo(() => {
@@ -566,7 +566,7 @@ export function HomeScreen({
     />
     <div className="leading-tight">
       <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
-      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase"{t('events', 'home.brandTagline')}</p>
+      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">{t('events', 'home.brandTagline')}</p>
     </div>
   </div>
 
@@ -575,11 +575,11 @@ export function HomeScreen({
   <div className="flex items-center justify-between mb-4 mr-2">
     <div>
       <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
+        <span>{t('events', 'home.greeting')} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
         <span className="text-xl"> 👋</span>
         </span>
       </h1>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5"{t('events', 'home.greetingSubtitle')}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">{t('events', 'home.greetingSubtitle')}</p>
     </div>
 
     {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
@@ -626,7 +626,7 @@ export function HomeScreen({
       {/* ✅ px-4 py-3, gap-3 et texte responsive d'origine */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
         <Search className="w-4 h-4 text-gray-400" />
-        <span className="text-xs sm:text-sm text-gray-400 font-medium"{t('events', 'home.searchPlaceholder')}</span>
+        <span className="text-xs sm:text-sm text-gray-400 font-medium">{t('events', 'home.searchPlaceholder')}</span>
       </div>
     </button>
 
@@ -698,7 +698,7 @@ export function HomeScreen({
         {selectedMainCategory && (
           <div className="mt-2.5">
             <p className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              {t('events', 'explore.search.subcategories').replace('{category}', selectedMainCategory.shortLabel)}
+              {t('events', 'explore.search.subcategories').replace('{category}', t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`))}
             </p>
             <div
               className="flex flex-wrap items-center justify-center gap-1.5"
@@ -748,15 +748,15 @@ export function HomeScreen({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg sm:text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
-                ? selectedMainCategory.shortLabel
-                : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || t('events', 'event')}
+                ? t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`)
+                : t('events', `explore.search.subcategoriesLabels.${selectedCategory}`)}
             </h2>
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
               className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-3 py-1.5 rounded-full cursor-pointer"
             >
-              Fermer
+              {t('events', 'home.close')}
             </button>
           </div>
           {categoryLoading ? (
