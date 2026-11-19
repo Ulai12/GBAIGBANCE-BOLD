@@ -323,17 +323,17 @@ export function GbaigbanceStatsDashboard({
   // Répartition par catégorie basée sur les vrais événements
   const categoriesBreakdown = useMemo(() => {
     const categoryMeta: Record<string, { label: string; color: string }> = {
-      concert: { label: 'Concerts & Live', color: '#6600FF' },
-      festival: { label: 'Festivals & Foires', color: '#8B5CF6' },
+      concert: { label: t('events', 'home.stats.categories.concert'), color: '#6600FF' },
+      festival: { label: t('events', 'home.stats.categories.festival'), color: '#8B5CF6' },
       party: { label: t('events', 'home.stats.categories.party'), color: '#EC4899' },
       theatre: { label: t('events', 'home.stats.categories.theatre'), color: '#10B981' },
       conference: { label: t('events', 'home.stats.categories.conference'), color: '#3B82F6' },
-      spectacle: { label: 'Spectacles & Humour', color: '#F59E0B' },
-      formation: { label: 'Formations & Workshops', color: '#14B8A6' },
+      spectacle: { label: t('events', 'home.stats.categories.spectacle'), color: '#F59E0B' },
+      formation: { label: t('events', 'home.stats.categories.formation'), color: '#14B8A6' },
       private: { label: t('events', 'home.stats.categories.private'), color: '#6366F1' },
       sport: { label: t('events', 'home.stats.categories.sport'), color: '#EF4444' },
-      exhibition: { label: 'Expositions & Art', color: '#D946EF' },
-      exposition: { label: 'Expositions & Art', color: '#D946EF' },
+      exhibition: { label: t('events', 'home.stats.categories.exhibition'), color: '#D946EF' },
+      exposition: { label: t('events', 'home.stats.categories.exhibition'), color: '#D946EF' },
     };
 
     const shares = platformStats?.categoryShares || [];
