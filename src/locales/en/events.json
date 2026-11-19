@@ -63,7 +63,7 @@
     "free": "Free",
     "paid": "Paid",
     "today": "Today",
- "thisWeek": "This week",
+    "thisWeek": "This week",
     "thisMonth": "This month",
     "apply": "Apply",
     "reset": "Reset"
@@ -258,8 +258,51 @@
   },
   "detail": {
     "back": "Back",
-    "report": "Report this event",
-    "share": "Share this event",
+    "report": {
+      "title": "Report this event",
+      "close": "Close",
+      "notice": "The reason will be recorded and sent to the moderation team and organizer.",
+      "reasonTitle": "Main reason",
+      "reasons": {
+        "fake_scam": "Fake event or suspected scam",
+        "wrong_info": "Incorrect information (date, location, prices)",
+        "inappropriate": "Inappropriate or offensive content",
+        "copyright": "Copyright or image rights infringement",
+        "other": "Other reason"
+      },
+      "optionalDetails": "Additional details (optional)",
+      "sent": "Report submitted",
+      "saved": "Report saved",
+      "thanks": "Thank you for helping keep the catalog reliable.",
+      "details": "Provide details that may help our moderators...",
+      "cancel": "Cancel",
+      "sending": "Sending…",
+      "confirm": "Submit report"
+    },
+    "share": {
+      "title": "{title} · Gbaigbance",
+      "text": "🔥 Join me for “{title}”!\n📅 {date}\n📍 {location}\n🎟️ {price}\n\nSee the details and book your spot on Gbaigbance:",
+      "free": "Free entry",
+      "success": "Event shared successfully!",
+      "copied": "Event link and details copied!",
+      "copyFailed": "Could not automatically copy the link.",
+      "twitter": "🔥 {title} on @Gbaigbance",
+      "emailSubject": "Invitation: {title} on Gbaigbance",
+      "emailBody": "Event link:",
+      "modalTitle": "Share event",
+      "modalDescription": "Invite your friends and networks",
+      "closeModal": "Close sharing dialog",
+      "system": "Share using your device (Apps, AirDrop...)",
+      "sendViaApp": "Send via an app",
+      "facebookSubtitle": "News Feed",
+      "emailLabel": "Email",
+      "emailSubtitle": "Email invitation",
+      "directLink": "Direct link",
+      "eventLink": "Event link",
+      "copiedButton": "Copied",
+      "copyButton": "Copy",
+      "footer": "Sharing African events"
+    },
     "removeFavorite": "Remove from favorites",
     "addFavorite": "Add to favorites",
     "free": "Free",
@@ -377,27 +420,6 @@
       "you": "You",
       "friendsAtTop": "Your friends appear first"
     },
-    "report": {
-      "title": "Report this event",
-      "close": "Close",
-      "notice": "The reason will be recorded and sent to the moderation team and organizer.",
-      "reasonTitle": "Main reason",
-      "reasons": {
-        "fake_scam": "Fake event or suspected scam",
-        "wrong_info": "Incorrect information (date, location, prices)",
-        "inappropriate": "Inappropriate or offensive content",
-        "copyright": "Copyright or image rights infringement",
-        "other": "Other reason"
-      },
-      "optionalDetails": "Additional details (optional)",
-      "sent": "Report submitted",
-      "saved": "Report saved",
-      "thanks": "Thank you for helping keep the catalog reliable.",
-      "details": "Provide details that may help our moderators...",
-      "cancel": "Cancel",
-      "sending": "Sending…",
-      "confirm": "Submit report"
-    },
     "hero": {
       "enlargeCover": "Enlarge cover photo for {title}",
       "backToEvents": "Back to events",
@@ -486,30 +508,6 @@
         "What are the entry hours?"
       ]
     },
-    "share": {
-      "title": "{title} · Gbaigbance",
-      "text": "🔥 Join me for “{title}”!\n📅 {date}\n📍 {location}\n🎟️ {price}\n\nSee the details and book your spot on Gbaigbance:",
-      "free": "Free entry",
-      "success": "Event shared successfully!",
-      "copied": "Event link and details copied!",
-      "copyFailed": "Could not automatically copy the link.",
-      "twitter": "🔥 {title} on @Gbaigbance",
-      "emailSubject": "Invitation: {title} on Gbaigbance",
-      "emailBody": "Event link:",
-      "modalTitle": "Share event",
-      "modalDescription": "Invite your friends and networks",
-      "closeModal": "Close sharing dialog",
-      "system": "Share using your device (Apps, AirDrop...)",
-      "sendViaApp": "Send via an app",
-      "facebookSubtitle": "News Feed",
-      "emailLabel": "Email",
-      "emailSubtitle": "Email invitation",
-      "directLink": "Direct link",
-      "eventLink": "Event link",
-      "copiedButton": "Copied",
-      "copyButton": "Copy",
-      "footer": "Sharing African events"
-    },
     "lightbox": {
       "defaultTitle": "Image details",
       "customRatio": "Custom format",
@@ -545,5 +543,29 @@
       "copied": "Link copied!",
       "downloadHd": "Download HD"
     }
+  },
+  "home": {
+    "brandTagline": "Tickets & Events",
+    "guest": "Guest",
+    "greetingSubtitle": "Find your next experience",
+    "settings": "Settings",
+    "profile": "Profile",
+    "searchPlaceholder": "Concerts, parties, festivals...",
+    "aiAssistant": "Gbaigbance AI Assistant",
+    "exploreCategories": "Explore by category",
+    "mainCategories": "Main categories",
+    "subcategoriesOf": "{category} subcategories",
+    "allSubcategories": "All",
+    "close": "Close",
+    "noCategoryEvents": "There are no events in this category right now",
+    "nearbyTitle": "Near you",
+    "nearbyAround": "Around your location ({city})",
+    "offline": "Offline mode: showing saved data",
+    "recommendationSubtitle": "A smart selection based on your tastes and interests",
+    "freeEvents": "Free events",
+    "freeEventsSubtitle": "100% free entry",
+    "unmissable": "Don't miss out",
+    "unmissableSubtitle": "The most anticipated events",
+    "seeMore": "See more"
   }
 }
