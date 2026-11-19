@@ -680,5 +680,7 @@
     "reservation": "Sur réservation",
     "official": "Site officiel",
     "freeEntry": "Entrée libre"
-  }
+  },
+  "tickets": "billets",
+  "eventPlural": "événements"
 }
