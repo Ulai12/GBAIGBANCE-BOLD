@@ -193,7 +193,7 @@ export function SeeMoreModal({
               ? 'artiste' + (totalCount > 1 ? 's' : '')
               : type === 'organizations'
               ? 'organisateur' + (totalCount > 1 ? 's' : '')
-              : t('events', 'home.seeMore.eventCount').replace('{count}', String(totalCount))}
+              : `${totalCount} ${t('events', totalCount > 1 ? 'eventPlural' : 'event')}`}
           </span>
         </div>
 
