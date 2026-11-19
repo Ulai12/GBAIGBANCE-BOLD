@@ -1,1 +1,49 @@
-PLACEHOLDER_FR
+{
+  "skip": "Passer",
+  "previousStep": "Étape précédente",
+  "goToStep": "Aller à l'étape {number}",
+  "progress": "Progression",
+  "continue": "Continuer",
+  "startExperience": "Démarrer l’expérience",
+  "slides": {
+    "0": {
+      "eyebrow": "EXPLORATION & LIVE",
+      "title": "Les plus grands moments commencent ici.",
+      "subtitle": "Découvrez tous les concerts, festivals et soirées incontournables au Togo, Bénin, Côte d’Ivoire et dans toute l’Afrique.",
+      "badge": "Live Events"
+    },
+    "1": {
+      "eyebrow": "BILLETTERIE NATIVE",
+      "title": "Vos billets sécurisés, en un clin d’œil.",
+      "subtitle": "Payez instantanément via T-Money, Moov Money, Wave ou Carte Bancaire. Votre QR Code d’accès reste disponible hors-ligne.",
+      "badge": "Paiement Mobile"
+    },
+    "2": {
+      "eyebrow": "PROCHE DE VOS ARTISTES",
+      "title": "Ne manquez plus jamais vos stars préférées.",
+      "subtitle": "Suivez les artistes, soyez alerté en exclusivité dès l’ouverture de la billetterie et profitez de tarifs VIP.",
+      "badge": "Alertes VIP"
+    },
+    "3": {
+      "eyebrow": "EXPÉRIENCE SUR-MESURE",
+      "title": "Personnalisez votre scène locale.",
+      "subtitle": "Choisissez votre ville et vos styles musicaux pour recevoir des recommandations adaptées dès votre premier regard.",
+      "badge": "Vos Préférences"
+    }
+  },
+  "live": "EN DIRECT",
+  "ambiance": "Ambiance 100%",
+  "verifiedPass": "Pass Vérifié",
+  "valid": "Valide",
+  "scanAtEntrance": "Scannez à l'entrée",
+  "quickAccess": "Accès rapide NFC & QR",
+  "acceptedPayments": "Paiements directs acceptés :",
+  "artistsToDiscover": "Artistes à découvrir :",
+  "subscribers": "abonnés",
+  "followedVip": "Abonné aux alertes VIP !",
+  "followArtist": "Suivre {name}",
+  "presaleTicket": "Billet prévente · {name}",
+  "yourCountry": "Votre pays principal :",
+  "yourAmbiances": "Vos ambiances préférées :",
+  "soonNotice": "Bientôt disponible dans votre pays."
+}
