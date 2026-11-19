@@ -72,33 +72,33 @@ export function SeeMoreModal({
       case 'unmissable':
         return {
           title: t('events', 'home.unmissable'),
-          subtitle: 'Les rendez-vous les plus attendus',
+          subtitle: t('events', 'home.unmissableSubtitle'),
           icon: Flame,
           badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
         };
       case 'artists':
         return {
-          title: 'Artistes du moment',
+          title: t('events', 'home.artistsNow'),
           subtitle: t('events', 'home.seeMore.artistsSubtitle'),
           icon: Music,
           badgeColor: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
         };
       case 'organizations':
         return {
-          title: 'Organisateurs officiels',
+          title: t('events', 'home.officialOrganizers'),
           subtitle: t('events', 'home.seeMore.organizersSubtitle'),
           icon: Building2,
           badgeColor: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
         };
       default:
         return {
-          title: 'Explorer',
+          title: t('events', 'home.exploreCategories'),
           subtitle: t('events', 'home.seeMore.defaultSubtitle'),
           icon: Sparkles,
           badgeColor: 'bg-purple-500/15 text-[#6600FF] dark:text-purple-400',
         };
     }
-  }, [type, events]);
+  }, [type, events, t]);
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
@@ -184,15 +184,15 @@ export function SeeMoreModal({
             className="flex items-center gap-1.5 text-sm font-bold text-[#6600FF] active:scale-95 transition-transform cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
-            <span>Retour</span>
+            <span>{t('events', 'home.seeMore.back')}</span>
           </button>
 
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/[0.04] dark:bg-white/[0.08] text-gray-600 dark:text-gray-300">
             {totalCount}{' '}
             {type === 'artists'
-              ? 'artiste' + (totalCount > 1 ? 's' : '')
+              ? `${totalCount} ${t('events', totalCount > 1 ? 'home.seeMore.artists' : 'home.seeMore.artist')}`
               : type === 'organizations'
-              ? 'organisateur' + (totalCount > 1 ? 's' : '')
+              ? `${totalCount} ${t('events', totalCount > 1 ? 'home.seeMore.organizers' : 'home.seeMore.organizer')}`
               : `${totalCount} ${t('events', totalCount > 1 ? 'eventPlural' : 'event')}`}
           </span>
         </div>
@@ -221,9 +221,9 @@ export function SeeMoreModal({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               type === 'artists'
-                ? 'Rechercher un artiste...'
+                ? t('events', 'home.seeMore.searchArtist')
                 : type === 'organizations'
-                ? 'Rechercher un organisateur...'
+                ? t('events', 'home.seeMore.searchOrganizer')
                 : t('events', 'home.seeMore.searchPlaceholder')
             }
             className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-gray-100/90 dark:bg-white/[0.07] border border-transparent focus:border-[#6600FF]/40 text-sm font-medium text-[#17131D] dark:text-white placeholder-gray-400 outline-hidden transition-all"
@@ -273,7 +273,7 @@ export function SeeMoreModal({
                     : 'bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.14]'
                 }`}
               >
-                {cat === 'all' ? 'Tous les genres' : cat}
+                {cat === 'all' ? t('events', 'home.seeMore.allGenres') : t('events', `categories.${cat}`)}
               </button>
             ))}
           </div>
@@ -315,7 +315,7 @@ export function SeeMoreModal({
                     {artist.city || t('events', 'home.defaultCity') + ', Togo'}
                   </p>
                   <div className="mt-2.5 px-2.5 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] text-[11px] font-bold">
-                    {artist.events_count ?? 0} événement{(artist.events_count ?? 0) > 1 ? 's' : ''}
+                    {artist.events_count ?? 0} {t('events', (artist.events_count ?? 0) > 1 ? 'eventPlural' : 'event')}
                   </div>
                 </div>
               ))}
