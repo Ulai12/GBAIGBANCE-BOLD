@@ -372,7 +372,7 @@ export function GbaigbanceStatsDashboard({
   ) => {
     if (type === 'revenue') {
       return `${value.toLocaleString(
-        'fr-FR'
+        language === 'en' ? 'en-US' : 'fr-FR'
       )} FCFA`;
     }
 
