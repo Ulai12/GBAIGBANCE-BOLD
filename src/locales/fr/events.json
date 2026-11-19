@@ -671,7 +671,8 @@
     "greetingAfternoon": "Salut",
     "greetingEvening": "Bonsoir",
     "greetingNight": "Bonne nuit",
-    "verifiedAccount": "Compte vérifié"
+    "verifiedAccount": "Compte vérifié",
+    "defaultRegion": "Afrique"
   },
   "cardStatus": {
     "cancelled": "Annulé",
