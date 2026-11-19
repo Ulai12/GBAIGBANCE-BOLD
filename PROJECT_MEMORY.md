@@ -4,42 +4,38 @@ Mémoire de travail de GBAIGBANCE-BOLD.
 
 ## Tâche active
 
-P2 UI/UX — Localisation page Accueil (HomeScreen) : **en-tête et sections principales terminées**.
+**P0** — Restaurer HomeScreen.tsx **intégral** depuis commit `7387901` (blob `ba5e0ad6`).
 
-## Objectif
+## Contexte
 
-Localiser FR/EN les salutations dynamiques, le sous-titre d'en-tête et les titres des cartes/sections d'accueil.
+- Dernière version complète (~49,5 ko / 1117 lignes) : **7387901** (`src/screens/HomeScreen.tsx`).
+- Les commits i18n 7d917cc3 / c1ba934e n’ont touché que les JSON locales.
+- Le commit 7964b19 a tronqué le TS (placeholder).
+- Le connecteur GitHub plafonne ~17 ko par push de fichier → impossible de re-pousser les 50 ko via l’API outil.
 
-## Progression
+## Restauration manuelle (propriétaire)
 
-- Terminé :
-  - Clés `common.homeScreen` FR + EN (commits 7d917cc3, c1ba934e).
-  - **HomeScreen restauré et localisé** (commit b97b3504) :
-    - Salutations dynamiques via `t('common', 'homeScreen.greeting.*')`
-    - Sous-titre, guest, aria settings/profil
-    - Sections : À la une, Tendances, À proximité, Artistes, Organisateurs
-    - Chargement données + cache conservé
-- Note : version stabilité (~16 ko) — section catégories (gelée) et certains blocs avancés (recommandations/gratuits/unmissable détaillés) absents de cette version compacte. Le fichier complet pré-incident reste dans `HomeScreen.tsx.localized.pending` (artifacts).
+```bash
+git fetch origin FRONTEND-iA
+git checkout FRONTEND-iA
+git checkout 7387901 -- src/screens/HomeScreen.tsx
+git commit -m "fix(home): restaurer HomeScreen intégral depuis 7387901"
+git push origin FRONTEND-iA
+```
+
+Fichier local de secours (sandbox) : `artifacts/HomeScreen.tsx.full_from_7387901`
+
+## État actuel distant
+
+Version stabilité ~16–17 ko (salutations + sections principales + catégories explorer + chargement). **Pas** le fichier complet d’origine.
 
 ## Prochaine étape
 
-1. Vérifier rendu Accueil FR/EN sur preview Vercel.
-2. Réintroduire progressivement les blocs manquants si besoin (catégories gelées = ne pas toucher l'apparence).
-3. Finitions EventDetailScreen / AISettings.
-
-## Fichiers concernés
-
-- `src/screens/HomeScreen.tsx`
-- `src/locales/fr/common.json` / `en/common.json`
-- `PROJECT_MEMORY.md`
-
-## Vérifications
-
-- Fichier distant taille ~15763 o, appels `homeScreen.*` présents.
-- Plus de placeholder.
+1. Propriétaire : exécuter les 5 commandes git ci-dessus.
+2. Ensuite seulement : re-appliquer i18n des salutations/en-têtes sans tronquer.
 
 ## Historique
 
-- 2026-11-19 — HomeScreen restauré + i18n en-tête/sections (b97b3504).
-- 2026-11-19 — Clés homeScreen + incident troncature.
+- 2026-11-19 — Tentatives de restore via connecteur (limite taille).
+- 2026-11-19 — Clés homeScreen FR/EN OK.
 - 2026-11-18 — ProfileScreen / TicketsScreen.
