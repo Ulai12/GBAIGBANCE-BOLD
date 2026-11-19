@@ -591,7 +591,15 @@
       "organizers": "organisateurs",
       "searchArtist": "Rechercher un artiste...",
       "searchOrganizer": "Rechercher un organisateur...",
-      "allGenres": "Tous les genres"
+      "allGenres": "Tous les genres",
+      "genres": {
+        "all": "Tous les genres",
+        "concert": "Concert",
+        "party": "Soirée",
+        "festival": "Festival",
+        "culture": "Culture",
+        "spectacle": "Spectacle"
+      }
     },
     "nearbyEvent": "Événement à proximité : {title}",
     "defaultCity": "Lomé",
@@ -623,7 +631,13 @@
         "theatre": "Culture & Théâtre",
         "conference": "Conférences & Talks",
         "private": "Événements privés",
-        "sport": "Sport & Bien-être"
+        "sport": "Sport & Bien-être",
+        "concert": "Concerts & Live",
+        "festival": "Festivals & Foires",
+        "spectacle": "Spectacles & Humour",
+        "formation": "Formations & Workshops",
+        "exhibition": "Expositions & Art",
+        "exposition": "Expositions & Art"
       },
       "units": {
         "periodTickets": "billets de la période",
