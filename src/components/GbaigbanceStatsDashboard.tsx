@@ -523,7 +523,7 @@ export function GbaigbanceStatsDashboard({
                 : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
-            Ce mois
+            {t('events', 'home.stats.currentMonth')}
           </button>
 
           <button
@@ -537,7 +537,7 @@ export function GbaigbanceStatsDashboard({
                 : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
-            Mois dernier
+            {t('events', 'home.stats.lastMonth')}
           </button>
 
           <button
@@ -551,7 +551,7 @@ export function GbaigbanceStatsDashboard({
                 : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
-            Tout
+            {t('events', 'home.stats.allTime')}
           </button>
 
           <button
@@ -565,7 +565,7 @@ export function GbaigbanceStatsDashboard({
                 : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
-            Trimestre
+            {t('events', 'home.stats.quarter')}
           </button>
 
         </div>
@@ -589,7 +589,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Ticket className="h-3.5 w-3.5 text-[#6600FF]" />
-              Billets vendus
+              {t('events', 'home.stats.ticketsSold')}
             </span>
 
             {activeMetric === 'tickets' && (
@@ -602,7 +602,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Billets vendus sur la période
+            {t('events', 'home.stats.ticketsPeriod')}
           </p>
         </button>
 
@@ -621,7 +621,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <DollarSign className="h-3.5 w-3.5 text-[#6600FF]" />
-              Ventes de billets
+              {t('events', 'home.stats.ticketSales')}
             </span>
 
             {activeMetric === 'revenue' && (
@@ -643,13 +643,13 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
-            Montant vendu sur la période
+            {t('events', 'home.stats.revenuePeriod')}
           </p>
         </button>
 
         <details className="col-span-2 rounded-2xl border border-black/[0.06] bg-white/45 p-3 dark:border-white/10 dark:bg-white/[0.035]">
           <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-[#17131D] dark:text-white [&::-webkit-details-marker]:hidden">
-            <span>Plus d'indicateurs</span>
+            <span>{t('events', 'home.stats.moreMetrics')}</span>
             <span className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA]">{t('events', 'home.stats.globalData')}</span>
           </summary>
           <p className="mb-3 text-[11px] text-gray-500 dark:text-gray-400">{t('events', 'home.stats.globalDescription')}</p>
@@ -659,7 +659,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Eye className="h-3.5 w-3.5 text-[#6600FF]" />
-              Vues cumulées
+              {t('events', 'home.stats.totalViews')}
             </span>
           </div>
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
@@ -675,7 +675,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Users className="h-3.5 w-3.5 text-[#6600FF]" />
-              Comptes inscrits
+              {t('events', 'home.stats.registeredAccounts')}
             </span>
           </div>
 
@@ -684,7 +684,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            {platformStats?.isAvailable === false || !platformStats ? 'Comptes indisponibles' : `${formatNumber(totals.participantAccounts)} comptes participants`}
+            {platformStats?.isAvailable === false || !platformStats ? t('events', 'home.stats.accountsUnavailable') : `${formatNumber(totals.participantAccounts)} ${t('events', 'home.stats.participantAccounts')}`}
           </p>
         </div>
 
@@ -693,7 +693,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <UserRoundCheck className="h-3.5 w-3.5 text-[#6600FF]" />
-              Participations
+              {t('events', 'home.stats.participations')}
             </span>
           </div>
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
@@ -707,7 +707,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Contact className="h-3.5 w-3.5 text-[#6600FF]" />
-              Profils créés
+              {t('events', 'home.stats.profilesCreated')}
             </span>
           </div>
           <p className="text-xl font-extrabold tracking-tight text-[#17131D] dark:text-white">
@@ -734,7 +734,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <Calendar className="h-3.5 w-3.5 text-[#6600FF]" />
-              Événements actifs
+              {t('events', 'home.stats.activeEvents')}
             </span>
 
             {activeMetric === 'events' && (
@@ -747,7 +747,7 @@ export function GbaigbanceStatsDashboard({
           </p>
 
           <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-            Événements sur la période
+            {t('events', 'home.stats.eventsPeriod')}
           </p>
         </button>
 
@@ -755,7 +755,7 @@ export function GbaigbanceStatsDashboard({
 
       <details className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/45 dark:border-white/10 dark:bg-white/[0.035]">
         <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-bold text-[#17131D] dark:text-white [&::-webkit-details-marker]:hidden">
-          <span>Explorer les statistiques</span>
+          <span>{t('events', 'home.stats.exploreStats')}</span>
           <span className="text-xs font-semibold text-[#6600FF] dark:text-[#A78BFA]">{t('events', 'home.stats.chartAndCategories')}</span>
         </summary>
         <div className="border-t border-black/[0.05] pt-4 dark:border-white/10">
@@ -766,7 +766,7 @@ export function GbaigbanceStatsDashboard({
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="text-xs font-bold text-[#17131D] dark:text-white">
-                Évolution de la période :
+                {t('events', 'home.stats.periodTrend')} :
               </span>
 
               <span className="truncate text-xs font-extrabold text-[#6600FF] dark:text-[#A78BFA]">
@@ -775,7 +775,7 @@ export function GbaigbanceStatsDashboard({
             </div>
 
             <span className="hidden shrink-0 text-[11px] text-gray-400 sm:block">
-              Touchez un point pour inspecter
+              {t('events', 'home.stats.tapPoint')}
             </span>
           </div>
 
@@ -800,7 +800,7 @@ export function GbaigbanceStatsDashboard({
               const peak = monthlyTimeline.reduce((best, cur) => cur[activeMetric] > (best ? best[activeMetric] : -1) ? cur : best, monthlyTimeline[0]);
               return (
                 <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate">
-                  Pic d'activité : <strong className="text-[#6600FF] dark:text-[#A78BFA] font-bold">{peak ? peak.shortLabel : t('events', 'home.stats.period')}</strong> ({peak ? getMetricFormatted(peak[activeMetric], activeMetric) : '0'})
+                  {t('events', 'home.stats.activityPeak')} : <strong className="text-[#6600FF] dark:text-[#A78BFA] font-bold">{peak ? peak.shortLabel : t('events', 'home.stats.period')}</strong> ({peak ? getMetricFormatted(peak[activeMetric], activeMetric) : '0'})
                 </p>
               );
             })()}
@@ -810,8 +810,8 @@ export function GbaigbanceStatsDashboard({
           {!hasMetricData ? (
             <div className="flex h-[140px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-black/[0.02] text-center dark:border-white/10 dark:bg-white/[0.025]">
               <Calendar className="mb-2 h-5 w-5 text-[#6600FF] dark:text-violet-300" />
-              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Aucune activité sur cette période</p>
-              <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">Les courbes apparaîtront avec les premières données enregistrées.</p>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{t('events', 'home.stats.noActivity')}</p>
+              <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">{t('events', 'home.stats.chartEmpty')}</p>
             </div>
           ) : (
           <div className="relative flex h-[140px] w-full items-center justify-center">
@@ -980,15 +980,15 @@ export function GbaigbanceStatsDashboard({
 
           <span className="text-[11px] font-semibold text-[#6600FF]">
             {platformStats?.categoryBasis === 'revenue'
-              ? `${formatNumber(totals.tickets)} billets`
-              : `${formatNumber(categoriesBreakdown.reduce((sum, category) => sum + category.count, 0))} événements`}
+              ? `${formatNumber(totals.tickets)} ${t('events', 'tickets')}`
+              : `${formatNumber(categoriesBreakdown.reduce((sum, category) => sum + category.count, 0))} ${t('events', 'eventPlural')}`}
           </span>
         </div>
 
         {/* Barre segmentée ou état vide */}
         {categoriesBreakdown.length === 0 ? (
           <div className="py-4 text-center text-xs font-semibold text-gray-400 dark:text-gray-500 rounded-2xl bg-gray-50 dark:bg-white/[0.03]">
-            Aucune catégorie d'événement pour le moment
+            {t('events', 'home.stats.noCategories')}
           </div>
         ) : (
           <>
