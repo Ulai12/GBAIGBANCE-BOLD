@@ -352,7 +352,7 @@ export function GbaigbanceStatsDashboard({
         count: share.count,
       };
     });
-  }, [platformStats?.categoryShares]);
+  }, [platformStats?.categoryShares, t]);
 
   // Valeur maximale du graphique
   const hasMetricData = monthlyTimeline.some((item) => item[activeMetric] > 0);
