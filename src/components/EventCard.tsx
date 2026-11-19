@@ -59,7 +59,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
     event.price_min === 0
       ? t('events', 'free')
       : event.price_min != null
-        ? `${Number(event.price_min).toLocaleString('fr-FR')} FCFA`
+        ? `${Number(event.price_min).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')} FCFA`
         : t('events', 'free');
 
   const terminated = isEventTerminated(event);
