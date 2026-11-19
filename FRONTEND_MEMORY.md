@@ -282,3 +282,35 @@
 - Limites : aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur exécuté après ce changement.
 - Aucun PR, aucun changement sur `main` ou autre branche; `PROJECT_MEMORY.md` non lu/non modifié.
 - Prochaine priorité : vérifier visuellement le centrage des sous-catégories sur mobile étroit, tablette et desktop, ainsi que les retours à la ligne des libellés longs.
+
+
+## 2026-11-19 — Localisation FR/EN de la page Home et de ses composants
+### Périmètre et règles préservées
+- Demande : traduire les textes de l'en-tête, des sections Home et de leurs composants, sans altérer l'apparence actuelle.
+- Branche de travail : `FRONTEND-iA` uniquement.
+- Aucun style Tailwind, layout, dimensions, espacement, couleur, animation, interaction, donnée métier, filtre ou comportement de composant n'a été volontairement modifié.
+- La présentation et le libellé de l'en-tête « GBAIGBANCE EN CHIFFRES » sont laissés intacts conformément à la consigne antérieure de préserver cette zone.
+- La section « Explorer par catégorie » conserve ses classes et proportions; seuls les libellés de catégories/sous-catégories et textes d'accessibilité passent par les catalogues FR/EN.
+
+### Interventions
+- `src/screens/HomeScreen.tsx` : en-tête de marque, salutation dynamique selon l'heure, profil, paramètres, recherche, assistant IA, à la une, exploration par catégories, sous-catégories, résultats de catégorie, tendances, proximité, recommandations, événements gratuits, à ne pas manquer, artistes et organisateurs.
+- `src/components/EventCard.tsx` : dates localisées, gratuité, statuts, partage, lieu de secours et libellé accessible.
+- `src/components/NearbyEventTile.tsx` : dates, prix, libellés de proximité, ville/catégorie de secours, prix « dès » et action Voir.
+- `src/components/NotificationBell.tsx` : libellé accessible.
+- `src/components/GbaigbanceStatsDashboard.tsx` : filtres de période, KPI, descriptions, graphique, états vides, unités et libellés des catégories; formatage dates/montants selon la langue.
+- `src/components/SeeMoreModal.tsx` : titres/sous-titres, recherche, filtres, compteurs singulier/pluriel, états vides et boutons.
+- `src/components/UserAvatar.tsx` : infobulle du compte vérifié.
+- `src/components/OptimisticHeartButton.tsx` : libellés accessibles Ajouter/Retirer des favoris.
+- `src/locales/fr/events.json` et `src/locales/en/events.json` : ajout des clés Home, statistiques, filtres, catégories et accessibilité.
+- Les composants `FeaturedCarousel`, `TrendingDeck`, `TrendingDeckCard` et `BottomNav` possédaient déjà leurs traductions et n'ont pas nécessité de modification.
+
+### Vérifications et limites
+- Les deux catalogues JSON ont été parsés avec succès.
+- Contrôle statique des appels `t('events', '...')` dans les fichiers modifiés : aucune clé statique manquante entre FR et EN.
+- Contrôle statique de motifs JSX mal formés dans les attributs `className`, `title` et `aria-label` : aucun motif détecté.
+- Relecture distante des fichiers modifiés sur `FRONTEND-iA` effectuée après les écritures.
+- Aucun build, typecheck, lint, test automatisé ou contrôle visuel navigateur n'a été exécuté. La conformité du rendu visuel FR/EN reste donc à confirmer sur mobile et desktop.
+- Aucun backend/API touché, aucun PR, aucun changement sur `main`; `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+
+### Prochaine priorité
+- Exécuter un build et un typecheck dans l'environnement autorisé, puis vérifier visuellement les versions FR et EN de Home sur mobile et desktop, en contrôlant notamment les longueurs de libellés et les débordements sans modifier le design.
