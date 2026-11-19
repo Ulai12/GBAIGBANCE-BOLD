@@ -46,7 +46,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
     event.price_min === 0
       ? t('events', 'free')
       : event.price_min != null
-        ? `${Number(event.price_min).toLocaleString('fr-FR')} F`
+        ? `${Number(event.price_min).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')} F`
         : t('events', 'free');
 
   const travel = isActualLocation ? getAccurateTravelEstimate(event.distanceKm) : null;
