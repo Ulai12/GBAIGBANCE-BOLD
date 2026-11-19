@@ -30,5 +30,34 @@
   "theme": "Thème",
   "light": "Clair",
   "dark": "Sombre",
-  "notifications": "Notifications"
+  "notifications": "Notifications",
+  "homeScreen": {
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Salut",
+      "evening": "Bonsoir",
+      "night": "Douce nuit"
+    },
+    "guest": "Invité",
+    "subtitle": "Trouve ta prochaine sortie",
+    "settingsAria": "Paramètres de l'application",
+    "settingsTitle": "Paramètres",
+    "aiAssistantTitle": "Assistant IA Gbaigbance",
+    "profileAria": "Profil",
+    "nearbyTitle": "À proximité de vous",
+    "nearbySubtitle": "Autour de votre position ({city})",
+    "recommended": "Recommandations personnalisées",
+    "freeEvents": "Événements gratuits",
+    "unmissable": "À ne pas manquer",
+    "artistsSpotlight": "Artistes du moment",
+    "verifiedOrgs": "Organisateurs officiels",
+    "exploreCategories": "Explorer par catégorie",
+    "mainCategories": "Catégories principales",
+    "allCategories": "Toutes",
+    "noEventsInCategory": "Aucun événement",
+    "noEventsInCategoryDesc": "Pas d'événement dans cette catégorie pour le moment",
+    "offlineMode": "Mode hors-ligne : données sauvegardées affichées",
+    "ticketingEvents": "Billetterie & Événements",
+    "concertsParties": "Concerts, soirées, festivals..."
+  }
 }
