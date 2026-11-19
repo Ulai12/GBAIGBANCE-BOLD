@@ -622,8 +622,28 @@
         "periodSales": "ventes de la période",
         "participants": "participants des événements",
         "events": "événements de la période"
-      }
-    }
+      },
+      "currentMonth": "Ce mois",
+      "lastMonth": "Mois dernier",
+      "allTime": "Tout",
+      "quarter": "Trimestre",
+      "ticketsSold": "Billets vendus",
+      "ticketSales": "Ventes de billets",
+      "moreMetrics": "Plus d'indicateurs",
+      "registeredAccounts": "Comptes inscrits",
+      "accountsUnavailable": "Comptes indisponibles",
+      "participantAccounts": "comptes participants",
+      "participations": "Participations",
+      "exploreStats": "Explorer les statistiques",
+      "tapPoint": "Touchez un point pour inspecter",
+      "activityPeak": "Pic d'activité"
+    },
+    "fans": "fans",
+    "fan": "fan",
+    "artistsNow": "Artistes du moment",
+    "artistsSubtitle": "Talents et créateurs de la communauté",
+    "officialOrganizers": "Organisateurs officiels",
+    "organizersSubtitle": "Collectifs et créateurs d’expériences"
   },
   "cardStatus": {
     "cancelled": "Annulé",
