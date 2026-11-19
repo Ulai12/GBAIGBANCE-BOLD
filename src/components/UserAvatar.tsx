@@ -36,6 +36,7 @@ export function UserAvatar({
   imageClassName = '',
   ring = true,
 }: UserAvatarProps) {
+  const { t } = useApp();
   const [imageError, setImageError] = useState(false);
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
   // Utilise la règle stricte des initiales : 2 mots -> 1ère lettre de chaque mot (HB), 1 mot -> 2 premières lettres (JU)
@@ -97,7 +98,7 @@ export function UserAvatar({
       {/* {isVerified && (
         <div
           className={`absolute ${sizeConfig.badge} rounded-full bg-[#6600FF] ring-2 ring-white dark:ring-[#14121E] flex items-center justify-center text-white shadow-xs z-10`}
-          title="Compte Vérifié"
+          title={t('events', 'home.verifiedAccount')}
         >
           <BadgeCheck className="w-full h-full p-0.5 text-white" />
         </div>
