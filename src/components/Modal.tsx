@@ -217,7 +217,7 @@ export function Modal({ open, onClose, children, title, ariaLabel, maxWidthClass
                     ref={closeButtonRef}
                     type="button"
                     onClick={handleDismiss}
-                    aria-label="Fermer la boîte de dialogue"
+                    aria-label={t('common', 'closeDialog')}
                     className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
                   >
                     <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
@@ -228,7 +228,7 @@ export function Modal({ open, onClose, children, title, ariaLabel, maxWidthClass
                   ref={closeButtonRef}
                   type="button"
                   onClick={handleDismiss}
-                  aria-label="Fermer la boîte de dialogue"
+                  aria-label={t('common', 'closeDialog')}
                   className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
                 >
                   <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />

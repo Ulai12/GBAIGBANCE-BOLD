@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { DynamicIsland } from '@/components/DynamicIsland';
+import { useApp } from '@/hooks/useApp';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -21,6 +22,7 @@ interface ToastProps {
 }
 
 export function Toast({ toast, onClose }: ToastProps) {
+  const { t } = useApp();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export function Toast({ toast, onClose }: ToastProps) {
       <button
         type="button"
         onClick={() => onClose(toast.id)}
-        aria-label="Fermer la notification"
+        aria-label={t('common', 'closeNotification')}
         className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
       >
         <X className="w-4 h-4" />

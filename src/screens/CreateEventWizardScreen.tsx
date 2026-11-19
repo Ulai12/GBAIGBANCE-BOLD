@@ -72,6 +72,17 @@ interface SelectedCollab {
 }
 
 const STEPS: Step[] = ['Infos', 'Lieu & Dates', 'Photos', 'Billets', 'Collaborateurs', 'Programme', 'Live', 'Sponsors', 'Confirmation'];
+const STEP_TRANSLATION_KEYS: Record<Step, string> = {
+  Infos: 'infos',
+  'Lieu & Dates': 'locationDates',
+  Photos: 'photos',
+  Billets: 'tickets',
+  Collaborateurs: 'collaborators',
+  Programme: 'program',
+  Live: 'live',
+  Sponsors: 'sponsors',
+  Confirmation: 'confirmation',
+};
 
 const fieldClass =
   'w-full max-w-full min-w-0 box-border px-4 py-3.5 bg-white dark:bg-[#1A1829] border border-black/[0.07] dark:border-white/[0.08] rounded-2xl text-[#171726] dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 text-sm font-medium transition-all shadow-xs';
@@ -101,11 +112,11 @@ function getSplitDateTime(val: string) {
   return { date: parts[0] || '', time: parts[1] ? parts[1].slice(0, 5) : '' };
 }
 
-function formatFriendlyDateTime(val: string) {
+function formatFriendlyDateTime(val: string, language: string) {
   if (!val) return null;
   const d = new Date(val);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('fr-FR', {
+  return d.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -134,7 +145,8 @@ function getErrorMessage(error: unknown) {
 }
 
 export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
-  const { user, t } = useApp();
+  const { user, t, language } = useApp();
+  const formatCurrency = (amount: number) => Number(amount).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US');
   const [step, setStep] = useState<Step>('Infos');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -566,20 +578,20 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   onBack();
                 }
               }}
-              aria-label="Retour"
+              aria-label={t('common', 'back')}
               className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform shrink-0 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5 text-[#171726] dark:text-white" />
             </button>
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-                Création Studio
+                {t('events', 'creation.wizard.eyebrow')}
               </p>
               <h1 className="text-lg font-extrabold text-[#171726] dark:text-white truncate">
-                {step}
+                {t('events', `creation.wizard.steps.${STEP_TRANSLATION_KEYS[step]}`)}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Étape {stepIndex + 1}/{STEPS.length}
+                {t('events', 'creation.wizard.stepIndicator').replace('{current}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))}
               </p>
             </div>
           </div>
@@ -588,10 +600,10 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             type="button"
             onClick={() => setShowPreviewModal(true)}
             className="px-3.5 py-2 rounded-full bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-[#6600FF] dark:text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
-            title="Aperçu de la carte et de la fiche événement"
+            title={t('events', 'creation.wizard.previewTitle')}
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Aperçu</span>
+            <span>{t('events', 'creation.wizard.preview')}</span>
           </button>
         </div>
 
@@ -621,19 +633,19 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           <section className="space-y-4 animate-slide-up">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                Titre de l’événement *
+                {t('events', 'creation.wizard.info.eventTitle')}
               </label>
               <input
                 className={fieldClass}
                 value={form.title}
                 onChange={(e) => updateForm('title', e.target.value)}
-                placeholder="ex. Festival Nuits d'Afrique 2026"
+                placeholder={t('events', 'creation.wizard.info.eventTitlePlaceholder')}
               />
             </div>
 
             <div>
               <p id="wizard-main-category" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Catégorie principale *
+                {t('events', 'creation.wizard.info.mainCategory')}
               </p>
               <div
                 role="radiogroup"
@@ -661,7 +673,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       className={categoryChipClass(selected)}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span>{main.shortLabel}</span>
+                      <span>{t('events', `explore.search.mainCategoriesLabels.${main.id}`)}</span>
                     </button>
                   );
                 })}
@@ -670,7 +682,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
             <div>
               <p id="wizard-subcategory" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Sous-catégorie précise *
+                {t('events', 'creation.wizard.info.subcategory')}
               </p>
               <div
                 role="radiogroup"
@@ -694,33 +706,33 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       }}
                       className={categoryChipClass(selected)}
                     >
-                      {sub.shortLabel}
+                      {t('events', `explore.search.subcategoriesLabels.${sub.id}`)}
                     </button>
                   );
                 })}
               </div>
               {currentSubDef && (
                 <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300 bg-purple-500/[0.04] dark:bg-white/[0.04] border border-purple-500/10 dark:border-white/10 rounded-xl p-2.5">
-                  <span className="font-semibold text-gray-900 dark:text-white">{currentSubDef.label}.</span> {currentSubDef.description}
+                  <span className="font-semibold text-gray-900 dark:text-white">{t('events', `explore.search.subcategoriesLabels.${currentSubDef.id}`)}.</span> {currentSubDef.description}
                 </p>
               )}
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                Description & Programme sommaire
+                {t('events', 'creation.wizard.info.description')}
               </label>
               <textarea
                 className={`${fieldClass} min-h-32 resize-none`}
                 value={form.description}
                 onChange={(e) => updateForm('description', e.target.value)}
-                placeholder="Racontez ce qui rend cet événement incontournable, artistes attendus, ambiance..."
+                placeholder={t('events', 'creation.wizard.info.descriptionPlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-                Capacité maximale attendue (facultatif)
+                {t('events', 'creation.wizard.info.capacity')}
               </label>
               <input
                 type="number"
@@ -728,7 +740,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 className={fieldClass}
                 value={form.capacity}
                 onChange={(e) => updateForm('capacity', e.target.value)}
-                placeholder="ex. 2500 participants"
+                placeholder={t('events', 'creation.wizard.info.capacityPlaceholder')}
               />
             </div>
           </section>
@@ -740,37 +752,37 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             <div className="card p-4 space-y-3.5">
               <div className="flex items-center gap-2 text-[#6600FF] dark:text-purple-300">
                 <MapPin className="w-4 h-4" />
-                <h3 className="text-sm font-bold text-[#17131D] dark:text-white">Localisation & Accès</h3>
+                <h3 className="text-sm font-bold text-[#17131D] dark:text-white">{t('events', 'creation.wizard.location.heading')}</h3>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Nom du lieu / Salle *
+                  {t('events', 'creation.wizard.location.venue')}
                 </label>
                 <input
                   className={fieldClass}
                   value={form.location_name}
                   onChange={(e) => updateForm('location_name', e.target.value)}
-                  placeholder="ex. Palais des Congrès, Stade de Kégué"
+                  placeholder={t('events', 'creation.wizard.location.venuePlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  Adresse précise / Quartier
+                  {t('events', 'creation.wizard.location.address')}
                 </label>
                 <input
                   className={fieldClass}
                   value={form.location_address}
                   onChange={(e) => updateForm('location_address', e.target.value)}
-                  placeholder="ex. Avenue de la Libération, Tokoin Doumasséssé"
+                  placeholder={t('events', 'creation.wizard.location.addressPlaceholder')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                    Ville *
+                    {t('events', 'creation.wizard.location.city')}
                   </label>
                   <select
                     className={fieldClass}
@@ -787,7 +799,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
                 <div>
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                    Pays *
+                    {t('events', 'creation.wizard.location.country')}
                   </label>
                   <select
                     className={fieldClass}
@@ -807,25 +819,25 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Coordonnées GPS pour la carte
+                    {t('events', 'creation.wizard.location.gps')}
                   </span>
                   <button
                     type="button"
                     onClick={handleLocateMe}
                     className="inline-flex items-center gap-1 text-xs font-bold text-[#6600FF] dark:text-purple-300 hover:underline cursor-pointer"
                   >
-                    <Navigation className="w-3 h-3" /> Ma position
+                    <Navigation className="w-3 h-3" /> {t('events', 'creation.wizard.location.currentPosition')}
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-between">
-                    <span className="text-gray-400">Lat:</span>
+                    <span className="text-gray-400">{t('events', 'creation.wizard.location.latitude')}</span>
                     <span className="font-bold text-[#17131D] dark:text-white tabular-nums">
                       {form.latitude ?? '—'}
                     </span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-between">
-                    <span className="text-gray-400">Lng:</span>
+                    <span className="text-gray-400">{t('events', 'creation.wizard.location.longitude')}</span>
                     <span className="font-bold text-[#17131D] dark:text-white tabular-nums">
                       {form.longitude ?? '—'}
                     </span>
@@ -839,19 +851,19 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-[#17131D] dark:text-white flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#6600FF] dark:text-purple-300" />
-                  <span>Dates & Horaires</span>
+                  <span>{t('events', 'creation.wizard.location.dates')}</span>
                 </h3>
                 {form.starts_at && (
                   <span className="text-[11px] font-semibold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 px-2 py-0.5 rounded-full">
-                    {formatFriendlyDateTime(form.starts_at)}
+                    {formatFriendlyDateTime(form.starts_at, language)}
                   </span>
                 )}
               </div>
 
               {/* Début de l'événement */}
               <div className="space-y-2 w-full max-w-full min-w-0">
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                  Début de l’événement *
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                  {t('events', 'creation.wizard.location.start')}
                 </label>
 
                 <div className="grid grid-cols-2 gap-2 w-full max-w-full min-w-0 box-border">
@@ -883,7 +895,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
                 {/* Raccourcis rapides */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-gray-400 font-medium mr-1">Suggestions :</span>
+                      <span className="text-[10px] text-gray-400 font-medium mr-1">{t('events', 'creation.wizard.location.suggestions')}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -895,7 +907,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     }}
                     className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
                   >
-                    Ce soir 20h
+                    {t('events', 'creation.wizard.location.tonight')}
                   </button>
                   <button
                     type="button"
@@ -909,7 +921,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     }}
                     className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
                   >
-                    Demain 20h
+                    {t('events', 'creation.wizard.location.tomorrow')}
                   </button>
                   <button
                     type="button"
@@ -926,7 +938,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     }}
                     className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
                   >
-                    Samedi 21h
+                    {t('events', 'creation.wizard.location.saturday')}
                   </button>
                 </div>
               </div>
@@ -935,7 +947,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="space-y-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.08] w-full max-w-full min-w-0">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                    Fin de l’événement (recommandé)
+                    {t('events', 'creation.wizard.location.end')} ({t('events', 'creation.wizard.location.recommended')})
                   </label>
                   {form.ends_at && (
                     <button
@@ -943,7 +955,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       onClick={() => updateForm('ends_at', '')}
                       className="text-[10px] text-red-500 hover:underline cursor-pointer"
                     >
-                      Effacer
+                      {t('events', 'creation.wizard.location.clear')}
                     </button>
                   )}
                 </div>
@@ -993,7 +1005,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300 text-[10px] font-bold hover:bg-[#6600FF]/20 transition-colors cursor-pointer"
                   >
                     <Clock className="w-3 h-3" />
-                    <span>Même date (+4 heures)</span>
+                    <span>{t('events', 'creation.wizard.location.sameDateFourHours')}</span>
                   </button>
                 )}
               </div>
@@ -1008,14 +1020,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Image de couverture (Principale)
+                  {t('events', 'creation.wizard.photos.cover')}
                 </label>
-                <span className="text-[11px] text-gray-400">1 photo · 5MB max</span>
+                <span className="text-[11px] text-gray-400">{t('events', 'creation.wizard.photos.coverCount')}</span>
               </div>
 
               {coverPreview ? (
                 <div className="relative h-44 rounded-2xl overflow-hidden ring-2 ring-[#6600FF]/30">
-                  <img src={coverPreview} alt="Couverture" className="w-full h-full object-cover" />
+                  <img src={coverPreview} alt={t('events', 'creation.wizard.photos.coverAlt')} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => {
@@ -1027,7 +1039,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     <X className="w-4 h-4" />
                   </button>
                   <span className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#6600FF] text-white">
-                    Couverture
+                    {t('events', 'creation.wizard.photos.coverBadge')}
                   </span>
                 </div>
               ) : (
@@ -1038,9 +1050,9 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 >
                   <ImagePlus className="w-8 h-8 text-gray-400" />
                   <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                    Sélectionner l'affiche principale
+                    {t('events', 'creation.wizard.photos.selectCover')}
                   </span>
-                  <span className="text-[10px] text-gray-400">JPG, PNG, WebP · Haute résolution</span>
+                  <span className="text-[10px] text-gray-400">{t('events', 'creation.wizard.photos.imageFormats')}</span>
                 </button>
               )}
             </div>
@@ -1049,10 +1061,10 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Galerie photos additionnelles
+                  {t('events', 'creation.wizard.photos.gallery')}
                 </label>
                 <span className="text-[11px] text-[#6600FF] dark:text-purple-300 font-bold">
-                  {galleryFiles.length}/8 photos
+                  {t('events', 'creation.wizard.photos.galleryCount').replace('{count}', String(galleryFiles.length))}
                 </span>
               </div>
 
@@ -1062,7 +1074,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     key={index}
                     className="relative aspect-square rounded-2xl overflow-hidden group ring-1 ring-black/10 dark:ring-white/10"
                   >
-                    <img src={item.preview} alt={`Galerie ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={item.preview} alt={t('events', 'creation.wizard.photos.galleryAlt').replace('{number}', String(index + 1))} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => handleRemoveGalleryPhoto(index)}
@@ -1083,29 +1095,29 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     className="aspect-square rounded-2xl border-2 border-dashed border-gray-300 dark:border-white/20 flex flex-col items-center justify-center gap-1 hover:border-[#6600FF]/50 transition-colors cursor-pointer text-gray-400 hover:text-[#6600FF]"
                   >
                     <Plus className="w-6 h-6" />
-                    <span className="text-[10px] font-bold">Ajouter</span>
+                    <span className="text-[10px] font-bold">{t('events', 'creation.wizard.photos.add')}</span>
                   </button>
                 )}
               </div>
               <p className="text-[11px] text-gray-400 mt-2">
-                Ajoutez des photos de la scène, des artistes ou des éditions précédentes.
+                {t('events', 'creation.wizard.photos.galleryDescription')}
               </p>
             </div>
 
             {/* Vidéo Teaser / Médias de pré-saison */}
             <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-                Vidéo Teaser / Trailer de pré-saison (optionnel)
+                {t('events', 'creation.wizard.photos.video')}
               </label>
               <input
                 type="url"
                 className={fieldClass}
                 value={form.video_url}
                 onChange={(e) => updateForm('video_url', e.target.value)}
-                placeholder="Lien YouTube, Vimeo ou URL MP4 directe..."
+                placeholder={t('events', 'creation.wizard.photos.videoPlaceholder')}
               />
               <p className="text-[11px] text-gray-400 mt-1">
-                Un teaser vidéo augmente significativement l'intérêt et la visibilité de l'événement.
+                {t('events', 'creation.wizard.photos.videoDescription')}
               </p>
             </div>
           </section>
@@ -1117,7 +1129,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             {/* Choix du mode d'accès / billetterie */}
             <div className="card p-4 space-y-3">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Comment le public accède-t-il à votre événement ?
+                {t('events', 'creation.wizard.access.prompt')}
               </label>
 
               <div className="grid grid-cols-2 gap-2">
@@ -1135,8 +1147,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     {accessType === 'tickets' && <Check className="w-4 h-4 text-[#6600FF] dark:text-purple-300" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold leading-tight">Billetterie Gbaigbance</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Vente en ligne, QR pass & scanning</p>
+                    <p className="text-xs font-bold leading-tight">{t('events', 'creation.wizard.access.gbaTicketing')}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{t('events', 'creation.wizard.access.gbaDescription')}</p>
                   </div>
                 </button>
 
@@ -1154,8 +1166,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     {accessType === 'whatsapp' && <Check className="w-4 h-4 text-[#25D366]" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold leading-tight">Sur réservation</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Contact direct WhatsApp / Tél</p>
+                    <p className="text-xs font-bold leading-tight">{t('events', 'creation.wizard.access.reservation')}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{t('events', 'creation.wizard.access.reservationDescription')}</p>
                   </div>
                 </button>
 
@@ -1173,8 +1185,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     {accessType === 'external' && <Check className="w-4 h-4 text-blue-500" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold leading-tight">Billetterie externe</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Site officiel ou guichet tiers</p>
+                    <p className="text-xs font-bold leading-tight">{t('events', 'creation.wizard.access.external')}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{t('events', 'creation.wizard.access.externalDescription')}</p>
                   </div>
                 </button>
 
@@ -1192,8 +1204,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     {accessType === 'free' && <Check className="w-4 h-4 text-emerald-500" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold leading-tight">Entrée libre</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Gratuit sans réservation</p>
+                    <p className="text-xs font-bold leading-tight">{t('events', 'creation.wizard.access.free')}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{t('events', 'creation.wizard.access.freeDescription')}</p>
                   </div>
                 </button>
               </div>
@@ -1204,18 +1216,19 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-xs font-bold text-[#17131D] dark:text-white">
-                    Places & Jauge de l’événement
+                    {t('events', 'creation.wizard.access.capacityTitle')}
                   </h4>
                   <p className="text-[11px] text-gray-400 mt-0.5">
                     {unlimitedCapacity
-                      ? 'Aucune limite de places fixée (jauge libre / illimitée)'
-                      : 'Capacité maximale restreinte pour le lieu'}
+                      ? t('events', 'creation.wizard.access.unlimited')
+                      : t('events', 'creation.wizard.access.restricted')}
                   </p>
                 </div>
 
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input
                     type="checkbox"
+                    aria-label={t('events', 'creation.wizard.access.unlimitedToggle')}
                     checked={unlimitedCapacity}
                     onChange={(e) => setUnlimitedCapacity(e.target.checked)}
                     className="sr-only peer"
@@ -1227,7 +1240,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               {!unlimitedCapacity && (
                 <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.08] animate-fade-in">
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Nombre total de places disponibles *
+                    {t('events', 'creation.wizard.access.availablePlaces')}
                   </label>
                   <input
                     type="number"
@@ -1235,7 +1248,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     className={fieldClass}
                     value={form.capacity}
                     onChange={(e) => updateForm('capacity', e.target.value)}
-                    placeholder="ex. 350 places"
+                    placeholder={t('events', 'creation.wizard.info.capacityPlaceholder')}
                   />
                 </div>
               )}
@@ -1246,42 +1259,42 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="card p-4 space-y-3.5 border-emerald-500/20 bg-emerald-500/5 animate-fade-in">
                 <div className="flex items-center gap-2 text-[#25D366]">
                   <MessageCircle className="w-5 h-5" />
-                  <h4 className="text-sm font-bold text-[#17131D] dark:text-white">
-                    Configuration des réservations WhatsApp
+                    <h4 className="text-sm font-bold text-[#17131D] dark:text-white">
+                    {t('events', 'creation.wizard.access.whatsappConfig')}
                   </h4>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Numéro WhatsApp officiel de réservation *
+                    {t('events', 'creation.wizard.access.officialWhatsapp')}
                   </label>
                   <input
                     type="tel"
                     className={fieldClass}
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
-                    placeholder="ex. +228 90 12 34 56"
+                    placeholder={t('events', 'creation.wizard.access.phonePlaceholder')}
                   />
                   <p className="text-[11px] text-gray-400 mt-1">
-                    Les festivaliers cliqueront directement pour ouvrir WhatsApp et entamer la réservation avec vous.
+                    {t('events', 'creation.wizard.access.whatsappHint')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Message pré-rempli pour le festivalier (facultatif)
+                    {t('events', 'creation.wizard.access.prefilledMessage')}
                   </label>
                   <input
                     className={fieldClass}
                     value={whatsappMessage}
                     onChange={(e) => setWhatsappMessage(e.target.value)}
-                    placeholder={`Bonjour, je souhaite réserver ma place pour "${form.title || 'cet événement'}".`}
+                    placeholder={t('events', 'creation.wizard.access.prefilledMessagePlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Tarif indicatif par personne (FCFA)
+                    {t('events', 'creation.wizard.access.indicativePrice')}
                   </label>
                   <input
                     type="number"
@@ -1299,7 +1312,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                         },
                       ])
                     }
-                    placeholder="0 pour gratuit, ou montant indicatif"
+                    placeholder={t('events', 'creation.wizard.access.pricePlaceholder')}
                   />
                 </div>
               </div>

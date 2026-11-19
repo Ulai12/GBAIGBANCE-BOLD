@@ -2,6 +2,7 @@ import React from 'react';
 import { Database, ZapOff, Globe } from 'lucide-react';
 import { useDataSaver, type DataSaverPreference } from '@/hooks/useDataSaver';
 import { haptic } from '@/hooks/useHaptics';
+import { useApp } from '@/hooks/useApp';
 
 interface DataSaverToggleProps {
   variant?: 'compact' | 'card' | 'pill';
@@ -22,6 +23,7 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
     effectiveType,
     isSaveDataHeaderDetected,
   } = useDataSaver();
+  const { t } = useApp();
 
   const handleToggle = () => {
     haptic.selection();
@@ -30,8 +32,8 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
     if (onToast) {
       onToast({
         message: nextState
-          ? 'Mode Économie de données activé (images ultra-compressées WebP)'
-          : 'Mode Économie de données désactivé (qualité standard)',
+          ? t('settings', 'dataSaver.enabledToast')
+          : t('settings', 'dataSaver.disabledToast'),
         type: 'info',
       });
     }
@@ -42,9 +44,9 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
     setPreference(pref);
     if (onToast) {
       const labels = {
-        auto: 'Éco Data configuré en Automatique (détection réseau 3G/Save-Data)',
-        enabled: 'Éco Data Forcé (Actif en permanence)',
-        disabled: 'Éco Data Désactivé (Images HD)',
+        auto: t('settings', 'dataSaver.autoToast'),
+        enabled: t('settings', 'dataSaver.forcedToast'),
+        disabled: t('settings', 'dataSaver.offToast'),
       };
       onToast({ message: labels[pref], type: 'info' });
     }
@@ -60,15 +62,15 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
             ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
             : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
         } ${className}`}
-        title="Basculer le mode Économie de Données"
-        aria-label="Mode Économie de Données"
+        title={t('settings', 'dataSaver.toggleTitle')}
+        aria-label={t('settings', 'dataSaver.toggleLabel')}
       >
         {isDataSaverActive ? (
           <ZapOff className="w-3.5 h-3.5 text-emerald-500" />
         ) : (
           <Database className="w-3.5 h-3.5 text-gray-400" />
         )}
-        <span>{isDataSaverActive ? 'Éco Data ON' : 'Éco Data'}</span>
+        <span>{isDataSaverActive ? t('settings', 'dataSaver.enabledShort') : t('settings', 'dataSaver.disabledShort')}</span>
         {effectiveType && (
           <span className="text-[10px] px-1 py-0.2 bg-black/10 dark:bg-white/10 rounded font-mono uppercase">
             {effectiveType}
@@ -95,16 +97,16 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="font-bold text-[#1A1A2E] dark:text-white text-sm">
-                  Économie de Données (Data Saver)
+                  {t('settings', 'dataSaver.title')}
                 </h4>
                 {isDataSaverActive && (
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                    Actif
+                    {t('settings', 'dataSaver.active')}
                   </span>
                 )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Compresse les images en WebP/AVIF et suspend les animations en 3G/forfait limité.
+                {t('settings', 'dataSaver.description')}
               </p>
             </div>
           </div>
@@ -129,13 +131,13 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5 text-xs text-gray-500">
           <div className="flex items-center gap-2">
             <Globe className="w-3.5 h-3.5 text-gray-400" />
-            <span>Réseau :</span>
+            <span>{t('settings', 'dataSaver.network')}</span>
             <span className="font-mono font-bold uppercase text-[#1A1A2E] dark:text-gray-200">
               {effectiveType}
             </span>
             {isSaveDataHeaderDetected && (
               <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded">
-                save-data: on
+                {t('settings', 'dataSaver.saveDataActive')}
               </span>
             )}
           </div>
@@ -150,7 +152,7 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
                   : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               }`}
             >
-              Auto
+              {t('settings', 'dataSaver.automatic')}
             </button>
             <button
               type="button"
@@ -161,7 +163,7 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
                   : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               }`}
             >
-              Forcé
+              {t('settings', 'dataSaver.forced')}
             </button>
             <button
               type="button"
@@ -172,7 +174,7 @@ export const DataSaverToggle: React.FC<DataSaverToggleProps> = ({
                   : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               }`}
             >
-              Désactivé
+              {t('settings', 'dataSaver.disabled')}
             </button>
           </div>
         </div>

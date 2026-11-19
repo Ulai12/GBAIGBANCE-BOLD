@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Share, PlusSquare, X, CheckCircle, Smartphone, Check } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useApp } from '@/hooks/useApp';
 
 interface PWAInstallButtonProps {
   variant?: 'button' | 'menu-item' | 'icon';
@@ -12,6 +13,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   className = '',
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { t } = useApp();
   const [showIOSModal, setShowIOSModal] = useState(false);
 
   // If already running as installed standalone app, show subtle status or hide
@@ -24,8 +26,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <Check className="w-5 h-5 text-emerald-600" />
             </div>
             <div className="text-left">
-              <p className="font-bold text-[#1A1A2E] dark:text-white text-sm">Application installée</p>
-              <p className="text-xs text-emerald-600 font-medium">Mode autonome actif</p>
+              <p className="font-bold text-[#1A1A2E] dark:text-white text-sm">{t('settings', 'pwa.installed')}</p>
+              <p className="text-xs text-emerald-600 font-medium">{t('settings', 'pwa.standalone')}</p>
             </div>
           </div>
         </div>
@@ -60,16 +62,16 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             </div>
             <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <p className="font-bold text-[#1A1A2E] dark:text-white text-sm">Installer l'application</p>
+                <p className="font-bold text-[#1A1A2E] dark:text-white text-sm">{t('settings', 'pwa.installApp')}</p>
                 <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-[#6600FF] text-white">
                   PWA
                 </span>
               </div>
-              <p className="text-xs text-gray-500">Ajouter à l'écran d'accueil</p>
+              <p className="text-xs text-gray-500">{t('settings', 'pwa.addToHome')}</p>
             </div>
           </div>
           <span className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-2.5 py-1 rounded-full">
-            Installer
+            {t('settings', 'pwa.install')}
           </span>
         </button>
       )}
@@ -79,8 +81,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           id="pwa-header-install-icon"
           type="button"
           onClick={handleAction}
-          title="Installer l'application"
-          aria-label="Installer l'application Gbaigbance sur votre appareil"
+          title={t('settings', 'pwa.installApp')}
+          aria-label={t('settings', 'pwa.installOnDevice')}
           className={`w-10 h-10 rounded-full bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center active:scale-90 transition-transform ${className}`}
         >
           <Download className="w-5 h-5" />
@@ -95,7 +97,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#6600FF] hover:bg-[#5200CC] active:scale-95 text-white text-xs font-bold shadow-sm shadow-[#6600FF]/25 transition-all ${className}`}
         >
           <Download className="w-3.5 h-3.5" />
-          <span>{isIOS ? "Ajouter à l'écran d'accueil" : "Installer l'app"}</span>
+          <span>{isIOS ? t('settings', 'pwa.addToHome') : t('settings', 'pwa.installApp')}</span>
         </button>
       )}
 
@@ -116,12 +118,13 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <img src="/pwa-192x192.png" alt="Gbaigbance" className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">Installer Gbaigbance</h3>
-                  <p className="text-xs text-zinc-500">Guide d'installation mobile</p>
+                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">{t('settings', 'pwa.guideTitle')}</h3>
+                  <p className="text-xs text-zinc-500">{t('settings', 'pwa.guideDescription')}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowIOSModal(false)}
+                aria-label={t('common', 'close')}
                 className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -134,9 +137,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <Share className="w-4 h-4 text-[#6600FF]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 1</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step1')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Appuyez sur le menu du navigateur ou l'icône <strong>Partager</strong>.
+                    {t('settings', 'pwa.generalShare')}
                   </p>
                 </div>
               </div>
@@ -146,9 +149,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <PlusSquare className="w-4 h-4 text-[#6600FF]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 2</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step2')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Sélectionnez <strong>« Ajouter à l'écran d'accueil »</strong> ou <strong>« Installer l'application »</strong>.
+                    {t('settings', 'pwa.generalAdd')}
                   </p>
                 </div>
               </div>
@@ -158,9 +161,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 3</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step3')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Confirmez pour lancer l'application en plein écran comme une app native !
+                    {t('settings', 'pwa.generalConfirm')}
                   </p>
                 </div>
               </div>
@@ -172,7 +175,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               className="w-full py-3 rounded-2xl bg-[#6600FF] hover:bg-[#5500D4] text-white font-bold text-sm shadow-md shadow-[#6600FF]/25 transition-all flex items-center justify-center gap-2"
             >
               <Smartphone className="w-4 h-4" />
-              <span>C'est compris !</span>
+              <span>{t('settings', 'pwa.understood')}</span>
             </button>
           </div>
         </div>

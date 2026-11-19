@@ -31,6 +31,28 @@
   "light": "Light",
   "dark": "Dark",
   "notifications": "Notifications",
+  "favorites": "Favorites",
+  "create": "Create",
+  "mainNavigation": "Main navigation",
+  "ticketSingular": "ticket",
+  "ticketsPlural": "tickets",
+  "day": "Day",
+  "attendee": "Attendee",
+  "closeDialog": "Close dialog",
+  "closeNotification": "Close notification",
+  "errorBoundary": {
+    "title": "A temporary issue occurred",
+    "description": "The app encountered an unexpected interruption. Your data and tickets are safe.",
+    "reload": "Restart the app",
+    "clearCache": "Clear local cache and reload",
+    "technicalDetails": "Technical details"
+  },
+  "network": {
+    "offlineTitle": "Offline mode",
+    "offlineDescription": "Tickets are available from the cache",
+    "reconnectedTitle": "Connection restored",
+    "reconnectedDescription": "Live sync is active"
+  },
   "homeScreen": {
     "greeting": {
       "morning": "Good morning",

@@ -31,6 +31,28 @@
   "light": "Clair",
   "dark": "Sombre",
   "notifications": "Notifications",
+  "favorites": "Favoris",
+  "create": "Créer",
+  "mainNavigation": "Navigation principale",
+  "ticketSingular": "billet",
+  "ticketsPlural": "billets",
+  "day": "Jour",
+  "attendee": "Participant",
+  "closeDialog": "Fermer la boîte de dialogue",
+  "closeNotification": "Fermer la notification",
+  "errorBoundary": {
+    "title": "Une anomalie passagère est survenue",
+    "description": "L'application a rencontré une interruption inattendue. Vos données et vos billets restent en sécurité.",
+    "reload": "Relancer l'application",
+    "clearCache": "Vider le cache local et recharger",
+    "technicalDetails": "Détails techniques"
+  },
+  "network": {
+    "offlineTitle": "Mode hors-ligne",
+    "offlineDescription": "Billets disponibles via le cache",
+    "reconnectedTitle": "Connexion rétablie",
+    "reconnectedDescription": "Synchronisation en direct active"
+  },
   "homeScreen": {
     "greeting": {
       "morning": "Bonjour",

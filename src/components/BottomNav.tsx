@@ -49,22 +49,19 @@ interface BottomNavProps {
 interface NavItem {
   id: Tab;
   icon: typeof Home;
-  labelFr: string;
-  labelEn: string;
+  labelKey: string;
 }
 
 const NAV_ITEMS_LEFT: NavItem[] = [
   {
     id: 'home',
     icon: Home,
-    labelFr: 'Accueil',
-    labelEn: 'Home',
+    labelKey: 'home',
   },
   {
     id: 'explore',
     icon: Search,
-    labelFr: 'Explorer',
-    labelEn: 'Explore',
+    labelKey: 'explore',
   },
 ];
 
@@ -72,14 +69,12 @@ const NAV_ITEMS_RIGHT: NavItem[] = [
   {
     id: 'tickets',
     icon: Ticket,
-    labelFr: 'Billets',
-    labelEn: 'Tickets',
+    labelKey: 'tickets',
   },
   {
     id: 'favorites',
     icon: Heart,
-    labelFr: 'Favoris',
-    labelEn: 'Favorites',
+    labelKey: 'favorites',
   },
 ];
 
@@ -90,7 +85,7 @@ export function BottomNav({
   ticketCount = 0,
   canCreate = false,
 }: BottomNavProps) {
-  const { language, theme } = useApp();
+  const { theme, t } = useApp();
   const [pressed, setPressed] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const isDark = theme === 'dark';
@@ -116,7 +111,7 @@ export function BottomNav({
     const Icon = item.icon;
     const isActive = active === item.id;
     const isPressed = pressed === item.id;
-    const label = language === 'en' ? item.labelEn : item.labelFr;
+    const label = t('common', item.labelKey);
 
     const showTicketBadge =
       item.id === 'tickets' &&
@@ -135,7 +130,7 @@ export function BottomNav({
         onPointerUp={() => setPressed(null)}
         onPointerCancel={() => setPressed(null)}
         onPointerLeave={() => setPressed(null)}
-        aria-label={showTicketBadge ? `${label}, ${ticketCount} ${language === 'en' ? (ticketCount === 1 ? 'ticket' : 'tickets') : (ticketCount === 1 ? 'billet' : 'billets')}` : label}
+        aria-label={showTicketBadge ? `${label}, ${ticketCount} ${t('common', ticketCount === 1 ? 'ticketSingular' : 'ticketsPlural')}` : label}
         aria-current={isActive ? 'page' : undefined}
         className={[
           'group relative flex-1 min-w-0 h-full flex flex-col items-center justify-center py-1 rounded-full select-none',
@@ -201,7 +196,7 @@ export function BottomNav({
 
           {showTicketBadge && (
             <span
-              aria-label={`${ticketCount} billet${ticketCount > 1 ? 's' : ''}`}
+              aria-label={`${ticketCount} ${t('common', ticketCount === 1 ? 'ticketSingular' : 'ticketsPlural')}`}
               className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5"
             >
               <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -225,7 +220,7 @@ export function BottomNav({
     );
   };
 
-  const createLabel = language === 'en' ? 'Create' : 'Créer';
+  const createLabel = t('common', 'create');
 
   return (
     <div
@@ -263,7 +258,7 @@ export function BottomNav({
         }}
       >
         <nav
-          aria-label="Navigation principale"
+          aria-label={t('common', 'mainNavigation')}
           className="w-full h-full flex items-center relative"
         >
           {/* Filet de lumière supérieur signature Apple */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Share, PlusSquare, X, CheckCircle, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useApp } from '@/hooks/useApp';
 
 interface PWAInstallBannerProps {
   onDismiss?: () => void;
@@ -8,6 +9,7 @@ interface PWAInstallBannerProps {
 
 export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { t } = useApp();
   const [showIOSModal, setShowIOSModal] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem('gbaigbance_pwa_banner_dismissed') === 'true';
@@ -50,21 +52,21 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
           <div className="flex-1 min-w-0 pr-6">
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-[#171726] dark:text-white text-xs tracking-tight">
-                Installer l'application
+                {t('settings', 'pwa.installApp')}
               </span>
               <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-[#6600FF] text-white">
                 PWA
               </span>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-              Accès rapide, consultation hors-ligne & notifications
+              {t('settings', 'pwa.description')}
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleDismiss}
-            aria-label="Fermer le bandeau d'installation"
+            aria-label={t('settings', 'pwa.closeBanner')}
             className="absolute top-2.5 right-2.5 p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
@@ -79,7 +81,7 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
             className="flex-1 py-2 px-3 rounded-xl bg-[#6600FF] hover:bg-[#5200CC] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm shadow-[#6600FF]/25 flex items-center justify-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>{isIOS ? "Ajouter à l'écran d'accueil" : "Installer maintenant"}</span>
+            <span>{isIOS ? t('settings', 'pwa.addToHome') : t('settings', 'pwa.installNow')}</span>
           </button>
 
           <button
@@ -87,7 +89,7 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
             onClick={handleDismiss}
             className="py-2 px-3 rounded-xl bg-white/80 dark:bg-zinc-800/80 hover:bg-white text-gray-600 dark:text-gray-300 text-xs font-semibold border border-gray-200/80 dark:border-gray-700 transition-colors"
           >
-            Plus tard
+            {t('settings', 'pwa.later')}
           </button>
         </div>
       </div>
@@ -109,12 +111,13 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
                   <img src="/pwa-192x192.png" alt="Gbaigbance" className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">Installer sur iOS</h3>
-                  <p className="text-xs text-zinc-500">Safari sur iPhone / iPad</p>
+                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">{t('settings', 'pwa.iosTitle')}</h3>
+                  <p className="text-xs text-zinc-500">{t('settings', 'pwa.safari')}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowIOSModal(false)}
+                aria-label={t('common', 'close')}
                 className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -127,9 +130,9 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
                   <Share className="w-4 h-4 text-[#6600FF]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 1</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step1')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Appuyez sur le bouton <strong>Partager</strong> dans la barre du navigateur Safari.
+                    {t('settings', 'pwa.iosShare')}
                   </p>
                 </div>
               </div>
@@ -139,9 +142,9 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
                   <PlusSquare className="w-4 h-4 text-[#6600FF]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 2</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step2')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Faites défiler et sélectionnez <strong>« Sur l'écran d'accueil »</strong>.
+                    {t('settings', 'pwa.iosAdd')}
                   </p>
                 </div>
               </div>
@@ -151,9 +154,9 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Étape 3</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">{t('settings', 'pwa.step3')}</p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Confirmez en appuyant sur <strong>Ajouter</strong> en haut à droite.
+                    {t('settings', 'pwa.iosConfirm')}
                   </p>
                 </div>
               </div>
@@ -165,7 +168,7 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss })
               className="w-full py-3 rounded-2xl bg-[#6600FF] hover:bg-[#5500D4] text-white font-bold text-sm shadow-md shadow-[#6600FF]/25 transition-all flex items-center justify-center gap-2"
             >
               <Smartphone className="w-4 h-4" />
-              <span>J'ai compris</span>
+              <span>{t('settings', 'pwa.understood')}</span>
             </button>
           </div>
         </div>

@@ -43,11 +43,21 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
   onOpenManage,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const { t } = useApp();
+  const { t, language } = useApp();
   const detailText = (key: string) => t('events', `detail.${key}`);
+  const eventDate = new Date(event.starts_at || '');
+  const eventDateLabel = Number.isNaN(eventDate.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(eventDate);
 
   return (
-    <div className="relative h-[56vh] min-h-[420px] max-h-[580px] w-full overflow-hidden bg-[#f7f5f0] dark:bg-[#141216] select-none">
+    <div className="relative h-[62svh] min-h-[430px] max-h-[700px] w-full overflow-hidden bg-neutral-900 select-none">
       {/* 
         Image Hero avec placeholder blur-up basse résolution
         et zoom subtil au survol
@@ -83,7 +93,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
       {/* 
         Dégradé bas très discret (h-8) pour adoucir le raccord sans couvrir la photo
       */}
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#f7f5f0]/50 to-transparent dark:from-[#141216]/50 to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none z-10" />
 
       {/* 
         BARRE D'OUTILS FLOTTANTE SUPÉRIEURE iOS
@@ -168,6 +178,23 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
               }`}
             />
           </button>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 pb-9 sm:pb-11">
+          <div className="max-w-4xl pr-16 sm:pr-24">
+            <p className="mb-2 text-xs sm:text-sm font-bold text-white/85">
+              {t('events', `categories.${event.category}`)}
+              {eventDateLabel ? ` · ${eventDateLabel}` : ''}
+            </p>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight text-white break-words [text-shadow:0_2px_18px_rgba(0,0,0,0.5)]">
+              {event.title}
+            </h1>
+            <p className="mt-2 text-sm sm:text-base font-semibold text-white/85 truncate">
+              {[event.location_name, event.city].filter(Boolean).join(' · ')}
+            </p>
+          </div>
         </div>
       </div>
 

@@ -75,7 +75,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user } = useApp();
+  const { user, t } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -263,7 +263,7 @@ export function HomeScreen({
     } finally {
       setLoading(false);
     }
-  }, [initialCache.hasCache, followedArtistIds]);
+  }, [initialCache.hasCache, followedArtistIds, t]);
 
   // Initial load
   useEffect(() => {
