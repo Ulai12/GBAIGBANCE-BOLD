@@ -583,7 +583,15 @@
       "noArtistDescription": "No artists match your search",
       "noOrganizer": "No organizers found",
       "noOrganizerDescription": "No organizers match your search",
-      "noEventsDescription": "No events match this filter right now"
+      "noEventsDescription": "No events match this filter right now",
+      "back": "Back",
+      "artist": "artist",
+      "artists": "artists",
+      "organizer": "organizer",
+      "organizers": "organizers",
+      "searchArtist": "Search artists...",
+      "searchOrganizer": "Search organizers...",
+      "allGenres": "All genres"
     },
     "nearbyEvent": "Nearby event: {title}",
     "defaultCity": "Lomé",
@@ -643,7 +651,8 @@
     "artistsNow": "Artists to discover",
     "artistsSubtitle": "Talented artists and creators from the community",
     "officialOrganizers": "Official organizers",
-    "organizersSubtitle": "Collectives and experience creators"
+    "organizersSubtitle": "Collectives and experience creators",
+    "greeting": "Hello"
   },
   "cardStatus": {
     "cancelled": "Cancelled",
