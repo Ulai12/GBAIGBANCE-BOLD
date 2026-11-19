@@ -257,3 +257,15 @@
 ### Prochaine priorité
 - Vérifier visuellement la section sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), surtout les libellés longs et la répartition des sous-catégories.
 - Traiter séparément le diagnostic TypeScript TS5097 de `api/ai/assistant/stream.ts` dans un chantier autorisé, sans le mélanger à cette correction UI.
+
+
+## 2026-11-19 — Restauration complète de HomeScreen
+- Demande utilisateur : restaurer la page d'accueil comme avant le commit `46b7c59b936d1101a9a5f792ce01216e2528572e`.
+- Constat : le commit demandé ne modifiait que `PROJECT_MEMORY.md`; sur `FRONTEND-iA`, `src/screens/HomeScreen.tsx` contenait une restauration incomplète avec marqueurs `RESTORE_MARKER` / `RESTORED PARTIAL` et un composant ne restituant qu'une partie de la page.
+- Source de restauration : version complète de `src/screens/HomeScreen.tsx` récupérée depuis le commit `c1ba934e702073f468d6a4f8a7f607be96646d5e`, conformément à la référence de récupération déjà consignée dans le contexte frontend.
+- Intervention : remplacement intégral de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA` uniquement. Version restaurée : 49 382 caractères, 1 117 lignes, sans marqueur de restauration partielle.
+- Commit : `3f41f4911a43adf6c8855f9fe343e1614ef7e243`.
+- Vérification après écriture : relecture distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`; blob SHA confirmé `ba5e0ad6d0cf77435daacb29740375090a5023ed`, 1 117 lignes.
+- Limites : aucun build, typecheck, lint, test automatisé ou contrôle visuel navigateur exécuté après restauration. La restauration rétablit le code complet de la source référencée; elle ne certifie pas à elle seule le rendu/runtime.
+- Aucun autre fichier applicatif modifié; aucun backend/API, aucune PR, aucun changement sur `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+- Prochaine priorité : exécuter les contrôles de compilation et vérifier visuellement la page d'accueil sur mobile et desktop avant toute autre évolution.
