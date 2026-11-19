@@ -273,7 +273,7 @@ export function SeeMoreModal({
                     : 'bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.14]'
                 }`}
               >
-                {cat === 'all' ? t('events', 'home.seeMore.allGenres') : t('events', `categories.${cat}`)}
+                {t('events', `home.seeMore.genres.${cat}`)}
               </button>
             ))}
           </div>
