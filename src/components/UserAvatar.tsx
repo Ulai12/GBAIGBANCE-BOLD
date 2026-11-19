@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Music2, Building2, User } from 'lucide-react';
 import { getDefaultUserAvatar, getAvatarInitials } from '@/utils/defaultImages';
 import type { UserRole } from '@/types';
+import { useApp } from '@/hooks/useApp';
 
 interface UserAvatarProps {
   id?: string | null;
