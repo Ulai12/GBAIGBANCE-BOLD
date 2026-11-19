@@ -269,3 +269,16 @@
 - Limites : aucun build, typecheck, lint, test automatisé ou contrôle visuel navigateur exécuté après restauration. La restauration rétablit le code complet de la source référencée; elle ne certifie pas à elle seule le rendu/runtime.
 - Aucun autre fichier applicatif modifié; aucun backend/API, aucune PR, aucun changement sur `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
 - Prochaine priorité : exécuter les contrôles de compilation et vérifier visuellement la page d'accueil sur mobile et desktop avant toute autre évolution.
+
+
+## 2026-11-19 — Restauration ciblée des catégories principales et centrage des sous-catégories
+- Demande : remettre l'apparence des catégories principales telle qu'avant le commit `738790184ebc0dfb1f7d149c7ccabb4aa8843cbd`, conserver l'apparence actuelle des sous-catégories et centrer leur titre ainsi que leurs boutons.
+- Source de référence pour les catégories principales : `src/screens/HomeScreen.tsx` au commit `35d17160d4d90e1d7931762abecb2c95d8ad4565`.
+- Intervention dans `src/screens/HomeScreen.tsx` : restauration du markup/classes originaux de la grille et des cartes principales (2 colonnes mobile, 3 dès sm, 6 dès lg; min-heights 56/60/64 px; padding et proportions verticaux d'origine). Le mapping `Sparkles` déjà présent a été conservé.
+- Sous-catégories : conservation du style actuel des boutons (arrondis, hauteur tactile minimale 44 px, retours à la ligne, couleurs et états sélectionnés); centrage du titre et du groupe de boutons via `text-center` et `justify-center`.
+- Logique métier, IDs, ordre, sélection, callbacks, filtrage, traductions et données non modifiés. Aucun backend/API touché.
+- Commit direct sur `FRONTEND-iA` : `b75d556a90d17e077acb6000ddebfee40b7312b6`.
+- Vérification après écriture : relecture GitHub du fichier sur `FRONTEND-iA`; blob SHA `e24a9801c03e3f442a1696b3de467be19088cb27`; contrôles statiques confirmant les classes originales des cartes principales, le centrage des sous-catégories et l'absence de défilement horizontal forcé dans leur conteneur.
+- Limites : aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur exécuté après ce changement.
+- Aucun PR, aucun changement sur `main` ou autre branche; `PROJECT_MEMORY.md` non lu/non modifié.
+- Prochaine priorité : vérifier visuellement le centrage des sous-catégories sur mobile étroit, tablette et desktop, ainsi que les retours à la ligne des libellés longs.
