@@ -712,8 +712,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-white/80 dark:bg-[#14121E]/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
-        <div className="max-w-md mx-auto flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 px-5 pt-safe-header pb-2">
+        <div className="max-w-md mx-auto rounded-[28px] border border-black/[0.06] bg-white/92 px-4 pb-3 pt-4 shadow-sm backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#14121E]/92">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -733,7 +733,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
                 {t('events', 'creation.wizard.eyebrow')}
               </p>
-              <h1 className="text-lg font-extrabold text-[#171726] dark:text-white truncate">
+              <h1 className="text-2xl font-black tracking-tight text-[#171726] dark:text-white truncate">
                 {t('events', `creation.wizard.steps.${STEP_TRANSLATION_KEYS[step]}`)}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -2097,13 +2097,13 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         )}
 
         {/* Commandes persistantes : actions toujours accessibles sur mobile */}
-        <div className="sticky bottom-0 z-20 -mx-5 mt-6 bg-gradient-to-t from-white via-white/95 to-white/0 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-4 backdrop-blur-xl dark:from-[#14121E] dark:via-[#14121E]/95">
-        <div className="flex gap-3">
+        <div className="sticky bottom-0 z-20 -mx-5 mt-6 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
+        <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-black/[0.07] bg-white/95 p-1.5 shadow-[0_12px_36px_rgba(20,18,30,0.12)] backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#1A1829]/95">
           {stepIndex > 0 && (
             <button
               type="button"
               onClick={previous}
-              className="min-h-12 flex-1 rounded-full border border-black/[0.08] bg-white py-3.5 text-sm font-bold text-gray-700 transition-transform active:scale-95 dark:border-white/[0.1] dark:bg-[#1A1829] dark:text-gray-200"
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-black/[0.07] bg-transparent px-3 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-black/[0.035] active:scale-[0.98] dark:border-white/[0.08] dark:text-gray-200 dark:hover:bg-white/[0.06]"
             >
               Retour
             </button>
@@ -2114,7 +2114,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               type="button"
               onClick={createEvent}
               disabled={creating}
-              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 py-3.5 text-sm font-bold"
+              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-[0_8px_24px_rgba(102,0,255,0.22)]"
             >
               {creating ? (
                 <>
@@ -2128,7 +2128,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             <button
               type="button"
               onClick={next}
-              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center py-3.5 text-sm font-bold"
+              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-full px-4 py-3 text-sm font-bold shadow-[0_8px_24px_rgba(102,0,255,0.22)]"
             >
               Continuer
             </button>

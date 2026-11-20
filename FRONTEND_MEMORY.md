@@ -55,3 +55,22 @@ Finaliser le parcours de création d'événement, en priorité le débordement m
 
 ## Protection de la section Explorer
 La section « Explorer par catégorie » est déclarée intouchable par l'utilisateur. Aucun ajustement de layout, CSS, responsive, animation, libellé, icône, hiérarchie, donnée ou interaction ne doit y être effectué sans demande explicite.
+
+
+## Intervention du 20 novembre 2026 — Harmonisation du shell Event Creation Studio
+
+### Modifications préparées sur FRONTEND-iA
+- En-tête du wizard : présentation resserrée en panneau flottant à surface vitrée, alignement avec la hiérarchie des pages (eyebrow, titre fort, progression), sans modifier le contenu ni la logique des neuf étapes.
+- Barre d'actions : regroupement des commandes dans une capsule flottante centrée, avec deux boutons individuels en pilule, contraste clair/sombre, ombre douce et respect de la zone de sécurité iOS.
+- Les actions Retour, Continuer, Publier et Annuler conservent leurs callbacks et leurs conditions d'affichage.
+- Aucun changement des catégories, de leur hiérarchie, des données, du backend ou des contrats Supabase.
+
+### Vérifications
+- Branche ciblée avant préparation : FRONTEND-iA; HEAD observé : `f9d5ecb524571828554acd3915bee790b41185d4`.
+- Patch appliqué avec garde-fous : chacune des six substitutions attendues a été trouvée exactement une fois.
+- Validation build/typecheck, navigateur et responsive réelle : non exécutée à ce stade.
+- Aucun commit ni PR créé dans cette étape de préparation.
+
+### Suite
+- Vérifier le rendu sur mobile et desktop, notamment le panneau sticky, la capsule d'actions, les thèmes clair/sombre et les libellés longs FR/EN.
+- Exécuter build/typecheck/lint disponibles avant publication du commit.
