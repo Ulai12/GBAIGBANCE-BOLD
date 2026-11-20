@@ -5,6 +5,7 @@ import { supabase } from '@/services/supabase';
 import {
   handleRpcResult,
   isMissingRpcError,
+  isRpcPayloadSuccess,
   type RpcNormalizedError,
 } from '@/lib/rpcErrors';
 import type { PaymentProvider } from '@/types';
@@ -22,15 +23,16 @@ export async function rpcInitiateTicketPayment(params: {
   idempotencyKey?: string | null;
   feePayer?: string | null;
 }): Promise<
-  | {
-      success: true;
-      payment_id: string;
-      amount_charged_xof?: number;
-      amount_face_xof?: number;
-      platform_fee_xof?: number;
-      message?: string;
-    }
   | RpcNormalizedError
+  | {
+      success: false;
+      error: string;
+      code: string;
+      kind: 'payment_pending';
+      retryable: false;
+      payment_id: string;
+      amount_xof?: number;
+    }
 > {
   try {
     const { data, error } = await supabase.rpc('initiate_ticket_payment', {
@@ -44,7 +46,7 @@ export async function rpcInitiateTicketPayment(params: {
     });
 
     const parsed = handleRpcResult(error, data, 'Impossible d’initier le paiement.');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       const paymentId = typeof parsed.data.payment_id === 'string' ? parsed.data.payment_id : '';
       if (!paymentId) {
         return {
@@ -113,7 +115,7 @@ export async function rpcPurchaseTicketsMulti(params: {
     });
 
     const parsed = handleRpcResult(error, data, 'La réservation n’a pas pu être enregistrée.');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       const tickets = Array.isArray(parsed.data.tickets) ? parsed.data.tickets : [];
       if (!tickets.length) {
         return {
@@ -150,7 +152,7 @@ export async function rpcClaimTicketByToken(rawToken: string) {
       return { success: true as const, message: 'Billet réclamé avec succès (mode local) !' };
     }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la réclamation');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       return {
         success: true as const,
         message: typeof parsed.data.message === 'string' ? parsed.data.message : 'Billet réclamé.',
@@ -175,7 +177,7 @@ export async function rpcRegenerateClaimLink(ticketId: string) {
       return { success: true as const, claim_token: Math.random().toString(36).slice(2, 16) };
     }
     const parsed = handleRpcResult(error, data, 'Impossible de régénérer le lien');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       return {
         success: true as const,
         claim_token: typeof parsed.data.claim_token === 'string' ? parsed.data.claim_token : undefined,
@@ -207,7 +209,7 @@ export async function rpcRequestTicketRefund(params: {
       return { success: true as const, message: 'Demande de remboursement soumise avec succès (mode local).' };
     }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la demande de remboursement');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       return {
         success: true as const,
         refund_id: typeof parsed.data.refund_id === 'string' ? parsed.data.refund_id : undefined,
@@ -242,7 +244,7 @@ export async function rpcReviewRefund(params: {
       };
     }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la revue');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       return {
         success: true as const,
         message: typeof parsed.data.message === 'string' ? parsed.data.message : undefined,
@@ -277,7 +279,7 @@ export async function rpcCompletePresenceChallenge(params: {
       };
     }
     const parsed = handleRpcResult(error, data, 'Erreur de communication avec le serveur');
-    if ('ok' in parsed && parsed.ok) {
+    if (isRpcPayloadSuccess(parsed)) {
       return {
         success: true as const,
         badge_name: typeof parsed.data.badge_name === 'string' ? parsed.data.badge_name : undefined,

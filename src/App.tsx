@@ -16,7 +16,7 @@ import { FavoritesScreen } from '@/screens/FavoritesScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { AIAssistantModal } from '@/components/AIAssistantModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { HomeScreenSkeleton } from '@/components/Skeleton';
+import { AppLoadingScreen } from '@/components/Skeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { subscribeToUserTicketsLive } from '@/services/events';
@@ -65,7 +65,7 @@ function OtpRoute() {
 }
 
 function AppContent() {
-  const { loading, session, user } = useApp();
+  const { loading, session, user, t } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -237,14 +237,22 @@ function AppContent() {
 
   const addToast = useCallback((toast: Omit<ToastData, 'id'>) => {
     const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { ...toast, id }]);
+    setToasts((prev) => {
+      const next = [...prev, { ...toast, id }];
+      if (next.length <= 4) return next;
+
+      const oldestTransient = next.findIndex((item) => item.id !== id && !item.persistent);
+      return oldestTransient === -1
+        ? next.slice(-4)
+        : next.filter((_, index) => index !== oldestTransient);
+    });
   }, []);
 
   const closeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Confirmation après l'application automatique d'une nouvelle version PWA.
+  // Confirmation après l'application d'une nouvelle version PWA.
   useEffect(() => {
     const updateFlag = 'gbaigbance:pwa-update-complete';
 
@@ -252,7 +260,7 @@ function AppContent() {
       if (window.sessionStorage.getItem(updateFlag) === '1') {
         window.sessionStorage.removeItem(updateFlag);
         addToast({
-          message: 'Gbaïgbancê a été mis à jour avec succès !',
+          message: t('settings', 'pwa.updateComplete'),
           type: 'success',
         });
       }
@@ -265,37 +273,40 @@ function AppContent() {
       const applyUpdate = customEvent.detail?.update;
 
       addToast({
-        message: 'Nouvelle version détectée. Mise à jour automatique…',
+        message: t('settings', 'pwa.updateAvailable'),
         type: 'info',
+        persistent: true,
+        action: applyUpdate
+          ? {
+              label: t('settings', 'pwa.updateNow'),
+              onClick: () => {
+                try {
+                  window.sessionStorage.setItem(updateFlag, '1');
+                } catch {
+                  // La mise à jour reste possible même sans stockage de session.
+                }
+
+                void Promise.resolve(applyUpdate()).catch((error: unknown) => {
+                  try {
+                    window.sessionStorage.removeItem(updateFlag);
+                  } catch {
+                    // Ignore les restrictions de stockage.
+                  }
+                  console.error('[PWA] Impossible d’appliquer la mise à jour.', error);
+                  addToast({
+                    message: t('settings', 'pwa.updateFailed'),
+                    type: 'error',
+                  });
+                });
+              },
+            }
+          : undefined,
       });
-
-      if (!applyUpdate) return;
-
-      try {
-        window.sessionStorage.setItem(updateFlag, '1');
-      } catch {
-        // La mise à jour reste possible même sans stockage de session.
-      }
-
-      // Laisse le toast apparaître avant le rechargement contrôlé par le Service Worker.
-      window.setTimeout(() => {
-        void Promise.resolve(applyUpdate()).catch(() => {
-          try {
-            window.sessionStorage.removeItem(updateFlag);
-          } catch {
-            // Ignore les restrictions de stockage.
-          }
-          addToast({
-            message: 'La mise à jour a échoué. Réessaie lorsque le réseau sera stable.',
-            type: 'error',
-          });
-        });
-      }, 1_200);
     };
 
     window.addEventListener('pwa-update-available', handleUpdate);
     return () => window.removeEventListener('pwa-update-available', handleUpdate);
-  }, [addToast]);
+  }, [addToast, t]);
 
   // Écouteur in-app pour les notifications Web Push PWA (rappels 24h/2h, alertes artistes)
   useEffect(() => {
@@ -406,7 +417,7 @@ function AppContent() {
   };
 
   if (loading) {
-    return <HomeScreenSkeleton />;
+    return <AppLoadingScreen />;
   }
 
   return (
@@ -448,6 +459,7 @@ function AppContent() {
                 onLogin={() => navigate('/login')}
                 onArtistClick={handleArtistClick}
                 onOrganizationClick={handleOrganizationClick}
+                onUserClick={(profile) => navigate(`/users/${profile.id}`, { state: { profile } })}
               />
             </div>
             <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
@@ -667,7 +679,7 @@ function App() {
 
   if (isSpikeRequested) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoadingScreen />}>
         <GlassSpike />
       </Suspense>
     );
@@ -679,7 +691,7 @@ function App() {
         <AppProvider>
           <DataSaverProvider>
             <FavoritesProvider>
-              <Suspense fallback={null}>
+              <Suspense fallback={<AppLoadingScreen />}>
                 <AppContent />
               </Suspense>
             </FavoritesProvider>

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useApp } from '@/hooks/useApp';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { haptic } from '@/hooks/useHaptics';
+import { setUserFollow } from '@/features/users/follows';
 import {
   toggleEventLike as apiToggleEventLike,
   toggleArtistFollow as apiToggleArtistFollow,
@@ -462,7 +463,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       }
 
       if (isSupabaseConfigured && userId) {
-        apiToggleEventLike(eventId, userId).catch(() => {
+        apiToggleEventLike(eventId).catch(() => {
           // Rollback transparent en cas d'échec
           setLikedEventIds((prev) => {
             const next = new Set(prev);
@@ -499,7 +500,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleFollowArtist = useCallback(
-    (artistId: string): Promise<boolean> => {
+    async (artistId: string): Promise<boolean> => {
       const willFollow = !followedArtistIds.has(artistId);
       const artistsKey = getFavoritesStorageKey('artists', userId);
 
@@ -524,7 +525,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       }
 
       if (isSupabaseConfigured && userId) {
-        apiToggleArtistFollow(artistId, userId).catch(() => {
+        try {
+          const serverState = await apiToggleArtistFollow(artistId, userId);
+          setFollowedArtistIds((prev) => {
+            const next = new Set(prev);
+            if (serverState) next.add(artistId);
+            else next.delete(artistId);
+            writeStoredSet(artistsKey, next);
+            return next;
+          });
+          return serverState;
+        } catch {
           setFollowedArtistIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(artistId);
@@ -546,7 +557,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
               })
             );
           }
-        });
+          return !willFollow;
+        }
       }
 
       if (typeof window !== 'undefined') {
@@ -557,7 +569,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      return Promise.resolve(willFollow);
+      return willFollow;
     },
     [followedArtistIds, userId]
   );
@@ -568,7 +580,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleFollowOrg = useCallback(
-    (orgId: string): Promise<boolean> => {
+    async (orgId: string): Promise<boolean> => {
       const willFollow = !followedOrgIds.has(orgId);
       const orgsKey = getFavoritesStorageKey('orgs', userId);
 
@@ -593,7 +605,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       }
 
       if (isSupabaseConfigured && userId) {
-        apiToggleOrgFollow(orgId, userId).catch(() => {
+        try {
+          const serverState = await apiToggleOrgFollow(orgId, userId);
+          setFollowedOrgIds((prev) => {
+            const next = new Set(prev);
+            if (serverState) next.add(orgId);
+            else next.delete(orgId);
+            writeStoredSet(orgsKey, next);
+            return next;
+          });
+          return serverState;
+        } catch {
           setFollowedOrgIds((prev) => {
             const next = new Set(prev);
             if (willFollow) next.delete(orgId);
@@ -615,7 +637,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
               })
             );
           }
-        });
+          return !willFollow;
+        }
       }
 
       if (typeof window !== 'undefined') {
@@ -626,7 +649,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      return Promise.resolve(willFollow);
+      return willFollow;
     },
     [followedOrgIds, userId]
   );
@@ -663,35 +686,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Émission d'événement global pour synchroniser toutes les pages ouvertes
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('gba-user-follow-changed', {
-            detail: { followerId: userId, followingId: targetUserId, willFollow },
-          })
-        );
-        window.dispatchEvent(
-          new CustomEvent('gba-follows-updated', {
-            detail: { userId: targetUserId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'user' },
-          })
-        );
-      }
-
-      // Synchronisation Supabase en arrière-plan
       if (isSupabaseConfigured) {
         try {
-          const { data: existing } = await supabase
-            .from('user_follows')
-            .select('id')
-            .eq('follower_id', userId)
-            .eq('following_id', targetUserId)
-            .maybeSingle();
-
-          if (existing && !willFollow) {
-            await supabase.from('user_follows').delete().eq('id', existing.id);
-          } else if (!existing && willFollow) {
-            await supabase.from('user_follows').insert({ follower_id: userId, following_id: targetUserId });
-          }
+          await setUserFollow(userId, targetUserId, willFollow);
         } catch {
           // Rollback en cas d'échec réseau
           setFollowedUserIds((prev) => {
@@ -720,7 +717,21 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
               })
             );
           }
+          return !willFollow;
         }
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gba-user-follow-changed', {
+            detail: { followerId: userId, followingId: targetUserId, willFollow },
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('gba-follows-updated', {
+            detail: { userId: targetUserId, eventType: willFollow ? 'INSERT' : 'DELETE', type: 'user' },
+          })
+        );
       }
 
       return willFollow;

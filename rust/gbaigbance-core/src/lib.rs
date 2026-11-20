@@ -15,6 +15,8 @@ struct TicketIn {
     status: String,
     #[serde(default)]
     created_at_ms: i64,
+    #[serde(default = "default_ticket_quantity")]
+    quantity: i64,
     #[serde(default)]
     event_id: String,
     #[serde(default)]
@@ -22,6 +24,10 @@ struct TicketIn {
     /// `server` gagne toujours sur `local` pour le même id.
     #[serde(default)]
     source: String,
+}
+
+fn default_ticket_quantity() -> i64 {
+    1
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,11 +68,8 @@ struct Share {
     percent: u32,
 }
 
-fn cancelled(status: &str) -> bool {
-    matches!(
-        status,
-        "cancelled" | "canceled" | "refunded" | "failed"
-    )
+fn counts_as_ticket(status: &str) -> bool {
+    matches!(status, "active" | "valid" | "used")
 }
 
 fn dedupe_tickets(tickets: &[TicketIn]) -> Vec<&TicketIn> {
@@ -90,7 +93,7 @@ fn dedupe_tickets(tickets: &[TicketIn]) -> Vec<&TicketIn> {
     order
         .into_iter()
         .filter_map(|id| map.remove(&id))
-        .filter(|ticket| !cancelled(&ticket.status))
+        .filter(|ticket| counts_as_ticket(&ticket.status))
         .collect()
 }
 
@@ -195,7 +198,7 @@ fn platform_stats(input: &Value) -> Value {
     let tickets: Vec<TicketIn> = serde_json::from_value(input["tickets"].clone()).unwrap_or_default();
     let events: Vec<EventIn> = serde_json::from_value(input["events"].clone()).unwrap_or_default();
     let kept = dedupe_tickets(&tickets);
-    let total_tickets = kept.len() as u64;
+    let total_tickets: u64 = kept.iter().map(|ticket| ticket.quantity.max(1) as u64).sum();
     let total_revenue: f64 = kept.iter().map(|ticket| ticket.price_paid.max(0.0)).sum();
     let active: Vec<&EventIn> = events.iter().filter(|event| event.active).collect();
     let total_views: i64 = events.iter().map(|event| event.views.max(0)).sum();
@@ -214,7 +217,7 @@ fn platform_stats(input: &Value) -> Value {
             continue;
         };
         let entry = revenue_by_cat.entry((*category).to_string()).or_insert((0, 0.0));
-        entry.0 += 1;
+        entry.0 += ticket.quantity.max(1) as u64;
         entry.1 += ticket.price_paid.max(0.0);
     }
 
@@ -265,6 +268,7 @@ fn platform_stats(input: &Value) -> Value {
             json!({
                 "created_at_ms": ticket.created_at_ms,
                 "price_paid": ticket.price_paid.max(0.0),
+                "quantity": ticket.quantity.max(1),
                 "event_id": ticket.event_id,
             })
         })
@@ -325,12 +329,12 @@ fn timeline(input: &Value) -> Value {
         }
     };
 
-    for ticket in tickets.iter().filter(|ticket| !cancelled(&ticket.status)) {
+    for ticket in tickets.iter().filter(|ticket| counts_as_ticket(&ticket.status)) {
         let Some((y, m, d)) = ymd(ticket.created_at_ms, offset) else {
             continue;
         };
         if let Some(index) = place(&mut buckets, y, m, d, mode_weeks) {
-            buckets[index].tickets += 1;
+            buckets[index].tickets += ticket.quantity.max(1) as u64;
             buckets[index].revenue += ticket.price_paid.max(0.0);
         }
     }
@@ -483,7 +487,7 @@ fn organizer_series(input: &Value) -> Value {
     let mut total_tickets = 0u64;
     let mut total_revenue = 0.0f64;
     for ticket in &tickets {
-        total_tickets += 1;
+        total_tickets += ticket.quantity.max(1) as u64;
         let price = ticket.price_paid.max(0.0);
         total_revenue += price;
         let key = if ticket.ticket_type.trim().is_empty() {
@@ -492,13 +496,13 @@ fn organizer_series(input: &Value) -> Value {
             ticket.ticket_type.to_lowercase()
         };
         let entry = by_type.entry(key).or_insert((0, 0.0));
-        entry.0 += 1;
+        entry.0 += ticket.quantity.max(1) as u64;
         entry.1 += price;
         let Some((y, m, d)) = ymd(ticket.created_at_ms, offset) else {
             continue;
         };
         if let Some(point) = points.iter_mut().find(|point| point.year == y && point.month == m && point.week == Some(d)) {
-            point.tickets += 1;
+            point.tickets += ticket.quantity.max(1) as u64;
             point.revenue += price;
         }
     }
@@ -1089,14 +1093,15 @@ mod tests {
           "op":"platform_stats",
           "users": 4,
           "tickets":[
-            {"id":"a","price_paid":5000,"status":"valid","source":"server","event_id":"e1","created_at_ms":1},
+            {"id":"a","price_paid":5000,"quantity":3,"status":"valid","source":"server","event_id":"e1","created_at_ms":1},
             {"id":"a","price_paid":5000,"status":"valid","source":"local","event_id":"e1","created_at_ms":1},
-            {"id":"b","price_paid":0,"status":"cancelled","source":"server","created_at_ms":1}
+            {"id":"b","price_paid":0,"status":"cancelled","source":"server","created_at_ms":1},
+            {"id":"c","price_paid":1000,"quantity":2,"status":"pending","source":"server","created_at_ms":1}
           ],
           "events":[{"id":"e1","category":"concert","active":true,"views":10}]
         }"#;
         let value: Value = serde_json::from_str(&dispatch_json(raw)).unwrap();
-        assert_eq!(value["total_tickets"], 1);
+        assert_eq!(value["total_tickets"], 3);
         assert_eq!(value["total_revenue"], 5000.0);
         assert_eq!(value["total_users"], 4);
         assert_eq!(value["category_shares"][0]["percent"], 100);
@@ -1125,7 +1130,7 @@ mod tests {
         let october = 1_759_334_400_000i64;
         let raw = format!(
             r#"{{"op":"timeline","period":"current_month","now_ms":{november},"tz_offset_min":0,
-            "tickets":[{{"id":"a","created_at_ms":{october},"price_paid":1000,"status":"valid"}},{{"id":"b","created_at_ms":{november},"price_paid":2500,"status":"valid"}}],
+            "tickets":[{{"id":"a","created_at_ms":{october},"price_paid":1000,"status":"valid"}},{{"id":"b","created_at_ms":{november},"price_paid":2500,"quantity":3,"status":"valid"}}],
             "events":[]}}"#
         );
         let value: Value = serde_json::from_str(&dispatch_json(&raw)).unwrap();
@@ -1135,8 +1140,8 @@ mod tests {
             .iter()
             .map(|bucket| bucket["tickets"].as_u64().unwrap())
             .sum();
-        assert_eq!(tickets, 1);
-        assert_eq!(value["buckets"][1]["tickets"], 1);
+        assert_eq!(tickets, 3);
+        assert_eq!(value["buckets"][1]["tickets"], 3);
     }
 
     #[test]

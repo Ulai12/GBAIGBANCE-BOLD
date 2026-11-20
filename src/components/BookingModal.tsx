@@ -37,7 +37,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const { user, t, language } = useApp();
   const bookingText = (key: string, values: Record<string, string | number> = {}) =>
     Object.entries(values).reduce(
-      (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+      (text, [name, value]) => text.split(`{${name}}`).join(String(value)),
       t('tickets', `booking.${key}`),
     );
   const [options, setOptions] = useState<TicketOption[]>([]);

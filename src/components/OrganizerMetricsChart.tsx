@@ -126,9 +126,14 @@ export function OrganizerMetricsChart({
         </div>
 
         {/* Time range selector pill */}
-        <div className="inline-flex p-1 bg-gray-100 dark:bg-white/10 rounded-full shrink-0 self-start sm:self-auto">
+        <div
+          role="group"
+          aria-label="Période des performances"
+          className="inline-flex p-1 bg-gray-100 dark:bg-white/10 rounded-full shrink-0 self-start sm:self-auto"
+        >
           <button
             type="button"
+            aria-pressed={timeRange === '7d'}
             onClick={() => onTimeRangeChange('7d')}
             className={`px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer ${
               timeRange === '7d'
@@ -140,6 +145,7 @@ export function OrganizerMetricsChart({
           </button>
           <button
             type="button"
+            aria-pressed={timeRange === '30d'}
             onClick={() => onTimeRangeChange('30d')}
             className={`px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer ${
               timeRange === '30d'
@@ -151,6 +157,7 @@ export function OrganizerMetricsChart({
           </button>
           <button
             type="button"
+            aria-pressed={timeRange === 'all'}
             onClick={() => onTimeRangeChange('all')}
             className={`px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer ${
               timeRange === 'all'
@@ -166,9 +173,11 @@ export function OrganizerMetricsChart({
       {/* KPI Cards Strip */}
       <div className="grid grid-cols-2 gap-2.5 mb-5 sm:grid-cols-4 sm:gap-3">
         {/* Billets vendus */}
-        <div
+        <button
+          type="button"
+          aria-pressed={metricMode === 'sales'}
           onClick={() => setMetricMode('sales')}
-          className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
+          className={`p-3.5 rounded-2xl text-left cursor-pointer transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
             metricMode === 'sales'
               ? 'bg-[#6600FF]/[0.08] dark:bg-[#6600FF]/20 border-[#6600FF]/40 shadow-xs'
               : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80 dark:hover:bg-white/[0.11]'
@@ -184,12 +193,14 @@ export function OrganizerMetricsChart({
           <span className="text-[10px] font-semibold text-gray-400">
             {summary.activeEvents} événement(s) actif(s)
           </span>
-        </div>
+        </button>
 
         {/* Chiffre d'affaires */}
-        <div
+        <button
+          type="button"
+          aria-pressed={metricMode === 'revenue'}
           onClick={() => setMetricMode('revenue')}
-          className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
+          className={`p-3.5 rounded-2xl text-left cursor-pointer transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] ${
             metricMode === 'revenue'
               ? 'bg-emerald-500/[0.08] dark:bg-emerald-500/20 border-emerald-500/40 shadow-xs'
               : 'bg-gray-50/80 dark:bg-white/[0.055] border-black/5 dark:border-white/10 backdrop-blur-xl hover:bg-gray-100/80'
@@ -205,7 +216,7 @@ export function OrganizerMetricsChart({
           <span className="text-[10px] font-semibold text-gray-400">
             Moy. {summary.averageTicketPrice.toLocaleString('fr-FR')} F
           </span>
-        </div>
+        </button>
 
         {/* Vues totales */}
         <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.055] border border-black/5 dark:border-white/10">
@@ -222,9 +233,11 @@ export function OrganizerMetricsChart({
         </div>
 
         {/* Taux de conversion ou Répartition */}
-        <div
+        <button
+          type="button"
+          aria-pressed={metricMode === 'breakdown'}
           onClick={() => setMetricMode('breakdown')}
-          className={`p-3.5 rounded-2xl cursor-pointer transition-all border ${
+          className={`p-3.5 rounded-2xl text-left cursor-pointer transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
             metricMode === 'breakdown'
               ? 'bg-purple-500/[0.08] dark:bg-purple-500/20 border-purple-500/40 shadow-xs'
               : 'bg-gray-50/80 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-gray-100/80'
@@ -241,7 +254,7 @@ export function OrganizerMetricsChart({
             <span>Par catégorie</span>
             <ArrowUpRight className="w-3 h-3" />
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Chart Canvas Area */}

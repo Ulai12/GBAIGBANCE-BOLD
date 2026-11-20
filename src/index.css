@@ -69,6 +69,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    color-scheme: light;
     /* La safe area iOS reprend la même teinte que le départ du fond de l'app. */
     background-color: var(--safe-area-bg);
     background-image: linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
@@ -79,6 +80,7 @@
   .dark html,
   html.dark {
     background-color: var(--safe-area-bg);
+    color-scheme: dark;
   }
 
   body {
@@ -92,6 +94,12 @@
     min-height: 100dvh;
     letter-spacing: -0.015em;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body {
+      transition: none;
+    }
   }
 
   .dark body {

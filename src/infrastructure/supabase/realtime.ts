@@ -281,7 +281,7 @@ export function subscribeToUserFavoritesLive(
       },
       (payload) => {
         const record = (payload.new || payload.old) as { event_id?: string; user_id?: string } | undefined;
-        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+        if (record?.user_id === userId) {
           if (record?.event_id && callbacks.onLikeChange) {
             callbacks.onLikeChange({
               eventType: payload.eventType,
@@ -301,7 +301,7 @@ export function subscribeToUserFavoritesLive(
       },
       (payload) => {
         const record = (payload.new || payload.old) as { artist_id?: string; user_id?: string } | undefined;
-        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+        if (record?.user_id === userId) {
           if (record?.artist_id && callbacks.onArtistFollowChange) {
             callbacks.onArtistFollowChange({
               eventType: payload.eventType,
@@ -321,7 +321,7 @@ export function subscribeToUserFavoritesLive(
       },
       (payload) => {
         const record = (payload.new || payload.old) as { organization_id?: string; user_id?: string } | undefined;
-        if (payload.eventType === 'DELETE' || !record?.user_id || record.user_id === userId) {
+        if (record?.user_id === userId) {
           if (record?.organization_id && callbacks.onOrgFollowChange) {
             callbacks.onOrgFollowChange({
               eventType: payload.eventType,
@@ -341,7 +341,7 @@ export function subscribeToUserFavoritesLive(
       },
       (payload) => {
         const record = (payload.new || payload.old) as { follower_id?: string; following_id?: string } | undefined;
-        if (payload.eventType === 'DELETE' || !record?.follower_id || record.follower_id === userId) {
+        if (record?.follower_id === userId) {
           if (record?.following_id && callbacks.onUserFollowChange) {
             callbacks.onUserFollowChange({
               eventType: payload.eventType,

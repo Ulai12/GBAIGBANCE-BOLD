@@ -118,18 +118,39 @@ export async function answerEventQuestion(
 export async function toggleOrganizationFollow(organizationId: string, userId: string): Promise<boolean> {
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!UUID_REGEX.test(organizationId) || !UUID_REGEX.test(userId)) {
-    return true;
+    throw new Error('Identifiant d’organisation ou utilisateur invalide.');
   }
 
-  const { data, error } = await supabase.rpc('toggle_organization_follow', {
-    p_organization_id: organizationId,
-  });
-  const rec = assertRpcOk(error, data, 'Impossible de suivre cette organisation');
-  return rec.following === true;
+  const { data: existing, error: selectError } = await supabase
+    .from('organization_follows')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (selectError) throw new Error(selectError.message);
+
+  if (existing) {
+    const { error } = await supabase
+      .from('organization_follows')
+      .delete()
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('organization_follows')
+    .upsert(
+      { organization_id: organizationId, user_id: userId },
+      { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
+    );
+  if (error) throw new Error(error.message);
+  return true;
 }
 
 /** Favori / like evenement — RPC atomique (RLS + compteur). */
-export async function toggleEventLike(eventId: string, _userId: string): Promise<boolean> {
+export async function toggleEventLike(eventId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('toggle_event_like', {
     p_event_id: eventId,
   });
@@ -140,14 +161,32 @@ export async function toggleEventLike(eventId: string, _userId: string): Promise
 export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!UUID_REGEX.test(artistId) || !UUID_REGEX.test(userId)) {
-    return true;
+    throw new Error('Identifiant d’artiste ou utilisateur invalide.');
   }
 
-  const { data, error } = await supabase.rpc('toggle_artist_follow', {
-    p_artist_id: artistId,
-  });
-  const rec = assertRpcOk(error, data, 'Impossible de suivre cet artiste');
-  return rec.following === true;
+  const { data: existing, error: selectError } = await supabase
+    .from('artist_follows')
+    .select('artist_id')
+    .eq('artist_id', artistId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (selectError) throw new Error(selectError.message);
+
+  if (existing) {
+    const { error } = await supabase
+      .from('artist_follows')
+      .delete()
+      .eq('artist_id', artistId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('artist_follows')
+    .upsert({ artist_id: artistId, user_id: userId }, { onConflict: 'artist_id,user_id', ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+  return true;
 }
 
 export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {

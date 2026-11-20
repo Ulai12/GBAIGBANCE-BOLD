@@ -13,7 +13,7 @@ import { getLocalProfile, clearLocalProfile } from '@/hooks/useLocalProfile';
 import { clearUserFavoritesStorage } from '@/contexts/FavoritesContext';
 import { clearLocalUserTickets } from '@/services/events';
 import type { Profile, Language } from '@/types';
-import { applyDocumentTheme, getSystemTheme } from '@/app-shell/Theme';
+import { applyDocumentTheme, getSavedThemeMode, getSystemTheme, type ThemeMode } from '@/app-shell/Theme';
 import { translate } from '@/locales';
 import {
   type UserLocationState,
@@ -21,16 +21,6 @@ import {
   getCurrentUserLocation,
   requestUserLocation,
 } from '@/utils/geo';
-
-function readSavedTheme(): 'light' | 'dark' | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = window.localStorage.getItem('gba_theme');
-    return saved === 'dark' || saved === 'light' ? saved : null;
-  } catch {
-    return null;
-  }
-}
 
 export function performSignOutCleanup(userId?: string | null): void {
   try {
@@ -96,9 +86,11 @@ export interface AppContextValue {
   isSessionResolving: boolean;
   language: Language;
   theme: 'light' | 'dark';
+  themeMode: ThemeMode;
   userLocation: UserLocationState;
   requestGPS: () => Promise<UserLocationState>;
   setLanguage: (lang: Language) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -113,6 +105,7 @@ export const defaultAppContextFallback: AppContextValue = {
   isSessionResolving: false,
   language: 'fr',
   theme: 'light',
+  themeMode: 'system',
   userLocation: {
     latitude: LOME_CENTER.latitude,
     longitude: LOME_CENTER.longitude,
@@ -128,6 +121,7 @@ export const defaultAppContextFallback: AppContextValue = {
     cityName: 'Lomé',
   }),
   setLanguage: () => {},
+  setThemeMode: () => {},
   toggleTheme: () => {},
   refreshProfile: async () => {},
   signOut: async () => {},
@@ -167,8 +161,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('gba_lang') as Language) || 'fr';
   });
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => readSavedTheme() || getSystemTheme());
-  const [hasManualTheme, setHasManualTheme] = useState(() => readSavedTheme() !== null);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(getSavedThemeMode);
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
+  const theme = themeMode === 'system' ? systemTheme : themeMode;
 
   const [userLocation, setUserLocation] = useState<UserLocationState>({
     latitude: LOME_CENTER.latitude,
@@ -193,22 +188,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const activeUserIdRef = useRef<string | null>(getLocalProfile()?.id || null);
 
   useEffect(() => {
-    applyDocumentTheme(theme);
-  }, [theme]);
+    applyDocumentTheme(theme, themeMode);
+  }, [theme, themeMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const syncSystemTheme = (event: MediaQueryListEvent) => {
-      if (!hasManualTheme) setTheme(event.matches ? 'dark' : 'light');
-    };
+    const syncSystemTheme = (event: MediaQueryListEvent) => setSystemTheme(event.matches ? 'dark' : 'light');
     if (typeof media.addEventListener === 'function') {
       media.addEventListener('change', syncSystemTheme);
       return () => media.removeEventListener('change', syncSystemTheme);
     }
     media.addListener(syncSystemTheme);
     return () => media.removeListener(syncSystemTheme);
-  }, [hasManualTheme]);
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -284,16 +277,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('gba_lang', lang);
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    setHasManualTheme(true);
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
     try {
-      localStorage.setItem('gba_theme', next);
+      localStorage.setItem('gba_theme', mode);
     } catch {
       // Le thème reste utilisable même si le stockage local est indisponible.
     }
-  }, [theme]);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeMode(theme === 'light' ? 'dark' : 'light');
+  }, [setThemeMode, theme]);
 
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -334,9 +329,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, session, loading, isSessionResolving, language, theme,
+      user, session, loading, isSessionResolving, language, theme, themeMode,
       userLocation, requestGPS,
-      setLanguage, toggleTheme, refreshProfile,
+      setLanguage, setThemeMode, toggleTheme, refreshProfile,
       signOut: handleSignOut, t,
     }}>
       {children}

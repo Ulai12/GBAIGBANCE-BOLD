@@ -146,7 +146,6 @@ function getErrorMessage(error: unknown) {
 
 export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const { user, t, language } = useApp();
-  const formatCurrency = (amount: number) => Number(amount).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US');
   const [step, setStep] = useState<Step>('Infos');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -1942,12 +1941,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 <div className="card p-4 space-y-2 text-xs">
                   <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                     <Calendar className="w-4 h-4 text-[#6600FF]" />
-                    <span>Début : {formatFriendlyDateTime(form.starts_at) || 'Date à préciser'}</span>
+                    <span>Début : {formatFriendlyDateTime(form.starts_at, language) || 'Date à préciser'}</span>
                   </div>
                   {form.ends_at && (
                     <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                       <Clock className="w-4 h-4 text-[#6600FF]" />
-                      <span>Fin : {formatFriendlyDateTime(form.ends_at)}</span>
+                      <span>Fin : {formatFriendlyDateTime(form.ends_at, language)}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
@@ -1990,7 +1989,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 text-xs flex justify-between items-center">
-                    <span>{formatFriendlyDateTime(form.starts_at) || 'Date à définir'}</span>
+                    <span>{formatFriendlyDateTime(form.starts_at, language) || 'Date à définir'}</span>
                     <span className="font-extrabold text-[#6600FF] dark:text-purple-300">
                       {previewEvent.price_min === 0 ? 'Gratuit' : `${Number(previewEvent.price_min).toLocaleString('fr-FR')} FCFA`}
                     </span>

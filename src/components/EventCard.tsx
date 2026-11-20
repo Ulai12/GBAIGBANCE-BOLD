@@ -44,7 +44,8 @@ function formatDate(dateString?: string | null, language: string = 'fr') {
 }
 
 function formatAttendees(count?: number | null) {
-  const n = typeof count === 'number' && !isNaN(count) ? Math.max(0, count) : 0;
+  if (typeof count !== 'number' || !Number.isFinite(count)) return '—';
+  const n = Math.max(0, Math.floor(count));
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();

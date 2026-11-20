@@ -6,9 +6,10 @@
     "editProfile": "Modifier",
     "displayGroup": "Affichage et langue",
     "themeTitle": "Thème d'affichage",
-    "themeDescription": "Mode sombre ou clair",
+    "themeDescription": "Choisissez votre apparence préférée",
     "dark": "Sombre",
     "light": "Clair",
+    "system": "Système",
     "languageTitle": "Langue de l'interface",
     "languageDescription": "Choisissez la langue de l'application",
     "aiGroup": "Intelligence artificielle",
@@ -53,6 +54,10 @@
     "disabled": "Désactivée"
   },
   "pwa": {
+    "updateAvailable": "Une nouvelle version est prête à être installée.",
+    "updateNow": "Mettre à jour",
+    "updateFailed": "La mise à jour a échoué. Réessaie lorsque le réseau sera stable.",
+    "updateComplete": "Gbaigbance a été mis à jour avec succès !",
     "installed": "Application installée",
     "standalone": "Mode autonome actif",
     "installApp": "Installer l'application",

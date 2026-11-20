@@ -217,10 +217,10 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
   };
 
   // Régénération d'un lien d'invitation ami
-  const handleRegenerateClaimLink = async (t: Ticket) => {
+  const handleRegenerateClaimLink = async (ticket: Ticket) => {
     haptic.selection();
     try {
-      const res = await regenerateClaimLink(t.id);
+      const res = await regenerateClaimLink(ticket.id);
       if (res.success && res.claim_token) {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const url = `${origin}/#claim=${res.claim_token}`;

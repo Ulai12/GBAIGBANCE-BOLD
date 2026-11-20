@@ -4,7 +4,6 @@ import type {
   TicketOption,
   TicketType,
   PaymentProvider,
-  Event,
   EventStatus,
 } from '@/types';
 import { fetchEventById } from '@/services/events';
@@ -490,8 +489,9 @@ export async function fetchUserTickets(
   }
   const order = await coreMergeIds(
     dbTickets.map((ticket) => ticket.id),
-    [...localTickets, ...friendGifts].map((ticket) => ticket.id)
-  );
+    [...localTickets, ...friendGifts].map((ticket) => ticket.id),
+    []
+  ) ?? [...new Set([...dbTickets, ...localTickets, ...friendGifts].map((ticket) => ticket.id))];
   const merged: Ticket[] = [];
   for (const id of order) {
     const t = pool.get(id);

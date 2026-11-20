@@ -87,7 +87,9 @@ export function HomeScreen({
   const [nearby, setNearby] = useState<Event[]>(initialCache.data?.nearby || []);
   const [artists, setArtists] = useState<Artist[]>(initialCache.data?.artists || []);
   const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
-  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(() =>
+    initialCache.data?.stats?.analyticsVersion === 2 ? initialCache.data.stats : null
+  );
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(!initialCache.hasCache);
   const onToastRef = useRef(onToast);
@@ -133,7 +135,7 @@ export function HomeScreen({
           setNearby(cached.nearby);
           setArtists(cached.artists);
           setOrganizations(cached.organizations);
-          setPlatformStats(cached.stats);
+          setPlatformStats(cached.stats?.analyticsVersion === 2 ? cached.stats : null);
           setLoading(false);
         }
       });

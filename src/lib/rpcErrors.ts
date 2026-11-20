@@ -30,6 +30,14 @@ export interface RpcNormalizedError {
   amount_xof?: number;
 }
 
+export type RpcResult = { ok: true; data: Record<string, unknown> } | RpcNormalizedError;
+
+export function isRpcPayloadSuccess(
+  result: RpcResult,
+): result is { ok: true; data: Record<string, unknown> } {
+  return 'ok' in result;
+}
+
 const BUSINESS_MESSAGES: Record<string, string> = {
   EXTERNAL_TICKETING: 'La billetterie de cet événement est sur une plateforme externe.',
   WHATSAPP_TICKETING: 'La réservation se fait via WhatsApp pour cet événement.',
@@ -188,7 +196,7 @@ export function normalizeTransportError(err: unknown, fallback: string): RpcNorm
 export function normalizeRpcPayload(
   data: unknown,
   fallback: string
-): { ok: true; data: Record<string, unknown> } | RpcNormalizedError {
+): RpcResult {
   const rec = asRecord(data);
   if (!rec) {
     return {
@@ -269,7 +277,7 @@ export function handleRpcResult(
   error: unknown,
   data: unknown,
   fallback: string
-): { ok: true; data: Record<string, unknown> } | RpcNormalizedError {
+): RpcResult {
   if (error) {
     return normalizeTransportError(error, fallback);
   }

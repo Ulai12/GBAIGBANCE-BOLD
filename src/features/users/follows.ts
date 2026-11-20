@@ -100,6 +100,35 @@ export async function toggleUserFollow(followerId: string, followingId: string):
   }
 }
 
+export async function setUserFollow(
+  followerId: string,
+  followingId: string,
+  shouldFollow: boolean,
+): Promise<boolean> {
+  if (!followerId || !followingId || followerId === followingId) {
+    throw new Error('Identifiant de suivi invalide.');
+  }
+
+  if (shouldFollow) {
+    const { error } = await supabase
+      .from('user_follows')
+      .upsert(
+        { follower_id: followerId, following_id: followingId },
+        { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
+      );
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from('user_follows')
+      .delete()
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId);
+    if (error) throw new Error(error.message);
+  }
+
+  return shouldFollow;
+}
+
 export async function isFollowingUser(followerId: string, followingId: string): Promise<boolean> {
   const localSet = getLocalFollowedUserIds(followerId);
   if (localSet.has(followingId)) return true;

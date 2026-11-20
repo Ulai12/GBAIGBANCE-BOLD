@@ -6,9 +6,10 @@
     "editProfile": "Edit profile",
     "displayGroup": "Display and language",
     "themeTitle": "Display theme",
-    "themeDescription": "Dark or light mode",
+    "themeDescription": "Choose your preferred appearance",
     "dark": "Dark",
     "light": "Light",
+    "system": "System",
     "languageTitle": "Interface language",
     "languageDescription": "Choose the app language",
     "aiGroup": "Artificial intelligence",
@@ -53,6 +54,10 @@
     "disabled": "Off"
   },
   "pwa": {
+    "updateAvailable": "A new version is ready to install.",
+    "updateNow": "Update now",
+    "updateFailed": "The update failed. Please try again when your connection is stable.",
+    "updateComplete": "Gbaigbance was updated successfully!",
     "installed": "App installed",
     "standalone": "Standalone mode is active",
     "installApp": "Install the app",

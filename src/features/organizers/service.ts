@@ -41,6 +41,7 @@ async function fetchTicketsForEvents(eventIds: string[]) {
     event_id: string;
     ticket_type: string;
     price_paid?: number;
+    quantity?: number;
     status?: string;
     created_at: string;
   }> = [];
@@ -51,7 +52,7 @@ async function fetchTicketsForEvents(eventIds: string[]) {
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from('tickets')
-        .select('id, event_id, ticket_type, price_paid, status, created_at')
+        .select('id, event_id, ticket_type, price_paid, quantity, status, created_at')
         .in('event_id', slice)
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -68,12 +69,14 @@ function toRustTickets(tickets: Array<{
   event_id: string;
   ticket_type?: string;
   price_paid?: number;
+  quantity?: number;
   status?: string;
   created_at?: string;
 }>): RustTicket[] {
   return tickets.map((ticket) => ({
     id: ticket.id,
     price_paid: Number(ticket.price_paid) || 0,
+    quantity: Math.max(1, Number(ticket.quantity) || 1),
     status: ticket.status || 'valid',
     created_at_ms: ticket.created_at ? Date.parse(ticket.created_at) : 0,
     event_id: ticket.event_id,
@@ -208,7 +211,7 @@ export async function fetchOrganizerPerformanceMetrics(
 
     if (eventIds.length > 0) {
       const dbTickets = await fetchTicketsForEvents(eventIds);
-      tickets = dbTickets.map((t) => ({ ...t, quantity: 1 }));
+      tickets = dbTickets;
     }
 
     // Les métriques organisateur reposent sur les billets persistés côté serveur.
@@ -300,7 +303,7 @@ function keptTickets(tickets: RustTicket[]): RustTicket[] {
 function tallyTickets(tickets: RustTicket[]): { tickets: number; revenue: number } {
   const kept = keptTickets(tickets);
   return {
-    tickets: kept.length,
+    tickets: kept.reduce((sum, ticket) => sum + Math.max(1, ticket.quantity || 1), 0),
     revenue: Math.round(kept.reduce((sum, ticket) => sum + Math.max(0, ticket.price_paid || 0), 0)),
   };
 }
@@ -310,7 +313,7 @@ function fallbackByType(tickets: RustTicket[]): Array<{ key: string; count: numb
   for (const ticket of keptTickets(tickets)) {
     const key = (ticket.ticket_type || 'standard').toLowerCase() || 'standard';
     const entry = map.get(key) || { count: 0, revenue: 0 };
-    entry.count += 1;
+    entry.count += Math.max(1, ticket.quantity || 1);
     entry.revenue += Math.max(0, ticket.price_paid || 0);
     map.set(key, entry);
   }
@@ -333,16 +336,16 @@ function fallbackSeries(days: number, tickets: RustTicket[]): PerformanceTimePoi
   let windowRevenue = 0;
   for (const ticket of kept) {
     const price = Math.max(0, ticket.price_paid || 0);
-    total += 1;
+    total += Math.max(1, ticket.quantity || 1);
     revenue += price;
     if (!ticket.created_at_ms) continue;
     const created = new Date(ticket.created_at_ms);
     const day = new Date(created.getFullYear(), created.getMonth(), created.getDate());
     const index = Math.round((day.getTime() - start.getTime()) / 86_400_000);
     if (index >= 0 && index < points.length) {
-      points[index].tickets += 1;
+      points[index].tickets += Math.max(1, ticket.quantity || 1);
       points[index].revenue += price;
-      windowTickets += 1;
+      windowTickets += Math.max(1, ticket.quantity || 1);
       windowRevenue += price;
     }
   }
@@ -393,7 +396,7 @@ function allTimeMonthlySeries(tickets: RustTicket[]): PerformanceTimePoint[] {
       (date.getFullYear() - firstMonth.getFullYear()) * 12 +
       date.getMonth() - firstMonth.getMonth();
     if (index < 0 || index >= months.length) continue;
-    months[index].tickets += 1;
+    months[index].tickets += Math.max(1, ticket.quantity || 1);
     months[index].revenue += Math.max(0, ticket.price_paid || 0);
   }
 

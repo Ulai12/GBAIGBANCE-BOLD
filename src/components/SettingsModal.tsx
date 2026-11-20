@@ -4,6 +4,7 @@ import {
   X,
   Moon,
   Sun,
+  Monitor,
   Globe,
   Sparkles,
   Bell,
@@ -34,7 +35,7 @@ export function SettingsModal({
   onOpenNotificationSettings,
   onEditProfile,
 }: SettingsModalProps) {
-  const { user, theme, toggleTheme, language, setLanguage, signOut, t } = useApp();
+  const { user, theme, themeMode, setThemeMode, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
@@ -128,20 +129,40 @@ export function SettingsModal({
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                    {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    {themeMode === 'system' ? <Monitor className="w-5 h-5" /> : theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">{t('settings', 'appModal.themeTitle')}</p>
                     <p className="text-xs text-gray-400">{t('settings', 'appModal.themeDescription')}</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs font-bold text-[#17131D] dark:text-white active:scale-95 transition-all"
+                <div
+                  role="group"
+                  aria-label={t('settings', 'appModal.themeTitle')}
+                  className="flex items-center gap-0.5 p-1 rounded-full bg-gray-100 dark:bg-white/10"
                 >
-                  {theme === 'dark' ? `🌙 ${t('settings', 'appModal.dark')}` : `☀️ ${t('settings', 'appModal.light')}`}
-                </button>
+                  {([
+                    ['system', Monitor, 'system'],
+                    ['light', Sun, 'light'],
+                    ['dark', Moon, 'dark'],
+                  ] as const).map(([mode, Icon, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setThemeMode(mode)}
+                      aria-label={t('settings', `appModal.${label}`)}
+                      aria-pressed={themeMode === mode}
+                      title={t('settings', `appModal.${label}`)}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                        themeMode === mode
+                          ? 'bg-white dark:bg-[#302b38] text-[#6600FF] dark:text-purple-300 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-[#17131D] dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Langue */}

@@ -42,6 +42,10 @@ export function GbaigbanceStatsDashboard({
   const [platformStats, setPlatformStats] = useState(initialPlatformStats);
   const [timelineBuckets, setTimelineBuckets] = useState<TimelineBucket[] | null>(null);
   const syncSeq = useRef(0);
+
+  useEffect(() => {
+    setHoveredIndex(null);
+  }, [period, activeMetric]);
   // Ne jamais tracer les quelques événements de découverte comme s'ils représentaient
   // toute la plateforme : le graphique attend exclusivement l'agrégat complet du service.
   const timelineEvents = useMemo(
@@ -99,9 +103,10 @@ export function GbaigbanceStatsDashboard({
     let cancelled = false;
     setTimelineBuckets(null);
     const tickets = (platformStats?.ticketsTimeline || []).map((ticket, index) => ({
-      id: ticket.id || `${ticket.event_id}-${ticket.created_at_ms || index}-${index}`,
+      id: ticket.id || `${ticket.created_at_ms || index}-${index}`,
       created_at_ms: ticket.created_at_ms || Date.parse(ticket.created_at),
       price_paid: ticket.price_paid || 0,
+      quantity: Math.max(1, Math.floor(ticket.quantity || 1)),
       status: 'valid',
     }));
     if (period === 'all') {
@@ -113,14 +118,18 @@ export function GbaigbanceStatsDashboard({
       ].filter((timestamp) => Number.isFinite(timestamp) && timestamp > 0 && timestamp <= Date.now());
       const now = new Date();
       const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const earliest = timestamps.length
-        ? new Date(Math.min(...timestamps))
+      const earliestTimestamp = timestamps.reduce(
+        (earliest, timestamp) => Math.min(earliest, timestamp),
+        Number.POSITIVE_INFINITY
+      );
+      const earliest = Number.isFinite(earliestTimestamp)
+        ? new Date(earliestTimestamp)
         : currentMonth;
       const firstMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
-      const monthCount = Math.max(1, Math.min(120,
+      const monthCount = Math.max(1,
         (currentMonth.getFullYear() - firstMonth.getFullYear()) * 12 +
         currentMonth.getMonth() - firstMonth.getMonth() + 1
-      ));
+      );
       const buckets = Array.from({ length: monthCount }, (_, index) => {
         const date = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
         return { year: date.getFullYear(), month: date.getMonth() + 1, week: null, tickets: 0, revenue: 0, attendees: 0, events: 0 };
@@ -139,7 +148,7 @@ export function GbaigbanceStatsDashboard({
       tickets.forEach((ticket) => {
         const index = indexFor(ticket.created_at_ms);
         if (index >= 0 && index < buckets.length && ticket.created_at_ms > 0 && ticket.created_at_ms <= Date.now()) {
-          buckets[index].tickets += 1;
+          buckets[index].tickets += ticket.quantity;
           buckets[index].revenue += Math.max(0, ticket.price_paid || 0);
         }
       });
@@ -215,7 +224,7 @@ export function GbaigbanceStatsDashboard({
         if (!isNaN(td.getTime()) && td.getMonth() === currentMonth && td.getFullYear() === currentYear) {
           const day = td.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          weeks[weekIdx].tickets += 1;
+          weeks[weekIdx].tickets += tk.quantity;
           weeks[weekIdx].revenue += tk.price_paid || 0;
         }
       });
@@ -252,7 +261,7 @@ export function GbaigbanceStatsDashboard({
         if (!isNaN(td.getTime()) && td.getMonth() === lastMonthIdx && td.getFullYear() === lastMonthYear) {
           const day = td.getDate();
           const weekIdx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
-          weeks[weekIdx].tickets += 1;
+          weeks[weekIdx].tickets += tk.quantity;
           weeks[weekIdx].revenue += tk.price_paid || 0;
         }
       });
@@ -299,19 +308,19 @@ export function GbaigbanceStatsDashboard({
       const price = tk.price_paid || 0;
 
       if (m === m1.getMonth() && y === m1.getFullYear()) {
-        m1Data.tickets += 1;
+        m1Data.tickets += tk.quantity;
         m1Data.revenue += price;
       } else if (m === m2.getMonth() && y === m2.getFullYear()) {
-        m2Data.tickets += 1;
+        m2Data.tickets += tk.quantity;
         m2Data.revenue += price;
       } else if (m === m3.getMonth() && y === m3.getFullYear()) {
-        m3Data.tickets += 1;
+        m3Data.tickets += tk.quantity;
         m3Data.revenue += price;
       }
     });
 
     return [m1Data, m2Data, m3Data];
-  }, [period, totals, timelineEvents, platformStats?.ticketsTimeline, timelineBuckets]);
+  }, [period, timelineEvents, platformStats?.ticketsTimeline, timelineBuckets, language]);
 
   // Totaux correspondant exactement à la période sélectionnée.
   const periodTotals = useMemo(() => monthlyTimeline.reduce((sum, item) => ({
@@ -510,10 +519,15 @@ export function GbaigbanceStatsDashboard({
     <div className="w-full overflow-hidden relative isolate rounded-[2rem] border border-white/75 border-t-white/90 bg-gradient-to-br from-white/75 via-white/60 to-violet-50/45 shadow-[0_12px_36px_rgba(23,19,29,0.08)] backdrop-blur-2xl dark:border-white/20 dark:border-t-white/35 dark:bg-gradient-to-br dark:from-[#493568]/55 dark:via-[#1a162b]/48 dark:to-[#39264e]/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.48)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.16),0_22px_56px_rgba(0,0,0,0.48)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_34%,rgba(139,92,246,0.07)_72%,transparent)]">
       {/* Sélecteur de période — pleine largeur */}
       <div className="p-4 sm:p-5">
-        <div className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/[0.055]">
+        <div
+          role="group"
+          aria-label={t('events', 'home.stats.period')}
+          className="relative flex w-full items-center rounded-2xl bg-gray-100/90 p-1 dark:bg-white/[0.055]"
+        >
 
           <button
             type="button"
+            aria-pressed={period === 'current_month'}
             onClick={() =>
               setPeriod('current_month')
             }
@@ -528,6 +542,7 @@ export function GbaigbanceStatsDashboard({
 
           <button
             type="button"
+            aria-pressed={period === 'last_month'}
             onClick={() =>
               setPeriod('last_month')
             }
@@ -542,23 +557,8 @@ export function GbaigbanceStatsDashboard({
 
           <button
             type="button"
-            onClick={() =>
-              setPeriod('all')
-            }
-            className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
-              period === 'all'
-                ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#6600FF] dark:text-white'
-                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            {t('events', 'home.stats.allTime')}
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setPeriod('quarter')
-            }
+            aria-pressed={period === 'quarter'}
+            onClick={() => setPeriod('quarter')}
             className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
               period === 'quarter'
                 ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#6600FF] dark:text-white'
@@ -566,6 +566,19 @@ export function GbaigbanceStatsDashboard({
             }`}
           >
             {t('events', 'home.stats.quarter')}
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={period === 'all'}
+            onClick={() => setPeriod('all')}
+            className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-[11px] font-bold transition-all sm:text-xs ${
+              period === 'all'
+                ? 'bg-white text-[#17131D] shadow-xs dark:bg-[#6600FF] dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+            }`}
+          >
+            {t('events', 'home.stats.allTime')}
           </button>
 
         </div>
@@ -900,13 +913,24 @@ export function GbaigbanceStatsDashboard({
                 return (
                   <g
                     key={`${point.data.label}-${index}`}
-                    className="cursor-pointer"
+                    className="cursor-pointer outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6600FF]"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${point.data.label} : ${getMetricFormatted(point.data[activeMetric], activeMetric)}`}
                     onMouseEnter={() =>
                       setHoveredIndex(index)
                     }
                     onMouseLeave={() =>
                       setHoveredIndex(null)
                     }
+                    onFocus={() => setHoveredIndex(index)}
+                    onBlur={() => setHoveredIndex(null)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setHoveredIndex(isHovered ? null : index);
+                      }
+                    }}
                     onClick={() =>
                       setHoveredIndex(
                         isHovered
@@ -953,14 +977,18 @@ export function GbaigbanceStatsDashboard({
                     />
 
                     {/* Label */}
-                    <text
-                      x={point.x}
-                      y={chartHeight - 4}
-                      textAnchor="middle"
-                      className="fill-gray-400 text-[9px] font-bold select-none"
-                    >
-                      {point.data.shortLabel}
-                    </text>
+                    {(points.length <= 12 ||
+                      index % Math.ceil(points.length / 8) === 0 ||
+                      index === points.length - 1) && (
+                      <text
+                        x={point.x}
+                        y={chartHeight - 4}
+                        textAnchor="middle"
+                        className="fill-gray-400 text-[9px] font-bold select-none"
+                      >
+                        {point.data.shortLabel}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -974,9 +1002,14 @@ export function GbaigbanceStatsDashboard({
       <div className="px-5 pb-5">
 
         <div className="mb-2.5 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {platformStats?.categoryBasis === 'revenue' ? t('events', 'home.stats.salesByCategory') : t('events', 'home.stats.catalogByCategory')}
-          </span>
+          <div className="min-w-0">
+            <span className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {platformStats?.categoryBasis === 'revenue' ? t('events', 'home.stats.salesByCategory') : t('events', 'home.stats.catalogByCategory')}
+            </span>
+            <span className="text-[10px] font-medium text-gray-400">
+              {t('events', 'home.stats.globalData')}
+            </span>
+          </div>
 
           <span className="text-[11px] font-semibold text-[#6600FF]">
             {platformStats?.categoryBasis === 'revenue'

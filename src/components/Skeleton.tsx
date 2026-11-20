@@ -2,6 +2,35 @@ export function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`skeleton ${className}`} />;
 }
 
+export function AppLoadingScreen() {
+  return (
+    <div
+      className="min-h-[100dvh] flex flex-col items-center justify-center gap-5 bg-[var(--bg)]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Chargement de Gbaigbance"
+    >
+      <div className="relative grid place-items-center w-24 h-24">
+        <div className="absolute inset-0 rounded-[2rem] bg-[#6600FF]/10 blur-xl" />
+        <div className="absolute inset-0 rounded-[2rem] border-2 border-[#6600FF]/15 border-t-[#6600FF] animate-spin motion-reduce:animate-none" />
+        <img
+          src="/icon.svg"
+          alt=""
+          width="56"
+          height="56"
+          fetchPriority="high"
+          className="relative w-14 h-14 rounded-2xl"
+        />
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-black tracking-wide text-[#17131D] dark:text-white">Gbaigbance</p>
+        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Chargement…</p>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Skeleton for standard vertical event card (Home explore / Explore grid)
  */

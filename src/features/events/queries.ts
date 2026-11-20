@@ -1,12 +1,12 @@
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import type { Event, EventWithRelations, EventCategory } from '@/types';
 import { hydrateEventCategories, eventMatchesCategoryFilter } from '@/constants/categories';
-import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded, isRealProfile, isRealArtist, isRealOrganization } from './status';
+import { isRealEvent, isEventActive, isEventTerminated, hasEventEnded } from './status';
 import { coreRankIds, coreTrendIds } from '@/lib/rust-core';
 
 function sanitizeSearchInput(input: string): string {
   if (!input) return '';
-  return input.replace(/[,().:%*\"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+  return input.replace(/[,().:%*"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
 }
 
 /**
@@ -35,6 +35,7 @@ async function selectPages<T>(
 // ==================== STATS ====================
 
 export interface PlatformStats {
+  analyticsVersion?: number;
   totalEvents: number;
   totalAllEvents?: number;
   totalArtists: number;
@@ -57,7 +58,7 @@ export interface PlatformStats {
     created_at: string;
     created_at_ms: number;
     price_paid: number;
-    event_id: string;
+    quantity: number;
   }>;
   isAvailable?: boolean;
   eventsTimeline: Array<{
@@ -93,101 +94,129 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   if (!isSupabaseConfigured) return unavailable;
 
   try {
-    try {
-      const { data: apiData, error } = await supabase.functions.invoke('platform-stats');
-      if (
-        !error &&
-        apiData &&
-        typeof apiData.totalUsers === 'number' &&
-        typeof apiData.totalTickets === 'number'
-      ) {
-        return {
-          ...unavailable,
-          ...apiData,
-          isAvailable: true,
-        } as PlatformStats;
-      }
-    } catch {
-      // Repli sur l'agrégation directe si l'Edge Function est indisponible
+    const { data, error } = await supabase.functions.invoke('platform-stats');
+    if (error) {
+      console.error('[platform-stats] Trusted analytics endpoint failed:', error);
+      return unavailable;
     }
 
-    // Repli sur l'agrégation directe via les tables publiques si l'Edge Function est indisponible
-    const [eventsRes, optionsRes, artistsRes, orgsRes, profilesRes] = await Promise.all([
-      supabase.from('events').select('id, category, attendees_count, views_count, starts_at, ends_at, status').limit(500),
-      supabase.from('ticket_options').select('id, event_id, price, quantity_sold').limit(1000),
-      supabase.from('artists').select('id, name').limit(500),
-      supabase.from('organizations').select('id, name').limit(500),
-      supabase.from('profiles').select('id, name, email, role').limit(1000),
-    ]);
-
-    if (eventsRes.error) return unavailable;
-
-    const events = (Array.isArray(eventsRes.data) ? eventsRes.data : []).filter(
-      (ev) => isRealEvent(ev) && !String(ev.id).toLowerCase().startsWith('e1000000-')
-    );
-    const realEventIds = new Set(events.map((ev) => ev.id));
-    const options = (Array.isArray(optionsRes.data) ? optionsRes.data : []).filter((o) =>
-      realEventIds.has(o.event_id)
-    );
-    const artists = (Array.isArray(artistsRes.data) ? artistsRes.data : []).filter(isRealArtist);
-    const orgs = (Array.isArray(orgsRes.data) ? orgsRes.data : []).filter(isRealOrganization);
-    const profiles = (Array.isArray(profilesRes.data) ? profilesRes.data : []).filter(isRealProfile);
-    const nonParticipantRoles = new Set(['organizer', 'artist', 'admin']);
-    const participantAccounts = profiles.filter(
-      (p) => !nonParticipantRoles.has(String(p.role || 'participant').toLowerCase())
-    ).length;
-
-    const activeEvents = events.filter((ev) => isEventActive(ev as Event));
-    const attendanceEvents = events.filter((ev) => ['published', 'completed'].includes(ev.status));
-    const categories: Record<string, number> = {};
-    for (const ev of activeEvents) {
-      const cat = String(ev.category || 'other');
-      categories[cat] = (categories[cat] || 0) + 1;
+    const stats = parsePlatformStats(data);
+    if (!stats) {
+      console.error('[platform-stats] Analytics response is invalid or outdated.');
+      return unavailable;
     }
-
-    const totalTickets = options.reduce((sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0), 0);
-    const totalRevenue = Math.round(
-      options.reduce(
-        (sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0) * Math.max(0, Number(opt.price) || 0),
-        0
-      )
-    );
-    const totalActiveCount = activeEvents.length;
-    const categoryShares = Object.entries(categories)
-      .map(([id, count]) => ({
-        id,
-        count,
-        amount: 0,
-        percent: totalActiveCount > 0 ? Math.round((count / totalActiveCount) * 100) : 0,
-      }))
-      .sort((a, b) => b.percent - a.percent);
-
-    return {
-      ...unavailable,
-      totalEvents: activeEvents.length,
-      totalAllEvents: events.length,
-      totalArtists: artists.length,
-      totalOrganizers: orgs.length,
-      totalTickets,
-      totalRevenue,
-      totalUsers: profiles.length,
-      totalProfiles: profiles.length,
-      totalParticipantAccounts: participantAccounts,
-      totalParticipants: attendanceEvents.reduce((sum, ev) => sum + Math.max(0, Number(ev.attendees_count) || 0), 0),
-      totalViews: events.reduce((sum, ev) => sum + Math.max(0, Number(ev.views_count) || 0), 0),
-      categories,
-      categoryBasis: 'events',
-      categoryShares,
-      eventsTimeline: attendanceEvents.map((ev) => ({
-        id: ev.id,
-        starts_at_ms: ev.starts_at ? Date.parse(ev.starts_at) || 0 : 0,
-        attendees: Math.max(0, Number(ev.attendees_count) || 0),
-      })),
-      isAvailable: true,
-    };
-  } catch {
+    return stats;
+  } catch (error) {
+    console.error('[platform-stats] Unable to load trusted analytics:', error);
     return unavailable;
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function nonNegativeNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function parsePlatformStats(value: unknown): PlatformStats | null {
+  const raw = asRecord(value);
+  if (!raw || raw.analyticsVersion !== 2 || raw.isAvailable !== true) return null;
+
+  const numberFields = [
+    'totalEvents',
+    'totalAllEvents',
+    'totalArtists',
+    'totalOrganizers',
+    'totalTickets',
+    'totalParticipants',
+    'totalParticipantAccounts',
+    'totalProfiles',
+    'totalPendingPlatformInvitations',
+    'totalUsers',
+    'totalViews',
+    'totalRevenue',
+    'totalCancelledTickets',
+    'totalRefundedTickets',
+  ] as const;
+  const numbers = {} as Record<(typeof numberFields)[number], number>;
+  for (const field of numberFields) {
+    const parsed = nonNegativeNumber(raw[field]);
+    if (parsed === null) return null;
+    numbers[field] = parsed;
+  }
+
+  if (raw.categoryBasis !== 'revenue' && raw.categoryBasis !== 'events') return null;
+  const rawCategories = asRecord(raw.categories);
+  if (!rawCategories || !Array.isArray(raw.categoryShares)) return null;
+
+  const categories: Record<string, number> = {};
+  for (const [id, count] of Object.entries(rawCategories)) {
+    const parsed = nonNegativeNumber(count);
+    if (parsed === null) return null;
+    categories[id] = parsed;
+  }
+
+  const categoryShares: PlatformStats['categoryShares'] = [];
+  for (const item of raw.categoryShares) {
+    const share = asRecord(item);
+    const count = nonNegativeNumber(share?.count);
+    const amount = nonNegativeNumber(share?.amount);
+    const percent = nonNegativeNumber(share?.percent);
+    if (!share || typeof share.id !== 'string' || count === null || amount === null || percent === null) {
+      return null;
+    }
+    categoryShares.push({ id: share.id, count, amount, percent });
+  }
+
+  if (!Array.isArray(raw.ticketsTimeline) || !Array.isArray(raw.eventsTimeline)) return null;
+  const ticketsTimeline: NonNullable<PlatformStats['ticketsTimeline']> = [];
+  for (const item of raw.ticketsTimeline) {
+    const ticket = asRecord(item);
+    const createdAtMs = nonNegativeNumber(ticket?.created_at_ms);
+    const pricePaid = nonNegativeNumber(ticket?.price_paid);
+    const quantity = nonNegativeNumber(ticket?.quantity);
+    if (
+      !ticket ||
+      typeof ticket.id !== 'string' ||
+      typeof ticket.created_at !== 'string' ||
+      createdAtMs === null ||
+      pricePaid === null ||
+      quantity === null
+    ) {
+      return null;
+    }
+    ticketsTimeline.push({
+      id: ticket.id,
+      created_at: ticket.created_at,
+      created_at_ms: createdAtMs,
+      price_paid: pricePaid,
+      quantity,
+    });
+  }
+
+  const eventsTimeline: PlatformStats['eventsTimeline'] = [];
+  for (const item of raw.eventsTimeline) {
+    const event = asRecord(item);
+    const startsAtMs = nonNegativeNumber(event?.starts_at_ms);
+    const attendees = nonNegativeNumber(event?.attendees);
+    if (!event || typeof event.id !== 'string' || startsAtMs === null || attendees === null) return null;
+    eventsTimeline.push({ id: event.id, starts_at_ms: startsAtMs, attendees });
+  }
+
+  return {
+    analyticsVersion: 2,
+    ...numbers,
+    categories,
+    categoryBasis: raw.categoryBasis,
+    categoryShares,
+    ticketsTimeline,
+    eventsTimeline,
+    isAvailable: true,
+  };
 }
 
 // ==================== DISCOVERY QUERIES ====================

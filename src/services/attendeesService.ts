@@ -48,7 +48,7 @@ export async function fetchEventAttendees(
       .from('tickets')
       .select('user_id, ticket_type, created_at, status')
       .eq('event_id', eventId)
-      .neq('status', 'cancelled')
+      .in('status', ['active', 'valid', 'used'])
       .limit(300);
 
     // Récupération de l'event pour son compteur officiel d'inscrits

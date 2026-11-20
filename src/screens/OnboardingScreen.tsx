@@ -66,7 +66,6 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['concert', 'festival', 'spectacle']);
   const [selectedArtistIndex, setSelectedArtistIndex] = useState(0);
   const [followedArtists, setFollowedArtists] = useState<string[]>(['king-mensah']);
-  const [soonCountryNotice, setSoonCountryNotice] = useState<string | null>(null);
 
   const ONBOARDING_SLIDES: Slide[] = [0, 1, 2, 3].map((id) => ({
     id,
@@ -384,12 +383,6 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     </button>
                   ))}
                 </div>
-                {soonCountryNotice && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] leading-tight flex items-center gap-2 animate-fade-in">
-                    <span className="text-base shrink-0">⏳</span>
-                    <p className="flex-1">{soonCountryNotice}</p>
-                  </div>
-                )}
               </div>
 
               <div>

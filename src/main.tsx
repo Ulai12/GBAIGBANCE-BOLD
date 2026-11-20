@@ -24,7 +24,7 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload();
 });
 
-// Enregistrement PWA avec détection rapide et application automatique des mises à jour.
+// Enregistrement PWA avec mise à jour disponible à la demande.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   const updateSW = registerSW({
     immediate: true,
@@ -42,18 +42,18 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       const checkForUpdate = () => {
         if (!navigator.onLine || document.visibilityState !== 'visible') return;
 
-        // Évite les vérifications rapprochées lors d'un focus + retour au premier plan.
         const now = Date.now();
-        if (now - lastCheck < 10_000) return;
+        if (now - lastCheck < 60_000) return;
         lastCheck = now;
 
         void registration.update().catch(() => {
-          // Une vérification échouée (réseau lent / hors ligne) sera retentée plus tard.
+          if (navigator.onLine) {
+            console.warn('[PWA] La vérification de mise à jour a échoué; elle sera retentée plus tard.');
+          }
         });
       };
 
-      // Vercel est interrogé toutes les 30 secondes tant que l'app est visible.
-      window.setInterval(checkForUpdate, 30_000);
+      window.setInterval(checkForUpdate, 5 * 60_000);
       document.addEventListener('visibilitychange', checkForUpdate);
       window.addEventListener('focus', checkForUpdate);
       window.addEventListener('online', checkForUpdate);
