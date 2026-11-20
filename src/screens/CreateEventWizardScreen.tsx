@@ -211,6 +211,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const stepIndex = STEPS.indexOf(step);
   const configuredTicketCount = tickets.filter((ticket) => ticket.label.trim()).length;
   const configuredTicketQuantity = tickets.reduce((total, ticket) => {
+    if (!ticket.label.trim()) return total;
     const quantity = Number(ticket.quantity_total);
     return total + (Number.isInteger(quantity) && quantity > 0 ? quantity : 0);
   }, 0);
@@ -1478,26 +1479,26 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 <div className="flex items-center gap-2 text-blue-500">
                   <ExternalLink className="w-5 h-5" />
                   <h4 className="text-sm font-bold text-[#17131D] dark:text-white">
-                    Billetterie sur site dédié ou externe
+                    {t('events', 'creation.wizard.access.externalHeading')}
                   </h4>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Lien direct vers la billetterie officielle *
+                    {t('events', 'creation.wizard.access.officialLink')}
                   </label>
                   <input
                     type="url"
                     className={fieldClass}
                     value={externalTicketUrl}
                     onChange={(e) => setExternalTicketUrl(e.target.value)}
-                    placeholder="https://mon-festival.com/billetterie ou lien dédié"
+                    placeholder={t('events', 'creation.wizard.access.externalPlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Tarif d’accès à partir de (FCFA)
+                    {t('events', 'creation.wizard.access.accessPrice')}
                   </label>
                   <input
                     type="number"
@@ -1523,7 +1524,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               <div className="card p-4 space-y-2 border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-900 dark:text-emerald-200 animate-fade-in">
                 <div className="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
                   <Sparkles className="w-4 h-4" />
-                  <span>Événement en accès 100% libre et gratuit</span>
+                  <span>{t('events', 'creation.wizard.access.freeBadge')}</span>
                 </div>
                 <p>
                   Aucune vente de billet ni réservation requise. Le badge « Entrée libre » sera affiché sur les cartes et la page de l'événement.
@@ -1580,10 +1581,10 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                           )
                         }
                       >
-                        <option value="standard">Standard</option>
-                        <option value="vip">VIP</option>
-                        <option value="vvip">VVIP</option>
-                        <option value="free">Gratuit</option>
+                        <option value="standard">{t('events', 'creation.wizard.access.standard')}</option>
+                        <option value="vip">{t('events', 'creation.wizard.access.vip')}</option>
+                        <option value="vvip">{t('events', 'creation.wizard.access.vvip')}</option>
+                        <option value="free">{t('events', 'creation.wizard.access.freeTicket')}</option>
                       </select>
 
                     </div>
@@ -1752,6 +1753,13 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             </div>
 
             {collaborators.length > 0 && (
+              <>
+              <div className="rounded-[22px] border border-amber-500/20 bg-amber-500/[0.06] p-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+                <div className="flex items-start gap-2">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{t('events', 'creation.wizard.team.approvalNotice')}</p>
+                </div>
+              </div>
               <div className="rounded-[22px] border border-black/[0.06] bg-white p-4 dark:border-white/[0.08] dark:bg-[#1A1829]">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.team.selected')}</p>
@@ -1774,6 +1782,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   ))}
                 </ul>
               </div>
+              </>
             )}
           </section>
         )}
