@@ -1,1 +1,1 @@
-export { default } from '../../ai-assistant.ts';
+export { default } from '../../ai-assistant';
