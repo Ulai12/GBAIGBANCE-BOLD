@@ -66,3 +66,23 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Branch comparison at the latest check: FRONTEND-iA ahead 101, behind 18 vs main. Do not merge/rebase without a reviewed plan.
 - Browser screenshot/interactive visual QA could not be completed because the Browser session was unavailable. Manual mobile QA is still required.
 - Full progress/limitations are in `docs/CREATE_EVENT_UX_VISION.md` section 11.
+
+
+## Progress update — 2026-11-20 — build fix + ticketing/team UX tranche
+
+- Fixed the confirmed Vercel TypeScript TS5097 source in `api/ai/assistant/stream.ts`: re-export path changed from `../../ai-assistant.ts` to `../../ai-assistant`. No package manifest, dependency or lockfile changes.
+- Ticketing UI in `src/screens/CreateEventWizardScreen.tsx`:
+  - Added derived summary metrics for named ticket formulas, configured seat quantities, and minimum configured price.
+  - Added a clearer ticket-card hierarchy, localized ticket type/name/price/quantity labels, and an optional ticket description field that uses the existing payload property.
+  - Empty unnamed ticket rows are excluded from the seat total.
+  - Existing access modes and backend mutation remain unchanged.
+- Collaborator UI:
+  - Added stale-response protection to debounced artist/organization searches.
+  - Search results show available artist photos / organization logos and visibly disable the current account or already selected collaborators.
+  - Selected collaborators are shown as accessible removable rows with their role.
+  - Added localized explanation that events with collaborators remain pending until invitations are accepted.
+- FR/EN locale files updated.
+- Latest code commit before docs: `e41362ad60fca6fe37020d71d97d6148fbf4bdad`.
+- Vercel deployment `dpl_6PPSLxAbvrtauAeMx76Px3ftGDcF` was QUEUED at the last check. Do not claim the TS5097 error is resolved in deployment until this exact commit reaches READY and logs are inspected.
+- Detailed notes are in `docs/CREATE_EVENT_UX_VISION.md` section 12.
+- No Supabase schema, creation mutation, status logic, package manifest or lockfile was changed.
