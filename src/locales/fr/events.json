@@ -107,7 +107,7 @@
         "city": "Ville *",
         "country": "Pays *",
         "gps": "Coordonnées GPS pour la carte",
-        "currentPosition": "Ma position",
+        "currentPosition": "Utiliser ma position",
         "latitude": "Lat. :",
         "longitude": "Long. :",
         "dates": "Dates et horaires",
@@ -119,7 +119,8 @@
         "end": "Fin de l’événement",
         "recommended": "recommandée",
         "clear": "Effacer",
-        "sameDateFourHours": "Même date (+4 heures)"
+        "sameDateFourHours": "Même date (+4 heures)",
+        "gpsHint": "Votre position actuelle sera enregistrée comme emplacement du lieu. Utilisez cette option uniquement si vous êtes physiquement sur le site de l’événement. Sinon, laissez les coordonnées vides."
       },
       "photos": {
         "cover": "Image de couverture (principale)",
@@ -148,7 +149,7 @@
         "external": "Billetterie externe",
         "externalDescription": "Site officiel ou guichet tiers",
         "free": "Entrée libre",
-        "freeDescription": "Gratuit, sans réservation",
+        "freeDescription": "Aucune vente de billet ni réservation requise. Le badge « Entrée libre » sera affiché sur les cartes et la page de l’événement.",
         "capacityTitle": "Places et jauge de l’événement",
         "unlimited": "Aucune limite de places (jauge libre ou illimitée)",
         "restricted": "Capacité maximale limitée par le lieu",
@@ -168,7 +169,6 @@
         "externalPlaceholder": "https://exemple.com/billetterie",
         "accessPrice": "Tarif à partir de (FCFA)",
         "freeBadge": "Événement en accès libre et gratuit",
-        "freeDescription": "Aucune vente de billet ni réservation requise. Le badge « Entrée libre » sera affiché sur les cartes et la page de l’événement.",
         "ticketHint": "Vous pouvez créer plusieurs formules (Standard, VIP, etc.). Pour un pass gratuit, indiquez un prix de 0 FCFA.",
         "standard": "Standard",
         "vip": "VIP",
