@@ -619,7 +619,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               event_id: event.id,
               name: item.name.trim(),
               website_url: item.website_url.trim() || undefined,
-              logo_url: item.website_url ? getFaviconUrl(item.website_url) : item.logo_url || undefined,
+              logo_url: item.logo_url.trim() || (item.website_url.trim() ? getFaviconUrl(item.website_url) : undefined),
               tier: item.tier,
               logo_source: item.logo_source,
             })
