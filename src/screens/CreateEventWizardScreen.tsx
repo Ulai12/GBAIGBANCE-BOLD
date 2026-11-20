@@ -402,6 +402,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           const price = Number(ticket.price);
           const quantity = Number(ticket.quantity_total);
           return (
+            ticket.price.trim() === '' ||
+            ticket.quantity_total.trim() === '' ||
             !Number.isFinite(price) ||
             price < 0 ||
             !Number.isInteger(quantity) ||
