@@ -124,7 +124,8 @@
         "recommended": "recommended",
         "clear": "Clear",
         "sameDateFourHours": "Same date (+4 hours)",
-        "gpsHint": "Your current position will be saved as the venue location. Use this only when you are physically at the event venue. Otherwise, leave the coordinates empty."
+        "gpsHint": "Your current position will be saved as the venue location. Use this only when you are physically at the event venue. Otherwise, leave the coordinates empty.",
+        "verifyOnMap": "Check venue on Google Maps"
       },
       "photos": {
         "cover": "Cover image (main)",
