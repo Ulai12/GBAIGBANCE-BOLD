@@ -88,3 +88,5 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - No Supabase schema, creation mutation, status logic, package manifest or lockfile was changed.
 
 - Final ESM re-export correction commit: `0738c8277845bd5d4210955888cd7e69b87e2bb6`; Vercel preview was BUILDING at last check. Verify latest deployment logs for absence of TS5097/TS2835 before marking the build issue closed.
+
+- Verification update: Vercel deployment for code commit `0738c8277845bd5d4210955888cd7e69b87e2bb6` reached READY; build completed in 3.18s and logs contained neither TS5097 nor TS2835. Later commit `20b6f02b33b0c386aac914e08d7b8a70e6df9416` only updated handoff documentation.
