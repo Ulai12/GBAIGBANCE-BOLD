@@ -1532,15 +1532,42 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             ) : (
               /* Billetterie Gbaigbance standard avec formules de billets */
               <div className="space-y-4 animate-fade-in">
-                <div className="flex items-center gap-2 p-3 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 rounded-2xl text-xs text-[#17131D] dark:text-white">
-                  <Info className="w-4 h-4 text-[#6600FF] dark:text-purple-300 shrink-0" />
-                  <span>
-                    Vous pouvez créer plusieurs formules (Standard, VIP, etc.). Pour un pass gratuit, mettez le prix à 0 FCFA.
-                  </span>
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#6600FF]/[0.07] text-xs text-[#17131D] dark:bg-[#6600FF]/15 dark:text-white">
+                  <Info className="h-4 w-4 shrink-0 text-[#6600FF] dark:text-purple-300" />
+                  <span>{t('events', 'creation.wizard.access.ticketHint')}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2" aria-live="polite">
+                  <div className="rounded-2xl bg-white p-3 dark:bg-[#1A1829]">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.access.formulaCount')}</p>
+                    <p className="mt-1 text-base font-extrabold tabular-nums text-[#17131D] dark:text-white">{configuredTicketCount}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-3 dark:bg-[#1A1829]">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.access.placesConfigured')}</p>
+                    <p className="mt-1 text-base font-extrabold tabular-nums text-[#17131D] dark:text-white">{configuredTicketQuantity.toLocaleString('fr-FR')}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-3 dark:bg-[#1A1829]">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.access.fromPrice')}</p>
+                    <p className="mt-1 text-sm font-extrabold tabular-nums text-[#6600FF] dark:text-purple-300">{lowestTicketPrice === null ? '—' : `${lowestTicketPrice.toLocaleString('fr-FR')} F`}</p>
+                  </div>
                 </div>
 
                 {tickets.map((ticket, index) => (
-                  <div key={index} className="card p-4 space-y-3">
+                  <div key={index} className="relative space-y-3 overflow-hidden rounded-[22px] border border-black/[0.06] bg-white p-4 dark:border-white/[0.08] dark:bg-[#1A1829]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6600FF] dark:text-purple-300">{t('events', 'creation.wizard.access.ticketNumber').replace('{number}', String(index + 1))}</p>
+                        <p className="mt-0.5 truncate text-sm font-bold text-[#17131D] dark:text-white">{ticket.label || t('events', 'creation.wizard.access.unnamedTicket')}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full bg-[#6600FF]/[0.08] px-2.5 py-1 text-[10px] font-bold text-[#6600FF] dark:text-purple-300">{ticket.ticket_type === 'standard' ? t('events', 'creation.wizard.access.standard') : ticket.ticket_type === 'vip' ? t('events', 'creation.wizard.access.vip') : ticket.ticket_type === 'vvip' ? t('events', 'creation.wizard.access.vvip') : t('events', 'creation.wizard.access.freeTicket')}</span>
+                        {tickets.length > 1 && (
+                          <button type="button" onClick={() => setTickets((current) => current.filter((_, i) => i !== index))} aria-label={t('events', 'creation.wizard.access.removeTicketType')} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex justify-between items-center">
                       <select
                         className={fieldClass}
@@ -1559,15 +1586,6 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                         <option value="free">Gratuit</option>
                       </select>
 
-                      {tickets.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setTickets(tickets.filter((_, i) => i !== index))}
-                          className="ml-2 text-red-500 hover:text-red-600 p-2 cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
 
                     <input
@@ -1580,12 +1598,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                           )
                         )
                       }
-                      placeholder="Nom du billet (ex. Pass 1 Jour, VIP Lounge)"
+                      placeholder={t('events', 'creation.wizard.access.ticketNamePlaceholder')}
                     />
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 mb-1">Prix (FCFA)</label>
+                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('events', 'creation.wizard.access.price')}</label>
                         <input
                           className={fieldClass}
                           type="number"
@@ -1602,7 +1620,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 mb-1">Quantité totale</label>
+                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('events', 'creation.wizard.access.totalQuantity')}</label>
                         <input
                           className={fieldClass}
                           type="number"
@@ -1619,21 +1637,20 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                         />
                       </div>
                     </div>
+                    <label className="block space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.access.ticketDescription')}</span>
+                      <input className={fieldClass} value={ticket.description} onChange={(e) => setTickets((current) => current.map((item, i) => i === index ? { ...item, description: e.target.value } : item))} placeholder={t('events', 'creation.wizard.access.ticketDescriptionPlaceholder')} />
+                    </label>
                   </div>
                 ))}
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setTickets([
-                      ...tickets,
-                      { ticket_type: 'standard', label: '', price: '0', quantity_total: '100', description: '' },
-                    ])
-                  }
-                  className="w-full py-3.5 rounded-2xl border border-dashed border-[#6600FF]/40 text-[#6600FF] dark:text-purple-300 font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-[#6600FF]/5 transition-colors"
+                  onClick={() => setTickets((current) => [...current, { ticket_type: 'standard', label: '', price: '0', quantity_total: '100', description: '' }])}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#6600FF]/40 py-3.5 font-bold text-[#6600FF] transition-colors hover:bg-[#6600FF]/5 dark:text-purple-300"
                 >
                   <Plus className="w-4 h-4" />
-                  Ajouter un type de billet
+                  {t('events', 'creation.wizard.access.addTicketType')}
                 </button>
               </div>
             )}
