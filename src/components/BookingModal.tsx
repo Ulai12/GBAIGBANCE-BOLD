@@ -447,8 +447,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }
 
   return (
-    <Modal open={open} onClose={handleCloseModal} title={t('tickets', 'bookingTitle')}>
-      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+    <Modal open={open} onClose={handleCloseModal} title={t('tickets', 'bookingTitle')} maxWidthClass="max-w-xl">
+      <div className="space-y-5 pr-1">
         {/* En-tête de l'événement compact */}
         <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 dark:bg-white/5 rounded-2xl">
           <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">

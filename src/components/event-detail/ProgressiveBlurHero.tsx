@@ -57,7 +57,7 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
     }).format(eventDate);
 
   return (
-    <div className="relative h-[62svh] min-h-[430px] max-h-[700px] w-full overflow-hidden bg-neutral-900 select-none">
+    <div className="relative h-[68svh] min-h-[480px] max-h-[720px] w-full overflow-hidden bg-neutral-900 select-none sm:h-[58svh] sm:min-h-[500px]">
       {/* 
         Image Hero avec placeholder blur-up basse résolution
         et zoom subtil au survol
@@ -183,12 +183,12 @@ export const ProgressiveBlurHero: React.FC<ProgressiveBlurHeroProps> = ({
 
       <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 pb-9 sm:pb-11">
-          <div className="max-w-4xl pr-16 sm:pr-24">
+          <div className="max-w-5xl pr-16 sm:pr-24">
             <p className="mb-2 text-xs sm:text-sm font-bold text-white/85">
               {t('events', `categories.${event.category}`)}
               {eventDateLabel ? ` · ${eventDateLabel}` : ''}
             </p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight text-white break-words [text-shadow:0_2px_18px_rgba(0,0,0,0.5)]">
+            <h1 className="max-w-4xl text-[clamp(2.25rem,5vw,4.75rem)] font-black leading-[0.98] text-white break-words tracking-[0] [text-shadow:0_2px_18px_rgba(0,0,0,0.5)]">
               {event.title}
             </h1>
             <p className="mt-2 text-sm sm:text-base font-semibold text-white/85 truncate">

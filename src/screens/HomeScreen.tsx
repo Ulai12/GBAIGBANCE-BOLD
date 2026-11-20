@@ -611,6 +611,7 @@ export function HomeScreen({
           role={user?.role || 'attendee'}
           size="sm"
           className="w-full h-full"
+          eager
         />
       </button>
     </div>

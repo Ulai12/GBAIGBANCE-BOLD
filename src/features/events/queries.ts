@@ -93,30 +93,25 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   if (!isSupabaseConfigured) return unavailable;
 
   try {
-    // Priorité au endpoint serveur même origine propulsé par Rust WebAssembly
-    if (typeof fetch === 'function') {
-      try {
-        const res = await fetch('/api/platform-stats', {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
-        });
-        if (res.ok) {
-          const apiData = (await res.json()) as Partial<PlatformStats>;
-          if (apiData && typeof apiData.totalUsers === 'number' && typeof apiData.totalTickets === 'number') {
-            return {
-              ...unavailable,
-              ...apiData,
-              isAvailable: true,
-            } as PlatformStats;
-          }
-        }
-      } catch {
-        // Repli sur l'edge function Supabase si /api/platform-stats est indisponible
+    try {
+      const { data: apiData, error } = await supabase.functions.invoke('platform-stats');
+      if (
+        !error &&
+        apiData &&
+        typeof apiData.totalUsers === 'number' &&
+        typeof apiData.totalTickets === 'number'
+      ) {
+        return {
+          ...unavailable,
+          ...apiData,
+          isAvailable: true,
+        } as PlatformStats;
       }
+    } catch {
+      // Repli sur l'agrégation directe si l'Edge Function est indisponible
     }
 
-    // Repli sur l'agrégation directe via les tables publiques si /api/platform-stats est indisponible
+    // Repli sur l'agrégation directe via les tables publiques si l'Edge Function est indisponible
     const [eventsRes, optionsRes, artistsRes, orgsRes, profilesRes] = await Promise.all([
       supabase.from('events').select('id, category, attendees_count, views_count, starts_at, ends_at, status').limit(500),
       supabase.from('ticket_options').select('id, event_id, price, quantity_sold').limit(1000),

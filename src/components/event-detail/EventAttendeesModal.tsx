@@ -130,6 +130,8 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
           <div className="mt-3 relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
+              id="event-attendees-search"
+              name="attendees-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { Music2, Building2, User } from 'lucide-react';
 import { getDefaultUserAvatar, getAvatarInitials } from '@/utils/defaultImages';
 import type { UserRole } from '@/types';
-import { useApp } from '@/hooks/useApp';
 
 interface UserAvatarProps {
   id?: string | null;
@@ -15,6 +14,7 @@ interface UserAvatarProps {
   className?: string;
   imageClassName?: string;
   ring?: boolean;
+  eager?: boolean;
 }
 
 const SIZE_MAP = {
@@ -36,8 +36,8 @@ export function UserAvatar({
   className = '',
   imageClassName = '',
   ring = true,
+  eager = false,
 }: UserAvatarProps) {
-  const { t } = useApp();
   const [imageError, setImageError] = useState(false);
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
   // Utilise la règle stricte des initiales : 2 mots -> 1ère lettre de chaque mot (HB), 1 mot -> 2 premières lettres (JU)
@@ -65,6 +65,15 @@ export function UserAvatar({
     return getDefaultUserAvatar(name || 'user', typeof role === 'string' ? role : undefined, id);
   }, [src, imageError, name, role, id]);
 
+  const intrinsicSize = {
+    xs: 28,
+    sm: 36,
+    md: 48,
+    lg: 64,
+    xl: 80,
+    '2xl': 112,
+  }[size];
+
   const RoleIcon = role === 'artist' ? Music2 : role === 'organizer' ? Building2 : User;
 
   return (
@@ -79,8 +88,11 @@ export function UserAvatar({
             onError={() => {
               if (!imageError) setImageError(true);
             }}
-            loading="lazy"
+            width={intrinsicSize}
+            height={intrinsicSize}
+            loading={eager ? 'eager' : 'lazy'}
             decoding="async"
+            fetchPriority={eager ? 'high' : 'low'}
             referrerPolicy="no-referrer"
             className={`absolute inset-0 w-full h-full object-cover object-center ${imageClassName}`}
           />

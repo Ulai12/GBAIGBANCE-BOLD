@@ -200,6 +200,28 @@ export function EventDetailScreen({
     };
   }, [event.id, user?.id]);
 
+  useEffect(() => {
+    if (!showAttendeesModal) return;
+    let isMounted = true;
+    setAttendeesLoading(true);
+    fetchEventAttendees(event.id, user?.id)
+      .then((res) => {
+        if (!isMounted) return;
+        setAttendees(res.attendees);
+        if (res.totalCount > 0) setLiveAttendees(res.totalCount);
+      })
+      .catch((err) => {
+        console.error('Erreur chargement participants:', err);
+      })
+      .finally(() => {
+        if (isMounted) setAttendeesLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [event.id, showAttendeesModal, user?.id]);
+
   // Participants synchronisés avec le système d'abonnements unifié
   const computedAttendees: AttendeeProfile[] = attendees.map((a) => ({
     ...a,
@@ -233,10 +255,9 @@ export function EventDetailScreen({
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && isMounted) {
         try {
-          const [freshEv, freshOpts, freshAttendees] = await Promise.all([
+          const [freshEv, freshOpts] = await Promise.all([
             fetchEventById(event.id),
             fetchTicketOptions(event.id),
-            fetchEventAttendees(event.id, user?.id).catch(() => null),
           ]);
           if (freshEv && isMounted) {
             setFullEvent((prev) => (prev ? { ...prev, ...freshEv } : freshEv));
@@ -245,9 +266,6 @@ export function EventDetailScreen({
           }
           if (freshOpts && isMounted) {
             setTicketOptions(freshOpts);
-          }
-          if (freshAttendees && isMounted && freshAttendees.attendees.length > 0) {
-            setAttendees(freshAttendees.attendees);
           }
         } catch {
           // Polling silencieux sans perturbation visuelle
@@ -478,7 +496,7 @@ export function EventDetailScreen({
   // Le hook ne met à jour l'état qu'au franchissement du seuil, après le hero
 
   return (
-    <div className="min-h-screen relative bg-[#f7f5f0] dark:bg-[#141216] text-[#242126] dark:text-white antialiased selection:bg-[#6600FF]/20">
+    <div className="min-h-screen relative overflow-x-hidden bg-[#f7f5f0] dark:bg-[#141216] text-[#242126] dark:text-white antialiased selection:bg-[#6600FF]/20">
       {/* 
         AMBIENT BACKGROUND (Statique, très flouté, optimisé mobile)
         Fournit la radiance colorimétrique de l'affiche sans saccade matérielle.
@@ -586,14 +604,14 @@ export function EventDetailScreen({
         Positionnée avec un léger décalage (-mt-4 sm:-mt-6) pour préserver l'affiche de couverture intacte.
         Padding-bottom de sécurité généreux (pb-44) pour dégager complètement la barre flottante.
       */}
-      <main className="-mt-4 sm:-mt-6 relative z-20 max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-44 sm:pb-48 space-y-6">
+      <main className="relative z-20 mx-auto -mt-8 max-w-7xl space-y-6 px-4 pb-44 sm:px-6 sm:pb-48 lg:px-8">
         {/* Carte Principale : Identité, Titre, Badges, Compte à rebours, Date/Heure */}
-        <section className="p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] glass-ios border border-white/60 dark:border-white/15 space-y-5 shadow-xl">
+        <section className="space-y-6 rounded-t-[32px] border border-black/[0.06] bg-[#fbfaf7]/95 px-5 pt-6 shadow-[0_-12px_40px_rgba(20,14,42,0.08)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#1b181e]/95 sm:px-8 sm:pt-8">
           {/* Ligne des badges : Catégorie violet plein + Ville en verre + Statut éventuel */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-3.5 py-1 rounded-full bg-[#6600FF] text-white text-xs font-black uppercase tracking-wider shadow-sm shadow-[#6600FF]/30">
-                {displayEvent.category}
+                {t('events', `categories.${displayEvent.category}`)}
               </span>
               <span className="px-3 py-1 rounded-full glass-ios text-xs font-extrabold text-[#1A1A2E] dark:text-white flex items-center gap-1.5 shadow-2xs">
                 <span>{flag}</span>
@@ -610,11 +628,8 @@ export function EventDetailScreen({
             )}
           </div>
 
-          {/* Titre de l'événement */}
-          <h1 className="text-2xl sm:text-3xl font-black text-[#1A1A2E] dark:text-white tracking-tight leading-tight">
-            {displayEvent.title}
-          </h1>
-
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5">
           {/* 
             COMPTE À REBOURS ÉLÉGANT (4 tuiles en verre sombre)
           */}
@@ -1027,6 +1042,8 @@ export function EventDetailScreen({
             </div>
           )}
 
+            </div>
+
           {/* 
             PARTICIPANTS RÉELS AVEC AMIS EN PRIORITÉ & VUES INTÉGRÉES
           */}
@@ -1038,6 +1055,7 @@ export function EventDetailScreen({
             loading={attendeesLoading}
             onOpenModal={() => setShowAttendeesModal(true)}
           />
+          </div>
         </section>
 
         {/* 
