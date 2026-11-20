@@ -112,6 +112,14 @@ function getSplitDateTime(val: string) {
   return { date: parts[0] || '', time: parts[1] ? parts[1].slice(0, 5) : '' };
 }
 
+// Valeur date locale pour les champs natifs : éviter le décalage UTC d'ISO.
+function getLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatFriendlyDateTime(val: string, language: string) {
   if (!val) return null;
   const d = new Date(val);
@@ -1064,13 +1072,13 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
             {/* Dates & Horaires (Entièrement responsives, anti-dépassement, style Apple) */}
             <div className="card p-4 space-y-4 w-full max-w-full min-w-0 overflow-hidden box-border">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-[#17131D] dark:text-white flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-bold text-[#17131D] dark:text-white">
                   <Calendar className="w-4 h-4 text-[#6600FF] dark:text-purple-300" />
                   <span>{t('events', 'creation.wizard.location.dates')}</span>
                 </h3>
                 {form.starts_at && (
-                  <span className="text-[11px] font-semibold text-[#6600FF] dark:text-purple-300 bg-[#6600FF]/10 dark:bg-[#6600FF]/20 px-2 py-0.5 rounded-full">
+                  <span className="max-w-full min-w-0 break-words rounded-full bg-[#6600FF]/10 px-2 py-1 text-[11px] font-semibold text-[#6600FF] dark:bg-[#6600FF]/20 dark:text-purple-300 sm:max-w-[58%] sm:text-right">
                     {formatFriendlyDateTime(form.starts_at, language)}
                   </span>
                 )}
@@ -1082,11 +1090,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   {t('events', 'creation.wizard.location.start')}
                 </label>
 
-                <div className="grid grid-cols-2 gap-2 w-full max-w-full min-w-0 box-border">
+                <div className="grid w-full max-w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 overflow-hidden box-border">
                   <div className="relative min-w-0">
                     <input
                       type="date"
-                      className={`${fieldClass} text-xs py-3 px-3`}
+                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
                       value={getSplitDateTime(form.starts_at).date}
                       onChange={(e) => {
                         const newDate = e.target.value;
@@ -1098,11 +1106,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="time"
-                      className={`${fieldClass} text-xs py-3 px-3`}
+                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
                       value={getSplitDateTime(form.starts_at).time || '20:00'}
                       onChange={(e) => {
                         const newTime = e.target.value || '20:00';
-                        const currDate = getSplitDateTime(form.starts_at).date || new Date().toISOString().split('T')[0];
+                        const currDate = getSplitDateTime(form.starts_at).date || getLocalDateInputValue();
                         updateForm('starts_at', `${currDate}T${newTime}`);
                       }}
                     />
@@ -1176,11 +1184,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 w-full max-w-full min-w-0 box-border">
+                <div className="grid w-full max-w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 overflow-hidden box-border">
                   <div className="relative min-w-0">
                     <input
                       type="date"
-                      className={`${fieldClass} text-xs py-3 px-3`}
+                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
                       value={getSplitDateTime(form.ends_at).date}
                       onChange={(e) => {
                         const newDate = e.target.value;
@@ -1192,11 +1200,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="time"
-                      className={`${fieldClass} text-xs py-3 px-3`}
+                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
                       value={getSplitDateTime(form.ends_at).time || (form.ends_at ? '23:00' : '')}
                       onChange={(e) => {
                         const newTime = e.target.value;
-                        const currDate = getSplitDateTime(form.ends_at).date || getSplitDateTime(form.starts_at).date || new Date().toISOString().split('T')[0];
+                        const currDate = getSplitDateTime(form.ends_at).date || getSplitDateTime(form.starts_at).date || getLocalDateInputValue();
                         updateForm('ends_at', newTime ? `${currDate}T${newTime}` : '');
                       }}
                     />
