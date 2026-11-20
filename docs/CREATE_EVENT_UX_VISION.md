@@ -187,7 +187,8 @@ Ordre de saisie recommandé : pays → ville → recherche/saisie de lieu → ad
 - [x] Capacités existantes et limites initiales consignées.
 - [x] Premier correctif GPS : aucune coordonnée de centre-ville préremplie; changement de ville/pays/lieu/adresse invalide les anciennes coordonnées; texte FR/EN précisant que la géolocalisation n'est exacte que si l'organisateur est sur le lieu.
 - [x] Première validation métier : date de fin postérieure au début; capacité entière positive lorsqu'elle est limitée; prix de billet non négatif; quantité entière positive; somme des quantités inférieure ou égale à la capacité.
-- [x] Un billet de type « gratuit » doit avoir un prix nul; le texte de confirmation ne promet plus une publication instantanée et explique le cas des collaborateurs; cette information est localisée FR/EN.
+- [x] Un billet de type « gratuit » doit avoir un prix nul; prix et quantité ne peuvent pas être vides; le texte de confirmation ne promet plus une publication instantanée et explique le cas des collaborateurs; cette information est localisée FR/EN.
+- [x] Le numéro WhatsApp est contrôlé (8 à 15 chiffres) et l'URL de billetterie externe doit être une URL HTTP(S) valide.
 - [ ] Audit complet des composants, migrations et schéma Supabase.
 - [ ] Audit complet de la cohérence des traductions et des états accessibles.
 - [ ] Design final choisi et refonte visuelle.
@@ -209,3 +210,5 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 
 - Le déploiement de prévisualisation de l'implémentation initiale a produit les fichiers Vite, mais les logs signalent également une erreur TypeScript préexistante dans `api/ai/assistant/stream.ts(1,25)` : import terminant par `.ts` sans `allowImportingTsExtensions`. La sortie Vercel indiquait malgré tout `Build Completed`; ce point doit être isolé et vérifié sur le commit le plus récent avant de déclarer le chantier validé.
 - Le déploiement du commit le plus récent est en file d'attente au moment de cette mise à jour.
+
+- Dernier correctif de validation : commit `98c680abc2d0bdb7c5bb0000e22dfaba7e0f91f5` — contrôle du numéro WhatsApp et de l'URL externe.
