@@ -185,6 +185,21 @@ Ordre de saisie recommandé : pays → ville → recherche/saisie de lieu → ad
 - [x] Branche FRONTEND-iA identifiée.
 - [x] Wizard, mutation de création et types inspectés.
 - [x] Capacités existantes et limites initiales consignées.
-- [ ] Audit complet des composants, migrations, traductions et schéma Supabase.
-- [ ] Design final choisi.
-- [ ] Implémentation et QA.
+- [x] Premier correctif GPS : aucune coordonnée de centre-ville préremplie; changement de ville/pays/lieu/adresse invalide les anciennes coordonnées; texte FR/EN précisant que la géolocalisation n'est exacte que si l'organisateur est sur le lieu.
+- [x] Première validation métier : date de fin postérieure au début; capacité entière positive lorsqu'elle est limitée; prix de billet non négatif; quantité entière positive; somme des quantités inférieure ou égale à la capacité.
+- [ ] Audit complet des composants, migrations et schéma Supabase.
+- [ ] Audit complet de la cohérence des traductions et des états accessibles.
+- [ ] Design final choisi et refonte visuelle.
+- [ ] Tests de build, tests fonctionnels et QA visuelle.
+
+### Journal d'avancement — 2026-11-20
+
+Commits d'implémentation sur FRONTEND-iA :
+- `01ef17ee774aefca1aca79cb86bfbd7c93b4dfd7` — coordonnées du lieu non préremplies et invalidation des coordonnées devenues obsolètes; validation initiale des dates et billets.
+- `6f2286480caca7ac8267771dd9dffabba4428b82` — libellé GPS français clarifié.
+- `a2ce2b718af0d041b2ceff60b150dcd8d491b49d` — libellé GPS anglais clarifié.
+- `a6103fdbc2834e9c9518a24e51762f318293a96c` — aide contextuelle GPS FR/EN dans le formulaire.
+- `74410c9030fd292054795e8463e89e86a1c012f3` — capacité requise lorsqu'elle est limitée.
+- `cffeb53efa379b7e15890bad675e6769c5225c25` — validation de cohérence entre capacité et total des billets.
+
+Le déploiement Vercel de prévisualisation est en cours au moment de cette mise à jour; aucune validation de build n'est encore revendiquée.
