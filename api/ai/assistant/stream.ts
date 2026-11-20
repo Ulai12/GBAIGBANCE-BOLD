@@ -1,1 +1,1 @@
-export { default } from '../../ai-assistant';
+export { default } from '../../ai-assistant.js';
