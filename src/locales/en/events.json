@@ -63,7 +63,7 @@
     "free": "Free",
     "paid": "Paid",
     "today": "Today",
- "thisWeek": "This week",
+    "thisWeek": "This week",
     "thisMonth": "This month",
     "apply": "Apply",
     "reset": "Reset"
@@ -136,5 +136,33 @@
     "emptyPast": "No ended events in your favorites.",
     "emptyAll": "You have no events in your favorites.",
     "explore": "Explore Events"
+  },
+  "detail": {
+    "loginToFollow": "Sign in to follow this profile",
+    "followSuccess": "Successfully followed!",
+    "unfollowSuccess": "Unfollowed",
+    "actionImpossible": "Action unavailable at the moment",
+    "salesPaused": "Sales paused",
+    "eventSuspended": "Event suspended",
+    "eventCancelled": "Event cancelled",
+    "eventEnded": "Event ended",
+    "addedToFavorites": "Added to your favorites",
+    "removedFromFavorites": "Removed from your favorites",
+    "dateToConfirm": "Date to be confirmed",
+    "officialDate": "Official date",
+    "fromTime": "From {time}",
+    "timeToConfirm": "Time to be confirmed",
+    "localTime": "Local time (GMT)",
+    "toSpecify": "To be specified",
+    "back": "Back",
+    "reportEvent": "Report this event",
+    "shareEvent": "Share this event",
+    "eventTeaser": "Event teaser",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "partner": "Partner",
+    "getTicket": "Get a ticket",
+    "unavailable": "Unavailable",
+    "enlargePhoto": "Enlarge photo {index}"
   }
 }
