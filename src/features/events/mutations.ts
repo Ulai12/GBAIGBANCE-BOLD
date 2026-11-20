@@ -128,6 +128,8 @@ export async function createEventWithCollaborators(
   const createdEvent = event as Event | null;
   if (!createdEvent) return null;
 
+  const creationWarnings: string[] = [];
+
   if (validTickets.length > 0 && (accessType === 'tickets' || accessType === 'free')) {
     const optionsToInsert = validTickets.map((opt) => ({
       event_id: createdEvent.id,
@@ -138,7 +140,11 @@ export async function createEventWithCollaborators(
       description: opt.description || null,
     }));
     const { error: optError } = await supabase.from('ticket_options').insert(optionsToInsert);
-    if (optError) throw new Error(optError.message || "Erreur lors de l'ajout des billets");
+    if (optError) {
+      creationWarnings.push('billets');
+      // Un événement sans ses tarifs configurés ne doit pas être présenté comme prêt à la vente.
+      await supabase.from('events').update({ status: 'pending' }).eq('id', createdEvent.id);
+    }
   }
   if (validCollaborators.length > 0) {
     const collabsToInsert = validCollaborators.map((c) => ({
@@ -149,9 +155,11 @@ export async function createEventWithCollaborators(
       status: 'pending' as const,
     }));
     const { error: collabError } = await supabase.from('event_collaborators').insert(collabsToInsert);
-    if (collabError) throw new Error(collabError.message || "Erreur lors de l'invitation des collaborateurs");
+    if (collabError) creationWarnings.push('collaborateurs');
   }
-  return createdEvent ? hydrateEventCategories(createdEvent) : null;
+  return createdEvent
+    ? ({ ...hydrateEventCategories(createdEvent), creationWarnings } as Event & { creationWarnings: string[] })
+    : null;
 }
 
 // ==================== UPDATE EVENT FULL ====================
