@@ -96,7 +96,11 @@
         "description": "Description et programme sommaire",
         "descriptionPlaceholder": "Présentez les temps forts, les artistes attendus et l'ambiance...",
         "capacity": "Capacité maximale attendue (facultatif)",
-        "capacityPlaceholder": "Ex. 2 500 participants"
+        "capacityPlaceholder": "Ex. 2 500 participants",
+        "coverTitle": "Affiche de l’événement",
+        "coverSubtitle": "Une belle affiche aide le public à reconnaître votre événement.",
+        "coverAction": "Ajouter une affiche",
+        "coverChange": "Modifier"
       },
       "location": {
         "heading": "Lieu et accès",
@@ -138,7 +142,8 @@
         "videoPlaceholder": "Lien YouTube, Vimeo ou URL MP4 directe...",
         "videoDescription": "Une vidéo teaser peut accroître l’intérêt et la visibilité de l’événement.",
         "tooManyPhotos": "Vous pouvez ajouter jusqu’à 8 photos de galerie.",
-        "coverTooLarge": "L’image de couverture dépasse la taille maximale de 5 Mo."
+        "coverTooLarge": "L’image de couverture dépasse la taille maximale de 5 Mo.",
+        "coverMaxSize": "5 Mo maximum"
       },
       "access": {
         "prompt": "Comment le public accède-t-il à votre événement ?",
@@ -204,6 +209,11 @@
       },
       "confirmation": {
         "publicationNotice": "Vérifiez les informations avant publication. Les événements avec collaborateurs peuvent nécessiter une validation avant leur mise en ligne."
+      },
+      "phases": {
+        "presentation": "Présentation",
+        "setup": "Organisation",
+        "publishing": "Publication"
       }
     }
   },
