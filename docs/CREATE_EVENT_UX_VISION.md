@@ -212,3 +212,27 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Le déploiement du commit le plus récent est en file d'attente au moment de cette mise à jour.
 
 - Dernier correctif de validation : commit `98c680abc2d0bdb7c5bb0000e22dfaba7e0f91f5` — contrôle du numéro WhatsApp et de l'URL externe.
+
+
+## 11. Deuxième tranche — refonte UX de la création
+
+### Livré sur FRONTEND-iA
+- Nouvelle couverture immersive dès l'étape Informations, avec aperçu du titre, sélection/modification de l'affiche et limite affichée.
+- Regroupement visuel des informations en cartes : titre, taxonomie, description et capacité.
+- Progression structurée en trois phases (Présentation, Organisation, Publication), tout en conservant les neuf étapes détaillées et leur ordre métier.
+- Barre d'actions persistante en bas du formulaire, avec cibles tactiles d'au moins 48 px et prise en compte de la zone de sécurité mobile.
+- Lien de vérification de l'adresse sur Google Maps, construit à partir du nom du lieu, de l'adresse, de la ville et du pays. Ce lien ouvre une recherche cartographique; il ne géocode pas le lieu et ne renseigne aucune coordonnée GPS automatiquement.
+- Nouveaux libellés et messages de couverture / phases / carte localisés en français et en anglais.
+
+### Vérification technique
+- Vercel Preview : READY pour le commit `a74930e2a3b48aa308f9ba8e84f0f4c325950476`.
+- Le bundle Vite inclut `CreateEventWizardScreen`; build Vite terminé en 3,68 s.
+- Le journal Vercel affiche toujours une erreur TypeScript TS5097 dans `api/ai/assistant/stream.ts(1,25)`, hors périmètre de cette refonte. Vercel a néanmoins terminé le build et marqué le déploiement READY; l'erreur doit être traitée séparément.
+- La comparaison de branche au dernier contrôle indiquait 101 commits en avance et 18 en retard sur `main`. Ne pas fusionner ni rebaser automatiquement.
+- La prévisualisation visuelle interactive dans le navigateur n'a pas pu être inspectée via la session Browser; une validation manuelle sur mobile reste nécessaire.
+
+### Non livré / à poursuivre
+- Intégration de géocodage réel ou carte avec marqueur déplaçable : non ajoutée, aucun fournisseur/configuration n'a été validé.
+- Sauvegarde persistante de brouillon : non ajoutée.
+- Refonte visuelle détaillée des étapes Billets, Collaborateurs, Programme, Live, Sponsors et Confirmation : prochaine tranche.
+- Audit des transactions Supabase, échecs partiels, upload et statut réel de publication : à compléter.
