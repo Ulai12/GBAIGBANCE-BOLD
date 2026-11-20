@@ -590,6 +590,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
       if (!event) throw new Error('Échec de la création de l’événement');
 
+      // Le service peut retourner un événement créé même si l'insertion des billets
+      // ou des invitations a échoué : conserver ces avertissements sans relancer la création.
+      const creationWarnings = (event as Event & { creationWarnings?: string[] }).creationWarnings || [];
+      optionalFailures.push(...creationWarnings);
+
       // Les étapes facultatives sont indépendantes : un échec partiel ne doit
       // jamais masquer la création réussie de l'événement principal.
       const optionalOperations: { label: string; run: () => Promise<unknown> }[] = [
