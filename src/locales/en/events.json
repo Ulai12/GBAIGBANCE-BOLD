@@ -96,7 +96,11 @@
         "description": "Description and brief schedule",
         "descriptionPlaceholder": "Describe the highlights, featured artists, and atmosphere...",
         "capacity": "Expected capacity (optional)",
-        "capacityPlaceholder": "e.g. 2,500 attendees"
+        "capacityPlaceholder": "e.g. 2,500 attendees",
+        "coverTitle": "Event cover",
+        "coverSubtitle": "A strong cover helps people recognize your event.",
+        "coverAction": "Add a cover",
+        "coverChange": "Change"
       },
       "location": {
         "heading": "Location and access",
@@ -138,7 +142,8 @@
         "videoPlaceholder": "YouTube, Vimeo, or direct MP4 URL...",
         "videoDescription": "A teaser video can increase interest and visibility for your event.",
         "tooManyPhotos": "You can add up to 8 gallery photos.",
-        "coverTooLarge": "The cover image exceeds the 5 MB size limit."
+        "coverTooLarge": "The cover image exceeds the 5 MB size limit.",
+        "coverMaxSize": "5 MB maximum"
       },
       "access": {
         "prompt": "How will attendees access your event?",
@@ -204,6 +209,11 @@
       },
       "confirmation": {
         "publicationNotice": "Review the details before publishing. Events with collaborators may require approval before going live."
+      },
+      "phases": {
+        "presentation": "Overview",
+        "setup": "Setup",
+        "publishing": "Publish"
       }
     }
   },
