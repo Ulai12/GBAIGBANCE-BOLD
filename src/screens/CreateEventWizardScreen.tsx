@@ -606,7 +606,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           const file = e.target.files?.[0];
           if (!file) return;
           if (file.size > 5 * 1024 * 1024) {
-            onToast({ message: 'Image de couverture trop lourde (max 5MB)', type: 'error' });
+            onToast({ message: t('events', 'creation.wizard.photos.coverTooLarge'), type: 'error' });
             return;
           }
           setCoverFile(file);
@@ -715,7 +715,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/70">{t('events', 'creation.wizard.info.coverTitle')}</p>
                     <p className="mt-1 max-w-[230px] text-xs leading-relaxed text-white/80">{t('events', 'creation.wizard.info.coverSubtitle')}</p>
                   </div>
-                  <span className="rounded-full border border-white/20 bg-black/20 px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md">5 Mo max.</span>
+                  <span className="rounded-full border border-white/20 bg-black/20 px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md">{t('events', 'creation.wizard.photos.coverMaxSize')}</span>
                 </div>
                 <div className="flex items-end justify-between gap-3">
                   <div className="min-w-0">
