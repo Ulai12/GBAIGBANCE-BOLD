@@ -1810,7 +1810,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                  Vérifiez les informations avant publication. Les événements avec collaborateurs peuvent nécessiter une validation avant leur mise en ligne.
+                  {t('events', 'creation.wizard.confirmation.publicationNotice')}
                 </p>
               </div>
             ) : confirmationTab === 'card' ? (
