@@ -49,3 +49,6 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Additional validation: a ticket whose type is `free` must have a zero price.
 - Confirmation copy no longer promises instant publication; FR/EN copy now explains that events with collaborators may require approval.
 - Build observation from the earlier preview logs: Vercel emitted a TypeScript TS5097 error in `api/ai/assistant/stream.ts(1,25)` due to a `.ts` import extension without `allowImportingTsExtensions`, although the log also printed “Build Completed”. Treat the latest deployment as unverified until its final state/logs are checked. This issue is outside the event wizard; do not change it without checking ownership and scope.
+
+- Further access validation: reject blank ticket price/quantity values; free ticket types must be priced at zero; WhatsApp contact must contain 8–15 digits; external ticket URLs must parse as HTTP(S).
+- Latest event validation code commit: `98c680abc2d0bdb7c5bb0000e22dfaba7e0f91f5`.
