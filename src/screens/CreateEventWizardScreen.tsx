@@ -401,10 +401,16 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         const hasInvalidTicket = configuredTickets.some((ticket) => {
           const price = Number(ticket.price);
           const quantity = Number(ticket.quantity_total);
-          return !Number.isFinite(price) || price < 0 || !Number.isInteger(quantity) || quantity < 1;
+          return (
+            !Number.isFinite(price) ||
+            price < 0 ||
+            !Number.isInteger(quantity) ||
+            quantity < 1 ||
+            (ticket.ticket_type === 'free' && price !== 0)
+          );
         });
         if (hasInvalidTicket) {
-          setError('Chaque billet doit avoir un prix valide (0 FCFA minimum) et une quantité entière supérieure à zéro.');
+          setError('Chaque billet doit avoir un prix valide et une quantité entière supérieure à zéro. Un billet gratuit doit avoir un prix de 0 FCFA.');
           return false;
         }
         if (!unlimitedCapacity) {
@@ -1804,7 +1810,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                  Toutes les données seront synchronisées et publiées instantanément.
+                  Vérifiez les informations avant publication. Les événements avec collaborateurs peuvent nécessiter une validation avant leur mise en ligne.
                 </p>
               </div>
             ) : confirmationTab === 'card' ? (
