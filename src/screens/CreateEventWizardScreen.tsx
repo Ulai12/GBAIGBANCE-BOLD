@@ -208,6 +208,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const stepIndex = STEPS.indexOf(step);
+  const phaseIndex = stepIndex < 3 ? 0 : stepIndex < 5 ? 1 : 2;
+  const phaseKeys = ['presentation', 'setup', 'publishing'];
 
   // Computed preview event for real-time live preview
   const previewEvent: Event = useMemo(() => {
@@ -662,8 +664,18 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           </button>
         </div>
 
-        {/* Progress Bar */}
-        <div className="max-w-md mx-auto mt-3 flex gap-1.5">
+        {/* Progression par grandes phases */}
+        <div className="max-w-md mx-auto mt-4 grid grid-cols-3 gap-2">
+          {phaseKeys.map((phase, index) => (
+            <div key={phase} className={`min-w-0 text-center text-[10px] font-bold transition-colors ${index === phaseIndex ? 'text-[#6600FF] dark:text-purple-300' : index < phaseIndex ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>
+              <span className={`mx-auto mb-1 flex h-1.5 w-full rounded-full ${index <= phaseIndex ? 'bg-[#6600FF] dark:bg-purple-400' : 'bg-gray-200 dark:bg-white/10'}`} />
+              <span className="block truncate">{t('events', `creation.wizard.phases.${phase}`)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress Bar détaillée des neuf étapes */}
+        <div className="max-w-md mx-auto mt-2 flex gap-1.5">
           {STEPS.map((item, index) => (
             <div
               key={item}
@@ -686,8 +698,41 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         {/* STEP 1: INFOS DE BASE */}
         {step === 'Infos' && (
           <section className="space-y-4 animate-slide-up">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+            {/* Couverture immersive — accès direct dès la première étape */}
+            <div className="relative isolate overflow-hidden rounded-[26px] border border-black/[0.06] dark:border-white/[0.08] bg-gradient-to-br from-[#25134B] via-[#4B1BB8] to-[#9D3BCB] shadow-lg shadow-[#6600FF]/10">
+              {coverPreview ? (
+                <img src={coverPreview} alt={t('events', 'creation.wizard.photos.coverAlt')} className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 opacity-25" aria-hidden="true">
+                  <div className="absolute -right-8 -top-12 h-48 w-48 rounded-full border-[28px] border-white/30" />
+                  <div className="absolute -bottom-20 -left-8 h-52 w-52 rounded-full border-[24px] border-white/20" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#171126]/90 via-[#171126]/25 to-black/10" />
+              <div className="relative flex min-h-[190px] flex-col justify-between p-4 text-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/70">{t('events', 'creation.wizard.info.coverTitle')}</p>
+                    <p className="mt-1 max-w-[230px] text-xs leading-relaxed text-white/80">{t('events', 'creation.wizard.info.coverSubtitle')}</p>
+                  </div>
+                  <span className="rounded-full border border-white/20 bg-black/20 px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md">5 Mo max.</span>
+                </div>
+                <div className="flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-extrabold">{form.title || t('events', 'creation.wizard.info.eventTitlePlaceholder')}</p>
+                    <p className="mt-0.5 text-xs text-white/75">{t('events', 'creation.wizard.info.coverTitle')}</p>
+                  </div>
+                  <button type="button" onClick={() => coverInputRef.current?.click()} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-white px-4 text-xs font-extrabold text-[#4B1BB8] shadow-lg transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#4B1BB8]">
+                    <ImagePlus className="h-4 w-4" />
+                    {coverPreview ? t('events', 'creation.wizard.info.coverChange') : t('events', 'creation.wizard.info.coverAction')}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card space-y-3 p-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
                 {t('events', 'creation.wizard.info.eventTitle')}
               </label>
               <input
@@ -696,9 +741,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 onChange={(e) => updateForm('title', e.target.value)}
                 placeholder={t('events', 'creation.wizard.info.eventTitlePlaceholder')}
               />
+              </div>
             </div>
 
-            <div>
+            <div className="card space-y-3 p-4">
+              <div>
               <p id="wizard-main-category" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {t('events', 'creation.wizard.info.mainCategory')}
               </p>
@@ -771,9 +818,11 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <span className="font-semibold text-gray-900 dark:text-white">{t('events', `explore.search.subcategoriesLabels.${currentSubDef.id}`)}.</span> {currentSubDef.description}
                 </p>
               )}
+              </div>
             </div>
 
-            <div>
+            <div className="card space-y-3 p-4">
+              <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
                 {t('events', 'creation.wizard.info.description')}
               </label>
@@ -797,6 +846,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 onChange={(e) => updateForm('capacity', e.target.value)}
                 placeholder={t('events', 'creation.wizard.info.capacityPlaceholder')}
               />
+              </div>
             </div>
           </section>
         )}
@@ -1870,13 +1920,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           </section>
         )}
 
-        {/* Wizard Controls */}
-        <div className="flex gap-3 mt-6">
+        {/* Commandes persistantes : actions toujours accessibles sur mobile */}
+        <div className="sticky bottom-0 z-20 -mx-5 mt-6 bg-gradient-to-t from-white via-white/95 to-white/0 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-4 backdrop-blur-xl dark:from-[#14121E] dark:via-[#14121E]/95">
+        <div className="flex gap-3">
           {stepIndex > 0 && (
             <button
               type="button"
               onClick={previous}
-              className="flex-1 py-3.5 rounded-full bg-white dark:bg-[#1A1829] border border-black/[0.08] dark:border-white/[0.1] text-gray-700 dark:text-gray-200 font-bold text-sm cursor-pointer active:scale-95 transition-transform"
+              className="min-h-12 flex-1 rounded-full border border-black/[0.08] bg-white py-3.5 text-sm font-bold text-gray-700 transition-transform active:scale-95 dark:border-white/[0.1] dark:bg-[#1A1829] dark:text-gray-200"
             >
               Retour
             </button>
@@ -1887,7 +1938,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
               type="button"
               onClick={createEvent}
               disabled={creating}
-              className="btn-purple flex-1 py-3.5 flex items-center justify-center gap-2 cursor-pointer font-bold text-sm"
+              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 py-3.5 text-sm font-bold"
             >
               {creating ? (
                 <>
@@ -1901,7 +1952,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             <button
               type="button"
               onClick={next}
-              className="btn-purple flex-1 py-3.5 cursor-pointer font-bold text-sm"
+              className="btn-purple flex min-h-12 flex-1 cursor-pointer items-center justify-center py-3.5 text-sm font-bold"
             >
               Continuer
             </button>
@@ -1917,6 +1968,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
             Annuler et quitter
           </button>
         )}
+        </div>
       </main>
 
       {/* Interactive Modal Preview accessible anytime from the header */}
