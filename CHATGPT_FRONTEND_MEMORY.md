@@ -92,3 +92,12 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Verification update: Vercel deployment for code commit `0738c8277845bd5d4210955888cd7e69b87e2bb6` reached READY; build completed in 3.18s and logs contained neither TS5097 nor TS2835. Later commit `20b6f02b33b0c386aac914e08d7b8a70e6df9416` only updated handoff documentation.
 
 - Build pipeline constraint: repository currently contains only `bun.lock` and no `package-lock.json`/npm-shrinkwrap. Vercel therefore auto-detects Bun and runs `bun install`. Do not set Vercel installCommand to `npm ci` until an npm lockfile is created with explicit owner approval. No lockfiles or package manifests were changed.
+
+- 2026-11-20 tranche 4: redesigned `src/components/EventOptionalSteps.tsx` for Schedule, Live and Sponsors with mobile-first cards, dark mode, accessible controls and FR/EN translations.
+- Schedule slots now expose title, day label, stage, start and end; incomplete optional slots remain skipped, but complete slots with invalid or reversed times are rejected in `CreateEventWizardScreen.validateCurrentStep`.
+- Live step has an accessible switch, six platform choices, optional titles and HTTP(S) URL validation when a URL is entered. Enabling live without a link remains allowed; no placeholder link is persisted.
+- Sponsors step has tier selectors, website and manual logo URL fields with preview, HTTP(S) validation, and manual-logo priority over website favicon fallback.
+- No schema, package manifest, dependency or lockfile changes. Existing Supabase insert functions remain unchanged.
+- FR/EN locale parity checked for all newly introduced optional-step keys.
+- Code commit `312bbed8e78c6c873e9717ed91839a1e299f59cb`; Vercel preview deployment `dpl_5KycE23oGTE7DjgxVwnZg6ujN4p8` was QUEUED at last check. Verify READY and build logs before closing this tranche.
+- Full browser/mobile visual QA and real end-to-end event creation remain outstanding.
