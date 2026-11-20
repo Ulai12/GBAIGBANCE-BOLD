@@ -922,7 +922,7 @@ const handler = async (req: Request): Promise<Response> => {
       log(reqId, 'GEO', 'Approximate location context added.');
     }
 
-    // 5. Boucle d'outils bornée (Max 3 tours)
+    // 5. Résout les appels d'outils jusqu'à obtenir la réponse finale.
     const turnEventIds = new Set<string>();
     const contents: Array<{
       role: 'user' | 'model';
@@ -943,15 +943,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const model = await resolveGeminiModel(activeGeminiKey, reqId);
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    let maxRounds = 3;
+    const maxRounds = 5;
+    let finalAnswer = '';
 
-    log(reqId, 'GENAI', `Starting multi-turn tool calling loop with model "${model}" (max 3 rounds)...`);
+    log(reqId, 'GENAI', `Starting multi-turn tool calling loop with model "${model}" (max ${maxRounds} rounds)...`);
 
-    while (maxRounds > 0) {
-      const roundNum = 4 - maxRounds;
-      maxRounds--;
+    for (let roundNum = 1; roundNum <= maxRounds; roundNum++) {
 
-      log(reqId, 'GENAI', `Round ${roundNum}/3: Calling Gemini API for tool decision / text generation...`);
+      log(reqId, 'GENAI', `Round ${roundNum}/${maxRounds}: Calling Gemini API for tool decision / text generation...`);
 
       const geminiPayload = {
         contents,
@@ -968,23 +967,32 @@ const handler = async (req: Request): Promise<Response> => {
       const genaiStart = performance.now();
       const geminiAbortCtrl = new AbortController();
       const geminiTimeout = setTimeout(() => geminiAbortCtrl.abort(), 25_000);
-
-      const geminiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeGeminiKey },
-        body: JSON.stringify(geminiPayload),
-        signal: geminiAbortCtrl.signal,
-      });
-      clearTimeout(geminiTimeout);
+      let geminiRes: Response;
+      try {
+        geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeGeminiKey },
+          body: JSON.stringify(geminiPayload),
+          signal: geminiAbortCtrl.signal,
+        });
+      } finally {
+        clearTimeout(geminiTimeout);
+      }
       const genaiDur = Math.round(performance.now() - genaiStart);
 
       if (!geminiRes.ok) {
-        err(reqId, 'GENAI', `Gemini API error (${geminiRes.status} in ${genaiDur}ms).`);
-        if ([400, 401, 403].includes(geminiRes.status)) {
+        const providerError = await geminiRes.json().catch(() => null);
+        const providerMessage = typeof providerError?.error?.message === 'string'
+          ? providerError.error.message.replace(/[\r\n]+/g, ' ').slice(0, 300)
+          : '';
+        err(reqId, 'GENAI', `Gemini API error (${geminiRes.status} in ${genaiDur}ms).`, {
+          providerMessage,
+        });
+        if ([401, 403].includes(geminiRes.status)) {
           throw new Error('GEMINI_API_KEY_INVALID');
         }
         if (geminiRes.status === 429) throw new Error('GEMINI_QUOTA_EXCEEDED');
-        throw new Error(`GEMINI_API_ERROR_${geminiRes.status}`);
+        throw new Error(`GEMINI_API_ERROR_${geminiRes.status}:${providerMessage}`);
       }
 
       const geminiData = await geminiRes.json();
@@ -1012,7 +1020,11 @@ const handler = async (req: Request): Promise<Response> => {
         // Exécute chaque fonction avec le client scopé RLS
         const responseParts = [];
         for (const fc of functionCalls) {
-          const fnName = fc.functionCall.name;
+          const fnName = fc.functionCall?.name;
+          if (!fnName || !GEMINI_TOOLS[0].functionDeclarations.some((tool) => tool.name === fnName)) {
+            err(reqId, 'GENAI', `Gemini requested an undeclared tool: ${String(fnName)}`);
+            throw new Error('GEMINI_FUNCTION_NOT_FOUND');
+          }
           const fnArgs = fc.functionCall.args || {};
           const fnResult = await executeToolCall(
             fnName,
@@ -1036,147 +1048,44 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Si aucune fonction demandée, le modèle a synthétisé sa réponse !
-      log(reqId, 'GENAI', `Round ${roundNum}/3: Gemini finished tool calling and produced response.`);
+      finalAnswer = modelParts
+        .map((part: { text?: string }) => part.text || '')
+        .join('')
+        .trim();
+      if (!finalAnswer) {
+        throw new Error('GEMINI_EMPTY_RESPONSE');
+      }
+      log(reqId, 'GENAI', `Round ${roundNum}/${maxRounds}: Gemini finished tool calling and produced a response.`);
       break;
     }
 
-    // 6. Streaming final vers le client (SSE stream)
-    log(reqId, 'STREAM', `Initializing final SSE streaming generation with model "${model}"...`);
-    const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
-    const streamPayload = {
-      contents,
-      systemInstruction: {
-        parts: [{ text: systemInstruction }],
-      },
-      generationConfig: {
-        temperature: preferences.temperature,
-          maxOutputTokens: preferences.maxOutputTokens,
-      },
-    };
-
-    const sseAbortCtrl = new AbortController();
-    let sseTimedOut = false;
-    const sseTimeout = setTimeout(() => {
-      sseTimedOut = true;
-      sseAbortCtrl.abort();
-    }, 45_000);
-    const abortOnRequestEnd = () => sseAbortCtrl.abort(req.signal.reason);
-    if (req.signal.aborted) abortOnRequestEnd();
-    else req.signal.addEventListener('abort', abortOnRequestEnd, { once: true });
-
-    let sseResponse: Response;
-    try {
-      sseResponse = await fetch(streamUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeGeminiKey },
-        body: JSON.stringify(streamPayload),
-        signal: sseAbortCtrl.signal,
-      });
-    } catch (fetchError) {
-      clearTimeout(sseTimeout);
-      req.signal.removeEventListener('abort', abortOnRequestEnd);
-      throw fetchError;
+    if (!finalAnswer) {
+      throw new Error('GEMINI_TOOL_LIMIT_REACHED');
     }
 
-    if (!sseResponse.ok || !sseResponse.body) {
-      clearTimeout(sseTimeout);
-      req.signal.removeEventListener('abort', abortOnRequestEnd);
-      err(reqId, 'STREAM', `Failed to initialize Gemini SSE stream (HTTP ${sseResponse.status})`);
-      throw new Error(`Impossible d'initialiser le flux de streaming SSE (${sseResponse.status})`);
-    }
-
+    // Réutilise la réponse finale obtenue après les outils au lieu de relancer
+    // Gemini sans contexte d'outils, ce qui provoquait "Requested function was not found".
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    const reader = sseResponse.body.getReader();
+    const answerParts = Array.from(finalAnswer);
+    const verifiedEventIds = Array.from(turnEventIds);
 
     const stream = new ReadableStream({
-      async start(controller) {
-        let chunkCount = 0;
-        let totalChars = 0;
-        const emitDataLine = (line: string) => {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) return;
-          const jsonStr = trimmed.replace(/^data:\s*/, '');
-          if (!jsonStr || jsonStr === '[DONE]') return;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const parts = parsed.candidates?.[0]?.content?.parts || [];
-            const chunkText = parts
-              .map((part: { text?: string }) => part.text || '')
-              .join('');
-            if (chunkText && !sseAbortCtrl.signal.aborted) {
-              chunkCount++;
-              totalChars += chunkText.length;
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ text: chunkText, done: false })}\n\n`)
-              );
-            }
-          } catch {
-            // Ignore incomplete or non-JSON provider events.
-          }
-        };
-
-        try {
-          let buffer = '';
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) emitDataLine(line);
-          }
-
-          buffer += decoder.decode();
-          if (buffer.trim()) emitDataLine(buffer);
-
-          // Émet la fin du flux avec la liste des IDs d'événements vérifiés pour les cartes UI
-          const verifiedEventIds = Array.from(turnEventIds);
-          if (!sseAbortCtrl.signal.aborted) {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ done: true, event_ids: verifiedEventIds })}\n\n`)
-            );
-            controller.close();
-          }
-
-          const totalDuration = Math.round(performance.now() - reqStart);
-          log(
-            reqId,
-            'DONE',
-            `✅ Request completed successfully in ${totalDuration}ms. Streamed ${chunkCount} chunks (${totalChars} chars). Verified event cards: ${verifiedEventIds.length} [${verifiedEventIds.join(', ')}]`
+      start(controller) {
+        for (let offset = 0; offset < answerParts.length; offset += 96) {
+          const text = answerParts.slice(offset, offset + 96).join('');
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ text, done: false })}\n\n`)
           );
-        } catch (streamErr: unknown) {
-          const msg = sseTimedOut
-            ? 'Le délai de réponse de l’assistant a été dépassé.'
-            : streamErr instanceof Error
-              ? streamErr.message
-              : 'Erreur pendant le streaming';
-          err(reqId, 'STREAM', `Streaming loop error: ${msg}`, streamErr);
-          if (!req.signal.aborted) {
-            try {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ error: msg, done: true })}\n\n`)
-              );
-              controller.close();
-            } catch {
-              // The downstream client may already have closed the stream.
-            }
-          }
-        } finally {
-          clearTimeout(sseTimeout);
-          req.signal.removeEventListener('abort', abortOnRequestEnd);
-          reader.releaseLock();
         }
-      },
-      async cancel(reason) {
-        sseAbortCtrl.abort(reason);
-        await reader.cancel(reason).catch(() => undefined);
-        clearTimeout(sseTimeout);
-        req.signal.removeEventListener('abort', abortOnRequestEnd);
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true, event_ids: verifiedEventIds })}\n\n`)
+        );
+        controller.close();
+        log(
+          reqId,
+          'DONE',
+          `Request completed in ${Math.round(performance.now() - reqStart)}ms with ${verifiedEventIds.length} verified event card(s).`
+        );
       },
     });
 
@@ -1192,16 +1101,32 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (errorCatch: unknown) {
     const totalDuration = Math.round(performance.now() - reqStart);
     const errorCode = errorCatch instanceof Error ? errorCatch.message : '';
-    const errorMsg = errorCode === 'GEMINI_API_KEY_INVALID'
-      ? 'La clé Gemini est invalide ou n’a pas accès à l’API.'
-      : errorCode === 'GEMINI_QUOTA_EXCEEDED'
-        ? 'Le quota Gemini associé à cette clé est atteint. Réessayez plus tard.'
-        : errorCode.startsWith('GEMINI_API_ERROR_')
-          ? 'Le service Gemini a refusé la requête. Vérifiez le modèle et la configuration de la clé.'
-          : 'Erreur interne inattendue';
+    const providerErrorMessage = errorCode.match(/^GEMINI_API_ERROR_\d+:(.*)$/)?.[1];
+    let errorMsg = 'Erreur interne inattendue';
+    if (errorCode === 'GEMINI_API_KEY_INVALID') {
+      errorMsg = 'La clé Gemini est invalide ou n’a pas accès à l’API.';
+    } else if (errorCode === 'GEMINI_QUOTA_EXCEEDED') {
+      errorMsg = 'Le quota Gemini associé à cette clé est atteint. Réessayez plus tard.';
+    } else if (errorCode === 'GEMINI_FUNCTION_NOT_FOUND') {
+      errorMsg = 'Gemini a demandé un outil non disponible. Vérifiez le déploiement de la fonction IA et réessayez.';
+    } else if (errorCode === 'GEMINI_EMPTY_RESPONSE') {
+      errorMsg = 'Gemini n’a renvoyé aucun texte. Reformulez votre question ou réessayez.';
+    } else if (errorCode === 'GEMINI_TOOL_LIMIT_REACHED') {
+      errorMsg = 'La recherche a nécessité trop d’étapes. Simplifiez votre demande et réessayez.';
+    } else if (errorCode.startsWith('GEMINI_API_ERROR_')) {
+      errorMsg = providerErrorMessage
+        ? `Gemini a refusé la requête : ${providerErrorMessage}`
+        : 'Gemini a refusé la requête. Vérifiez le format des outils et de l’historique de conversation.';
+    }
     err(reqId, 'FATAL', 'Request failed.', errorCatch);
 
-    const status = errorCode === 'GEMINI_API_KEY_INVALID' ? 401 : errorCode === 'GEMINI_QUOTA_EXCEEDED' ? 429 : 500;
+    const status = errorCode === 'GEMINI_API_KEY_INVALID'
+      ? 401
+      : errorCode === 'GEMINI_QUOTA_EXCEEDED'
+        ? 429
+        : errorCode.startsWith('GEMINI_')
+          ? 502
+          : 500;
     return new Response(JSON.stringify({ error: errorMsg, request_id: reqId }), {
       status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

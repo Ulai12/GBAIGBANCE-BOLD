@@ -557,12 +557,10 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
     }
 
     // Boucle de dialogue avec résolution des Function Calls
-    let iterations = 0;
+    let finalAnswer = '';
     const maxIterations = 5;
 
-    while (iterations < maxIterations) {
-      iterations++;
-
+    for (let iteration = 1; iteration <= maxIterations; iteration++) {
       const responseStream = await requestAi.models.generateContentStream({
         model: 'gemini-2.5-flash',
         contents,
@@ -574,49 +572,56 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
         },
       });
 
-      let functionCallFound: { name: string; args: Record<string, unknown> } | null = null;
+      const functionCalls = new Map<string, { name: string; args: Record<string, unknown> }>();
+      let responseText = '';
 
       for await (const chunk of responseStream) {
-        // Envoi des fragments de texte
         if (chunk.text) {
-          res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk.text })}\n\n`);
+          responseText += chunk.text;
         }
 
-        // Détection d'un appel d'outil
-        if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-          const fc = chunk.functionCalls[0];
-          functionCallFound = {
-            name: fc.name,
-            args: (fc.args as Record<string, unknown>) || {},
-          };
+        for (const fc of chunk.functionCalls || []) {
+          if (!fc.name) throw new Error('Gemini a demandé un outil sans nom.');
+          const args = (fc.args as Record<string, unknown>) || {};
+          functionCalls.set(`${fc.name}:${JSON.stringify(args)}`, { name: fc.name, args });
         }
       }
 
-      // Si le modèle a demandé un outil, on l'exécute et on relance la boucle
-      if (functionCallFound) {
-        const { name, args } = functionCallFound;
-        const toolResult = await executeToolCall(name, args, {
-          userId: actor.userId,
-          client: actor.client,
-          userLocation,
-          turnEventIds,
-        });
-
+      if (functionCalls.size > 0) {
+        if (iteration === maxIterations) {
+          throw new Error('La recherche a nécessité trop d’étapes. Simplifiez votre demande et réessayez.');
+        }
+        const calls = Array.from(functionCalls.values());
         contents.push({
           role: 'model',
-          parts: [{ functionCall: { name, args } }],
+          parts: calls.map(({ name, args }) => ({ functionCall: { name, args } })),
         });
-
         contents.push({
           role: 'user',
-          parts: [{ functionResponse: { name, response: toolResult } }],
+          parts: await Promise.all(calls.map(async ({ name, args }) => {
+            const response = await executeToolCall(name, args, {
+              userId: actor.userId,
+              client: actor.client,
+              userLocation,
+              turnEventIds,
+            });
+            return { functionResponse: { name, response } };
+          })),
         });
-
         continue;
       }
 
-      // Pas d'appel d'outil, fin du tour
+      finalAnswer = responseText.trim();
       break;
+    }
+
+    if (!finalAnswer) {
+      throw new Error('Gemini n’a renvoyé aucun texte. Reformulez votre question ou réessayez.');
+    }
+
+    const answerParts = Array.from(finalAnswer);
+    for (let offset = 0; offset < answerParts.length; offset += 96) {
+      res.write(`event: chunk\ndata: ${JSON.stringify({ text: answerParts.slice(offset, offset + 96).join('') })}\n\n`);
     }
 
     // Événement final avec les IDs vérifiés
@@ -655,40 +660,55 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
       fullPrompt = `À propos de l'événement "${currentEvent.title}" (${currentEvent.location_name || ''}, ${currentEvent.city || 'Lomé'}) : ${prompt}`;
     }
 
-    const response = await requestAi.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        systemInstruction,
-        tools: GEMINI_TOOLS,
-        temperature: preferences.temperature,
-        maxOutputTokens: preferences.maxOutputTokens,
-      },
-    });
+    const contents: Array<{ role: 'user' | 'model'; parts: Array<Record<string, unknown>> }> = [
+      { role: 'user', parts: [{ text: fullPrompt }] },
+    ];
+    let text = '';
+    const maxIterations = 5;
 
-    // Si function call, l'exécuter une fois
-    let text = response.text || '';
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      const fc = response.functionCalls[0];
-      const toolResult = await executeToolCall(fc.name, (fc.args as Record<string, unknown>) || {}, {
-        userId: actor.userId,
-        client: actor.client,
-        userLocation,
-        turnEventIds,
-      });
-
-      const second = await requestAi.models.generateContent({
+    for (let iteration = 1; iteration <= maxIterations; iteration++) {
+      const response = await requestAi.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: [
-          { role: 'user', parts: [{ text: fullPrompt }] },
-          { role: 'model', parts: [{ functionCall: { name: fc.name, args: fc.args } }] },
-          { role: 'user', parts: [{ functionResponse: { name: fc.name, response: toolResult } }] },
-        ],
+        contents,
         config: {
-          systemInstruction: AI_SYSTEM_INSTRUCTION,
+          systemInstruction,
+          tools: GEMINI_TOOLS,
+          temperature: preferences.temperature,
+          maxOutputTokens: preferences.maxOutputTokens,
         },
       });
-      text = second.text || text;
+
+      const functionCalls = response.functionCalls || [];
+      if (functionCalls.length === 0) {
+        text = response.text || '';
+        break;
+      }
+      if (iteration === maxIterations) {
+        throw new Error('La recherche a nécessité trop d’étapes. Simplifiez votre demande et réessayez.');
+      }
+
+      const calls = functionCalls.map((fc) => {
+        if (!fc.name) throw new Error('Gemini a demandé un outil sans nom.');
+        return { name: fc.name, args: (fc.args as Record<string, unknown>) || {} };
+      });
+      contents.push({
+        role: 'model',
+        parts: calls.map(({ name, args }) => ({ functionCall: { name, args } })),
+      });
+      const responses = await Promise.all(calls.map(async ({ name, args }) => {
+        const response = await executeToolCall(name, args, {
+          userId: actor.userId,
+          client: actor.client,
+          userLocation,
+          turnEventIds,
+        });
+        return { functionResponse: { name, response } };
+      }));
+      contents.push({ role: 'user', parts: responses });
+    }
+
+    if (!text.trim()) {
+      throw new Error('Gemini n’a renvoyé aucun texte. Reformulez votre question ou réessayez.');
     }
 
     res.json({
