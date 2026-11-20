@@ -877,6 +877,9 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     <Navigation className="w-3 h-3" /> {t('events', 'creation.wizard.location.currentPosition')}
                   </button>
                 </div>
+                <p className="mb-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
+                  {t('events', 'creation.wizard.location.gpsHint')}
+                </p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-between">
                     <span className="text-gray-400">{t('events', 'creation.wizard.location.latitude')}</span>
