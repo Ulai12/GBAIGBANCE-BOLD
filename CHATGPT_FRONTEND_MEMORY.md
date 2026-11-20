@@ -45,3 +45,7 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Vercel preview for the latest implementation commit was BUILDING when checked; do not claim build passed until status is READY and checks succeed.
 - Important repository context: compare `main...FRONTEND-iA` showed the branch diverged (81 commits ahead, 18 behind at the time of inspection). Do not merge or rebase automatically; preserve branch history and review this divergence before any future PR.
 - Remaining: full visual redesign, full schema/migration audit, functional/visual QA, deployment verification.
+
+- Additional validation: a ticket whose type is `free` must have a zero price.
+- Confirmation copy no longer promises instant publication; FR/EN copy now explains that events with collaborators may require approval.
+- Build observation from the earlier preview logs: Vercel emitted a TypeScript TS5097 error in `api/ai/assistant/stream.ts(1,25)` due to a `.ts` import extension without `allowImportingTsExtensions`, although the log also printed “Build Completed”. Treat the latest deployment as unverified until its final state/logs are checked. This issue is outside the event wizard; do not change it without checking ownership and scope.
