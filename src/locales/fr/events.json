@@ -124,7 +124,8 @@
         "recommended": "recommandée",
         "clear": "Effacer",
         "sameDateFourHours": "Même date (+4 heures)",
-        "gpsHint": "Votre position actuelle sera enregistrée comme emplacement du lieu. Utilisez cette option uniquement si vous êtes physiquement sur le site de l’événement. Sinon, laissez les coordonnées vides."
+        "gpsHint": "Votre position actuelle sera enregistrée comme emplacement du lieu. Utilisez cette option uniquement si vous êtes physiquement sur le site de l’événement. Sinon, laissez les coordonnées vides.",
+        "verifyOnMap": "Vérifier le lieu sur Google Maps"
       },
       "photos": {
         "cover": "Image de couverture (principale)",
