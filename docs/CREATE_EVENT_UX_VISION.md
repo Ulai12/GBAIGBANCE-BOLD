@@ -241,7 +241,7 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 ## 12. Troisième tranche — fiabilisation build, billetterie et équipe
 
 ### Correctif de compilation
-- Corrigé `api/ai/assistant/stream.ts` : le re-export utilise désormais un chemin sans extension `.ts` (`../../ai-assistant`) afin d'éviter TS5097 dans le contrôle TypeScript Vercel.
+- Corrigé `api/ai/assistant/stream.ts` : le re-export utilise désormais l'extension d'exécution ESM `.js` (`../../ai-assistant.js`), que TypeScript résout vers le fichier source `.ts`. Le premier essai sans extension a déclenché TS2835 avec la résolution Node16; la variante `.js` est le correctif final en cours de vérification sur Vercel.
 - Aucun changement de package.json, de lockfile ou de dépendance.
 
 ### Billetterie
@@ -265,3 +265,5 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Déploiement Vercel associé au commit `e41362ad60fca6fe37020d71d97d6148fbf4bdad` encore QUEUED lors du dernier contrôle; ne pas déclarer la correction confirmée avant READY et vérification des logs.
 - QA visuelle manuelle et tests de flux complets encore requis.
 - Aucun changement de schéma Supabase, de statut de publication ou de mutation de création effectué dans cette tranche.
+
+- Correctif final du re-export ESM : commit `0738c8277845bd5d4210955888cd7e69b87e2bb6`; déploiement de prévisualisation BUILDING lors de la dernière vérification.
