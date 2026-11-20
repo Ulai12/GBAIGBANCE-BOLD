@@ -30,3 +30,18 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 ## Latest documentation commit
 
 - `fafff09f410db066c2d31f3c2197f4c1a4ffba15` — added `docs/CREATE_EVENT_UX_VISION.md` on `FRONTEND-iA`.
+
+## Progress update — 2026-11-20
+
+- First implementation pass completed on `src/screens/CreateEventWizardScreen.tsx`:
+  - Venue GPS coordinates no longer default to Lomé's city-centre coordinates.
+  - Changing the city, country, venue name, or venue address clears coordinates to prevent stale venue pins.
+  - GPS helper text now explains in French and English that the current device position should only be used when physically at the event venue.
+  - End date/time must be valid and later than start date/time.
+  - Limited capacity must be a positive integer.
+  - Native ticket prices must be valid and non-negative; quantities must be positive integers; sum of ticket quantities cannot exceed limited event capacity.
+- FR/EN locale files updated for the GPS helper.
+- Related progress and commit journal recorded in `docs/CREATE_EVENT_UX_VISION.md`.
+- Vercel preview for the latest implementation commit was BUILDING when checked; do not claim build passed until status is READY and checks succeed.
+- Important repository context: compare `main...FRONTEND-iA` showed the branch diverged (81 commits ahead, 18 behind at the time of inspection). Do not merge or rebase automatically; preserve branch history and review this divergence before any future PR.
+- Remaining: full visual redesign, full schema/migration audit, functional/visual QA, deployment verification.
