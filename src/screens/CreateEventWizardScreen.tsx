@@ -207,7 +207,17 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const collabSearchRequestRef = useRef(0);
   const stepIndex = STEPS.indexOf(step);
+  const configuredTicketCount = tickets.filter((ticket) => ticket.label.trim()).length;
+  const configuredTicketQuantity = tickets.reduce((total, ticket) => {
+    const quantity = Number(ticket.quantity_total);
+    return total + (Number.isInteger(quantity) && quantity > 0 ? quantity : 0);
+  }, 0);
+  const configuredTicketPrices = tickets
+    .filter((ticket) => ticket.label.trim() && ticket.price.trim() !== '' && Number.isFinite(Number(ticket.price)) && Number(ticket.price) >= 0)
+    .map((ticket) => Number(ticket.price));
+  const lowestTicketPrice = configuredTicketPrices.length > 0 ? Math.min(...configuredTicketPrices) : null;
   const phaseIndex = stepIndex < 3 ? 0 : stepIndex < 5 ? 1 : 2;
   const phaseKeys = ['presentation', 'setup', 'publishing'];
   const locationSearchQuery = [
@@ -270,25 +280,30 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
   // Auto-search collaborators ciblé selon le rôle actif (artiste ou co-organisateur réel)
   useEffect(() => {
-    if (!collabSearch.trim()) {
+    const requestId = ++collabSearchRequestRef.current;
+    const query = collabSearch.trim();
+    if (!query) {
       setResults({ artists: [], orgs: [] });
+      setSearching(false);
       return;
     }
     setSearching(true);
     const timer = window.setTimeout(() => {
-      if (collabRole === 'performer') {
-        searchArtists(collabSearch)
-          .then((artists) => setResults({ artists: artists.filter((a) => Boolean(a.user_id)), orgs: [] }))
-          .catch(() => setResults({ artists: [], orgs: [] }))
-          .finally(() => setSearching(false));
-      } else {
-        searchOrganizations(collabSearch)
-          .then((orgs) => setResults({ artists: [], orgs: orgs.filter((o) => Boolean(o.owner_id)) }))
-          .catch(() => setResults({ artists: [], orgs: [] }))
-          .finally(() => setSearching(false));
-      }
+      const request = collabRole === 'performer'
+        ? searchArtists(query).then((artists) => ({ artists: artists.filter((artist) => Boolean(artist.user_id)), orgs: [] }))
+        : searchOrganizations(query).then((orgs) => ({ artists: [], orgs: orgs.filter((organization) => Boolean(organization.owner_id)) }));
+      request.then((nextResults) => {
+        if (collabSearchRequestRef.current === requestId) setResults(nextResults);
+      }).catch(() => {
+        if (collabSearchRequestRef.current === requestId) setResults({ artists: [], orgs: [] });
+      }).finally(() => {
+        if (collabSearchRequestRef.current === requestId) setSearching(false);
+      });
     }, 300);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      if (collabSearchRequestRef.current === requestId) collabSearchRequestRef.current += 1;
+    };
   }, [collabSearch, collabRole]);
 
   const updateForm = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
