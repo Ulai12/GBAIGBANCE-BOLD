@@ -4,33 +4,33 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Restauration des RPCs critiques manquantes set_event_status et validate_ticket_qr (liaisons front/back cassées) + alignement contrainte statut events.
+Ajout d'index sur les foreign keys restantes non indexées (performance advisors) + restauration de BACKEND_MEMORY.md après incident de troncature.
 
 ## Objectif
-Rétablir les fonctions serveur appelées par le frontend pour la gestion du cycle de vie des événements et la validation QR à l'entrée, absentes de la base malgré les migrations historiques.
+Éliminer les 7 derniers unindexed foreign keys signalés par les advisors Supabase pour améliorer les performances des jointures et suppressions.
 
 ## Progression
-- Contrainte events_status_check élargie (draft/pending/published/paused/suspended/cancelled/completed/postponed). 0 violation.
-- Fonctions set_event_status et validate_ticket_qr recréées (SECURITY DEFINER, search_path=public, grants authenticated uniquement).
-- Migration appliquée et versionnée.
+- Indexes créés et vérifiés en base sur : event_collaborators(invited_by), event_questions(answered_by, user_id), event_reactions(user_id), event_reports(reporter_id), event_schedule(artist_id), organization_follows(user_id).
+- Migration versionnée et appliquée.
+- BACKEND_MEMORY restaurée depuis commit f4aad2d8 (incident PLACEHOLDER3 corrigé).
 
 ## Fichiers concernés
-- supabase/migrations/20261119100000_restore_event_status_and_qr_validation_rpcs.sql (nouveau)
+- supabase/migrations/20261120100000_add_remaining_fk_indexes.sql (nouveau)
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-19 — Restauration RPCs set_event_status + validate_ticket_qr + contrainte statut (commit 4f80c2a8).
+2026-11-20 — Indexes FK restants ajoutés (commit 231ec49b) ; mémoire restaurée (commit 6a79ab7c).
 
 ## Prochaine étape
-- Vérifier liaisons end-to-end (setEventStatus depuis EventManagementModal, validateTicketQr depuis scanner).
-- Continuer lot 2 optimisation RLS si besoin.
+- Vérifier liaisons end-to-end (setEventStatus, validateTicketQr).
+- Continuer optimisation RLS auth initplan (lot suivant).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 
 ## Vérifications
-- pg_proc contient set_event_status et validate_ticket_qr. OK.
-- Contrainte events_status_check mise à jour. OK.
-- Relecture distante migration (taille ~4915 o, contenu intact). OK.
-- Aucune troncature.
+- Indexes présents en base (pg_indexes). OK.
+- Migration relecturée distante (taille 1240 o, contenu intact). OK.
+- BACKEND_MEMORY relecturée (taille 4893 o après restauration, puis mise à jour). OK.
+- Aucune troncature cette session.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -54,7 +54,8 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
-- 20261119100000_restore_event_status_and_qr_validation_rpcs (cette session)
+- 20261120100000_add_remaining_fk_indexes (cette session)
+- 20261119100000_restore_event_status_and_qr_validation_rpcs
 - 20261119010000_optimize_rls_remaining_tables
 - 20261118143000_drop_example_and_optimize_rls_critical
 - 20261118120000_add_remaining_fk_indexes
@@ -67,20 +68,22 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Tester validation QR et changement de statut événement en staging.
 
 ## Dette backend
-- ~50 warnings auth RLS initplan restants (lot 2 déjà partiellement traité dans 20261119010000).
+- ~50 warnings auth RLS initplan restants.
 - Nombreux SECURITY DEFINER callable par anon/authenticated — revue progressive des grants.
 - Extension pg_net in public.
 - event_view_daily : RLS activée sans policy.
 
 ## Incidents
-- Aucun cette session. RPCs absentes malgré migrations historiques — restaurées.
+- Troncature BACKEND_MEMORY.md à PLACEHOLDER3 (détectée et restaurée cette session depuis f4aad2d8).
 
 ## Backlog
 - Vérification end-to-end des nouvelles RPCs.
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
+- Optimisation RLS restante.
 
 ## Historique
+- 2026-11-20 : Indexes FK restants + restauration mémoire.
 - 2026-11-19 : Restauration set_event_status + validate_ticket_qr.
 - 2026-11-18 (après-midi) : Drop example + RLS critical tables optimisées.
 - 2026-11-18 (matin) : Indexes FK restants.
@@ -92,6 +95,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Paiements : secret webhook requis pour confirmer billets.
 - Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
 - RPCs set_event_status et validate_ticket_qr maintenant présentes.
+- Indexes FK complétés.
 
 ## Taches À faire
 - [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
