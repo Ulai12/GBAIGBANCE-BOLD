@@ -640,7 +640,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       onToast(failedSections.length
         ? {
             message: `Événement créé, mais certains éléments n’ont pas été enregistrés : ${failedSections.join(', ')}. Vous pourrez les ajouter depuis sa fiche.`,
-            type: 'warning',
+            type: 'info',
           }
         : {
             message: collaborators.length
@@ -1858,6 +1858,32 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         {/* STEP 9: CONFIRMATION & APERÇU EN DIRECT */}
         {step === 'Confirmation' && (
           <section className="space-y-4 animate-slide-up">
+            <div className="relative overflow-hidden rounded-[24px] border border-[#6600FF]/15 bg-gradient-to-br from-[#6600FF]/[0.08] via-white to-purple-50 p-4 dark:from-[#6600FF]/20 dark:via-[#1A1829] dark:to-[#211735]">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#6600FF]/10 text-[#6600FF] dark:bg-[#6600FF]/20 dark:text-purple-300">
+                  <Check className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-extrabold text-[#171726] dark:text-white">Votre événement est prêt à être publié</p>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                    Vérifiez les informations et les aperçus. Vous pourrez encore modifier votre événement après sa publication.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: 'Billets', value: accessType === 'tickets' ? configuredTicketCount : 1 },
+                  { label: 'Programme', value: scheduleItems.filter((item) => item.title.trim() && item.start_time).length },
+                  { label: 'Liens Live', value: isLiveEvent ? liveItems.filter((item) => item.url.trim()).length : 0 },
+                  { label: 'Sponsors', value: sponsorItems.filter((item) => item.name.trim()).length },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-black/[0.05] bg-white/70 px-3 py-2.5 dark:border-white/[0.08] dark:bg-white/[0.05]">
+                    <p className="text-lg font-black tabular-nums text-[#6600FF] dark:text-purple-300">{item.value}</p>
+                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
             {/* Segmented Control de vue en Confirmation */}
             <div className="flex p-1 bg-black/[0.04] dark:bg-white/[0.06] rounded-2xl">
               <button
