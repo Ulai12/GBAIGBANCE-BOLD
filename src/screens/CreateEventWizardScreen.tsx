@@ -126,14 +126,14 @@ function formatFriendlyDateTime(val: string, language: string) {
   });
 }
 
-// City GPS presets for instant coordinate fallback
-const CITY_COORDINATES: Record<string, { lat: number; lng: number; country: string }> = {
-  Lomé: { lat: 6.1375, lng: 1.2123, country: 'TG' },
-  Cotonou: { lat: 6.3703, lng: 2.3912, country: 'BJ' },
-  Abidjan: { lat: 5.3600, lng: -4.0083, country: 'CI' },
-  Accra: { lat: 5.6037, lng: -0.1870, country: 'GH' },
-  Dakar: { lat: 14.6928, lng: -17.4467, country: 'SN' },
-  Bamako: { lat: 12.6392, lng: -8.0029, country: 'ML' },
+// Pays associé aux villes proposées (aucune coordonnée GPS fictive du lieu).
+const CITY_COUNTRIES: Record<string, string> = {
+  Lomé: 'TG',
+  Cotonou: 'BJ',
+  Abidjan: 'CI',
+  Accra: 'GH',
+  Dakar: 'SN',
+  Bamako: 'ML',
 };
 
 function getErrorMessage(error: unknown) {
@@ -162,8 +162,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     location_address: '',
     city: 'Lomé',
     country: 'TG',
-    latitude: 6.1375 as number | null,
-    longitude: 1.2123 as number | null,
+    latitude: null as number | null,
+    longitude: null as number | null,
     starts_at: '',
     ends_at: '',
     cover_url: '',
@@ -286,13 +286,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     setForm((current) => ({ ...current, [key]: value }));
 
   const handleCityChange = (cityName: string) => {
-    const coords = CITY_COORDINATES[cityName];
+    const country = CITY_COUNTRIES[cityName];
     setForm((curr) => ({
       ...curr,
       city: cityName,
-      country: coords ? coords.country : curr.country,
-      latitude: coords ? coords.lat : curr.latitude,
-      longitude: coords ? coords.lng : curr.longitude,
+      country: country || curr.country,
+      // Un changement de ville invalide les coordonnées du lieu précédent.
+      latitude: null,
+      longitude: null,
     }));
   };
 
@@ -363,6 +364,17 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         setError(`Champs requis : ${missing.join(', ')}.`);
         return false;
       }
+
+      const startDate = new Date(form.starts_at);
+      const endDate = form.ends_at ? new Date(form.ends_at) : null;
+      if (Number.isNaN(startDate.getTime())) {
+        setError('La date et l’heure de début sont invalides.');
+        return false;
+      }
+      if (endDate && (Number.isNaN(endDate.getTime()) || endDate <= startDate)) {
+        setError('La fin de l’événement doit être postérieure à son début.');
+        return false;
+      }
     }
     if (step === 'Billets') {
       if (accessType === 'whatsapp' && !whatsappNumber.trim()) {
@@ -374,10 +386,31 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         return false;
       }
       if (accessType === 'tickets') {
-        const hasValidTicket = tickets.some((t) => t.label.trim());
-        if (!hasValidTicket) {
+        const configuredTickets = tickets.filter((ticket) => ticket.label.trim());
+        if (configuredTickets.length === 0) {
           setError('Veuillez configurer au moins un type de billet.');
           return false;
+        }
+        const hasInvalidTicket = configuredTickets.some((ticket) => {
+          const price = Number(ticket.price);
+          const quantity = Number(ticket.quantity_total);
+          return !Number.isFinite(price) || price < 0 || !Number.isInteger(quantity) || quantity < 1;
+        });
+        if (hasInvalidTicket) {
+          setError('Chaque billet doit avoir un prix valide (0 FCFA minimum) et une quantité entière supérieure à zéro.');
+          return false;
+        }
+        if (!unlimitedCapacity) {
+          const capacity = Number(form.capacity);
+          const totalQuantity = configuredTickets.reduce((sum, ticket) => sum + Number(ticket.quantity_total), 0);
+          if (!Number.isInteger(capacity) || capacity < 1) {
+            setError('Veuillez définir une capacité totale valide.');
+            return false;
+          }
+          if (totalQuantity > capacity) {
+            setError('La quantité totale des billets dépasse la capacité de l’événement.');
+            return false;
+          }
         }
       }
     }
@@ -762,7 +795,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 <input
                   className={fieldClass}
                   value={form.location_name}
-                  onChange={(e) => updateForm('location_name', e.target.value)}
+                  onChange={(e) => setForm((curr) => ({
+                    ...curr,
+                    location_name: e.target.value,
+                    latitude: null,
+                    longitude: null,
+                  }))}
                   placeholder={t('events', 'creation.wizard.location.venuePlaceholder')}
                 />
               </div>
@@ -774,7 +812,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 <input
                   className={fieldClass}
                   value={form.location_address}
-                  onChange={(e) => updateForm('location_address', e.target.value)}
+                  onChange={(e) => setForm((curr) => ({
+                    ...curr,
+                    location_address: e.target.value,
+                    latitude: null,
+                    longitude: null,
+                  }))}
                   placeholder={t('events', 'creation.wizard.location.addressPlaceholder')}
                 />
               </div>
@@ -804,7 +847,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <select
                     className={fieldClass}
                     value={form.country}
-                    onChange={(e) => updateForm('country', e.target.value)}
+                    onChange={(e) => setForm((curr) => ({
+                      ...curr,
+                      country: e.target.value,
+                      latitude: null,
+                      longitude: null,
+                    }))}
                   >
                     {COUNTRIES.map((ct) => (
                       <option key={ct.code} value={ct.code}>
