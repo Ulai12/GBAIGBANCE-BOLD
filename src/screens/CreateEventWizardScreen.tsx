@@ -210,6 +210,13 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const stepIndex = STEPS.indexOf(step);
   const phaseIndex = stepIndex < 3 ? 0 : stepIndex < 5 ? 1 : 2;
   const phaseKeys = ['presentation', 'setup', 'publishing'];
+  const locationSearchQuery = [
+    form.location_name,
+    form.location_address,
+    form.city,
+    COUNTRIES.find((country) => country.code === form.country)?.name,
+  ].filter(Boolean).join(', ');
+  const locationSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationSearchQuery)}`;
 
   // Computed preview event for real-time live preview
   const previewEvent: Event = useMemo(() => {
@@ -966,6 +973,18 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     </span>
                   </div>
                 </div>
+                {locationSearchQuery.trim() && (
+                  <a
+                    href={locationSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#6600FF]/15 bg-[#6600FF]/[0.06] px-4 text-xs font-bold text-[#6600FF] transition-colors hover:bg-[#6600FF]/[0.1] dark:border-purple-400/20 dark:bg-purple-400/[0.08] dark:text-purple-300"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {t('events', 'creation.wizard.location.verifyOnMap')}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
             </div>
 
