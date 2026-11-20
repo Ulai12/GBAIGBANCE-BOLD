@@ -385,6 +385,13 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         setError('Veuillez renseigner l’URL du site dédié ou de la billetterie externe.');
         return false;
       }
+      if (!unlimitedCapacity) {
+        const capacity = Number(form.capacity);
+        if (!Number.isInteger(capacity) || capacity < 1) {
+          setError('Veuillez définir une capacité totale valide.');
+          return false;
+        }
+      }
       if (accessType === 'tickets') {
         const configuredTickets = tickets.filter((ticket) => ticket.label.trim());
         if (configuredTickets.length === 0) {
