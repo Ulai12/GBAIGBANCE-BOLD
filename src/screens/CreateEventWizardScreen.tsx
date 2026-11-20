@@ -377,13 +377,25 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       }
     }
     if (step === 'Billets') {
-      if (accessType === 'whatsapp' && !whatsappNumber.trim()) {
-        setError('Veuillez renseigner le numéro WhatsApp officiel pour les réservations.');
-        return false;
+      if (accessType === 'whatsapp') {
+        const phoneDigits = whatsappNumber.replace(/\D/g, '');
+        if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+          setError('Veuillez renseigner un numéro WhatsApp valide (8 à 15 chiffres).');
+          return false;
+        }
       }
-      if (accessType === 'external' && !externalTicketUrl.trim()) {
-        setError('Veuillez renseigner l’URL du site dédié ou de la billetterie externe.');
-        return false;
+      if (accessType === 'external') {
+        if (!externalTicketUrl.trim()) {
+          setError('Veuillez renseigner l’URL du site dédié ou de la billetterie externe.');
+          return false;
+        }
+        try {
+          const ticketUrl = new URL(externalTicketUrl.trim());
+          if (ticketUrl.protocol !== 'http:' && ticketUrl.protocol !== 'https:') throw new Error('Invalid protocol');
+        } catch {
+          setError('Veuillez saisir une URL valide commençant par https:// ou http://.');
+          return false;
+        }
       }
       if (!unlimitedCapacity) {
         const capacity = Number(form.capacity);
