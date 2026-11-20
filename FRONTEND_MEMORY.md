@@ -320,3 +320,31 @@
 - `src/components/NearbySeeMoreCard.tsx` : date/prix localisés, libellés accessibles, partage et lieu de secours.
 - `src/components/OrganizerCard.tsx` : partage, région de secours, compteur d'événements, abonnés et actions Suivre/Suivi.
 - Ces composants conservent leurs classes, dimensions, animations, structure et interactions.
+
+
+## 2026-11-20 — Rééquilibrage adaptatif d’Explorer par catégorie
+### Constat
+- Sur `src/screens/HomeScreen.tsx`, la grille passait à six colonnes dès `lg` (1024 px), ce qui comprimait les cartes sur les écrans intermédiaires.
+- Les cartes parentes cumulaient une hauteur minimale de 56 à 64 px, un padding vertical généreux et une disposition icône-au-dessus-du-libellé. Les libellés FR/EN longs pouvaient donc créer des cartes plus hautes et irrégulières.
+- Les puces de sous-catégories conservaient une cible tactile de 44 px, mais leur padding vertical pouvait encore gonfler les libellés qui s’étendent sur plusieurs lignes.
+
+### Intervention réalisée
+- Grille responsive : 2 colonnes sur mobile, 3 à partir de `sm`, puis 6 à partir de `xl`. Les écrans intermédiaires conservent ainsi une grille équilibrée de trois colonnes et deux rangées au lieu de six cartes comprimées.
+- Cartes parentes : minimum de 48 px sans hauteur fixe, largeur maximale portée à 280 px pour remplir les colonnes intermédiaires, padding vertical réduit et passage à une composition icône/libellé horizontale à partir de `sm`. Sur les petits écrans, la disposition empilée reste plus lisible.
+- Libellés : largeur minimale nulle et retour à la ligne conservé; les contenus longs peuvent augmenter naturellement la hauteur au lieu d’être coupés.
+- Sous-catégories : padding vertical et horizontal légèrement réduit, tout en conservant `min-h-11` (44 px) et le retour à la ligne. Les niveaux parent/enfant restent visuellement distincts.
+- Identifiants, ordre, labels traduits, icônes, couleurs, haptique, états actifs, attributs `aria-pressed`, callbacks, filtrage et données métier préservés. Aucun changement backend/API ou dans `src/constants/categories.ts`.
+
+### Fichiers concernés
+- `src/screens/HomeScreen.tsx` — grille et proportions des cartes parentes et puces de sous-catégories.
+- `FRONTEND_MEMORY.md` — journal de cette intervention.
+
+### Vérifications et limites
+- Branche cible contrôlée avant écriture : `FRONTEND-iA`; HEAD de départ : `b9350c09bcd1bc83ed810ae72f07bd80f8a91c87`.
+- Contrôles statiques du texte source : nouveaux breakpoints présents; anciennes hauteurs minimales et ancien breakpoint six colonnes dès `lg` absents; deux variantes de puces mises à jour; sélection parent/enfant, haptique, états accessibles et filtrage conservés.
+- Le build Vercel et le contrôle visuel multi-viewport restent à vérifier après le commit. Le navigateur connecté n’est pas disponible dans cette exécution; aucun rendu visuel n’est revendiqué.
+- UIAudit et Superdesign ne sont pas exposés dans les outils ou skills disponibles; aucun audit ni draft de ces outils n’est revendiqué.
+- Aucun changement de branche, aucun PR, aucune modification de `main`; `PROJECT_MEMORY.md` n’a pas été lu ni modifié.
+
+### Prochaine priorité
+- Confirmer le build Vercel du commit, puis vérifier le rendu sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), en FR et EN. Contrôler surtout les libellés longs, l’alignement des six cartes et les puces de la catégorie privée qui compte cinq sous-catégories.
