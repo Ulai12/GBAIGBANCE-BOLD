@@ -184,7 +184,16 @@
         "ticketNamePlaceholder": "Nom du billet (ex. Pass 1 jour, VIP Lounge)",
         "price": "Prix (FCFA)",
         "totalQuantity": "Quantité totale",
-        "addTicketType": "Ajouter un type de billet"
+        "addTicketType": "Ajouter un type de billet",
+        "formulaCount": "Formules",
+        "placesConfigured": "Places prévues",
+        "fromPrice": "Dès",
+        "ticketNumber": "Formule {number}",
+        "unnamedTicket": "Billet sans nom",
+        "ticketType": "Type de billet",
+        "ticketName": "Nom de l'offre",
+        "ticketDescription": "Description (facultative)",
+        "ticketDescriptionPlaceholder": "Précisez les avantages inclus dans ce billet"
       },
       "errors": {
         "titleRequired": "Le titre de l’événement est requis.",
@@ -215,6 +224,21 @@
         "presentation": "Présentation",
         "setup": "Organisation",
         "publishing": "Publication"
+      },
+      "team": {
+        "title": "Constituez votre équipe",
+        "description": "Invitez les artistes et co-organisateurs qui participeront à cet événement.",
+        "artists": "Artistes",
+        "coOrganizers": "Co-organisateurs",
+        "searchArtist": "Rechercher un artiste...",
+        "searchOrganizer": "Rechercher un co-organisateur...",
+        "searching": "Recherche en cours...",
+        "noResults": "Aucun résultat pour « {query} ».",
+        "selected": "Personnes sélectionnées",
+        "artistRole": "Artiste invité",
+        "organizerRole": "Co-organisateur",
+        "remove": "Retirer ce collaborateur",
+        "approvalNotice": "Les invitations seront envoyées après la création. L'événement restera en attente de validation tant que les collaborateurs n'auront pas accepté."
       }
     }
   },
