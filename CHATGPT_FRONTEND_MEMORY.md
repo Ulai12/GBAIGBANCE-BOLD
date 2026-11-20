@@ -101,3 +101,5 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - FR/EN locale parity checked for all newly introduced optional-step keys.
 - Code commit `312bbed8e78c6c873e9717ed91839a1e299f59cb`; Vercel preview deployment `dpl_5KycE23oGTE7DjgxVwnZg6ujN4p8` was QUEUED at last check. Verify READY and build logs before closing this tranche.
 - Full browser/mobile visual QA and real end-to-end event creation remain outstanding.
+
+- Deployment verification update: Vercel preview for code commit `312bbed8e78c6c873e9717ed91839a1e299f59cb` reached READY; Vite build 3.47s, deployment completed in 9s. Documentation-only follow-up commits `3b5dc8e295d54c91d6162b41911d6e71a0518399` and `dceea27212091b4c4030080af802fa20b9ad07ef` record tranche notes. Branch compare now reports 127 ahead / 18 behind main; do not merge/rebase automatically.
