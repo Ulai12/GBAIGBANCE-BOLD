@@ -408,13 +408,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
           return false;
         }
         if (!unlimitedCapacity) {
-          const capacity = Number(form.capacity);
           const totalQuantity = configuredTickets.reduce((sum, ticket) => sum + Number(ticket.quantity_total), 0);
-          if (!Number.isInteger(capacity) || capacity < 1) {
-            setError('Veuillez définir une capacité totale valide.');
-            return false;
-          }
-          if (totalQuantity > capacity) {
+          if (totalQuantity > Number(form.capacity)) {
             setError('La quantité totale des billets dépasse la capacité de l’événement.');
             return false;
           }
