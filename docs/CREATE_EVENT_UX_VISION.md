@@ -274,3 +274,30 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Le dépôt ne contient actuellement que `bun.lock`; aucun `package-lock.json` ni `npm-shrinkwrap.json` n'est présent.
 - Vercel détecte donc Bun et lance `bun install` automatiquement (confirmé dans les logs). Le dépôt n'a pas été modifié sur ce point.
 - Ne pas forcer `npm ci` dans les paramètres Vercel tant qu'un `package-lock.json` n'a pas été créé et approuvé. La préférence de travail reste npm, mais créer un nouveau lockfile nécessite une décision explicite du propriétaire.
+
+
+## 13. Quatrième tranche — Programme, Live et Sponsors
+
+### Programme
+- Refonte de l'étape en cartes de créneaux, avec résumé du nombre de créneaux complets.
+- Champs explicites : titre, jour, scène/espace, début et fin.
+- Ajout/suppression avec cibles tactiles de 40–44 px, hiérarchie mobile et prise en charge du mode sombre.
+- Les créneaux incomplets restent facultatifs et sont ignorés à la création; les créneaux complets avec horaires incohérents sont refusés avant de poursuivre.
+
+### Live
+- État activé/désactivé rendu comme un vrai switch accessible (`role=switch`, `aria-checked`).
+- Ajout de plateformes YouTube, Twitch, Facebook, Instagram, TikTok et autre.
+- URL et titre optionnel par diffusion; contrôle des URL HTTP(S) avant de quitter l'étape.
+- L'activation sans lien reste possible; aucun faux lien n'est créé.
+
+### Sponsors
+- Cartes de partenaires avec niveaux Or, Argent, Bronze et Partenaire, sélection visuelle accessible.
+- Champs nom, site web et URL de logo manuel, avec aperçu.
+- Les logos manuels sont maintenant prioritaires; le favicon du site sert de repli uniquement si aucun logo manuel n'est fourni.
+- Contrôle des URL HTTP(S) avant de quitter l'étape.
+
+### Internationalisation et garde-fous
+- Tous les nouveaux libellés sont ajoutés aux locales FR/EN.
+- Aucun changement de schéma Supabase ou de dépendance.
+- La logique existante d'écriture dans `event_schedule`, `event_live_links` et `event_sponsors` est conservée.
+- À vérifier sur Vercel : build du commit `312bbed8e78c6c873e9717ed91839a1e299f59cb` en attente au dernier contrôle. La QA visuelle et les tests réels de création restent nécessaires.
