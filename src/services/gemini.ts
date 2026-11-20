@@ -6,8 +6,19 @@
  */
 
 import type { Event } from '@/types';
-import { supabase } from '@/infrastructure/supabase';
-import { getAIAssistantPreferences, shouldShareLocationWithAssistant } from '@/services/aiSettings';
+import { streamAIAssistant } from '@/services/aiAssistantService';
+import { shouldShareLocationWithAssistant } from '@/services/aiSettings';
+import {
+  getUserGeminiApiKey,
+  removeUserGeminiApiKey,
+} from '@/services/aiSettings';
+
+export {
+  getUserGeminiApiKey,
+  hasUserGeminiApiKey,
+  removeUserGeminiApiKey,
+  setUserGeminiApiKey,
+} from '@/services/aiSettings';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -27,36 +38,19 @@ export interface GeminiModelOption {
 
 export const GEMINI_AVAILABLE_MODELS: GeminiModelOption[] = [
   {
-    id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash',
-    badge: 'Serveur Actif',
-    description: 'Modèle officiel ultra-rapide optimisé pour le concierge et la billetterie',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini Flash',
+    badge: 'Recommandé',
+    description: 'Modèle rapide sélectionné selon les modèles disponibles pour votre clé',
     recommended: true,
   },
   {
-    id: 'gemini-3.8-live',
-    name: 'Gemini 3.8 Live',
+    id: 'gemini-2.5-flash-native-audio-preview-12-2025',
+    name: 'Gemini Live',
     badge: 'Voix Temps Réel',
-    description: 'Mode conversation vocale interactive basse latence via WebSocket',
+    description: 'Conversation vocale en temps réel (si activée sur le serveur)',
   },
 ];
-
-export function getUserGeminiApiKey(): string {
-  return '';
-}
-
-export function setUserGeminiApiKey(..._args: unknown[]): void {
-  void _args;
-  // L'authentification et les clés sont gérées côté serveur
-}
-
-export function removeUserGeminiApiKey(): void {
-  // Géré côté serveur
-}
-
-export function hasUserGeminiApiKey(): boolean {
-  return false;
-}
 
 /**
  * L'assistant IA est toujours actif grâce à l'infrastructure serveur dédiée.
@@ -67,9 +61,9 @@ export function isGeminiActive(): boolean {
 
 export function getGeminiConfig(): GeminiConfig {
   return {
-    apiKey: '',
+    apiKey: getUserGeminiApiKey(),
     enabled: true,
-    model: 'gemini-3.8-flash',
+    model: 'gemini-2.5-flash',
     enableMapsGrounding: true,
     temperature: 0.7,
   };
@@ -94,32 +88,79 @@ export async function syncGeminiConfigFromAccount(
 }
 
 export function clearGeminiLocalConfig(): void {
-  // Géré côté serveur
+  removeUserGeminiApiKey();
 }
 
 export async function resolveAvailableGeminiModel(): Promise<string> {
-  return 'gemini-3.8-flash';
+  return 'gemini-2.5-flash';
 }
 
 export async function testGeminiApiKey(): Promise<{ success: boolean; message: string; model?: string }> {
+  const apiKey = getUserGeminiApiKey();
+  if (apiKey) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+        headers: { 'x-goog-api-key': apiKey },
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        return {
+          success: false,
+          message: response.status === 429
+            ? 'La limite de requêtes Gemini est atteinte. Réessayez plus tard.'
+            : response.status === 400 || response.status === 401 || response.status === 403
+              ? 'Cette clé Gemini est invalide ou n’a pas accès à l’API Generative Language.'
+              : data.error?.message || `Vérification Gemini impossible (${response.status}).`,
+        };
+      }
+
+      const model = data.models?.find((candidate) =>
+        candidate.supportedGenerationMethods?.includes('generateContent')
+      )?.name?.replace(/^models\//, '');
+      return model
+        ? { success: true, message: 'Clé Gemini valide et compatible.', model }
+        : { success: false, message: 'Cette clé ne donne accès à aucun modèle Gemini compatible.' };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error && error.name === 'AbortError'
+          ? 'La vérification de la clé Gemini a expiré.'
+          : 'Impossible de vérifier la clé Gemini. Vérifiez votre connexion.',
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   try {
     const res = await fetch('/api/ai/status');
     if (res.ok) {
-      const data = await res.json();
+      const data = (await res.json()) as { active?: boolean; model?: string };
+      if (data.active === false) {
+        return { success: false, message: 'Aucune clé Gemini par défaut n’est configurée sur le serveur.' };
+      }
       return {
         success: true,
-        message: `Service IA serveur opérationnel avec ${data.model} !`,
+        message: 'Point d’accès IA serveur joignable. La clé serveur sera vérifiée à votre première question.',
         model: data.model,
       };
     }
     return {
       success: false,
-      message: 'Service IA temporairement indisponible',
+      message: res.status === 404
+        ? 'Le point de santé n’est pas publié sur ce déploiement. La clé serveur sera vérifiée à votre première question.'
+        : 'Service IA temporairement indisponible',
     };
   } catch {
     return {
       success: false,
-      message: 'Impossible de joindre le serveur IA',
+      message: 'Statut du serveur indisponible. Envoyez une question pour vérifier le service par défaut.',
     };
   }
 }
@@ -137,33 +178,32 @@ export interface AskAssistantOptions {
 export async function askGeminiAssistant(
   options: AskAssistantOptions
 ): Promise<{ text: string }> {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  const eventContext = options.currentEvent
+    ? `\nContexte de l’interface (à vérifier avec get_event_details avant toute réponse) : ID ${options.currentEvent.id}, titre « ${options.currentEvent.title} ».`
+    : '';
+  const userLocation =
+    options.userLocation && shouldShareLocationWithAssistant()
+      ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
+      : null;
 
-    const res = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        prompt: options.prompt,
-        currentEvent: options.currentEvent,
-        userLocation: options.userLocation && shouldShareLocationWithAssistant()
-          ? { lat: options.userLocation.latitude, lng: options.userLocation.longitude }
-          : null,
-        preferences: getAIAssistantPreferences(),
-      }),
+  return new Promise((resolve, reject) => {
+    let responseText = '';
+    void streamAIAssistant(
+      {
+        messages: [{ role: 'user', text: `${options.prompt.trim()}${eventContext}` }],
+        userLocation,
+      },
+      {
+        onChunk: (chunk) => {
+          responseText += chunk;
+        },
+        onDone: () => {
+          resolve({ text: responseText || 'Aucune réponse reçue de l’assistant.' });
+        },
+        onError: (message) => reject(new Error(message)),
+      }
+    ).catch((error: unknown) => {
+      reject(error instanceof Error ? error : new Error('Erreur de communication avec l’assistant.'));
     });
-
-    if (res.ok) {
-      const data = await res.json();
-      return { text: data.text || 'Aucune réponse reçue de l’assistant.' };
-    }
-
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Erreur serveur (${res.status})`);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Erreur de communication avec l’assistant';
-    throw new Error(msg);
-  }
+  });
 }

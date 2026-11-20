@@ -15,6 +15,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  Settings2,
 } from 'lucide-react';
 import { AIMarkdownRenderer } from '@/components/AIMarkdownRenderer';
 import { useAIAssistant, type ChatMessage } from '@/hooks/useAIAssistant';
@@ -47,6 +48,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   onClose,
   onEventClick,
   onAuthRequired,
+  onOpenSettings,
 }) => {
   const { userLocation } = useApp();
   const {
@@ -170,8 +172,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                 <h2 className="text-sm font-extrabold text-[#17131D] dark:text-white tracking-tight">
                   Concierge Gbaigbance IA
                 </h2>
-                <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                  En ligne
+                <span className="px-1.5 py-0.5 rounded-full bg-[#6600FF]/10 border border-[#6600FF]/20 text-[9px] font-bold text-[#6600FF] dark:text-[#C084FC]">
+                  Gemini
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-zinc-400 flex items-center gap-1">
@@ -186,6 +188,17 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                title="Réglages de l’assistant"
+                aria-label="Ouvrir les réglages de l’assistant"
+                className="p-2 rounded-full text-gray-500 hover:text-[#6600FF] dark:text-zinc-400 dark:hover:text-purple-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                <Settings2 className="w-4 h-4" />
+              </button>
+            )}
             {/* Bouton bascule Mode Vocal Live */}
             <button
               type="button"

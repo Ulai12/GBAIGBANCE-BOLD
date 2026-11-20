@@ -85,6 +85,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     apikey: anonKey,
     Authorization: authHeader.startsWith('Bearer ') ? authHeader : `Bearer ${anonKey}`,
   };
+  const geminiApiKey = req.headers['x-gemini-api-key'];
+  if (typeof geminiApiKey === 'string' && geminiApiKey.trim()) {
+    edgeHeaders['x-gemini-api-key'] = geminiApiKey.trim();
+  }
   const edgePayload = {
     messages: (body.messages || []).map((m) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',

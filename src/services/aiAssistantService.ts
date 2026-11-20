@@ -1,5 +1,5 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
-import { getAIAssistantPreferences } from '@/services/aiSettings';
+import { getAIAssistantPreferences, getUserGeminiApiKey } from '@/services/aiSettings';
 
 // ====================================================================
 // GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (EDGE-FIRST + PROXY)
@@ -137,6 +137,8 @@ async function postAssistant(
   body: unknown,
   signal: AbortSignal
 ): Promise<Response> {
+  const apiKey = getUserGeminiApiKey();
+  if (apiKey) headers['x-gemini-api-key'] = apiKey;
   return fetch(url, {
     method: 'POST',
     headers,
@@ -215,6 +217,10 @@ export async function streamAIAssistant(
             callbacks.onError(lastError, true);
             return;
           }
+          if ([400, 401, 403].includes(response.status)) {
+            callbacks.onError(lastError);
+            return;
+          }
           response = null;
         }
       } catch (err) {
@@ -245,6 +251,10 @@ export async function streamAIAssistant(
               `Erreur serveur (${res.status})`;
             if (res.status === 429) {
               callbacks.onError(lastError, true);
+              return;
+            }
+            if ([400, 401, 403].includes(res.status)) {
+              callbacks.onError(lastError);
               return;
             }
           } catch (err) {

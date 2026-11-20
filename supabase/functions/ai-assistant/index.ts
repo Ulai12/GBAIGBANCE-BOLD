@@ -54,13 +54,14 @@ const ALLOWED_ORIGINS = [
   'https://gbaigbance-event.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173',
-];
+  Deno.env.get('FRONTEND_URL'),
+  Deno.env.get('SITE_URL'),
+  Deno.env.get('APP_URL'),
+].filter((origin): origin is string => Boolean(origin));
 
 async function resolveGeminiModel(apiKey: string, reqId: string): Promise<string> {
   const candidateModels = [
-    'gemini-3.8-flash',
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
     'gemini-flash-latest',
   ];
 
@@ -109,8 +110,8 @@ async function resolveGeminiModel(apiKey: string, reqId: string): Promise<string
     warn(reqId, 'MODEL', 'Exception probing Gemini models list. Using fallback.', probeError);
   }
 
-  log(reqId, 'MODEL', 'Using static fallback model: "gemini-3.8-flash"');
-  return 'gemini-3.8-flash';
+  log(reqId, 'MODEL', 'Using static fallback model: "gemini-2.5-flash"');
+  return 'gemini-2.5-flash';
 }
 
 function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
@@ -216,6 +217,15 @@ const GEMINI_TOOLS = [
           properties: {
             limit: { type: 'INTEGER', description: 'Nombre maximum de billets (max 10)' },
           },
+        },
+      },
+      {
+        name: 'get_my_follows',
+        description:
+          'Récupère les artistes, organisateurs et profils suivis par l’utilisateur connecté, sans données privées.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {},
         },
       },
     ],
@@ -577,6 +587,49 @@ async function executeToolCall(
         return { count: favorites.length, favorites };
       }
 
+      case 'get_my_follows': {
+        if (!userId || !isAuthenticated) {
+          return { authenticated: false, message: 'Connectez-vous pour consulter vos abonnements.' };
+        }
+
+        const [artistFollows, organizationFollows, userFollows] = await Promise.all([
+          userClient.from('artist_follows').select('artist_id').eq('user_id', userId).limit(10),
+          userClient.from('organization_follows').select('organization_id').eq('user_id', userId).limit(10),
+          userClient.from('user_follows').select('following_id').eq('follower_id', userId).limit(10),
+        ]);
+        const followError = artistFollows.error || organizationFollows.error || userFollows.error;
+        if (followError) {
+          err(reqId, 'TOOL:get_my_follows', 'Unable to retrieve follow IDs.', followError);
+          return { error: 'Impossible de récupérer les abonnements de votre compte.' };
+        }
+
+        const artistIds = (artistFollows.data || []).map((row: { artist_id: string }) => row.artist_id);
+        const organizationIds = (organizationFollows.data || []).map((row: { organization_id: string }) => row.organization_id);
+        const followedUserIds = (userFollows.data || []).map((row: { following_id: string }) => row.following_id);
+        const [artists, organizations, profiles] = await Promise.all([
+          artistIds.length
+            ? userClient.from('artists').select('id, name, genres').in('id', artistIds)
+            : Promise.resolve({ data: [], error: null }),
+          organizationIds.length
+            ? userClient.from('organizations').select('id, name, city, country').in('id', organizationIds)
+            : Promise.resolve({ data: [], error: null }),
+          followedUserIds.length
+            ? userClient.from('public_profiles').select('id, name, role, city, country').in('id', followedUserIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        const detailsError = artists.error || organizations.error || profiles.error;
+        if (detailsError) {
+          err(reqId, 'TOOL:get_my_follows', 'Unable to retrieve public follow details.', detailsError);
+          return { error: 'Impossible de récupérer les détails de vos abonnements.' };
+        }
+
+        return {
+          artists: artists.data || [],
+          organizations: organizations.data || [],
+          people: profiles.data || [],
+        };
+      }
+
       // --------------------------------------------------------------
       // OUTIL PERSONNALISÉ 3 : BILLETS DE L'UTILISATEUR (SÉCURISÉ PAR JWT RLS)
       // --------------------------------------------------------------
@@ -686,7 +739,7 @@ const handler = async (req: Request): Promise<Response> => {
     // 0. Body et Clé API (priorité à la clé personnelle de l'utilisateur, sinon clé serveur)
     const userApiKey = req.headers.get('x-gemini-api-key')?.trim();
     const body = await req.json().catch(() => ({}));
-    const activeGeminiKey = userApiKey || body.apiKey?.trim() || GEMINI_API_KEY;
+    const activeGeminiKey = userApiKey || GEMINI_API_KEY;
 
     log(
       reqId,
@@ -699,8 +752,6 @@ const handler = async (req: Request): Promise<Response> => {
       `Active Gemini Key source: ${
         userApiKey
           ? 'Client Header (x-gemini-api-key BYOK)'
-          : body.apiKey
-          ? 'Request Body BYOK'
           : GEMINI_API_KEY
           ? 'Server Environment (GEMINI_API_KEY)'
           : 'MISSING'
@@ -928,9 +979,12 @@ const handler = async (req: Request): Promise<Response> => {
       const genaiDur = Math.round(performance.now() - genaiStart);
 
       if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        err(reqId, 'GENAI', `Gemini API error (${geminiRes.status} in ${genaiDur}ms): ${errText.slice(0, 200)}`);
-        throw new Error(`Erreur Gemini (${geminiRes.status}): ${errText.slice(0, 150)}`);
+        err(reqId, 'GENAI', `Gemini API error (${geminiRes.status} in ${genaiDur}ms).`);
+        if ([400, 401, 403].includes(geminiRes.status)) {
+          throw new Error('GEMINI_API_KEY_INVALID');
+        }
+        if (geminiRes.status === 429) throw new Error('GEMINI_QUOTA_EXCEEDED');
+        throw new Error(`GEMINI_API_ERROR_${geminiRes.status}`);
       }
 
       const geminiData = await geminiRes.json();
@@ -1137,11 +1191,19 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (errorCatch: unknown) {
     const totalDuration = Math.round(performance.now() - reqStart);
-    const errorMsg = 'Erreur interne inattendue';
+    const errorCode = errorCatch instanceof Error ? errorCatch.message : '';
+    const errorMsg = errorCode === 'GEMINI_API_KEY_INVALID'
+      ? 'La clé Gemini est invalide ou n’a pas accès à l’API.'
+      : errorCode === 'GEMINI_QUOTA_EXCEEDED'
+        ? 'Le quota Gemini associé à cette clé est atteint. Réessayez plus tard.'
+        : errorCode.startsWith('GEMINI_API_ERROR_')
+          ? 'Le service Gemini a refusé la requête. Vérifiez le modèle et la configuration de la clé.'
+          : 'Erreur interne inattendue';
     err(reqId, 'FATAL', 'Request failed.', errorCatch);
 
+    const status = errorCode === 'GEMINI_API_KEY_INVALID' ? 401 : errorCode === 'GEMINI_QUOTA_EXCEEDED' ? 429 : 500;
     return new Response(JSON.stringify({ error: errorMsg, request_id: reqId }), {
-      status: 500,
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
