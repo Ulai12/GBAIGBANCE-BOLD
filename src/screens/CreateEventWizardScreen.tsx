@@ -1660,7 +1660,17 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         {/* STEP 5: COLLABORATEURS */}
         {step === 'Collaborateurs' && (
           <section className="space-y-4 animate-slide-up">
-            <div className="flex gap-2">
+            <div className="rounded-[22px] border border-[#6600FF]/10 bg-[#6600FF]/[0.045] p-4 dark:border-purple-400/15 dark:bg-purple-400/[0.06]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-extrabold text-[#17131D] dark:text-white">{t('events', 'creation.wizard.team.title')}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.team.description')}</p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-extrabold tabular-nums text-[#6600FF] dark:bg-white/10 dark:text-purple-300">{collaborators.length}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setCollabRole('performer')}
@@ -1669,7 +1679,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 }`}
               >
                 <Music2 className="w-4 h-4" />
-                Artiste
+                {t('events', 'creation.wizard.team.artists')}
               </button>
               <button
                 type="button"
@@ -1679,7 +1689,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 }`}
               >
                 <Building2 className="w-4 h-4" />
-                Co-organisateur
+                {t('events', 'creation.wizard.team.coOrganizers')}
               </button>
             </div>
 
@@ -1689,11 +1699,12 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 className={`${fieldClass} pl-11`}
                 value={collabSearch}
                 onChange={(e) => setCollabSearch(e.target.value)}
-                placeholder={collabRole === 'performer' ? 'Rechercher un artiste...' : 'Rechercher un co-organisateur...'}
+                placeholder={collabRole === 'performer' ? t('events', 'creation.wizard.team.searchArtist') : t('events', 'creation.wizard.team.searchOrganizer')}
+                aria-label={collabRole === 'performer' ? t('events', 'creation.wizard.team.searchArtist') : t('events', 'creation.wizard.team.searchOrganizer')}
               />
             </div>
 
-            {searching && <p className="text-xs text-gray-500 text-center">Recherche en cours...</p>}
+            {searching && <p role="status" className="text-xs text-gray-500 text-center">{t('events', 'creation.wizard.team.searching')}</p>}
 
             <div className="space-y-2">
               {collabRole === 'performer' &&
@@ -1702,10 +1713,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     type="button"
                     key={artist.id}
                     onClick={() => addCollaborator(artist.user_id || '', artist.name, 'artist')}
-                    className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors cursor-pointer"
+                    disabled={artist.user_id === user?.id || collaborators.some((item) => item.user_id === artist.user_id)}
+                    className="w-full card flex min-h-14 items-center gap-3 p-3 text-left transition-colors hover:border-[#6600FF]/40 disabled:cursor-not-allowed disabled:opacity-55"
                   >
-                    <Music2 className="w-4 h-4 text-[#6600FF] shrink-0" />
-                    <span className="text-xs font-bold text-[#17131D] dark:text-white">{artist.name}</span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300">
+                      {artist.photo_url ? <img src={artist.photo_url} alt="" className="h-full w-full object-cover" /> : <Music2 className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold text-[#17131D] dark:text-white">{artist.name}</span>
+                    {artist.user_id === user?.id || collaborators.some((item) => item.user_id === artist.user_id) ? <Check className="h-4 w-4 shrink-0 text-emerald-500" /> : <Plus className="h-4 w-4 shrink-0 text-[#6600FF]" />}
                   </button>
                 ))}
 
@@ -1715,10 +1730,14 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                     type="button"
                     key={org.id}
                     onClick={() => addCollaborator(org.owner_id || '', org.name, 'organizer')}
-                    className="w-full card p-3 flex items-center gap-3 text-left hover:border-[#6600FF]/40 transition-colors cursor-pointer"
+                    disabled={org.owner_id === user?.id || collaborators.some((item) => item.user_id === org.owner_id)}
+                    className="w-full card flex min-h-14 items-center gap-3 p-3 text-left transition-colors hover:border-[#6600FF]/40 disabled:cursor-not-allowed disabled:opacity-55"
                   >
-                    <Building2 className="w-4 h-4 text-[#6600FF] shrink-0" />
-                    <span className="text-xs font-bold text-[#17131D] dark:text-white">{org.name}</span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300">
+                      {org.logo_url ? <img src={org.logo_url} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold text-[#17131D] dark:text-white">{org.name}</span>
+                    {org.owner_id === user?.id || collaborators.some((item) => item.user_id === org.owner_id) ? <Check className="h-4 w-4 shrink-0 text-emerald-500" /> : <Plus className="h-4 w-4 shrink-0 text-[#6600FF]" />}
                   </button>
                 ))}
 
@@ -1726,29 +1745,34 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                 (collabRole === 'performer' && results.artists.length === 0) ||
                 (collabRole === 'co_organizer' && results.orgs.length === 0)
               ) && (
-                <p className="text-xs text-gray-500 text-center py-2">
-                  Aucun {collabRole === 'performer' ? 'artiste' : 'co-organisateur'} trouvé pour &ldquo;{collabSearch}&rdquo;
-                </p>
+                <div className="rounded-2xl bg-black/[0.03] px-4 py-5 text-center text-xs text-gray-500 dark:bg-white/[0.04] dark:text-gray-400">
+                  {t('events', 'creation.wizard.team.noResults').replace('{query}', collabSearch)}
+                </div>
               )}
             </div>
 
             {collaborators.length > 0 && (
-              <div className="card p-4 space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Collaborateurs invités</p>
-                {collaborators.map((item) => (
-                  <div key={item.user_id} className="flex items-center justify-between text-xs py-1">
-                    <span className="font-semibold text-[#17131D] dark:text-white">
-                      {item.name} ({item.role === 'performer' ? 'Artiste' : 'Co-org.'})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCollaborators(collaborators.filter((c) => c.user_id !== item.user_id))}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+              <div className="rounded-[22px] border border-black/[0.06] bg-white p-4 dark:border-white/[0.08] dark:bg-[#1A1829]">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.team.selected')}</p>
+                  <span className="text-[10px] font-bold text-[#6600FF] dark:text-purple-300">{collaborators.length}</span>
+                </div>
+                <ul className="space-y-2">
+                  {collaborators.map((item) => (
+                    <li key={item.user_id} className="flex min-w-0 items-center gap-3 rounded-2xl bg-black/[0.025] p-3 dark:bg-white/[0.04]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6600FF]/10 text-[#6600FF] dark:text-purple-300">
+                        {item.type === 'artist' ? <Music2 className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold text-[#17131D] dark:text-white">{item.name}</span>
+                        <span className="mt-0.5 block text-[10px] text-gray-500 dark:text-gray-400">{item.role === 'performer' ? t('events', 'creation.wizard.team.artistRole') : t('events', 'creation.wizard.team.organizerRole')}</span>
+                      </span>
+                      <button type="button" onClick={() => setCollaborators((current) => current.filter((collaborator) => collaborator.user_id !== item.user_id))} aria-label={t('events', 'creation.wizard.team.remove')} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>
