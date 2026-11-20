@@ -74,3 +74,12 @@ La section « Explorer par catégorie » est déclarée intouchable par l'utilis
 ### Suite
 - Vérifier le rendu sur mobile et desktop, notamment le panneau sticky, la capsule d'actions, les thèmes clair/sombre et les libellés longs FR/EN.
 - Exécuter build/typecheck/lint disponibles avant publication du commit.
+
+
+### Résultat de validation Vercel — commit afd61e3
+- Déploiement Preview créé sur FRONTEND-iA : `dpl_Wi1PBUJrBr8TLEnjjTE2sSQu71Xj`.
+- État final : ERROR. La commande `bun run build` échoue pendant la transformation Vite, avec deux erreurs du plugin `builtin:vite-json` : `expected value at line 1 column 1`.
+- Les logs montrent aussi un avertissement PWA : le motif de précache ne trouve aucun fichier correspondant. Le build n'est donc pas validé.
+- L'erreur de build n'indique pas de fichier JSON fautif dans les extraits disponibles; sa cause exacte reste à isoler. Ne pas l'attribuer au patch de classes Tailwind sans preuve.
+- La prévisualisation de ce commit n'est pas considérée publiable. La vérification visuelle n'a pas pu être faite.
+- Prochaine action P0 : isoler les deux erreurs Vite JSON du build sur FRONTEND-iA sans modifier les lockfiles ni les catégories. Ensuite relancer le build et contrôler le rendu mobile.
