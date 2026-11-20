@@ -342,9 +342,11 @@
 ### Vérifications et limites
 - Branche cible contrôlée avant écriture : `FRONTEND-iA`; HEAD de départ : `b9350c09bcd1bc83ed810ae72f07bd80f8a91c87`.
 - Contrôles statiques du texte source : nouveaux breakpoints présents; anciennes hauteurs minimales et ancien breakpoint six colonnes dès `lg` absents; deux variantes de puces mises à jour; sélection parent/enfant, haptique, états accessibles et filtrage conservés.
-- Le build Vercel et le contrôle visuel multi-viewport restent à vérifier après le commit. Le navigateur connecté n’est pas disponible dans cette exécution; aucun rendu visuel n’est revendiqué.
+- Déploiement Vercel preview du commit `7b43f5744bd4e75d2714d7776cc6145fe5042519` : état `READY` (`dpl_AUHdp3bYJJbRLhUns8Ak4poLVhYi`), alias de branche `https://gbaigbance-event-git-frontend-ia-shogun10.vercel.app`. Les logs confirment la compilation Vite réussie en 3,81 s, 63 entrées PWA précachées et 14 fichiers statiques de preview synchronisés.
+- `npm run typecheck`, lint et tests dédiés non exécutés séparément; le succès Vercel valide le build configuré, pas ces contrôles supplémentaires.
+- Contrôle visuel navigateur multi-viewport non réalisé : l’outil navigateur a signalé l’absence du contexte navigateur d’origine. Aucun rendu mobile/tablette/desktop ni contrôle FR/EN n’est revendiqué.
 - UIAudit et Superdesign ne sont pas exposés dans les outils ou skills disponibles; aucun audit ni draft de ces outils n’est revendiqué.
 - Aucun changement de branche, aucun PR, aucune modification de `main`; `PROJECT_MEMORY.md` n’a pas été lu ni modifié.
 
 ### Prochaine priorité
-- Confirmer le build Vercel du commit, puis vérifier le rendu sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), en FR et EN. Contrôler surtout les libellés longs, l’alignement des six cartes et les puces de la catégorie privée qui compte cinq sous-catégories.
+- Vérifier le rendu sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), en FR et EN. Contrôler surtout les libellés longs, l’alignement des six cartes et les puces de la catégorie privée qui compte cinq sous-catégories.
