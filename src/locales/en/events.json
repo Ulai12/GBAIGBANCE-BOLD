@@ -184,7 +184,16 @@
         "ticketNamePlaceholder": "Ticket name (e.g. 1-day pass, VIP Lounge)",
         "price": "Price (XOF)",
         "totalQuantity": "Total quantity",
-        "addTicketType": "Add ticket type"
+        "addTicketType": "Add ticket type",
+        "formulaCount": "Ticket types",
+        "placesConfigured": "Planned seats",
+        "fromPrice": "From",
+        "ticketNumber": "Option {number}",
+        "unnamedTicket": "Unnamed ticket",
+        "ticketType": "Ticket type",
+        "ticketName": "Ticket name",
+        "ticketDescription": "Description (optional)",
+        "ticketDescriptionPlaceholder": "Describe what this ticket includes"
       },
       "errors": {
         "titleRequired": "An event title is required.",
@@ -215,6 +224,21 @@
         "presentation": "Overview",
         "setup": "Setup",
         "publishing": "Publish"
+      },
+      "team": {
+        "title": "Build your event team",
+        "description": "Invite the artists and co-organizers taking part in this event.",
+        "artists": "Artists",
+        "coOrganizers": "Co-organizers",
+        "searchArtist": "Search for an artist...",
+        "searchOrganizer": "Search for a co-organizer...",
+        "searching": "Searching...",
+        "noResults": "No results for “{query}”.",
+        "selected": "Selected collaborators",
+        "artistRole": "Invited artist",
+        "organizerRole": "Co-organizer",
+        "remove": "Remove this collaborator",
+        "approvalNotice": "Invitations are sent after creation. The event remains pending until collaborators accept."
       }
     }
   },
