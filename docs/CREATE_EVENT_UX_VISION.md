@@ -269,3 +269,8 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Correctif final du re-export ESM : commit `0738c8277845bd5d4210955888cd7e69b87e2bb6`; déploiement de prévisualisation BUILDING lors de la dernière vérification.
 
 - Contrôle final du commit de code `0738c8277845bd5d4210955888cd7e69b87e2bb6` : Vercel READY; aucune occurrence TS5097 ou TS2835 dans les logs de build. Le commit ultérieur `20b6f02b33b0c386aac914e08d7b8a70e6df9416` ne modifie que la documentation.
+
+### Note de pipeline Vercel / gestionnaire de paquets
+- Le dépôt ne contient actuellement que `bun.lock`; aucun `package-lock.json` ni `npm-shrinkwrap.json` n'est présent.
+- Vercel détecte donc Bun et lance `bun install` automatiquement (confirmé dans les logs). Le dépôt n'a pas été modifié sur ce point.
+- Ne pas forcer `npm ci` dans les paramètres Vercel tant qu'un `package-lock.json` n'a pas été créé et approuvé. La préférence de travail reste npm, mais créer un nouveau lockfile nécessite une décision explicite du propriétaire.
