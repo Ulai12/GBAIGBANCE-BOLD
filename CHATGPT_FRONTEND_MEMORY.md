@@ -52,3 +52,17 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 
 - Further access validation: reject blank ticket price/quantity values; free ticket types must be priced at zero; WhatsApp contact must contain 8–15 digits; external ticket URLs must parse as HTTP(S).
 - Latest event validation code commit: `98c680abc2d0bdb7c5bb0000e22dfaba7e0f91f5`.
+
+## Progress update — 2026-11-20 — UX redesign tranche 2
+
+- Updated `src/screens/CreateEventWizardScreen.tsx` on `FRONTEND-iA`:
+  - Added an immersive cover hero at the first Infos step with image selection/change, title preview, and upload-size guidance.
+  - Grouped title, category hierarchy, description and capacity into visual cards without changing the category hierarchy.
+  - Added a three-phase progress indicator while retaining all nine existing wizard steps and their order.
+  - Added a sticky mobile action area with minimum 48px primary controls and safe-area bottom padding.
+  - Added a Google Maps search link assembled from the venue name, address, city and country. It only opens a search; it does not geocode, verify the venue, or fill GPS coordinates.
+- Updated FR/EN event locale files with phase, cover and map-search labels.
+- Vercel Preview for commit `a74930e2a3b48aa308f9ba8e84f0f4c325950476` reached READY. Vite reported 3303 modules transformed and built in 3.68s. Logs still include unrelated TS5097 at `api/ai/assistant/stream.ts(1,25)`; deployment nevertheless completed READY.
+- Branch comparison at the latest check: FRONTEND-iA ahead 101, behind 18 vs main. Do not merge/rebase without a reviewed plan.
+- Browser screenshot/interactive visual QA could not be completed because the Browser session was unavailable. Manual mobile QA is still required.
+- Full progress/limitations are in `docs/CREATE_EVENT_UX_VISION.md` section 11.
