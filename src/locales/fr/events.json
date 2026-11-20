@@ -201,6 +201,9 @@
         "createSuccess": "Événement créé et publié avec succès.",
         "createSuccessWithInvites": "Événement créé ! Les invitations ont été envoyées aux collaborateurs.",
         "publishing": "Publication en cours..."
+      },
+      "confirmation": {
+        "publicationNotice": "Vérifiez les informations avant publication. Les événements avec collaborateurs peuvent nécessiter une validation avant leur mise en ligne."
       }
     }
   },
