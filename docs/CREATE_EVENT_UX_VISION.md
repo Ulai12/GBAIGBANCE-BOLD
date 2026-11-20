@@ -236,3 +236,32 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Sauvegarde persistante de brouillon : non ajoutée.
 - Refonte visuelle détaillée des étapes Billets, Collaborateurs, Programme, Live, Sponsors et Confirmation : prochaine tranche.
 - Audit des transactions Supabase, échecs partiels, upload et statut réel de publication : à compléter.
+
+
+## 12. Troisième tranche — fiabilisation build, billetterie et équipe
+
+### Correctif de compilation
+- Corrigé `api/ai/assistant/stream.ts` : le re-export utilise désormais un chemin sans extension `.ts` (`../../ai-assistant`) afin d'éviter TS5097 dans le contrôle TypeScript Vercel.
+- Aucun changement de package.json, de lockfile ou de dépendance.
+
+### Billetterie
+- Résumé réactif des formules configurées, des places renseignées et du prix d'entrée minimum.
+- Cartes de billets plus structurées avec numéro de formule, aperçu du nom, badge de type et suppression accessible.
+- Description facultative du billet désormais éditable et conservée dans le payload déjà existant.
+- Libellés de type, nom, prix, quantité et description localisés FR/EN.
+- Les totaux de places ignorent les formules sans nom pour éviter de compter les lignes encore vides.
+- Les modes WhatsApp, externe et gratuit restent distincts; les textes externes et gratuits utilisent désormais les traductions déjà prévues.
+
+### Collaborateurs
+- Recherche asynchrone protégée contre les réponses obsolètes lorsqu'on change rapidement de terme ou de rôle.
+- Résultats avec avatar/logo si disponible, cible tactile plus confortable et état sélectionné visible.
+- Le compte courant et les collaborateurs déjà sélectionnés sont désactivés dans les résultats.
+- Liste des personnes retenues plus lisible, avec rôle et suppression accessible.
+- Message explicite sur le statut en attente de l'événement avec collaborateurs.
+- Nouveaux libellés localisés FR/EN.
+
+### État de vérification
+- Le correctif TS5097 et les changements UI ont été poussés sur `FRONTEND-iA`.
+- Déploiement Vercel associé au commit `e41362ad60fca6fe37020d71d97d6148fbf4bdad` encore QUEUED lors du dernier contrôle; ne pas déclarer la correction confirmée avant READY et vérification des logs.
+- QA visuelle manuelle et tests de flux complets encore requis.
+- Aucun changement de schéma Supabase, de statut de publication ou de mutation de création effectué dans cette tranche.
