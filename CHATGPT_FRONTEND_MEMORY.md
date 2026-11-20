@@ -113,3 +113,11 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Commits : `a6ebca7307701d1d039233f25460acb91b40edbd` (gestion des échecs partiels), `59e514142d2eb3589f05f3db20f8ec7602bb565f` (confirmation).
 - Déploiement Preview Vercel : `dpl_4n56mrEWEUdf15N4tvTFuaEfhsGx`, URL `https://gbaigbance-event-9q0am72f1-shogun10.vercel.app`, état en cours de build au moment de cette note.
 - À faire : attendre le résultat du build, puis vérifier le parcours sur mobile et contrôler dans la fiche créée que les sections facultatives sont effectivement persistées. Cette session n’a pas réalisé de création réelle en production ni de vérification de persistance en base.
+
+
+## 2026-11-20 — Contrôle approfondi de la création et persistance partielle
+- Vérification du code réel dans `src/features/events/mutations.ts` : découverte d'un défaut important. Après insertion de la ligne `events`, un échec d'insertion dans `ticket_options` ou `event_collaborators` levait une exception. Le wizard affichait alors un échec alors que l'événement existait déjà, avec risque de doublon si l'organisateur recommençait.
+- Correctif : le service conserve l'événement créé et retourne des avertissements `creationWarnings` pour les étapes secondaires. Un échec de création des billets tente de faire passer l'événement en statut `pending` afin qu'il ne soit pas présenté comme prêt à vendre. Les invitations échouées sont également signalées.
+- `CreateEventWizardScreen.tsx` récupère ces avertissements et les fusionne avec les erreurs des photos, du programme, des liens Live et des sponsors. L'organisateur voit un message partiel et l'événement n'est pas recréé par erreur.
+- Commits : `5118143e6bb5b4955a9a126388a8eca868aa4db2` (service) et `22cba4f339ccdfeea09a9b5800c7b1a0e7af2e43` (wizard).
+- Limite de vérification : les requêtes Supabase sont confirmées par lecture du code, mais aucun test d'écriture en base ni création réelle n'a été exécuté dans cette session. Aucun changement de schéma Supabase.
