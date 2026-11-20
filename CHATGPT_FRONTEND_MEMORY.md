@@ -70,7 +70,7 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 
 ## Progress update — 2026-11-20 — build fix + ticketing/team UX tranche
 
-- Fixed the confirmed Vercel TypeScript TS5097 source in `api/ai/assistant/stream.ts`: re-export path changed from `../../ai-assistant.ts` to `../../ai-assistant`. No package manifest, dependency or lockfile changes.
+- Fixed the confirmed Vercel TypeScript import-path issue in `api/ai/assistant/stream.ts`: final re-export path is `../../ai-assistant.js`, which is ESM-compatible and TypeScript resolves to the `.ts` source. The first extensionless attempt produced TS2835 under Node16 resolution, so do not revert to extensionless. No package manifest, dependency or lockfile changes.
 - Ticketing UI in `src/screens/CreateEventWizardScreen.tsx`:
   - Added derived summary metrics for named ticket formulas, configured seat quantities, and minimum configured price.
   - Added a clearer ticket-card hierarchy, localized ticket type/name/price/quantity labels, and an optional ticket description field that uses the existing payload property.
@@ -86,3 +86,5 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Vercel deployment `dpl_6PPSLxAbvrtauAeMx76Px3ftGDcF` was QUEUED at the last check. Do not claim the TS5097 error is resolved in deployment until this exact commit reaches READY and logs are inspected.
 - Detailed notes are in `docs/CREATE_EVENT_UX_VISION.md` section 12.
 - No Supabase schema, creation mutation, status logic, package manifest or lockfile was changed.
+
+- Final ESM re-export correction commit: `0738c8277845bd5d4210955888cd7e69b87e2bb6`; Vercel preview was BUILDING at last check. Verify latest deployment logs for absence of TS5097/TS2835 before marking the build issue closed.
