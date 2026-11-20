@@ -300,4 +300,4 @@ Le déploiement Vercel de prévisualisation est en cours au moment de cette mise
 - Tous les nouveaux libellés sont ajoutés aux locales FR/EN.
 - Aucun changement de schéma Supabase ou de dépendance.
 - La logique existante d'écriture dans `event_schedule`, `event_live_links` et `event_sponsors` est conservée.
-- À vérifier sur Vercel : build du commit `312bbed8e78c6c873e9717ed91839a1e299f59cb` en attente au dernier contrôle. La QA visuelle et les tests réels de création restent nécessaires.
+- Vercel Preview READY pour le commit `312bbed8e78c6c873e9717ed91839a1e299f59cb`; build Vite terminé en 3,47 s et déploiement complet en 9 s. La QA visuelle et les tests réels de création restent nécessaires.
