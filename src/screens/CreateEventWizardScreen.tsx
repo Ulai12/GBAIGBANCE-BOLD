@@ -513,21 +513,28 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
     setError('');
 
     try {
-      // 1. Upload Cover photo
+      // Les médias sont facultatifs : une erreur d'upload ne doit pas bloquer
+      // la création de l'événement ni faire croire qu'elle a échoué.
+      const optionalFailures: string[] = [];
       let coverUrl = form.cover_url;
       if (coverFile) {
-        const uploaded = await uploadEventImage(coverFile, user.id);
-        if (uploaded) coverUrl = uploaded;
+        try {
+          const uploaded = await uploadEventImage(coverFile, user.id);
+          if (uploaded) coverUrl = uploaded;
+          else optionalFailures.push('photo de couverture');
+        } catch {
+          optionalFailures.push('photo de couverture');
+        }
       }
 
-      // 2. Upload multiple Gallery photos
       const uploadedGalleryUrls: string[] = [];
       for (const item of galleryFiles) {
         try {
           const url = await uploadEventImage(item.file, user.id);
           if (url) uploadedGalleryUrls.push(url);
+          else optionalFailures.push('photo de galerie');
         } catch {
-          // continue uploading remaining
+          optionalFailures.push('photo de galerie');
         }
       }
 
@@ -583,55 +590,64 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
 
       if (!event) throw new Error('Échec de la création de l’événement');
 
-      // Add Schedule slots
-      await Promise.all(
-        scheduleItems
-          .filter((item) => item.title && item.start_time)
-          .map((item, index) =>
-            addScheduleSlot({
+      // Les étapes facultatives sont indépendantes : un échec partiel ne doit
+      // jamais masquer la création réussie de l'événement principal.
+      const optionalOperations: { label: string; run: () => Promise<unknown> }[] = [
+        ...scheduleItems
+          .filter((item) => item.title.trim() && item.start_time)
+          .map((item, index) => ({
+            label: 'programme',
+            run: () => addScheduleSlot({
               event_id: event.id,
               day_label: item.day_label,
               stage_name: item.stage_name,
               start_time: new Date(item.start_time).toISOString(),
               end_time: item.end_time ? new Date(item.end_time).toISOString() : null,
-              title: item.title,
+              title: item.title.trim(),
               artist_id: item.artist_id || null,
               sort_order: index,
-            })
-          )
-      );
-
-      // Add Live links
-      await Promise.all(
-        isLiveEvent
+            }),
+          })),
+        ...(isLiveEvent
           ? liveItems
               .filter((item) => item.url.trim())
-              .map((item) => addEventLiveLink(event.id, item.platform, item.url.trim(), item.title.trim() || undefined))
-          : []
-      );
-
-      // Add Sponsors
-      await Promise.all(
-        sponsorItems
+              .map((item) => ({
+                label: 'liens Live',
+                run: () => addEventLiveLink(event.id, item.platform, item.url.trim(), item.title.trim() || undefined),
+              }))
+          : []),
+        ...sponsorItems
           .filter((item) => item.name.trim())
-          .map((item) =>
-            addEventSponsor({
+          .map((item) => ({
+            label: 'sponsors',
+            run: () => addEventSponsor({
               event_id: event.id,
               name: item.name.trim(),
               website_url: item.website_url.trim() || undefined,
               logo_url: item.logo_url.trim() || (item.website_url.trim() ? getFaviconUrl(item.website_url) : undefined),
               tier: item.tier,
               logo_source: item.logo_source,
-            })
-          )
-      );
+            }),
+          })),
+      ];
 
-      onToast({
-        message: collaborators.length
-          ? 'Événement créé avec succès ! Invitations envoyées aux collaborateurs.'
-          : 'Événement créé et publié avec succès.',
-        type: 'success',
+      const optionalResults = await Promise.allSettled(optionalOperations.map((operation) => operation.run()));
+      optionalResults.forEach((result, index) => {
+        if (result.status === 'rejected') optionalFailures.push(optionalOperations[index].label);
       });
+
+      const failedSections = [...new Set(optionalFailures)];
+      onToast(failedSections.length
+        ? {
+            message: `Événement créé, mais certains éléments n’ont pas été enregistrés : ${failedSections.join(', ')}. Vous pourrez les ajouter depuis sa fiche.`,
+            type: 'warning',
+          }
+        : {
+            message: collaborators.length
+              ? 'Événement créé avec succès ! Invitations envoyées aux collaborateurs.'
+              : 'Événement créé et publié avec succès.',
+            type: 'success',
+          });
       window.dispatchEvent(new CustomEvent('gba-refresh-events'));
       window.dispatchEvent(new CustomEvent('gba-event-created', { detail: { event } }));
       onCreated(event);
