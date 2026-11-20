@@ -107,7 +107,7 @@
         "city": "City *",
         "country": "Country *",
         "gps": "GPS coordinates for the map",
-        "currentPosition": "My location",
+        "currentPosition": "Use my location",
         "latitude": "Lat:",
         "longitude": "Long:",
         "dates": "Dates and times",
@@ -119,7 +119,8 @@
         "end": "Event ends",
         "recommended": "recommended",
         "clear": "Clear",
-        "sameDateFourHours": "Same date (+4 hours)"
+        "sameDateFourHours": "Same date (+4 hours)",
+        "gpsHint": "Your current position will be saved as the venue location. Use this only when you are physically at the event venue. Otherwise, leave the coordinates empty."
       },
       "photos": {
         "cover": "Cover image (main)",
@@ -148,7 +149,7 @@
         "external": "External ticketing",
         "externalDescription": "Official website or third-party ticket office",
         "free": "Free admission",
-        "freeDescription": "Free, no reservation required",
+        "freeDescription": "No ticket sales or booking required. An “Free entry” badge will appear on event cards and the event page.",
         "capacityTitle": "Event capacity",
         "unlimited": "No capacity limit",
         "restricted": "Capacity is limited by the venue",
@@ -168,7 +169,6 @@
         "externalPlaceholder": "https://example.com/tickets",
         "accessPrice": "Price from (XOF)",
         "freeBadge": "Free admission event",
-        "freeDescription": "No ticket sales or booking required. An “Free entry” badge will appear on event cards and the event page.",
         "ticketHint": "Create multiple ticket options (Standard, VIP, etc.). Set the price to 0 XOF for a free pass.",
         "standard": "Standard",
         "vip": "VIP",
