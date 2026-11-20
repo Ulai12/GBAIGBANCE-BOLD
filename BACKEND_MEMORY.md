@@ -86,9 +86,10 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Ne pas toucher aux fichiers visuels ni FRONTEND_MEMORY.md.
 - Paiements : secret webhook requis pour confirmer billets.
 - Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
+- Localisation EventDetailScreen : clés `detail` ajoutées dans events.json (2026-11-20).
 
 ## Taches À faire
-- [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
+- [Automatisation frontend] Finaliser la localisation de EventDetailScreen.tsx (pousser les appels t()) puis continuer avec ExploreScreen / NotificationsScreen.
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Lot 2 optimisation RLS (organizations, artists, follows, likes, comments, collaborators).
