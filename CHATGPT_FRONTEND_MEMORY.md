@@ -103,3 +103,13 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Full browser/mobile visual QA and real end-to-end event creation remain outstanding.
 
 - Deployment verification update: Vercel preview for code commit `312bbed8e78c6c873e9717ed91839a1e299f59cb` reached READY; Vite build 3.47s, deployment completed in 9s. Documentation-only follow-up commits `3b5dc8e295d54c91d6162b41911d6e71a0518399` and `dceea27212091b4c4030080af802fa20b9ad07ef` record tranche notes. Branch compare now reports 127 ahead / 18 behind main; do not merge/rebase automatically.
+
+
+## 2026-11-20 — Création d’événement : confirmation et échecs partiels
+- Branche d’écriture : `FRONTEND-iA` uniquement. Aucun changement sur `main`, catégories, schéma Supabase, API ou dépendances.
+- `src/screens/CreateEventWizardScreen.tsx` : les uploads de couverture et de galerie sont désormais traités comme des éléments facultatifs. Un échec d’upload est collecté au lieu d’interrompre la création de l’événement.
+- Après la création principale, les opérations de programme, liens Live et sponsors sont exécutées indépendamment via `Promise.allSettled`. Les erreurs partielles sont regroupées par section et signalées par un toast informatif ; l’événement créé est tout de même transmis à `onCreated`, évitant de présenter une publication réussie comme un échec complet.
+- Écran Confirmation : ajout d’un panneau de préparation et de compteurs pour billets, programme, liens Live et sponsors, avec styles clair/sombre et grille responsive.
+- Commits : `a6ebca7307701d1d039233f25460acb91b40edbd` (gestion des échecs partiels), `59e514142d2eb3589f05f3db20f8ec7602bb565f` (confirmation).
+- Déploiement Preview Vercel : `dpl_4n56mrEWEUdf15N4tvTFuaEfhsGx`, URL `https://gbaigbance-event-9q0am72f1-shogun10.vercel.app`, état en cours de build au moment de cette note.
+- À faire : attendre le résultat du build, puis vérifier le parcours sur mobile et contrôler dans la fiche créée que les sections facultatives sont effectivement persistées. Cette session n’a pas réalisé de création réelle en production ni de vérification de persistance en base.
