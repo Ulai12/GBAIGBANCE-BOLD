@@ -201,6 +201,9 @@
         "createSuccess": "Event created and published successfully.",
         "createSuccessWithInvites": "Event created! Invitations were sent to your collaborators.",
         "publishing": "Publishing..."
+      },
+      "confirmation": {
+        "publicationNotice": "Review the details before publishing. Events with collaborators may require approval before going live."
       }
     }
   },
