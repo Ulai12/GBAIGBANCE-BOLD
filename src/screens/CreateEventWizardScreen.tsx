@@ -400,6 +400,44 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
         return false;
       }
     }
+    if (step === 'Programme') {
+      const invalidSlot = scheduleItems.find((item) => {
+        if (!item.title.trim() || !item.start_time) return false;
+        const start = new Date(item.start_time);
+        const end = item.end_time ? new Date(item.end_time) : null;
+        return Number.isNaN(start.getTime()) || (end !== null && (Number.isNaN(end.getTime()) || end <= start));
+      });
+      if (invalidSlot) {
+        setError('Vérifiez les horaires du programme : la fin doit être postérieure au début.');
+        return false;
+      }
+    }
+    if (step === 'Live' && isLiveEvent) {
+      const invalidLink = liveItems.find((item) => {
+        if (!item.url.trim()) return false;
+        try {
+          const url = new URL(item.url.trim());
+          return url.protocol !== 'https:' && url.protocol !== 'http:';
+        } catch { return true; }
+      });
+      if (invalidLink) {
+        setError('Un lien de diffusion est invalide. Utilisez une URL commençant par https:// ou http://.');
+        return false;
+      }
+    }
+    if (step === 'Sponsors') {
+      const invalidSponsor = sponsorItems.find((item) => [item.website_url, item.logo_url].some((value) => {
+        if (!value.trim()) return false;
+        try {
+          const url = new URL(value.trim());
+          return url.protocol !== 'https:' && url.protocol !== 'http:';
+        } catch { return true; }
+      }));
+      if (invalidSponsor) {
+        setError('Vérifiez les liens du sponsor : seules les URL http:// et https:// sont acceptées.');
+        return false;
+      }
+    }
     if (step === 'Billets') {
       if (accessType === 'whatsapp') {
         const phoneDigits = whatsappNumber.replace(/\D/g, '');
