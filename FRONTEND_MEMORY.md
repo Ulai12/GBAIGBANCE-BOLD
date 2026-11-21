@@ -61,3 +61,12 @@ P0 : Sync main → FRONTEND-iA.
 P1 : Polish responsive EventDetailScreen (info cards, sticky CTA, safe areas).
 P2 : États manquants (chargement, vide, erreur) sur écrans clés.
 P3 : Accessibilité (contrastes, cibles 44px).
+
+
+## 2026-11-21 — Blocage P0 du build Vercel
+- Diagnostic confirmé sur le déploiement Vercel du HEAD `14a3066e2f76c7b64e909af17676790968e74b85` : `builtin:vite-json`, erreur `expected ',' or '}' at line 804 column 5`.
+- Cause exacte : virgule manquante après la clé `home.seeMore` dans `src/locales/fr/events.json`, juste avant l'objet `seeMore`.
+- Correctif minimal : ajout de cette virgule uniquement; aucun libellé, donnée ou clé métier modifié.
+- Validation locale de contenu : `JSON.parse` passe après correction; le catalogue anglais passait déjà.
+- Fichier modifié : `src/locales/fr/events.json`.
+- À vérifier : nouveau build Vercel après push. Typecheck, lint et rendu navigateur non exécutés à ce stade.
