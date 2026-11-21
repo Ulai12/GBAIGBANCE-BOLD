@@ -4,33 +4,36 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Ajout d'index sur les foreign keys restantes non indexées (performance advisors) + restauration de BACKEND_MEMORY.md après incident de troncature.
+Optimisation RLS auth initplan (remplacement auth.uid() par (select auth.uid())) sur les policies restantes pour éliminer les warnings performance.
 
 ## Objectif
-Éliminer les 7 derniers unindexed foreign keys signalés par les advisors Supabase pour améliorer les performances des jointures et suppressions.
+Réduire à zéro les 50 warnings auth_rls_initplan des advisors Supabase en appliquant la migration existante non déployée 20261119010000.
 
 ## Progression
-- Indexes créés et vérifiés en base sur : event_collaborators(invited_by), event_questions(answered_by, user_id), event_reactions(user_id), event_reports(reporter_id), event_schedule(artist_id), organization_follows(user_id).
-- Migration versionnée et appliquée.
-- BACKEND_MEMORY restaurée depuis commit f4aad2d8 (incident PLACEHOLDER3 corrigé).
+- Migration 20261119010000 appliquée en base (en parties sécurisées via execute_sql).
+- Toutes les policies concernées recréées avec (select auth.uid()).
+- Compteur remaining_bad_policies passé de 50 à 0.
+- Advisors performance : plus de auth_rls_initplan.
+- Nettoyage de policies dupliquées sur user_follows.
 
 ## Fichiers concernés
-- supabase/migrations/20261120100000_add_remaining_fk_indexes.sql (nouveau)
+- supabase/migrations/20261119010000_optimize_rls_remaining_tables.sql (déjà versionné, appliqué)
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-20 — Indexes FK restants ajoutés (commit 231ec49b) ; mémoire restaurée (commit 6a79ab7c).
+2026-11-21 — Application de l'optimisation RLS auth initplan (remaining = 0). Mémoire mise à jour.
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr).
-- Continuer optimisation RLS auth initplan (lot suivant).
+- Traiter event_view_daily RLS (no policy).
+- Revue progressive des SECURITY DEFINER grants.
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 
 ## Vérifications
-- Indexes présents en base (pg_indexes). OK.
-- Migration relecturée distante (taille 1240 o, contenu intact). OK.
-- BACKEND_MEMORY relecturée (taille 4893 o après restauration, puis mise à jour). OK.
+- remaining_bad_policies = 0. OK.
+- Advisors performance : auth_rls_initplan disparu. OK.
 - Aucune troncature cette session.
+- Migration enregistrée dans schema_migrations.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -54,9 +57,9 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
-- 20261120100000_add_remaining_fk_indexes (cette session)
+- 20261119010000_optimize_rls_remaining_tables (appliquée 2026-11-21)
+- 20261120100000_add_remaining_fk_indexes
 - 20261119100000_restore_event_status_and_qr_validation_rpcs
-- 20261119010000_optimize_rls_remaining_tables
 - 20261118143000_drop_example_and_optimize_rls_critical
 - 20261118120000_add_remaining_fk_indexes
 - Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon.
@@ -68,21 +71,24 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Tester validation QR et changement de statut événement en staging.
 
 ## Dette backend
-- ~50 warnings auth RLS initplan restants.
 - Nombreux SECURITY DEFINER callable par anon/authenticated — revue progressive des grants.
 - Extension pg_net in public.
 - event_view_daily : RLS activée sans policy.
+- Quelques multiple permissive policies (event_comments, event_questions, etc.).
+- Indexes unused (info, normal en faible trafic).
 
 ## Incidents
-- Troncature BACKEND_MEMORY.md à PLACEHOLDER3 (détectée et restaurée cette session depuis f4aad2d8).
+- Troncature BACKEND_MEMORY.md à PLACEHOLDER3 (détectée et restaurée session précédente).
 
 ## Backlog
 - Vérification end-to-end des nouvelles RPCs.
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
-- Optimisation RLS restante.
+- Traitement event_view_daily RLS.
+- Revue grants SECURITY DEFINER.
 
 ## Historique
+- 2026-11-21 : Optimisation RLS auth initplan complétée (50 → 0).
 - 2026-11-20 : Indexes FK restants + restauration mémoire.
 - 2026-11-19 : Restauration set_event_status + validate_ticket_qr.
 - 2026-11-18 (après-midi) : Drop example + RLS critical tables optimisées.
@@ -96,9 +102,11 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
 - RPCs set_event_status et validate_ticket_qr maintenant présentes.
 - Indexes FK complétés.
+- RLS auth initplan optimisée sur toutes les tables exposées.
 
 ## Taches À faire
 - [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Tester les RPCs restaurées en conditions réelles.
+- [Backend] Ajouter policy sur event_view_daily ou désactiver RLS si table interne.
