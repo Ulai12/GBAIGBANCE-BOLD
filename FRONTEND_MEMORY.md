@@ -81,3 +81,14 @@ P3 : Accessibilité (contrastes, cibles 44px).
 - Tests build/typecheck/lint et validation visuelle : non exécutés dans cette restauration.
 - Le correctif indépendant du JSON français (`ff9e0b9b97de990a6c85642cbc5adef43a00eac2`) est conservé.
 - Prochaine étape : vérifier le déploiement et le rendu réel de la section restaurée; ne plus modifier cette section sans nouvelle demande explicite.
+
+
+## 2026-11-21 — Redirection des événements à billetterie externe
+- Demande utilisateur : corriger le parcours des événements dont l'accès est de type `external`, afin que le CTA redirige vers le site de vente fourni par l'organisateur au lieu d'ouvrir le tunnel de réservation interne / d'exiger une connexion GBAIGBANCE.
+- Diagnostic : `handleBookEvent` dans `src/App.tsx` envoyait tous les événements vers `BookingModal` après le contrôle de session. Les événements externes pouvaient donc être interceptés par le modal et le parcours d'authentification, alors qu'ils doivent utiliser leur propre billetterie.
+- Correctif : intercepter `access_type === 'external'` avant le contrôle de session; valider `external_ticket_url`; ajouter `https://` aux domaines sans schéma; autoriser uniquement HTTP/HTTPS; naviguer dans l'onglet courant pour éviter les bloqueurs de popup sur mobile/PWA. Si le lien est absent ou invalide, afficher un toast explicite et ne pas ouvrir le modal interne.
+- Le parcours de réservation GBAIGBANCE reste inchangé pour les autres types d'accès. Aucun backend/API, aucune donnée métier et aucune section « Explorer par catégorie » modifiés.
+- Fichier applicatif modifié : `src/App.tsx`.
+- Tests build/typecheck/lint et validation navigateur : non exécutés avec les outils disponibles dans cette session; contrôle statique du flux et des branches HTTP/HTTPS effectué.
+- Commit : à confirmer après vérification du HEAD et de l'écriture sur `FRONTEND-iA`.
+- Prochaine priorité : valider sur mobile/PWA qu'un événement externe ouvre bien le domaine de l'organisateur, et que les liens manquants/invalides produisent un message clair.
