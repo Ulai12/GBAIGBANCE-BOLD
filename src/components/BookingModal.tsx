@@ -15,6 +15,7 @@ import {
   Copy
 } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, isEventTerminated, hasEventEnded, subscribeToTicketInventory } from '@/services/events';
@@ -496,9 +497,17 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {/* En-tête de l'événement compact */}
         <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 dark:bg-white/5 rounded-2xl">
-          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-            <img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" />
-          </div>
+          <UserAvatar
+            id={event.organizer?.id || event.organizer_id || event.organizer_user_id}
+            name={event.organizer?.name || event.title}
+            src={event.organizer?.logo_url}
+            role="organizer"
+            size="md"
+            shape="squircle"
+            ring={false}
+            eager
+            className="w-12 h-12 shrink-0"
+          />
           <div className="min-w-0 flex-1">
             <h4 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h4>
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{event.city} · {event.location_name}</p>
