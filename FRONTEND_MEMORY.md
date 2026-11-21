@@ -83,3 +83,13 @@ La section « Explorer par catégorie » est déclarée intouchable par l'utilis
 - L'erreur de build n'indique pas de fichier JSON fautif dans les extraits disponibles; sa cause exacte reste à isoler. Ne pas l'attribuer au patch de classes Tailwind sans preuve.
 - La prévisualisation de ce commit n'est pas considérée publiable. La vérification visuelle n'a pas pu être faite.
 - Prochaine action P0 : isoler les deux erreurs Vite JSON du build sur FRONTEND-iA sans modifier les lockfiles ni les catégories. Ensuite relancer le build et contrôler le rendu mobile.
+
+
+## Correctif P0 — JSON de traduction invalides (21 novembre 2026)
+- Diagnostic confirmé dans les logs Vercel du commit `afd61e3`: deux erreurs `builtin:vite-json` « expected value at line 1 column 1 ».
+- Cause exacte trouvée sur HEAD de FRONTEND-iA : `src/locales/fr/tickets.json` contenait littéralement `PLACEHOLDER_REAL_FR` et `src/locales/en/tickets.json` contenait `PLACEHOLDER_REAL_EN`. Ces contenus ne sont pas du JSON valide.
+- Restauration des deux catalogues depuis le commit historique `4f17ab55372776ee64211e431b76ef5cc4622d18`, où les traductions tickets avaient été introduites. Contenu conservé, pas de réécriture inventée.
+- Validation locale dans l'outil d'édition : `JSON.parse` réussi sur les deux catalogues restaurés.
+- Fichiers corrigés : `src/locales/fr/tickets.json`, `src/locales/en/tickets.json`.
+- Aucun changement de lockfile, package.json, backend, API ou de la section Explorer par catégorie.
+- À faire après push : lancer un nouveau build Preview Vercel, puis traiter toute nouvelle erreur séparément. Typecheck/lint et validation visuelle non exécutés ici.
