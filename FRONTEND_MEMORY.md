@@ -93,3 +93,14 @@ P3 : Accessibilité (contrastes, cibles 44px).
 - Commit applicatif : `7caae87ffe65bb19ba7fda55936e877544f68268`, poussé et HEAD vérifié sur `FRONTEND-iA`.
 - Statut CI immédiatement après push : aucun check retourné à cet instant.
 - Prochaine priorité : valider sur mobile/PWA qu'un événement externe ouvre bien le domaine de l'organisateur, et que les liens manquants/invalides produisent un message clair.
+
+
+## 2026-11-21 — Correctif anti-chargement infini du modal de réservation
+- Signal utilisateur : le modal « Réserver des billets » affichait l'événement mais restait indéfiniment sur le spinner; réservation inutilisable.
+- Diagnostic statique : `BookingModal` attendait `fetchTicketOptions(event.id)` sans délai maximal. Si la requête Supabase ne se termine pas, l'état `loading` pouvait rester actif sans fin. Le service masque aussi les erreurs réseau en renvoyant un tableau vide, ce qui ne garantit pas un état d'erreur exploitable.
+- Correctif : délai maximal de 12 secondes sur le chargement des options; au dépassement, arrêter le spinner et afficher l'état « Inventaire indisponible » avec l'action « Réessayer » déjà prévue. Ajout d'un identifiant de requête pour ignorer les réponses obsolètes après une nouvelle tentative. Ajout d'un libellé de chargement explicite.
+- Fichier applicatif modifié : `src/components/BookingModal.tsx` uniquement.
+- Le parcours de sélection, les quantités, bénéficiaires, Mobile Money et la création de billets n'ont pas été modifiés. Aucune API/backend ni section « Explorer par catégorie » modifiés.
+- Commit applicatif : `e38af8cde736b06d15e6def7fbfb499a263848fa`, poussé sur `FRONTEND-iA`.
+- Vérification : contrôle statique du patch et des états de chargement; build/typecheck/lint, test réel Supabase et parcours de paiement non exécutés dans cette session. Ne pas présenter le correctif comme une validation du paiement.
+- Prochaine étape P0 : lancer build/typecheck, puis tester une réservation réelle en environnement de test (options présentes, options absentes, erreur réseau/délai dépassé, nouvelle tentative, achat gratuit et paiement Mobile Money).
