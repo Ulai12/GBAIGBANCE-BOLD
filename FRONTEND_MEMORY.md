@@ -93,3 +93,12 @@ La section « Explorer par catégorie » est déclarée intouchable par l'utilis
 - Fichiers corrigés : `src/locales/fr/tickets.json`, `src/locales/en/tickets.json`.
 - Aucun changement de lockfile, package.json, backend, API ou de la section Explorer par catégorie.
 - À faire après push : lancer un nouveau build Preview Vercel, puis traiter toute nouvelle erreur séparément. Typecheck/lint et validation visuelle non exécutés ici.
+
+
+## Correctif P0 supplémentaire — export BookingModal (21 novembre 2026)
+- Après restauration des catalogues JSON, Vite a transformé 3304 modules; le build a ensuite révélé un second blocage indépendant : `src/App.tsx:4` importe l'export nommé `BookingModal`, absent du contenu actuellement présent dans `src/components/BookingModal.tsx`.
+- La version courante du composant avait été remplacée par un placeholder. Le composant complet a été récupéré depuis le commit historique de fusion `5befba14182959b4b6ec5204b69f38306f347246`, où l'export nommé est présent, avec le comportement de réservation, paiement, cadeaux, inventaire temps réel et thème sombre.
+- Restauration du fichier complet sans modifier l'import App ni changer le contrat public du composant.
+- Validation statique : présence de `export function BookingModal` et fin de module cohérente vérifiées; build Vercel précédent confirme que le problème JSON est levé et expose maintenant le problème d'export.
+- Fichier : `src/components/BookingModal.tsx`.
+- À faire : nouveau build Vercel pour vérifier si d'autres placeholders ou exports cassés subsistent. Aucun contrôle navigateur/visuel réalisé.
