@@ -18,44 +18,35 @@
 - Vision de référence création événement : `docs/CREATE_EVENT_UX_VISION.md`.
 
 ## Tâche active (21 novembre 2026)
-Chantier prioritaire de cette session : rééquilibrage responsive du parcours « Explorer par catégorie » sur l'accueil, explicitement demandé pour cette intervention. La règle de protection habituelle de cette section reste valable après ce chantier, sauf nouvelle demande explicite.
+Synchronisation avec main et poursuite de la localisation / polish responsive d'EventDetailScreen.
 
-### Diagnostic confirmé
-- Parcours rendu dans `src/screens/HomeScreen.tsx`, section 2; hiérarchie métier définie dans `src/constants/categories.ts` : 6 catégories parentes et 18 sous-catégories.
-- Les cartes parentes étaient verticales sous le breakpoint `sm`, avec `min-h-12` et un empilement icône/libellé qui augmentait leur hauteur sur les téléphones.
-- Les sous-catégories utilisaient `flex-wrap` et `whitespace-normal` à toutes les largeurs; les libellés français/anglais jusqu'à 23 caractères pouvaient se réduire en petites puces et créer des hauteurs irrégulières.
-- Les données, traductions, IDs, ordre, icônes, sélection et filtrage sont séparés de cette présentation et n'ont pas besoin d'être changés.
+### Objectif
+Intégrer les avancées de main (localisation EventDetailScreen) dans FRONTEND-iA et assurer une UI cohérente, responsive et professionnelle sur l'écran de détail événement (parcours achat critique).
 
-### Correctif P0 préalable
-- Déploiement du HEAD précédent bloqué par une virgule manquante dans `src/locales/fr/events.json:803`, confirmée par les logs Vercel (`builtin:vite-json`, ligne 804).
-- Virgule restaurée après `home.seeMore`; JSON français et anglais validés avec `JSON.parse`.
-- Commit : `ff9e0b9b97de990a6c85642cbc5adef43a00eac2`.
-- Prévisualisation Vercel : `READY`, 3 304 modules transformés, build Vite 4,57 s, génération PWA et 14 fichiers preview synchronisés.
+### Progression
+- Correctifs P0 build du 21 nov (JSON tickets + BookingModal) confirmés sur FRONTEND-iA.
+- main a avancé avec localisation complète d'EventDetailScreen (commits récents).
+- FRONTEND-iA est en retard ; fusion recommandée par le propriétaire pour éviter divergences.
+- EventDetailScreen sur FRONTEND-iA utilise déjà partiellement `t('events', 'detail.*')`.
 
-### Intervention UI en cours
-- Extraction de la tuile parente dans `src/components/CategoryTile.tsx` pour centraliser états actif/inactif, focus clavier et proportions.
-- Tuiles parentes : cible minimale 44 px, présentation verticale conservée sous 380 px, disposition horizontale à partir de 380 px; libellés intacts, retour à la ligne naturel, sans hauteur fixe.
-- Sous-catégories : défilement horizontal sans wrapping sur mobile pour éviter les puces hautes et étroites; retour à la ligne à partir de `sm`; cibles tactiles conservées à 44 px.
-- Grille métier conservée à 2/3/6 colonnes et breakpoints existants; aucune modification des données, de la logique de sélection, du backend ou des API.
+### Fichiers concernés
+- src/screens/EventDetailScreen.tsx
+- src/locales/fr/events.json
+- src/locales/en/events.json
+- FRONTEND_MEMORY.md
 
-### Fichiers
-- `src/components/CategoryTile.tsx`
-- `src/screens/HomeScreen.tsx`
-- `src/locales/fr/events.json` (correctif P0 préalable)
-- `FRONTEND_MEMORY.md`
-
-### Vérifications et limites
-- Branche cible confirmée : `FRONTEND-iA`; HEAD de départ UI : `ff9e0b9b97de990a6c85642cbc5adef43a00eac2`.
-- Build Vercel du correctif P0 : `READY`; build UI de cette intervention à lancer après push.
-- `JSON.parse` FR/EN : PASS.
-- Typecheck, lint et tests dédiés : non exécutés localement.
-- Validation navigateur/captures réelles : non réalisée, le navigateur connecté n'est pas accessible dans ce contexte.
-- UIAudit et Superdesign : outils/workflows non exposés dans l'environnement courant; aucun audit ni draft revendiqué.
-- Aucun changement backend/API, aucun PR, aucun changement de branche secondaire.
+### Dernière action
+2026-11-21 — Lecture mémoire, vérification branches, constat divergence avec main. Mise à jour mémoire.
 
 ### Prochaine étape
-- Vérifier le build Vercel du commit UI puis effectuer un contrôle réel sur téléphone étroit, iPhone 11/large mobile, tablette et desktop dès qu'un navigateur de test est accessible.
-- Reprendre ensuite le polish responsive d'EventDetailScreen sans synchronisation vers une autre branche.
+- Propriétaire : merger main dans FRONTEND-iA (ou autoriser PR).
+- Continuer polish responsive des cartes date/heure/lieu et barre CTA sticky sur EventDetailScreen.
+- Vérifier build Vercel après sync.
+
+### Vérifications
+- Branche FRONTEND-iA HEAD : cea0ee7c.
+- Fichiers JSON tickets et BookingModal restaurés (pas de placeholder).
+- Rendu navigateur : non vérifié cette session.
 
 ## Historique concis
 - 2026-11-21 : Correctifs P0 JSON + BookingModal. Constat avance main.
@@ -66,9 +57,10 @@ Chantier prioritaire de cette session : rééquilibrage responsive du parcours �
 Aucun cette session.
 
 ## Backlog priorité
-P1 : Polish responsive EventDetailScreen (info cards, sticky CTA, safe areas), uniquement sur FRONTEND-iA.
+P0 : Sync main → FRONTEND-iA.
+P1 : Polish responsive EventDetailScreen (info cards, sticky CTA, safe areas).
 P2 : États manquants (chargement, vide, erreur) sur écrans clés.
-P3 : Accessibilité (contrastes, cibles 44px) et validation visuelle mobile/tablette/desktop.
+P3 : Accessibilité (contrastes, cibles 44px).
 
 
 ## 2026-11-21 — Blocage P0 du build Vercel
@@ -78,3 +70,14 @@ P3 : Accessibilité (contrastes, cibles 44px) et validation visuelle mobile/tabl
 - Validation locale de contenu : `JSON.parse` passe après correction; le catalogue anglais passait déjà.
 - Fichier modifié : `src/locales/fr/events.json`.
 - À vérifier : nouveau build Vercel après push. Typecheck, lint et rendu navigateur non exécutés à ce stade.
+
+
+## 2026-11-21 — Restauration de « Explorer par catégorie »
+- À la demande explicite de l'utilisateur, restauration exacte de `src/screens/HomeScreen.tsx` depuis le parent du commit UI `18153b0743bcaed86e62435f701595504f405ff3` (`ff9e0b9b97de990a6c85642cbc5adef43a00eac2`).
+- Suppression de `src/components/CategoryTile.tsx`, composant ajouté uniquement par l'intervention responsive annulée.
+- Objectif : revenir à l'apparence et au comportement de la section avant cette intervention, sans toucher aux données métier ni aux autres sections de l'accueil.
+- Branche autorisée vérifiée avant écriture : `FRONTEND-iA`; HEAD initial confirmé : `18153b0743bcaed86e62435f701595504f405ff3`.
+- Commits de restauration : b998bcd1a43adb4d77f1c1836bf4e9480b69318e (HomeScreen), 1c3d8a5f72355e27036a01dd880f69d6b30ff68b (suppression du composant).
+- Tests build/typecheck/lint et validation visuelle : non exécutés dans cette restauration.
+- Le correctif indépendant du JSON français (`ff9e0b9b97de990a6c85642cbc5adef43a00eac2`) est conservé.
+- Prochaine étape : vérifier le déploiement et le rendu réel de la section restaurée; ne plus modifier cette section sans nouvelle demande explicite.
