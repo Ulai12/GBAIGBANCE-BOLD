@@ -110,3 +110,4 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Tester les RPCs restaurées en conditions réelles.
 - [Backend] Ajouter policy sur event_view_daily ou désactiver RLS si table interne.
+- [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer la localisation EventDetailScreen (commits récents sur main). Éviter divergences.
