@@ -115,3 +115,15 @@ P3 : Accessibilité (contrastes, cibles 44px).
 - Tests build/typecheck/lint, requête Supabase réelle et paiement Mobile Money non exécutés; aucun achat réel effectué. Déploiement du dernier commit à vérifier.
 - La synchronisation `main → FRONTEND-iA` reste une action à autoriser explicitement par le propriétaire; aucune fusion de branche effectuée.
 - La section « Explorer par catégorie » est restée intacte.
+
+
+## 2026-11-21 — Correction parcours billetterie externe et avatar du modal
+- Retour utilisateur avec capture iPhone : un événement HELLOOO affichait « Aucun billet disponible » et l'image du modal était vide; l'utilisateur signale aussi que les événements utilisant leur propre site ne redirigent toujours pas correctement.
+- Cause fonctionnelle identifiée : la création d'événements externes ne crée volontairement aucune ligne `ticket_options` (voir `src/features/events/mutations.ts`). Ces événements ne doivent donc jamais ouvrir le `BookingModal` interne.
+- Renforcement du routage dans `src/App.tsx` : déclencher la redirection si `access_type === 'external'` OU si un `external_ticket_url` non vide existe. Ce deuxième critère protège aussi les événements dont `access_type` n'a pas été correctement hydraté depuis les données historiques.
+- Correction du CTA dans `src/screens/EventDetailScreen.tsx` : remplacer le lien HTML indépendant par un bouton qui passe par `onBook(displayEvent)` et donc par la validation/normalisation URL centralisée de `App.tsx`. Le flux externe utilise le même onglet, sans modal ni connexion GBAIGBANCE.
+- Correction du visuel de réservation dans `src/components/BookingModal.tsx` : remplacer l'image `event.cover_url` par `UserAvatar` du profil organisateur. Utilise le logo de l'organisation lorsqu'il existe et l'avatar déterministe généré par `UserAvatar` sinon; en cas d'image cassée, le composant retombe aussi sur son avatar généré.
+- Fichiers applicatifs : `src/App.tsx`, `src/screens/EventDetailScreen.tsx`, `src/components/BookingModal.tsx`.
+- Commits : `e425fda629fa791698bfac2fd5c544899faa267c`, `77eba394b57439c11139b56806fe06377658e70a`, `7000e12921e788def66081d9fc3b6cf843e37334`.
+- La section « Explorer par catégorie » n'a pas été modifiée. Aucun changement backend ou de schéma.
+- Limites : aucun test navigateur réel, aucune création d'événement ni redirection mobile exécutée; build/typecheck/lint non disponibles dans cette session. Déploiement à confirmer après le push.
