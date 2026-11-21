@@ -382,7 +382,7 @@ function AppContent() {
   const handleBookEvent = useCallback((event: Event, initialOptionId?: string | null) => {
     // Une billetterie externe appartient à l'organisateur : elle ne passe ni par
     // l'authentification GBAIGBANCE ni par le tunnel de paiement interne.
-    if (event.access_type === 'external') {
+    if (event.access_type === 'external' || Boolean(event.external_ticket_url?.trim())) {
       const externalUrl = event.external_ticket_url?.trim();
 
       if (!externalUrl) {
