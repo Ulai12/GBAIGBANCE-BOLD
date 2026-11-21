@@ -64,7 +64,11 @@ export function generateFallbackTicketOptions(eventId: string, priceMin: number 
   ];
 }
 
-export async function fetchTicketOptions(eventId: string, priceMin: number = 0): Promise<TicketOption[]> {
+export async function fetchTicketOptions(
+  eventId: string,
+  priceMin: number = 0,
+  throwOnError: boolean = false
+): Promise<TicketOption[]> {
   if (!eventId) return [];
   if (!isSupabaseConfigured) {
     return generateFallbackTicketOptions(eventId, priceMin);
@@ -75,9 +79,13 @@ export async function fetchTicketOptions(eventId: string, priceMin: number = 0):
       .select('*')
       .eq('event_id', eventId)
       .order('price', { ascending: true });
-    if (error || !data) return [];
-    return data as TicketOption[];
-  } catch {
+    if (error) {
+      if (throwOnError) throw error;
+      return [];
+    }
+    return (data || []) as TicketOption[];
+  } catch (error) {
+    if (throwOnError) throw error;
     return [];
   }
 }
