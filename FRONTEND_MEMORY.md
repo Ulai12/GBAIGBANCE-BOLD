@@ -90,5 +90,6 @@ P3 : Accessibilité (contrastes, cibles 44px).
 - Le parcours de réservation GBAIGBANCE reste inchangé pour les autres types d'accès. Aucun backend/API, aucune donnée métier et aucune section « Explorer par catégorie » modifiés.
 - Fichier applicatif modifié : `src/App.tsx`.
 - Tests build/typecheck/lint et validation navigateur : non exécutés avec les outils disponibles dans cette session; contrôle statique du flux et des branches HTTP/HTTPS effectué.
-- Commit : à confirmer après vérification du HEAD et de l'écriture sur `FRONTEND-iA`.
+- Commit applicatif : `7caae87ffe65bb19ba7fda55936e877544f68268`, poussé et HEAD vérifié sur `FRONTEND-iA`.
+- Statut CI immédiatement après push : aucun check retourné à cet instant.
 - Prochaine priorité : valider sur mobile/PWA qu'un événement externe ouvre bien le domaine de l'organisateur, et que les liens manquants/invalides produisent un message clair.
