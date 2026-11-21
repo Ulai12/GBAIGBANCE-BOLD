@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Ticket, 
   Minus, 
@@ -77,6 +77,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }>>([]);
   const [feeBreakdown, setFeeBreakdown] = useState<FinancialFeesResult | null>(null);
   const [stockMeta, setStockMeta] = useState<{ remaining: number; percent_sold: number } | null>(null);
+  const optionsRequestId = useRef(0);
 
   // Pré-chargement immédiat des profils amis dès l'ouverture de la modale pour éviter tout saut de mise en page
   useEffect(() => {
@@ -95,12 +96,31 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }, [open, user?.id]);
 
   const loadOptions = useCallback(() => {
-    if (!event) return;
+    if (!event?.id) {
+      setLoading(false);
+      setFetchError(true);
+      return;
+    }
+
+    const requestId = ++optionsRequestId.current;
+    let timedOut = false;
     setLoading(true);
     setFetchError(false);
     setError(null);
+    setOptions([]);
+    setSelectedOption(null);
+
+    // Une requête réseau bloquée ne doit jamais laisser le modal sur un spinner infini.
+    const timeoutId = window.setTimeout(() => {
+      if (optionsRequestId.current !== requestId) return;
+      timedOut = true;
+      setFetchError(true);
+      setLoading(false);
+    }, 12000);
+
     fetchTicketOptions(event.id)
       .then((data) => {
+        if (timedOut || optionsRequestId.current !== requestId) return;
         if (data && data.length > 0) {
           setOptions(data);
           const matched = initialOptionId ? data.find((o) => o.id === initialOptionId) : null;
@@ -111,12 +131,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         }
       })
       .catch(() => {
+        if (timedOut || optionsRequestId.current !== requestId) return;
         setFetchError(true);
         setOptions([]);
         setSelectedOption(null);
       })
-      .finally(() => setLoading(false));
-  }, [event, initialOptionId]);
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        if (!timedOut && optionsRequestId.current === requestId) setLoading(false);
+      });
+  }, [event?.id, initialOptionId]);
 
   useEffect(() => {
     if (!open || !event?.id) return;
@@ -488,8 +512,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <Loader2 className="w-6 h-6 text-[#6600FF] animate-spin motion-reduce:animate-none" />
+            <p className="text-xs text-gray-500 dark:text-gray-400">Chargement des billets disponibles…</p>
           </div>
         ) : fetchError ? (
           <div className="text-center py-8">
