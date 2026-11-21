@@ -17,88 +17,47 @@
 - Projet Supabase utilisé par le client : `lwwiolbofrqakvrdvbbj` (GBAIGBANCE EVENTS).
 - Vision de référence création événement : `docs/CREATE_EVENT_UX_VISION.md`.
 
-## Intervention du 20 novembre 2026 — Event Creation Studio
+## Tâche active (21 novembre 2026)
+Synchronisation avec main et poursuite de la localisation / polish responsive d'EventDetailScreen.
+
 ### Objectif
-Finaliser le parcours de création d'événement, en priorité le débordement mobile date/heure et l'erreur Supabase `access_type` visible dans les captures utilisateur.
+Intégrer les avancées de main (localisation EventDetailScreen) dans FRONTEND-iA et assurer une UI cohérente, responsive et professionnelle sur l'écran de détail événement (parcours achat critique).
 
-### Constat vérifié
-- Le wizard `src/screens/CreateEventWizardScreen.tsx` comporte neuf étapes : Infos, Lieu & Dates, Photos, Billets, Collaborateurs, Programme, Live, Sponsors, Confirmation.
-- La mutation de création est dans `src/features/events/mutations.ts` et envoie `access_type`, `external_ticket_url`, `whatsapp_number`, `whatsapp_message`, `video_url` et `unlimited_capacity` dans `public.events`.
-- Le client Supabase `src/infrastructure/supabase/client.ts` utilise par défaut le projet `lwwiolbofrqakvrdvbbj`, avec prise en compte des variables d'environnement.
-- Supabase MCP a confirmé que `public.events.access_type` existe et que la migration `event_access_type_external_ticketing_v1` est enregistrée dans l'historique du projet.
-- Les colonnes associées `external_ticket_url`, `whatsapp_number`, `whatsapp_message`, `video_url` et `unlimited_capacity` existent également.
-- Une notification `NOTIFY pgrst, 'reload schema'` a été exécutée sur le projet; la requête SQL de vérification a retourné les six colonnes attendues. Aucun DDL ni changement de schéma n'a été effectué.
-- Le message d'erreur capturé ne correspond donc pas à une colonne absente de la base actuellement connectée. Si l'erreur persiste, vérifier que le déploiement et ses variables Vercel ciblent le même projet Supabase et examiner le cache/API au moment de la requête.
+### Progression
+- Correctifs P0 build du 21 nov (JSON tickets + BookingModal) confirmés sur FRONTEND-iA.
+- main a avancé avec localisation complète d'EventDetailScreen (commits récents).
+- FRONTEND-iA est en retard ; fusion recommandée par le propriétaire pour éviter divergences.
+- EventDetailScreen sur FRONTEND-iA utilise déjà partiellement `t('events', 'detail.*')`.
 
-### Modifications effectuées
-- `src/screens/CreateEventWizardScreen.tsx` :
-  - Ajout de `getLocalDateInputValue()` pour générer les valeurs des champs date depuis le calendrier local plutôt qu'en tronquant une date ISO UTC.
-  - Champs date/heure renforcés contre les débordements natifs mobile avec largeur/max-width/min-width explicites, `appearance-none` et padding compact.
-  - Grilles date/heure sécurisées avec deux pistes `minmax(0, 1fr)` et débordement contenu.
-  - En-tête de la carte Dates et heures autorisé à passer sur plusieurs lignes; badge de date limité et enveloppant.
-- Commit code : `c8c29620a1f8cc3b52707fd0a6af632214c56a80`.
+### Fichiers concernés
+- src/screens/EventDetailScreen.tsx
+- src/locales/fr/events.json
+- src/locales/en/events.json
+- FRONTEND_MEMORY.md
 
-### Tests et limites
-- Vérification GitHub : écriture effectuée sur `FRONTEND-iA`; HEAD constaté après commit code : `c8c29620a1f8cc3b52707fd0a6af632214c56a80`.
-- Vérification Supabase : colonnes confirmées par `list_tables` et requête `information_schema.columns`; cache PostgREST rechargé via notification.
-- Pas de build, typecheck, lint ni test navigateur exécuté dans cette session à ce stade.
-- Pas de validation visuelle réelle sur iPhone après modification.
-- Aucune modification backend, migration, PR ou changement sur une autre branche.
-- La page « Explorer par catégorie » n'a pas été modifiée.
+### Dernière action
+2026-11-21 — Lecture mémoire, vérification branches, constat divergence avec main. Mise à jour mémoire.
 
-### Prochaine priorité
-1. Vérifier le déploiement Vercel associé au commit `c8c2962` sur `FRONTEND-iA`.
-2. Tester sur iPhone la saisie début/fin et vérifier l'absence de débordement.
-3. Refaire une publication de test avec chaque mode d'accès (billetterie native, gratuit, WhatsApp, externe) et contrôler les erreurs éventuelles.
-4. Si `access_type` échoue encore, confirmer la valeur réelle de `VITE_SUPABASE_URL` et les variables du déploiement Preview/Production sans exposer de clés, puis contrôler la réponse PostgREST.
-5. Continuer l'audit du flux complet : sauvegardes optionnelles, statut réel après invitations, aperçu fidèle, erreurs accessibles et traductions FR/EN.
-
-## Protection de la section Explorer
-La section « Explorer par catégorie » est déclarée intouchable par l'utilisateur. Aucun ajustement de layout, CSS, responsive, animation, libellé, icône, hiérarchie, donnée ou interaction ne doit y être effectué sans demande explicite.
-
-
-## Intervention du 20 novembre 2026 — Harmonisation du shell Event Creation Studio
-
-### Modifications préparées sur FRONTEND-iA
-- En-tête du wizard : présentation resserrée en panneau flottant à surface vitrée, alignement avec la hiérarchie des pages (eyebrow, titre fort, progression), sans modifier le contenu ni la logique des neuf étapes.
-- Barre d'actions : regroupement des commandes dans une capsule flottante centrée, avec deux boutons individuels en pilule, contraste clair/sombre, ombre douce et respect de la zone de sécurité iOS.
-- Les actions Retour, Continuer, Publier et Annuler conservent leurs callbacks et leurs conditions d'affichage.
-- Aucun changement des catégories, de leur hiérarchie, des données, du backend ou des contrats Supabase.
+### Prochaine étape
+- Propriétaire : merger main dans FRONTEND-iA (ou autoriser PR).
+- Continuer polish responsive des cartes date/heure/lieu et barre CTA sticky sur EventDetailScreen.
+- Vérifier build Vercel après sync.
 
 ### Vérifications
-- Branche ciblée avant préparation : FRONTEND-iA; HEAD observé : `f9d5ecb524571828554acd3915bee790b41185d4`.
-- Patch appliqué avec garde-fous : chacune des six substitutions attendues a été trouvée exactement une fois.
-- Validation build/typecheck, navigateur et responsive réelle : non exécutée à ce stade.
-- Aucun commit ni PR créé dans cette étape de préparation.
+- Branche FRONTEND-iA HEAD : cea0ee7c.
+- Fichiers JSON tickets et BookingModal restaurés (pas de placeholder).
+- Rendu navigateur : non vérifié cette session.
 
-### Suite
-- Vérifier le rendu sur mobile et desktop, notamment le panneau sticky, la capsule d'actions, les thèmes clair/sombre et les libellés longs FR/EN.
-- Exécuter build/typecheck/lint disponibles avant publication du commit.
+## Historique concis
+- 2026-11-21 : Correctifs P0 JSON + BookingModal. Constat avance main.
+- 2026-11-20 : Fixes date/heure wizard + shell Event Creation Studio.
+- Précédent : Localisations Home, Profile, Tickets.
 
+## Incidents d'écriture
+Aucun cette session.
 
-### Résultat de validation Vercel — commit afd61e3
-- Déploiement Preview créé sur FRONTEND-iA : `dpl_Wi1PBUJrBr8TLEnjjTE2sSQu71Xj`.
-- État final : ERROR. La commande `bun run build` échoue pendant la transformation Vite, avec deux erreurs du plugin `builtin:vite-json` : `expected value at line 1 column 1`.
-- Les logs montrent aussi un avertissement PWA : le motif de précache ne trouve aucun fichier correspondant. Le build n'est donc pas validé.
-- L'erreur de build n'indique pas de fichier JSON fautif dans les extraits disponibles; sa cause exacte reste à isoler. Ne pas l'attribuer au patch de classes Tailwind sans preuve.
-- La prévisualisation de ce commit n'est pas considérée publiable. La vérification visuelle n'a pas pu être faite.
-- Prochaine action P0 : isoler les deux erreurs Vite JSON du build sur FRONTEND-iA sans modifier les lockfiles ni les catégories. Ensuite relancer le build et contrôler le rendu mobile.
-
-
-## Correctif P0 — JSON de traduction invalides (21 novembre 2026)
-- Diagnostic confirmé dans les logs Vercel du commit `afd61e3`: deux erreurs `builtin:vite-json` « expected value at line 1 column 1 ».
-- Cause exacte trouvée sur HEAD de FRONTEND-iA : `src/locales/fr/tickets.json` contenait littéralement `PLACEHOLDER_REAL_FR` et `src/locales/en/tickets.json` contenait `PLACEHOLDER_REAL_EN`. Ces contenus ne sont pas du JSON valide.
-- Restauration des deux catalogues depuis le commit historique `4f17ab55372776ee64211e431b76ef5cc4622d18`, où les traductions tickets avaient été introduites. Contenu conservé, pas de réécriture inventée.
-- Validation locale dans l'outil d'édition : `JSON.parse` réussi sur les deux catalogues restaurés.
-- Fichiers corrigés : `src/locales/fr/tickets.json`, `src/locales/en/tickets.json`.
-- Aucun changement de lockfile, package.json, backend, API ou de la section Explorer par catégorie.
-- À faire après push : lancer un nouveau build Preview Vercel, puis traiter toute nouvelle erreur séparément. Typecheck/lint et validation visuelle non exécutés ici.
-
-
-## Correctif P0 supplémentaire — export BookingModal (21 novembre 2026)
-- Après restauration des catalogues JSON, Vite a transformé 3304 modules; le build a ensuite révélé un second blocage indépendant : `src/App.tsx:4` importe l'export nommé `BookingModal`, absent du contenu actuellement présent dans `src/components/BookingModal.tsx`.
-- La version courante du composant avait été remplacée par un placeholder. Le composant complet a été récupéré depuis le commit historique de fusion `5befba14182959b4b6ec5204b69f38306f347246`, où l'export nommé est présent, avec le comportement de réservation, paiement, cadeaux, inventaire temps réel et thème sombre.
-- Restauration du fichier complet sans modifier l'import App ni changer le contrat public du composant.
-- Validation statique : présence de `export function BookingModal` et fin de module cohérente vérifiées; build Vercel précédent confirme que le problème JSON est levé et expose maintenant le problème d'export.
-- Fichier : `src/components/BookingModal.tsx`.
-- À faire : nouveau build Vercel pour vérifier si d'autres placeholders ou exports cassés subsistent. Aucun contrôle navigateur/visuel réalisé.
+## Backlog priorité
+P0 : Sync main → FRONTEND-iA.
+P1 : Polish responsive EventDetailScreen (info cards, sticky CTA, safe areas).
+P2 : États manquants (chargement, vide, erreur) sur écrans clés.
+P3 : Accessibilité (contrastes, cibles 44px).
