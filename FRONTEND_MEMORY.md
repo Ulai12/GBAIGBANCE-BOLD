@@ -104,3 +104,14 @@ P3 : Accessibilité (contrastes, cibles 44px).
 - Commit applicatif : `e38af8cde736b06d15e6def7fbfb499a263848fa`, poussé sur `FRONTEND-iA`.
 - Vérification : contrôle statique du patch et des états de chargement; build/typecheck/lint, test réel Supabase et parcours de paiement non exécutés dans cette session. Ne pas présenter le correctif comme une validation du paiement.
 - Prochaine étape P0 : lancer build/typecheck, puis tester une réservation réelle en environnement de test (options présentes, options absentes, erreur réseau/délai dépassé, nouvelle tentative, achat gratuit et paiement Mobile Money).
+
+
+## 2026-11-21 — Diagnostic approfondi du chargement des billets
+- Analyse du service `fetchTicketOptions` : les erreurs Supabase étaient absorbées et converties en tableau vide. Le modal pouvait donc afficher « Aucune option de billet configurée » en cas d'erreur réseau ou SQL, ce qui masquait la vraie cause.
+- Correctif dans `src/features/tickets/service.ts` : ajout d'un paramètre optionnel `throwOnError` `false` par défaut, afin de préserver le comportement des autres appelants. En mode strict, les erreurs Supabase sont propagées.
+- Correctif dans `src/components/BookingModal.tsx` : appel strict de `fetchTicketOptions(event.id, 0, true)`; le modal distingue maintenant un inventaire réellement vide d'un inventaire impossible à récupérer et donne une indication de connexion dans l'état d'erreur.
+- Commits applicatifs : `8c6f6f97278474f828e09583f9fb18b4f950623e` (service), `7046b515d4b9e3db728c5245a656c64122c68eed` (modal), sur `FRONTEND-iA`.
+- Contrat de paiement payant inspecté : `rpcInitiateTicketPayment` renvoie volontairement `PAYMENT_PENDING` car l'émission des billets est réservée à la confirmation serveur/webhook. `purchaseTicketsMulti` retourne actuellement ce statut sous forme `success: false`; `BookingModal` le présente donc dans l'alerte d'erreur générique. À traiter ensuite en concevant un véritable état « paiement en attente » et une confirmation fiable, sans émettre de billet avant le webhook.
+- Tests build/typecheck/lint, requête Supabase réelle et paiement Mobile Money non exécutés; aucun achat réel effectué. Déploiement du dernier commit à vérifier.
+- La synchronisation `main → FRONTEND-iA` reste une action à autoriser explicitement par le propriétaire; aucune fusion de branche effectuée.
+- La section « Explorer par catégorie » est restée intacte.
