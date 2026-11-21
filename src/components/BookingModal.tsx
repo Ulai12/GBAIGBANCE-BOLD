@@ -118,7 +118,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       setLoading(false);
     }, 12000);
 
-    fetchTicketOptions(event.id)
+    fetchTicketOptions(event.id, 0, true)
       .then((data) => {
         if (timedOut || optionsRequestId.current !== requestId) return;
         if (data && data.length > 0) {
@@ -520,6 +520,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
             <p className="text-sm font-semibold text-[#171726] dark:text-white">Inventaire indisponible</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Impossible de récupérer les billets. Vérifiez votre connexion puis réessayez.</p>
             <button
               type="button"
               onClick={loadOptions}
@@ -531,7 +532,8 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         ) : options.length === 0 ? (
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Aucune option de billet configurée.</p>
+            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Aucun billet disponible pour le moment.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">L’organisateur n’a pas encore publié de catégorie de billet pour cet événement.</p>
           </div>
         ) : soldOut ? (
           <div className="text-center py-8">
