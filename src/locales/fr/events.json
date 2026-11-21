@@ -27,7 +27,7 @@
   "noEventsDesc": "Essayez de modifier vos filtres ou votre recherche",
   "bookNow": "Réserver",
   "free": "Gratuit",
-  "from": "À partir de",
+  "from": "Dès",
   "attendees": "participants",
   "about": "À propos",
   "date": "Date",
@@ -597,7 +597,7 @@
     "collaborators": "Collaborateurs & Partenaires",
     "partner": "Partenaire",
     "price": "Tarif",
-    "from": "À partir de",
+    "from": "Dès",
     "reserveTicket": "Prendre un billet",
     "unavailable": "Indisponible",
     "countdown": {
