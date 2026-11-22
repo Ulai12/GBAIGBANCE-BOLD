@@ -83,7 +83,32 @@
       "night": "Night",
       "outdoor": "Outdoor",
       "indoor": "Indoor"
-    }
+    },
+    "headerBadge": "Discovery & Exploration",
+    "title": "Search",
+    "subtitle": "Find concerts, festivals, artists and friends nearby",
+    "resultsCount": "{count} result",
+    "resultsCountPlural": "{count} results",
+    "profilesCount": "{count} profile",
+    "profilesCountPlural": "{count} profiles",
+    "modes": {
+      "events": "Events",
+      "friends": "Friends",
+      "friendsFull": "Friends & Participants"
+    },
+    "searchPlaceholderEvents": "Search for a concert, festival, artist...",
+    "searchPlaceholderFriends": "Search for a friend or participant...",
+    "clearSearch": "Clear search",
+    "advancedFilters": "Advanced filters",
+    "categoriesAria": "Main categories",
+    "noEventsTitle": "No events found",
+    "noEventsDesc": "Try adjusting your filters, keyword or expand the city.",
+    "filtersTitle": "Search filters",
+    "category": "Category",
+    "subcategories": "Subcategories",
+    "price": "Price",
+    "reset": "Reset",
+    "seeResults": "See results"
   },
   "artist": {
     "followers": "Followers",
