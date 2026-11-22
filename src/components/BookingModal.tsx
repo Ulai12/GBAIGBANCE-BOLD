@@ -28,7 +28,6 @@ import {
 import type { FinancialFeesResult } from '@/lib/rust-core';
 import { toWhatsAppNumber } from '@/utils/format';
 import { fetchFollowingUsers } from '@/features/users/follows';
-import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, TicketOption, PaymentProvider, Profile } from '@/types';
 
 interface BookingModalProps {
