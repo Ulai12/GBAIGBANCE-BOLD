@@ -105,6 +105,8 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - RLS auth initplan optimisée sur toutes les tables exposées.
 
 ## Taches À faire
+- [Automatisation frontend / main] EventDetailScreen.tsx avait été tronqué en placeholder sur main ; restauré depuis FRONTEND-iA (commit cc7d6b13). Continuer localisation ExploreScreen (partiellement faite). Merger main dans FRONTEND-iA si besoin pour synchroniser les clés i18n.
+
 - [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
