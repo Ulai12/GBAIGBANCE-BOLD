@@ -61,3 +61,15 @@ P2 : États manquants sur autres écrans.
 P3 : Accessibilité renforcée.
 
 [Le reste de l'historique précédent est conservé inchangé pour continuité.]
+
+## 2026-11-22 — Correctif P0 du build Vercel
+- Diagnostic confirmé sur le déploiement du commit `4bc6d3d32dcca7c5e1b9095349ab8392b852635d` : Vercel échouait pendant `vite build` avec `[PARSE_ERROR] Identifier UserAvatar has already been declared` dans `src/components/BookingModal.tsx`.
+- Cause : deux imports nommés identiques de `UserAvatar` dans le même module (lignes 4 et 28).
+- Correctif minimal : suppression du second import; le premier import et les deux usages JSX sont conservés.
+- Fichier applicatif touché : `src/components/BookingModal.tsx` uniquement.
+- Commit : `596ae05052cc9e30e8ca1021d431cfe0298c2534`, directement sur `FRONTEND-iA`.
+- Validation Vercel : déploiement preview `dpl_EwpdNiF8FsUtmhgGVW9i8NYB5B34` en état `READY`; Vite a transformé 3 304 modules et terminé en 4,66 s; PWA générée avec 63 entrées précachées; 14 fichiers de preview synchronisés.
+- Le précédent déploiement `4bc6d3d` était en échec; la cause est reproduite dans ses logs puis corrigée et le build du nouveau commit passe.
+- Typecheck explicite, lint, tests fonctionnels et validation navigateur visuelle : non exécutés. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine.
+- Aucun backend/API, schéma, dépendance, lockfile ou fichier de catégorie modifié. « Explorer par catégorie » est restée strictement intacte.
+- Prochaine priorité : exécuter typecheck/lint et valider les cartes date/heure + CTA sticky d'EventDetailScreen à 320, 375 et 414 px. Ne pas synchroniser de branches sans instruction explicite.
