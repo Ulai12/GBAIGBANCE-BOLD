@@ -4,7 +4,7 @@ Mémoire de travail de GBAIGBANCE-BOLD. À lire en début de session, à mettre 
 
 ## Tâche active
 
-P2 UI/UX — Localisation progressive des écrans clés (EventDetailScreen finalisée, prochaine : ExploreScreen ou Notifications).
+P2 UI/UX — Localisation progressive des écrans clés (EventDetailScreen restaurée et finalisée, ExploreScreen en cours).
 
 ## Objectifs
 
@@ -17,7 +17,8 @@ P2 UI/UX — Localisation progressive des écrans clés (EventDetailScreen final
   - Contraste des labels inactifs du dock amélioré en dark mode (`dark:text-gray-300` au lieu de `gray-500`), commit sur main `124e2504`.
   - Localisation de TicketsScreen et ProfileScreen (domaines `tickets` et `profile`), commits sur FRONTEND-iA dont `84f77531`.
   - Ajout de la section `detail` dans `src/locales/{fr,en}/events.json` (commits 93b89803, bb56f86d).
-  - Localisation complète de EventDetailScreen.tsx : remplacement des chaînes en dur par `t('events', 'detail.*')`, clés supplémentaires ajoutées.
+  - Localisation complète de EventDetailScreen.tsx : remplacement des chaînes en dur par `t('events', 'detail.*')`, clés supplémentaires ajoutées. Restauration du fichier tronqué depuis FRONTEND-iA.
+  - Début localisation ExploreScreen : header, modes recherche, placeholders, filtres principaux, empty states. Clés explore enrichies.
 - En cours / restant :
   - Vérifier le typecheck et le rendu FR/EN sur EventDetailScreen.
   - Localisation des autres écrans (Explore, Notifications, etc.).
@@ -35,14 +36,15 @@ P2 UI/UX — Localisation progressive des écrans clés (EventDetailScreen final
 
 ## Dernière action
 
-2026-11-21 — Localisation complète d'EventDetailScreen : intégration de `t` depuis useApp, remplacement des toasts, labels de statut, dates, aria, boutons, sections (horaire, médias, collaborateurs, billetterie). Clés detail enrichies (freeEntry, timeLabel, mediaTeaser, collaboratorsTitle, officialTicketing, etc.).
+2026-11-22 — Restauration EventDetailScreen.tsx (tronqué en placeholder sur main) depuis FRONTEND-iA. Localisation progressive ExploreScreen (header, segmented control, search, filters, empty states). Clés explore ajoutées FR/EN.
 
 ## Prochaine étape
 
-1. Vérifier le typecheck local ou via CI sur les fichiers modifiés.
-2. Continuer la localisation avec ExploreScreen ou NotificationsScreen.
-3. Revue mobile 320px si nécessaire.
-4. Confirmer le proxy Vercel AI et le secret webhook paiements.
+1. Vérifier le typecheck sur ExploreScreen et EventDetailScreen.
+2. Finir les chaînes restantes d'ExploreScreen (empty states participants, aria dynamiques, etc.).
+3. Continuer avec NotificationsScreen.
+4. Revue mobile 320px.
+5. Confirmer le proxy Vercel AI et le secret webhook paiements.
 
 ## Vérifications
 
@@ -60,6 +62,7 @@ P2 UI/UX — Localisation progressive des écrans clés (EventDetailScreen final
 
 ## Historique
 
+- 2026-11-22 — Restauration EventDetailScreen + localisation ExploreScreen (partielle).
 - 2026-11-21 — Localisation complète EventDetailScreen (appels t() + clés enrichies).
 - 2026-11-20 — Début localisation EventDetailScreen (ajout clés detail).
 - 2026-11-18 — Localisation ProfileScreen et TicketsScreen.
