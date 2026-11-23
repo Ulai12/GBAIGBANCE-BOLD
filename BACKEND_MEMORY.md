@@ -4,36 +4,35 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Optimisation RLS auth initplan (remplacement auth.uid() par (select auth.uid())) sur les policies restantes pour éliminer les warnings performance.
+Correction advisor RLS event_view_daily (policy manquante) + suppression index dupliqué sur tickets.
 
 ## Objectif
-Réduire à zéro les 50 warnings auth_rls_initplan des advisors Supabase en appliquant la migration existante non déployée 20261119010000.
+Éliminer le lint rls_enabled_no_policy sur la table interne event_view_daily et le duplicate_index sur tickets.user_id.
 
 ## Progression
-- Migration 20261119010000 appliquée en base (en parties sécurisées via execute_sql).
-- Toutes les policies concernées recréées avec (select auth.uid()).
-- Compteur remaining_bad_policies passé de 50 à 0.
-- Advisors performance : plus de auth_rls_initplan.
-- Nettoyage de policies dupliquées sur user_follows.
+- Policy service_role_manage_event_view_daily créée (FOR ALL TO service_role).
+- Index dupliqué tickets_user_idx supprimé (gardé idx_tickets_user_id).
+- Migration 20261123010000 appliquée en base et versionnée.
+- Advisors security : rls_enabled_no_policy disparu.
 
 ## Fichiers concernés
-- supabase/migrations/20261119010000_optimize_rls_remaining_tables.sql (déjà versionné, appliqué)
+- supabase/migrations/20261123010000_fix_event_view_daily_rls_and_duplicate_index.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-21 — Application de l'optimisation RLS auth initplan (remaining = 0). Mémoire mise à jour.
+2026-11-23 — Application migration event_view_daily RLS + drop duplicate index. Mémoire mise à jour.
 
 ## Prochaine étape
+- Revue progressive des SECURITY DEFINER grants (révoquer anon sur fonctions non nécessaires).
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr).
-- Traiter event_view_daily RLS (no policy).
-- Revue progressive des SECURITY DEFINER grants.
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 
 ## Vérifications
-- remaining_bad_policies = 0. OK.
-- Advisors performance : auth_rls_initplan disparu. OK.
+- Policy présente sur event_view_daily. OK.
+- Index tickets_user_idx absent, idx_tickets_user_id présent. OK.
+- Advisors security : plus de rls_enabled_no_policy. OK.
+- Migration enregistrée (apply_migration success). OK.
 - Aucune troncature cette session.
-- Migration enregistrée dans schema_migrations.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -45,7 +44,7 @@ Tables principales (public, RLS activée) :
 - notifications, notification_preferences
 - ticket_options, event_collaborators, event_comments, etc.
 - platform_settings (1 ligne)
-- event_view_daily (RLS no policy — à traiter plus tard)
+- event_view_daily (table interne, policy service_role ajoutée 2026-11-23)
 - ~~example~~ (supprimée 2026-11-18)
 
 Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur tables exposées.
@@ -57,6 +56,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261123010000_fix_event_view_daily_rls_and_duplicate_index (appliquée 2026-11-23)
 - 20261119010000_optimize_rls_remaining_tables (appliquée 2026-11-21)
 - 20261120100000_add_remaining_fk_indexes
 - 20261119100000_restore_event_status_and_qr_validation_rpcs
@@ -73,7 +73,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 ## Dette backend
 - Nombreux SECURITY DEFINER callable par anon/authenticated — revue progressive des grants.
 - Extension pg_net in public.
-- event_view_daily : RLS activée sans policy.
 - Quelques multiple permissive policies (event_comments, event_questions, etc.).
 - Indexes unused (info, normal en faible trafic).
 
@@ -84,10 +83,10 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Vérification end-to-end des nouvelles RPCs.
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
-- Traitement event_view_daily RLS.
-- Revue grants SECURITY DEFINER.
+- Revue grants SECURITY DEFINER (priorité : révoquer anon sur fonctions sensibles non nécessaires).
 
 ## Historique
+- 2026-11-23 : Policy RLS event_view_daily + drop index dupliqué tickets.
 - 2026-11-21 : Optimisation RLS auth initplan complétée (50 → 0).
 - 2026-11-20 : Indexes FK restants + restauration mémoire.
 - 2026-11-19 : Restauration set_event_status + validate_ticket_qr.
@@ -103,13 +102,14 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - RPCs set_event_status et validate_ticket_qr maintenant présentes.
 - Indexes FK complétés.
 - RLS auth initplan optimisée sur toutes les tables exposées.
+- event_view_daily : policy service_role en place (table interne).
 
 ## Taches À faire
-- [Automatisation frontend / main] EventDetailScreen.tsx avait été tronqué en placeholder sur main ; restauré depuis FRONTEND-iA (commit cc7d6b13). Continuer localisation ExploreScreen (partiellement faite). Merger main dans FRONTEND-iA si besoin pour synchroniser les clés i18n.
+- [Automatisation frontend / main] EventDetailScreen.tsx avait été tronqué en placeholder sur main ; restauré depuis FRONTEND-iA. Continuer localisation ExploreScreen (partiellement faite). Merger main dans FRONTEND-iA si besoin pour synchroniser les clés i18n.
 
-- [Automatisation frontend] Continuer la localisation des écrans restants (EventDetailScreen prioritaire).
+- [Automatisation frontend] Continuer la localisation des écrans restants.
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Tester les RPCs restaurées en conditions réelles.
-- [Backend] Ajouter policy sur event_view_daily ou désactiver RLS si table interne.
-- [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer la localisation EventDetailScreen (commits récents sur main). Éviter divergences.
+- [Backend] Revue progressive des grants SECURITY DEFINER.
+- [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer les localisations récentes si divergences.
