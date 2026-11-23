@@ -65,7 +65,6 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         pointerEvents: active ? 'auto' : 'none',
         touchAction: active ? 'pan-y' : 'auto',
       }}
-      custom={1}
       variants={cardVariants}
       initial={active ? "enter" : false}
       animate={active ? "center" : { opacity: stackOpacity, scale: stackScale, y: stackY }}
