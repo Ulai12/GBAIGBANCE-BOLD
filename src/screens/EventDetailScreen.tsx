@@ -645,9 +645,9 @@ export function EventDetailScreen({
           {/* 
             GRILLE 2 COLONNES DATE + HEURE (Haute lisibilité, zéro chevauchement)
           */}
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
             {/* Colonne Date */}
-            <div className="p-3 sm:p-3.5 rounded-[20px] bg-white dark:bg-[#151126] border border-black/10 dark:border-white/10 flex flex-col justify-between shadow-2xs">
+            <div className="min-h-[88px] p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#151126] border border-black/10 dark:border-white/10 flex flex-col justify-between shadow-2xs focus-within:ring-2 focus-within:ring-[#6600FF]/30 transition-shadow">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <div className="w-6 h-6 rounded-lg bg-[#6600FF]/10 text-[#6600FF] dark:bg-purple-500/20 dark:text-purple-300 flex items-center justify-center shrink-0">
                   <Calendar className="w-3.5 h-3.5" />
@@ -667,7 +667,7 @@ export function EventDetailScreen({
             </div>
 
             {/* Colonne Heure */}
-            <div className="p-3 sm:p-3.5 rounded-[20px] bg-white dark:bg-[#151126] border border-black/10 dark:border-white/10 flex flex-col justify-between shadow-2xs">
+            <div className="min-h-[88px] p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#151126] border border-black/10 dark:border-white/10 flex flex-col justify-between shadow-2xs focus-within:ring-2 focus-within:ring-[#6600FF]/30 transition-shadow">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <div className="w-6 h-6 rounded-lg bg-[#6600FF]/10 text-[#6600FF] dark:bg-purple-500/20 dark:text-purple-300 flex items-center justify-center shrink-0">
                   <Clock className="w-3.5 h-3.5" />
@@ -801,15 +801,14 @@ export function EventDetailScreen({
               </div>
 
               {displayEvent.external_ticket_url && (
-                <a
-                  href={displayEvent.external_ticket_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98"
+                <button
+                  type="button"
+                  onClick={() => onBook(displayEvent)}
+                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>{detailText('external.open')}</span>
-                </a>
+                </button>
               )}
             </div>
           ) : displayEvent.access_type === 'free' ? (
@@ -1074,7 +1073,10 @@ export function EventDetailScreen({
         Positionnée avec marge basse et safe-area. Le padding-bottom du contenu (pb-44)
         garantit qu'aucun élément ne sera masqué derrière elle !
       */}
-      <div className="fixed bottom-4 inset-x-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-4 shadow-2xl">
+      <div 
+        className="fixed bottom-0 inset-x-0 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-3 sm:gap-4 shadow-2xl"
+        style={{ paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))' }}
+      >
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             {displayEvent.access_type === 'free' ? detailText('price') : detailText('from')}
@@ -1100,16 +1102,17 @@ export function EventDetailScreen({
             <span>{detailText('whatsapp.reserve')}</span>
           </a>
         ) : displayEvent.access_type === 'external' && displayEvent.external_ticket_url ? (
-          <a
-            href={displayEvent.external_ticket_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => haptic.selection()}
+          <button
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              onBook(displayEvent as Event);
+            }}
             className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#6600FF]/35 active:scale-95 cursor-pointer"
           >
             <ExternalLink className="w-4 h-4" />
             <span>{detailText('external.button')}</span>
-          </a>
+          </button>
         ) : displayEvent.access_type === 'free' ? (
           <div className="min-h-[44px] px-6 sm:px-7 py-3 rounded-full bg-emerald-600 text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30">
             <Check className="w-4 h-4" />

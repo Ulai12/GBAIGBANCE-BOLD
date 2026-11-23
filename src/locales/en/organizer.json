@@ -1,0 +1,75 @@
+{
+  "artistTitle": "Artist space",
+  "dashboardTitle": "Dashboard",
+  "scanner": {
+    "buttonTitle": "Scan tickets with the camera",
+    "button": "Scan",
+    "quickTitle": "Ticket scanner (camera)",
+    "quickDescription": "Live entry desk and offline validation",
+    "open": "Open",
+    "scanEventAria": "Scan tickets for this event",
+    "scanAtDeskTitle": "Scan tickets at the entry desk"
+  },
+  "tabs": {
+    "events": "My events",
+    "refunds": "Refunds"
+  },
+  "events": {
+    "listTitle": "Event list",
+    "emptyTitle": "No events yet",
+    "emptyDescription": "Create your first event to track your statistics in real time",
+    "status": {
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "suspended": "Suspended",
+      "postponed": "Postponed"
+    }
+  },
+  "actions": {
+    "create": "Create",
+    "editEventAria": "Edit event",
+    "editEventTitle": "Edit event",
+    "manageDeletionAria": "Manage deletion"
+  },
+  "create": {
+    "title": "Create an event",
+    "openAria": "Create an event",
+    "titleLabel": "Title *",
+    "titlePlaceholder": "Event name",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Short description",
+    "categoryLabel": "Category",
+    "cityLabel": "City",
+    "locationLabel": "Venue",
+    "locationPlaceholder": "Venue name",
+    "locationFallback": "Venue to be announced",
+    "dateTimeLabel": "Date and time *",
+    "minPriceLabel": "Minimum price (XOF)",
+    "capacityLabel": "Capacity",
+    "submit": "Create event",
+    "submitting": "Creating..."
+  },
+  "delete": {
+    "title": "Manage event",
+    "activeTickets": "Active tickets",
+    "collaborators": "Collaborators",
+    "ticketTypes": "Ticket types",
+    "likes": "Likes",
+    "noticeExistingTickets": "{count} attendee(s) already have a ticket. Cancellation is recommended.",
+    "cancelTitle": "Cancel event",
+    "cancelDescription": "The event remains visible and is marked as cancelled.",
+    "deleteTitle": "Delete permanently",
+    "deleteDescription": "All data will be erased. This action cannot be undone.",
+    "warningTickets": "Warning: {count} active ticket(s) will be deleted.",
+    "processing": "Processing..."
+  },
+  "toast": {
+    "created": "Event created!",
+    "createError": "Could not create the event",
+    "cancelled": "Event cancelled.",
+    "deleted": "Event deleted."
+  },
+  "metrics": {
+    "loadError": "Unable to load statistics."
+  }
+}

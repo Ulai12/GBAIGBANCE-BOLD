@@ -1,0 +1,75 @@
+{
+  "artistTitle": "Espace artiste",
+  "dashboardTitle": "Tableau de bord",
+  "scanner": {
+    "buttonTitle": "Scanner les billets avec la caméra",
+    "button": "Scanner",
+    "quickTitle": "Scanner les billets (caméra)",
+    "quickDescription": "Guichet d'accès en direct et contrôle hors ligne",
+    "open": "Ouvrir",
+    "scanEventAria": "Scanner les billets de cet événement",
+    "scanAtDeskTitle": "Scanner les billets au guichet"
+  },
+  "tabs": {
+    "events": "Mes événements",
+    "refunds": "Remboursements"
+  },
+  "events": {
+    "listTitle": "Liste des événements",
+    "emptyTitle": "Aucun événement",
+    "emptyDescription": "Créez votre premier événement pour suivre vos statistiques en temps réel",
+    "status": {
+      "cancelled": "Annulé",
+      "pending": "En attente",
+      "suspended": "Suspendu",
+      "postponed": "Reporté"
+    }
+  },
+  "actions": {
+    "create": "Créer",
+    "editEventAria": "Modifier l'événement",
+    "editEventTitle": "Modifier l'événement",
+    "manageDeletionAria": "Gérer la suppression"
+  },
+  "create": {
+    "title": "Créer un événement",
+    "openAria": "Créer un événement",
+    "titleLabel": "Titre *",
+    "titlePlaceholder": "Nom de l'événement",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Description courte",
+    "categoryLabel": "Catégorie",
+    "cityLabel": "Ville",
+    "locationLabel": "Lieu",
+    "locationPlaceholder": "Nom du lieu",
+    "locationFallback": "Lieu à définir",
+    "dateTimeLabel": "Date et heure *",
+    "minPriceLabel": "Prix minimum (XOF)",
+    "capacityLabel": "Capacité",
+    "submit": "Créer l'événement",
+    "submitting": "Création..."
+  },
+  "delete": {
+    "title": "Gérer l'événement",
+    "activeTickets": "Billets actifs",
+    "collaborators": "Collaborateurs",
+    "ticketTypes": "Types de billets",
+    "likes": "J'aime",
+    "noticeExistingTickets": "{count} participant(s) ont déjà un billet. L'annulation est recommandée.",
+    "cancelTitle": "Annuler l'événement",
+    "cancelDescription": "L'événement reste visible mais marqué comme annulé.",
+    "deleteTitle": "Supprimer définitivement",
+    "deleteDescription": "Toutes les données seront effacées. Action irréversible.",
+    "warningTickets": "Attention : {count} billet(s) actif(s) seront supprimés.",
+    "processing": "Traitement..."
+  },
+  "toast": {
+    "created": "Événement créé !",
+    "createError": "Erreur lors de la création",
+    "cancelled": "Événement annulé.",
+    "deleted": "Événement supprimé."
+  },
+  "metrics": {
+    "loadError": "Impossible de charger les statistiques."
+  }
+}

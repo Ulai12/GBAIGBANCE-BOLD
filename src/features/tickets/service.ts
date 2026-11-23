@@ -64,7 +64,11 @@ export function generateFallbackTicketOptions(eventId: string, priceMin: number 
   ];
 }
 
-export async function fetchTicketOptions(eventId: string, priceMin: number = 0): Promise<TicketOption[]> {
+export async function fetchTicketOptions(
+  eventId: string,
+  priceMin: number = 0,
+  throwOnError: boolean = false
+): Promise<TicketOption[]> {
   if (!eventId) return [];
   if (!isSupabaseConfigured) {
     return generateFallbackTicketOptions(eventId, priceMin);
@@ -75,9 +79,13 @@ export async function fetchTicketOptions(eventId: string, priceMin: number = 0):
       .select('*')
       .eq('event_id', eventId)
       .order('price', { ascending: true });
-    if (error || !data) return [];
-    return data as TicketOption[];
-  } catch {
+    if (error) {
+      if (throwOnError) throw error;
+      return [];
+    }
+    return (data || []) as TicketOption[];
+  } catch (error) {
+    if (throwOnError) throw error;
     return [];
   }
 }
@@ -224,6 +232,18 @@ export async function purchaseTicketsMulti(params: {
   if (isSupabaseConfigured) {
     if (!userId || userId.startsWith('guest-')) {
       return { success: false, error: 'Connectez-vous pour réserver un billet.', code: 'AUTH_REQUIRED' };
+    }
+
+    // Ne jamais considérer le profil local en cache comme une session Supabase valide.
+    // Les RPC de billetterie sont volontairement interdites au rôle anon.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const authenticatedUserId = sessionData.session?.user?.id;
+    if (sessionError || !authenticatedUserId || authenticatedUserId !== userId) {
+      return {
+        success: false,
+        error: 'Votre session est absente ou expirée. Reconnectez-vous pour réserver un billet.',
+        code: 'AUTH_REQUIRED',
+      };
     }
 
     if (unitPrice > 0) {

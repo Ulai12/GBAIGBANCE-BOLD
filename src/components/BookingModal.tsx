@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Ticket, 
   Minus, 
@@ -15,13 +15,19 @@ import {
   Copy
 } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 import { fetchTicketOptions, isEventTerminated, hasEventEnded, subscribeToTicketInventory } from '@/services/events';
-import { purchaseTicketsMulti, type TicketRecipientInput } from '@/features/tickets/service';
+import {
+  purchaseTicketsMulti,
+  coreFinancialFees,
+  coreStock,
+  type TicketRecipientInput,
+} from '@/features/tickets/service';
+import type { FinancialFeesResult } from '@/lib/rust-core';
 import { toWhatsAppNumber } from '@/utils/format';
 import { fetchFollowingUsers } from '@/features/users/follows';
-import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, TicketOption, PaymentProvider, Profile } from '@/types';
 
 interface BookingModalProps {
@@ -34,12 +40,7 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ open, event, initialOptionId, onClose, onSuccess }: BookingModalProps) {
-  const { user, t, language } = useApp();
-  const bookingText = (key: string, values: Record<string, string | number> = {}) =>
-    Object.entries(values).reduce(
-      (text, [name, value]) => text.split(`{${name}}`).join(String(value)),
-      t('tickets', `booking.${key}`),
-    );
+  const { user, session, isSessionResolving } = useApp();
   const [options, setOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -56,7 +57,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const [followingFriends, setFollowingFriends] = useState<Profile[]>([]);
 
   const [recipients, setRecipients] = useState<TicketRecipientInput[]>([
-    { recipient_name: user?.name || bookingText('myself'), recipient_phone: user?.phone || '', is_for_me: true },
+    { recipient_name: user?.name || 'Moi-même', recipient_phone: user?.phone || '', is_for_me: true },
   ]);
 
   // Paiement Mobile Money (T-Money et Flooz uniquement, MTN MoMo supprimé)
@@ -74,6 +75,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     recipient_name?: string;
     claim_token?: string;
   }>>([]);
+  const [feeBreakdown, setFeeBreakdown] = useState<FinancialFeesResult | null>(null);
+  const [stockMeta, setStockMeta] = useState<{ remaining: number; percent_sold: number } | null>(null);
+  const optionsRequestId = useRef(0);
 
   // Pré-chargement immédiat des profils amis dès l'ouverture de la modale pour éviter tout saut de mise en page
   useEffect(() => {
@@ -92,12 +96,31 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }, [open, user?.id]);
 
   const loadOptions = useCallback(() => {
-    if (!event) return;
+    if (!event?.id) {
+      setLoading(false);
+      setFetchError(true);
+      return;
+    }
+
+    const requestId = ++optionsRequestId.current;
+    let timedOut = false;
     setLoading(true);
     setFetchError(false);
     setError(null);
-    fetchTicketOptions(event.id)
+    setOptions([]);
+    setSelectedOption(null);
+
+    // Une requête réseau bloquée ne doit jamais laisser le modal sur un spinner infini.
+    const timeoutId = window.setTimeout(() => {
+      if (optionsRequestId.current !== requestId) return;
+      timedOut = true;
+      setFetchError(true);
+      setLoading(false);
+    }, 12000);
+
+    fetchTicketOptions(event.id, 0, true)
       .then((data) => {
+        if (timedOut || optionsRequestId.current !== requestId) return;
         if (data && data.length > 0) {
           setOptions(data);
           const matched = initialOptionId ? data.find((o) => o.id === initialOptionId) : null;
@@ -108,12 +131,16 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         }
       })
       .catch(() => {
+        if (timedOut || optionsRequestId.current !== requestId) return;
         setFetchError(true);
         setOptions([]);
         setSelectedOption(null);
       })
-      .finally(() => setLoading(false));
-  }, [event, initialOptionId]);
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        if (!timedOut && optionsRequestId.current === requestId) setLoading(false);
+      });
+  }, [event?.id, initialOptionId]);
 
   useEffect(() => {
     if (!open || !event?.id) return;
@@ -124,7 +151,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     setFriendPhone('');
     setSelectedFriendId(null);
     setRecipients([
-      { recipient_name: user?.name || t('tickets', 'booking.myself'), recipient_phone: user?.phone || '', is_for_me: true },
+      { recipient_name: user?.name || 'Moi-même', recipient_phone: user?.phone || '', is_for_me: true },
     ]);
     setPaymentPhone(user?.phone || '');
     setError(null);
@@ -132,7 +159,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     setSuccess(false);
     setCreatedTicketsSummary([]);
     loadOptions();
-  }, [open, event?.id, loadOptions, user?.id, user?.name, user?.phone, t]);
+  }, [open, event?.id, loadOptions, user?.id, user?.name, user?.phone]);
 
   // Fermeture propre avec réinitialisation des erreurs et états de chargement
   const handleCloseModal = () => {
@@ -152,13 +179,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       if (target === 'friend') {
         return index === 0
           ? {
-              recipient_name: friendName.trim() || bookingText('friend'),
+              recipient_name: friendName.trim() || 'Mon ami',
               recipient_phone: friendPhone.trim(),
               recipient_user_id: selectedFriendId || undefined,
               is_for_me: false,
             }
           : {
-              recipient_name: bookingText('guestNumber', { number: index + 1 }),
+              recipient_name: `Invité #${index + 1}`,
               recipient_phone: friendPhone.trim(),
               is_for_me: false,
             };
@@ -166,12 +193,12 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
       return index === 0
         ? {
-            recipient_name: user?.name || bookingText('myself'),
+            recipient_name: user?.name || 'Moi-même',
             recipient_phone: user?.phone || '',
             is_for_me: true,
           }
         : {
-            recipient_name: bookingText('friendNumber', { number: index + 1 }),
+            recipient_name: `Ami #${index + 1}`,
             recipient_phone: '',
             is_for_me: false,
           };
@@ -185,7 +212,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const handleSelectFollowedFriend = (friend: Profile) => {
     haptic.selection();
     setSelectedFriendId(friend.id);
-    const chosenName = friend.name || bookingText('friend');
+    const chosenName = friend.name || 'Ami';
     const chosenPhone = friend.phone || '';
     setFriendName(chosenName);
     setFriendPhone(chosenPhone);
@@ -202,7 +229,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       if (newQty > next.length) {
         for (let i = next.length; i < newQty; i++) {
           next.push({
-            recipient_name: purchaseTarget === 'friend' ? bookingText('guestNumber', { number: i + 1 }) : bookingText('friendNumber', { number: i + 1 }),
+            recipient_name: purchaseTarget === 'friend' ? `Invité #${i + 1}` : `Ami #${i + 1}`,
             recipient_phone: purchaseTarget === 'friend' ? friendPhone.trim() : '',
             is_for_me: purchaseTarget === 'self' && i === 0,
           });
@@ -249,20 +276,57 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   const totalPrice = unitPrice * quantity;
   const isFreeCheckout = unitPrice === 0;
 
+  useEffect(() => {
+    if (!open || !liveOption) {
+      setFeeBreakdown(null);
+      setStockMeta(null);
+      return;
+    }
+    let active = true;
+    const totalCap = Number(liveOption.quantity_total) || 0;
+    const soldCap = Number(liveOption.quantity_sold) || 0;
+
+    Promise.all([
+      coreFinancialFees(unitPrice, quantity, isFreeCheckout ? 'free' : 'mobile_money'),
+      coreStock(soldCap, totalCap),
+    ])
+      .then(([fees, st]) => {
+        if (!active) return;
+        setFeeBreakdown(fees);
+        setStockMeta(st);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [open, liveOption, unitPrice, quantity, isFreeCheckout]);
+
   const handleBook = async () => {
     if (!liveOption || !event) return;
+
+    // Le profil local peut être affiché avant la restauration de la session Supabase.
+    if (isSessionResolving) {
+      setError('Vérification de votre session en cours. Réessayez dans un instant.');
+      return;
+    }
+    if (!session?.user?.id || !user?.id || session.user.id !== user.id) {
+      setError('Votre session est absente ou expirée. Reconnectez-vous pour réserver un billet.');
+      return;
+    }
+
     if (quantity > available) {
-      setError(bookingText('stockError'));
+      setError('Quantité demandée supérieure au stock disponible.');
       return;
     }
 
     if (purchaseTarget === 'friend') {
       if (friendName.trim().length < 2) {
-        setError(bookingText('friendNameError'));
+        setError('Veuillez renseigner le nom ou prénom de votre ami(e).');
         return;
       }
       if (toWhatsAppNumber(friendPhone).length < 11) {
-        setError(bookingText('friendPhoneError'));
+        setError('Indiquez le numéro WhatsApp de votre ami (8 chiffres, ex. 90 12 34 56).');
         return;
       }
     }
@@ -270,7 +334,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     // Garde-fou : aucune divergence entre la quantité facturée et les billets générés.
     const alignedRecipients = Array.from({ length: quantity }, (_, index) =>
       recipients[index] ?? {
-        recipient_name: purchaseTarget === 'friend' ? bookingText('guestNumber', { number: index + 1 }) : bookingText('friendNumber', { number: index + 1 }),
+        recipient_name: purchaseTarget === 'friend' ? `Invité #${index + 1}` : `Ami #${index + 1}`,
         recipient_phone: purchaseTarget === 'friend' ? friendPhone.trim() : '',
         is_for_me: purchaseTarget === 'self' && index === 0,
       }
@@ -280,7 +344,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       if (purchaseTarget === 'friend') {
         const primary = i === 0;
         return {
-          recipient_name: (primary ? friendName.trim() : (r.recipient_name || '').trim()) || bookingText('guestNumber', { number: i + 1 }),
+          recipient_name: (primary ? friendName.trim() : (r.recipient_name || '').trim()) || `Invité #${i + 1}`,
           recipient_phone: (primary ? friendPhone.trim() : (r.recipient_phone || friendPhone).trim()) || '',
           // Sans cet identifiant, le pass offert n’atterrissait jamais sur le compte de l’ami choisi.
           recipient_user_id: primary ? (selectedFriendId || r.recipient_user_id) : r.recipient_user_id,
@@ -289,7 +353,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
       }
       return {
         ...r,
-        recipient_name: (r.recipient_name || '').trim() || (i === 0 ? (user?.name || bookingText('myself')) : ''),
+        recipient_name: (r.recipient_name || '').trim() || (i === 0 ? (user?.name || 'Moi-même') : ''),
         recipient_phone: r.recipient_phone || user?.phone || '',
         is_for_me: i === 0,
       };
@@ -301,14 +365,14 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         return (r.recipient_name || '').trim().length < 2;
       });
       if (unnamed) {
-        setError(bookingText('recipientNameError'));
+        setError('Indiquez le nom de chaque titulaire (2 caractères minimum).');
         return;
       }
     }
 
     const buyerDigits = paymentPhone.replace(/\D/g, '');
     if (!isFreeCheckout && buyerDigits.length < 8) {
-      setError(bookingText('buyerPhoneError'));
+      setError('Veuillez renseigner un numéro de téléphone Mobile Money valide.');
       return;
     }
 
@@ -326,12 +390,12 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
         paymentProvider,
         paymentPhone: isFreeCheckout ? (user?.phone || '00000000') : paymentPhone.trim(),
         userId: callerUserId,
-        buyerName: user?.name || bookingText('friend'),
+        buyerName: user?.name || 'Un ami',
         unitPrice,
       });
 
       if (!res.success) {
-        setError(res.error || bookingText('orderFailed'));
+        setError(res.error || 'Échec de la commande');
         setBooking(false);
         return;
       }
@@ -350,7 +414,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
       window.dispatchEvent(new CustomEvent('gba-ticket-booked'));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : bookingText('unexpectedError'));
+      setError(err instanceof Error ? err.message : 'Une erreur inattendue est survenue');
       setBooking(false);
     }
   };
@@ -364,11 +428,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
     const isGift = purchaseTarget === 'friend';
 
     return (
-      <Modal
-        open={open}
-        onClose={handleCloseModal}
-        ariaLabel={purchaseTarget === 'friend' ? t('tickets', 'giftSuccessTitle') : t('tickets', 'orderSuccessTitle')}
-      >
+      <Modal open={open} onClose={handleCloseModal} title="">
         <div className="flex flex-col items-center justify-center py-6 text-center text-[#1A1A2E] dark:text-white space-y-4">
           <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center animate-bounce-in motion-reduce:animate-none">
             <Check className="w-10 h-10 text-emerald-600 dark:text-emerald-300" strokeWidth={3} />
@@ -376,14 +436,14 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
           <div>
             <h3 className="text-xl font-black">
-              {isGift ? bookingText('giftHeading', { name: friendName || bookingText('friend') }) : bookingText('orderHeading')}
+              {isGift ? `Billet offert à ${friendName || 'votre ami'} !` : 'Commande validée !'}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
               {isGift
-                ? bookingText('giftDescription', { name: friendName || bookingText('friend') })
+                ? `L'achat est confirmé. Le pass est attribué à votre ami et enregistré dans votre onglet « Billets offerts ».`
                 : quantity === 1
-                ? bookingText('ticketReady')
-                : bookingText('ticketsReady', { count: quantity })}
+                ? 'Votre pass d’entrée est prêt dans l’onglet « Mes billets ».'
+                : `${quantity} billets générés avec succès.`}
             </p>
           </div>
 
@@ -391,7 +451,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
           {isGift && (
             <div className="w-full p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 text-left space-y-3">
               <span className="text-xs font-bold text-[#6600FF] dark:text-purple-300 block">
-                {bookingText('sendGift', { name: friendName || bookingText('friend') })}
+                Envoyer le pass d'accès à {friendName || 'votre ami'}
               </span>
 
               <div className="grid grid-cols-2 gap-2">
@@ -400,18 +460,14 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   onClick={() => {
                     const waNumber = toWhatsAppNumber(friendPhone);
                     const eventTitle = event.title;
-                    const text = bookingText('whatsappMessage', {
-                      friend: friendName || bookingText('friend'),
-                      title: eventTitle,
-                      link: claimLink,
-                    });
+                    const text = `Salut ${friendName || 'l\'ami'} ! Je t'ai offert un billet pour ${eventTitle} sur Gbaïgbancê 🎟️. Voici ton pass : ${claimLink}`;
                     const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
                     if (waNumber) window.open(waUrl, '_blank');
                   }}
                   className="min-h-11 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all motion-reduce:transition-none shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <span>{bookingText('whatsapp')}</span>
+                  <span>Sur WhatsApp</span>
                 </button>
 
                 <button
@@ -425,7 +481,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   className="min-h-11 py-2.5 px-3 rounded-xl bg-white text-[#6600FF] border border-purple-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:bg-[#14121E] dark:text-[#C4B5FD] dark:border-purple-400/30 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? bookingText('linkCopied') : bookingText('copyLink')}</span>
+                  <span>{copiedLink ? 'Lien copié !' : 'Copier lien'}</span>
                 </button>
               </div>
             </div>
@@ -439,7 +495,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             }}
             className="w-full min-h-12 py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-transform motion-reduce:transition-none shadow-lg shadow-purple-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
           >
-            {isGift ? bookingText('viewGiftedTickets') : bookingText('accessMyTickets')}
+            {isGift ? 'Voir dans mes billets offerts' : 'Accéder à mes billets'}
           </button>
         </div>
       </Modal>
@@ -447,56 +503,67 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
   }
 
   return (
-    <Modal open={open} onClose={handleCloseModal} title={t('tickets', 'bookingTitle')} maxWidthClass="max-w-xl">
-      <div className="space-y-5 pr-1">
+    <Modal open={open} onClose={handleCloseModal} title="Réserver des billets">
+      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {/* En-tête de l'événement compact */}
         <div className="flex items-center gap-3 p-3 bg-[#6600FF]/5 dark:bg-white/5 rounded-2xl">
-          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-            <img src={event.cover_url || ''} alt="" className="w-full h-full object-cover" />
-          </div>
+          <UserAvatar
+            id={event.organizer?.id || event.organizer_id || event.organizer_user_id}
+            name={event.organizer?.name || event.title}
+            src={event.organizer?.logo_url}
+            role="organizer"
+            size="md"
+            shape="squircle"
+            ring={false}
+            eager
+            className="w-12 h-12 shrink-0"
+          />
           <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 truncate">{event.city} · {event.location_name}</p>
+            <h4 className="font-bold text-[#1A1A2E] dark:text-white text-sm truncate">{event.title}</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{event.city} · {event.location_name}</p>
           </div>
         </div>
 
         {eventUnavailable ? (
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#171726] dark:text-white">{bookingText('reservationUnavailable')}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{bookingText('salesNotOpen')}</p>
+            <p className="text-sm font-semibold text-[#171726] dark:text-white">Réservation indisponible</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Les ventes ne sont pas ouvertes pour cet événement.</p>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <Loader2 className="w-6 h-6 text-[#6600FF] animate-spin motion-reduce:animate-none" />
+            <p className="text-xs text-gray-500 dark:text-gray-400">Chargement des billets disponibles…</p>
           </div>
         ) : fetchError ? (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#171726] dark:text-white">{bookingText('inventoryUnavailable')}</p>
+            <p className="text-sm font-semibold text-[#171726] dark:text-white">Inventaire indisponible</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Impossible de récupérer les billets. Vérifiez votre connexion puis réessayez.</p>
             <button
               type="button"
               onClick={loadOptions}
               className="mt-3 min-h-11 px-6 py-2 rounded-full bg-[#6600FF] text-white text-xs font-bold inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
             >
-              <RotateCw className="w-3.5 h-3.5" /> {bookingText('retry')}
+              <RotateCw className="w-3.5 h-3.5" /> Réessayer
             </button>
           </div>
         ) : options.length === 0 ? (
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">{bookingText('noTicketOptions')}</p>
+            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Aucun billet disponible pour le moment.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">L’organisateur n’a pas encore publié de catégorie de billet pour cet événement.</p>
           </div>
         ) : soldOut ? (
           <div className="text-center py-8">
             <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-red-500 dark:text-red-300">{bookingText('eventFull')}</p>
+            <p className="text-sm font-semibold text-red-500 dark:text-red-300">Événement complet</p>
           </div>
         ) : (
           <>
             {/* 1. Choix du pass */}
             <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">{bookingText('passCategory')}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">1. Catégorie de pass</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {options.map((opt) => {
                   const optAvailable = Math.max(0, (Number(opt.quantity_total) || 0) - (Number(opt.quantity_sold) || 0));
@@ -520,10 +587,10 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     >
                       <div>
                         <p className="font-bold text-xs text-[#1A1A2E] dark:text-white">{opt.label || opt.ticket_type.toUpperCase()}</p>
-                        <p className="text-[10px] text-gray-600 dark:text-gray-300">{optAvailable > 0 ? bookingText(optAvailable === 1 ? 'remainingSingle' : 'remainingPlural', { count: optAvailable }) : bookingText('complete')}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">{optAvailable > 0 ? `${optAvailable} restants` : 'Complet'}</p>
                       </div>
-                      <span className="font-extrabold text-[#5200CC] dark:text-[#C4B5FD] text-xs">
-                        {opt.price === 0 ? bookingText('free') : `${Number(opt.price).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} F CFA`}
+                      <span className="font-extrabold text-[#6600FF] text-xs">
+                        {opt.price === 0 ? 'Gratuit' : `${opt.price.toLocaleString('fr-FR')} F`}
                       </span>
                     </button>
                   );
@@ -534,10 +601,10 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* 2. Destination du billet : Pour moi OU Offrir à un ami */}
             {selectedOption && available > 0 && (
               <div className="space-y-2.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">{bookingText('ticketHolder')}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">2. Titulaire du billet</p>
 
                 {/* Segmented Control Apple Style */}
-                <div className="grid grid-cols-2 p-1 bg-gray-100 dark:bg-white/10 rounded-2xl" role="radiogroup" aria-label={bookingText('ticketHolderAria')}>
+                <div className="grid grid-cols-2 p-1 bg-gray-100 dark:bg-white/10 rounded-2xl" role="radiogroup" aria-label="Titulaire du billet">
                   <button
                     type="button"
                     role="radio"
@@ -549,7 +616,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }`}
                   >
-                    <Ticket className="w-3.5 h-3.5" /> {bookingText('forMe')}
+                    <Ticket className="w-3.5 h-3.5" /> Pour moi
                   </button>
 
                   <button
@@ -563,7 +630,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }`}
                   >
-                    <Gift className="w-3.5 h-3.5 text-[#6600FF]" /> {bookingText('giftFriend')}
+                    <Gift className="w-3.5 h-3.5 text-[#6600FF]" /> Offrir à un ami
                   </button>
                 </div>
 
@@ -572,7 +639,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-[#6600FF]/10 border border-purple-200/80 dark:border-purple-400/25 space-y-3">
                     <div className="space-y-1">
                       <label htmlFor="friend_name_input" className="text-[11px] font-bold text-gray-700 dark:text-gray-200 block cursor-pointer">
-                        {bookingText('friendName')}
+                        Nom & prénom de votre ami(e)
                       </label>
                       <input
                         id="friend_name_input"
@@ -587,7 +654,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           setFriendName(val);
                           handleUpdateRecipient(0, 'recipient_name', val);
                         }}
-                        placeholder={bookingText('namePlaceholder')}
+                        placeholder="Ex: Koffi Mensah"
                         className="w-full min-h-11 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#14121E] border border-purple-200 dark:border-purple-400/30 text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                       />
                     </div>
@@ -596,7 +663,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     {followingFriends.length > 0 && (
                       <div className="space-y-1.5 pt-0.5">
                         <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 block">
-                          {bookingText('friendSuggestions')}
+                          Suggestions parmi vos amis :
                         </span>
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                           {followingFriends
@@ -626,7 +693,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
                     <div className="space-y-1">
                       <label htmlFor="friend_phone_input" className="text-[11px] font-bold text-gray-700 dark:text-gray-200 block cursor-pointer">
-                        {bookingText('friendPhone')}
+                        Numéro de téléphone de l'ami (WhatsApp / Appel)
                       </label>
                       <input
                         id="friend_phone_input"
@@ -640,13 +707,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           setFriendPhone(val);
                           handleUpdateRecipient(0, 'recipient_phone', val);
                         }}
-                        placeholder={bookingText('phonePlaceholder')}
+                        placeholder="Ex: 90 12 34 56"
                         className="w-full min-h-11 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#14121E] border border-purple-200 dark:border-purple-400/30 text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                       />
                     </div>
 
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                      💡 {bookingText('giftNote')}
+                      💡 Le pass sera généré pour votre ami(e). Vous retrouverez la confirmation d'achat dans votre onglet « Billets offerts ».
                     </p>
                   </div>
                 )}
@@ -657,9 +724,9 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {selectedOption && available > 1 && (
               <div className="p-3 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#1A1A2E] dark:text-white block">{bookingText('quantity')}</span>
+                  <span className="text-xs font-bold text-[#1A1A2E] dark:text-white block">Quantité</span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {purchaseTarget === 'friend' ? bookingText('friendsTickets') : bookingText('seatsForYou')}
+                    {purchaseTarget === 'friend' ? 'Billets pour des amis' : 'Places pour vous ou accompagnateurs'}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -667,7 +734,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     type="button"
                     onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
-                    aria-label={bookingText('decreaseQuantity')}
+                    aria-label="Diminuer la quantité"
                     className="w-11 h-11 rounded-full bg-white dark:bg-[#14121E] dark:text-white shadow-sm border border-gray-200 dark:border-white/[0.12] flex items-center justify-center disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -677,7 +744,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     type="button"
                     onClick={() => handleQuantityChange(Math.min(available, quantity + 1))}
                     disabled={quantity >= available || quantity >= 10}
-                    aria-label={bookingText('increaseQuantity')}
+                    aria-label="Augmenter la quantité"
                     className="w-11 h-11 rounded-full bg-white dark:bg-[#14121E] dark:text-white shadow-sm border border-gray-200 dark:border-white/[0.12] flex items-center justify-center disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -689,13 +756,13 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* Bénéficiaires supplémentaires si quantité > 1 */}
             {selectedOption && quantity > 1 && (
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" /> {bookingText('recipientNames', { count: quantity })}
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" /> Noms des titulaires ({quantity} places)
                 </p>
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
                     <div key={i} className="p-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-600 dark:text-gray-300 w-12">#{i + 1}</span>
+                      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-12">#{i + 1}</span>
                       <input
                         type="text"
                         value={r.recipient_name}
@@ -704,7 +771,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                           handleUpdateRecipient(i, 'recipient_name', value);
                           if (purchaseTarget === 'friend' && i === 0) setFriendName(value);
                         }}
-                        placeholder={bookingText('recipientPlaceholder', { number: i + 1 })}
+                        placeholder={`Bénéficiaire place #${i + 1}`}
                         className="flex-1 min-h-11 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#0c0a14] text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] transition-colors motion-reduce:transition-none"
                       />
                     </div>
@@ -716,11 +783,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
             {/* 4. Paiement Mobile Money — inutile pour un pass gratuit */}
             {selectedOption && available > 0 && !isFreeCheckout && (
               <div className="space-y-2.5 pt-1">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5" /> {bookingText('payment')}
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5" /> 3. Règlement Mobile Money
                 </p>
 
-                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={bookingText('paymentOperator')}>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Opérateur Mobile Money">
                   {[
                     { id: 'tmoney', name: 'T-Money' },
                     { id: 'flooz', name: 'Flooz' },
@@ -744,7 +811,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
                 <div className="space-y-1">
                   <label htmlFor="buyer_phone_input" className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1 cursor-pointer">
-                    <Phone className="w-3 h-3 text-[#6600FF]" /> {bookingText('buyerPhone')}
+                    <Phone className="w-3 h-3 text-[#6600FF]" /> Numéro de débit (Acheteur)
                   </label>
                   <input
                     id="buyer_phone_input"
@@ -753,11 +820,11 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                     autoComplete="tel"
                     value={paymentPhone}
                     onChange={(e) => setPaymentPhone(e.target.value)}
-                    placeholder={bookingText('phonePlaceholder')}
+                    placeholder="Ex: 90 12 34 56"
                     className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/[0.12] bg-white dark:bg-[#14121E] text-base text-[#17131D] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] transition-colors motion-reduce:transition-none"
                   />
-                  <span className="text-[10px] text-gray-600 dark:text-gray-300 block">
-                    {bookingText('buyerPhoneHint')}
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
+                    L'acheteur reste la référence financière pour tout remboursement éventuel.
                   </span>
                 </div>
               </div>
@@ -774,7 +841,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                   onClick={() => setError(null)}
                   className="min-h-11 px-2 text-[11px] font-bold text-rose-600 dark:text-rose-200 underline hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 rounded-lg"
                 >
-                  {bookingText('close')}
+                  Fermer
                 </button>
               </div>
             )}
@@ -784,38 +851,45 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
               <div className="border-t border-black/[0.06] dark:border-white/[0.08] pt-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{bookingText('paymentTotal')}</span>
-                    <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                      {isFreeCheckout ? bookingText('freeConfirmation') : bookingText('mobileMoneyDebit')}
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">Total à payer</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
+                      {isFreeCheckout ? 'Confirmation immédiate, sans débit' : 'Débit Mobile Money sur le numéro indiqué'}
                     </span>
+                    {!isFreeCheckout && feeBreakdown && feeBreakdown.total_amount > 0 && (
+                      <span className="text-[10px] text-[#6600FF]/80 font-medium block mt-0.5">
+                        Inclut {feeBreakdown.platform_fee.toLocaleString('fr-FR')} F frais de service ({feeBreakdown.fee_percent}% + {feeBreakdown.fixed_fee} F)
+                      </span>
+                    )}
+                    {stockMeta && stockMeta.percent_sold >= 80 && stockMeta.percent_sold < 100 && (
+                      <span className="text-[10px] text-amber-600 font-bold block mt-0.5">
+                        Places limitées : {stockMeta.percent_sold}% vendues ({stockMeta.remaining} restantes)
+                      </span>
+                    )}
                   </div>
                   <span className="text-xl font-black text-[#1A1A2E] dark:text-white">
-                    {isFreeCheckout ? bookingText('free') : `${totalPrice.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} F CFA`}
+                    {isFreeCheckout ? 'Gratuit' : `${(feeBreakdown?.total_amount ?? totalPrice).toLocaleString('fr-FR')} F CFA`}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleBook}
-                  disabled={booking}
+                  disabled={booking || isSessionResolving}
                   className="w-full min-h-12 py-3.5 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all motion-reduce:transition-none shadow-md shadow-purple-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   {booking ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
-                      {bookingText('generatingTicket')}
+                      Génération du billet...
                     </>
                   ) : (
                     <>
                       {purchaseTarget === 'friend' ? <Gift className="w-4 h-4" /> : <Ticket className="w-4 h-4" />}
                       {purchaseTarget === 'friend'
-                        ? bookingText('giftAction', {
-                          name: friendName || bookingText('friend'),
-                          total: isFreeCheckout ? bookingText('free') : `${totalPrice.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} F CFA`,
-                        })
+                        ? `Offrir à ${friendName || 'mon ami'} (${isFreeCheckout ? 'Gratuit' : `${totalPrice.toLocaleString('fr-FR')} F`})`
                         : isFreeCheckout
-                        ? bookingText(quantity === 1 ? 'freeSingleAction' : 'freePluralAction', { count: quantity })
-                        : bookingText(quantity === 1 ? 'paySingleAction' : 'payPluralAction', { count: quantity })}
+                        ? `Confirmer ${quantity} billet${quantity > 1 ? 's' : ''} gratuit${quantity > 1 ? 's' : ''}`
+                        : `Payer et valider (${quantity} billet${quantity > 1 ? 's' : ''})`}
                     </>
                   )}
                 </button>

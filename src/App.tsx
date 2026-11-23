@@ -409,6 +409,33 @@ function AppContent() {
   };
 
   const handleBookEvent = useCallback((event: Event, initialOptionId?: string | null) => {
+    // Une billetterie externe appartient à l'organisateur : elle ne passe ni par
+    // l'authentification GBAIGBANCE ni par le tunnel de paiement interne.
+    if (event.access_type === 'external' || Boolean(event.external_ticket_url?.trim())) {
+      const externalUrl = event.external_ticket_url?.trim();
+
+      if (!externalUrl) {
+        addToast({ message: "Le lien de billetterie de cet événement n'est pas disponible.", type: 'error' });
+        return;
+      }
+
+      try {
+        const normalizedUrl = /^[a-z][a-z0-9+.-]*:/i.test(externalUrl)
+          ? externalUrl
+          : `https://${externalUrl}`;
+        const destination = new URL(normalizedUrl);
+        if (destination.protocol !== 'https:' && destination.protocol !== 'http:') {
+          throw new Error('Unsupported external URL protocol');
+        }
+
+        // Navigation dans l'onglet courant : pas de popup bloquée sur mobile/PWA.
+        window.location.assign(destination.toString());
+      } catch {
+        addToast({ message: "Le lien de billetterie fourni par l'organisateur est invalide.", type: 'error' });
+      }
+      return;
+    }
+
     if (!session) {
       addToast({ message: 'Connectez-vous pour réserver', type: 'info' });
       navigate('/login', {

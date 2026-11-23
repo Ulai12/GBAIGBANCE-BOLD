@@ -149,8 +149,13 @@ export async function toggleOrganizationFollow(organizationId: string, userId: s
   return true;
 }
 
-/** Favori / like evenement — RPC atomique (RLS + compteur). */
+/** Favori / like evenement — RPC atomique, uniquement avec une session authentifiée. */
 export async function toggleEventLike(eventId: string): Promise<boolean> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData.session?.user?.id) {
+    throw new Error('Connectez-vous pour gérer vos favoris.');
+  }
+
   const { data, error } = await supabase.rpc('toggle_event_like', {
     p_event_id: eventId,
   });

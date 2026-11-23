@@ -7,6 +7,7 @@ import frSettings from '@/locales/fr/settings.json';
 import frTickets from '@/locales/fr/tickets.json';
 import frProfile from '@/locales/fr/profile.json';
 import frNotifications from '@/locales/fr/notifications.json';
+import frOrganizer from '@/locales/fr/organizer.json';
 import frOnboarding from '@/locales/fr/onboarding.json';
 import enCommon from '@/locales/en/common.json';
 import enEvents from '@/locales/en/events.json';
@@ -15,6 +16,7 @@ import enSettings from '@/locales/en/settings.json';
 import enTickets from '@/locales/en/tickets.json';
 import enProfile from '@/locales/en/profile.json';
 import enNotifications from '@/locales/en/notifications.json';
+import enOrganizer from '@/locales/en/organizer.json';
 import enOnboarding from '@/locales/en/onboarding.json';
 
 const translations: Record<Language, Record<string, Record<string, unknown>>> = {
@@ -27,6 +29,7 @@ const translations: Record<Language, Record<string, Record<string, unknown>>> = 
     profile: frProfile,
     notifications: frNotifications,
     onboarding: frOnboarding,
+    organizer: frOrganizer,
   },
   en: {
     common: enCommon,
@@ -37,6 +40,7 @@ const translations: Record<Language, Record<string, Record<string, unknown>>> = 
     profile: enProfile,
     notifications: enNotifications,
     onboarding: enOnboarding,
+    organizer: enOrganizer,
   },
 };
 
