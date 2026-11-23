@@ -108,7 +108,16 @@
     "subcategories": "Subcategories",
     "price": "Price",
     "reset": "Reset",
-    "seeResults": "See results"
+    "seeResults": "See results",
+    "searchPersonTitle": "Search for a person",
+    "noParticipantsTitle": "No participants found",
+    "searchPersonDesc": "Enter at least 2 letters of the first or last name.",
+    "noParticipantsDesc": "No profile matches. Try a different spelling.",
+    "allSubcategories": "All",
+    "defaultParticipantLabel": "Gbaigbance Participant",
+    "follow": "Follow",
+    "following": "Following",
+    "city": "City"
   },
   "artist": {
     "followers": "Followers",
