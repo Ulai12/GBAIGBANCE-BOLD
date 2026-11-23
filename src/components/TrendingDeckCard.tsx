@@ -15,7 +15,7 @@ interface TrendingDeckCardProps {
   active: boolean;
   onOpen: () => void;
   onBook: () => void;
-  onAdvance: () => void;
+  onAdvance: (direction: 1 | -1) => void;
 }
 
 export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(function TrendingDeckCard(
@@ -37,40 +37,58 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const stackScale = 1 - Math.min(offset, 2) * 0.05;
   const stackY = Math.min(offset, 2) * 14;
   const stackRotate = offset === 1 ? 2.5 : offset === 2 ? -2 : 0;
-  const stackOpacity = offset === 0 ? 1 : offset === 1 ? 0.88 : 0.65;
+  const stackOpacity = offset === 0 ? 1 : 0.82;
+  const cardVariants = {
+    enter: (direction: number) => prefersReducedMotion
+      ? { opacity: 0 }
+      : { opacity: 0, x: direction > 0 ? 42 : -42, scale: 0.985, y: 8 },
+    center: { opacity: 1, x: 0, scale: 1, y: 0 },
+    exit: (direction: number) => prefersReducedMotion
+      ? { opacity: 0, transition: { duration: 0.12 } }
+      : {
+          opacity: 0,
+          x: direction > 0 ? -76 : 76,
+          scale: 0.985,
+          y: -3,
+          transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+        },
+  };
 
   return (
     <motion.article
       ref={ref}
       className="event-deck-card absolute inset-0 overflow-hidden rounded-[2rem] bg-[#1A162B] text-white shadow-2xl"
       style={{
-        x: active ? x : 0,
         rotate: active ? rotate : stackRotate,
-        scale: active ? 1 : stackScale,
-        y: active ? 0 : stackY,
         zIndex: active ? 3 : 2,
         transformOrigin: '50% 90%',
         pointerEvents: active ? 'auto' : 'none',
         touchAction: active ? 'pan-y' : 'auto',
       }}
-      initial={isBehind ? { opacity: 0.5, scale: stackScale * 0.96, y: stackY + 16 } : { opacity: 0, scale: 0.94, y: 24 }}
-      animate={{
-        opacity: stackOpacity,
-        scale: active ? 1 : stackScale,
-        y: active ? 0 : stackY,
-        rotate: active ? 0 : stackRotate,
-      }}
-      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: x.get() > 0 ? 360 : -360, rotate: x.get() > 0 ? 8 : -8, transition: { duration: 0.2, ease: 'easeOut' } }}
-      transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
+      custom={1}
+      variants={cardVariants}
+      initial={active ? "enter" : false}
+      animate={active ? "center" : { opacity: stackOpacity, scale: stackScale, y: stackY }}
+      exit="exit"
+      transition={prefersReducedMotion
+        ? { duration: 0 }
+        : { type: 'spring', stiffness: 360, damping: 34, mass: 0.72 }}
       drag={active ? 'x' : false}
       dragConstraints={{ left: -360, right: 360 }}
       dragElastic={0.18}
       dragMomentum={false}
       dragSnapToOrigin
-      onDragStart={() => { dragging.current = true; }}
+      onDragStart={() => { dragging.current = true; x.set(0); }}
+      onDrag={(_, info) => { x.set(info.offset.x); }}
       onDragEnd={(_, info) => {
-        const shouldAdvance = Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 650;
-        if (shouldAdvance) onAdvance();
+        const shouldAdvance = Math.abs(info.offset.x) > 82 || Math.abs(info.velocity.x) > 560;
+        if (shouldAdvance) {
+          const swipeDirection = Math.abs(info.offset.x) > 12
+            ? (info.offset.x < 0 ? 1 : -1)
+            : (info.velocity.x < 0 ? 1 : -1);
+          onAdvance(swipeDirection);
+        }
+        x.set(0);
         window.setTimeout(() => { dragging.current = false; }, 0);
       }}
       onClick={() => {
