@@ -36,10 +36,10 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const isBehind = !active;
 
   // Visual stack styling for depth
-  const stackScale = 1 - Math.min(offset, 2) * 0.05;
-  const stackY = Math.min(offset, 2) * 14;
+  const stackScale = 1 - Math.min(offset, 1) * 0.045;
+  const stackY = Math.min(offset, 1) * 13;
   const stackRotate = offset === 1 ? 2.5 : offset === 2 ? -2 : 0;
-  const stackOpacity = offset === 0 ? 1 : offset === 1 ? 0.88 : 0.65;
+  const stackOpacity = offset === 0 ? 1 : 0.82;
 
   return (
     <motion.article
@@ -70,8 +70,8 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       }}
       transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
       drag={active ? 'x' : false}
-      dragConstraints={{ left: -30, right: 30 }}
-      dragElastic={0.85}
+      dragConstraints={{ left: -280, right: 280 }}
+      dragElastic={0.22}
       dragSnapToOrigin
       onDragStart={() => { dragging.current = true; }}
       onDragEnd={(_, info) => {
