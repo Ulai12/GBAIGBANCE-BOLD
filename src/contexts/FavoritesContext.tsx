@@ -405,7 +405,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('visibilitychange', handleVisibilitySync);
       window.removeEventListener('online', handleFocusSync);
     };
-  }, [userId, refreshAllFavoritesFromSupabase]);
+  }, [userId, authenticatedUserId, isSessionResolving, refreshAllFavoritesFromSupabase]);
 
   // Synchronisation réactive bidirectionnelle via événements CustomEvent (ex: déclenché par un sous-composant)
   useEffect(() => {
