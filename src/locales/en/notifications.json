@@ -1,0 +1,31 @@
+{
+  "headerBadge": "Activity Center",
+  "title": "Notifications",
+  "subtitle": "Track your bookings, artist alerts and live updates",
+  "back": "Back",
+  "markAllRead": "Mark all as read",
+  "unreadCount": "{count} unread",
+  "unreadCountPlural": "{count} unread",
+  "receivedCount": "{count} received",
+  "receivedCountPlural": "{count} received",
+  "filterAll": "All ({count})",
+  "filterUnread": "Unread ({count})",
+  "loginTitle": "Stay informed in real time",
+  "loginDescription": "Sign in to receive your booking confirmations, artist alerts and event reminders.",
+  "loginButton": "Sign in to my account",
+  "loadingError": "Error loading notifications",
+  "markReadError": "Error",
+  "markAllSuccess": "All notifications marked as read",
+  "emptyUnreadTitle": "No unread notifications",
+  "emptyUnreadDesc": "You're all caught up with your alerts.",
+  "emptyAllTitle": "No notifications",
+  "emptyAllDesc": "Your notifications will appear here when someone interacts with your events or answers your questions.",
+  "actions": {
+    "comment_reply": "replied to your comment",
+    "new_comment": "commented on your event",
+    "new_question": "asked a question",
+    "question_answered": "answered your question",
+    "new_follower": "started following you",
+    "invite_accepted": "accepted your invitation"
+  }
+}
