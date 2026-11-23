@@ -73,11 +73,11 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
       setPerfData(data);
     } catch (error) {
-      setMetricsError(error instanceof Error ? error.message : 'Impossible de charger les statistiques.');
+      setMetricsError(error instanceof Error ? error.message : t('organizer', 'metrics.loadError'));
     } finally {
       setMetricsLoading(false);
     }
-  }, [user, timeRange]);
+  }, [user, timeRange, t]);
 
   useEffect(() => {
     const handleSignedOut = () => {
@@ -145,12 +145,12 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       const validTickets = ticketOptions.filter((tk) => tk.label.trim() && tk.quantity_total).map((tk) => ({ ticket_type: tk.ticket_type, label: tk.label, price: parseFloat(tk.price) || 0, quantity_total: parseInt(tk.quantity_total) || 100, description: tk.description || undefined }));
       const validCollabs = collaborators.map((c) => ({ user_id: c.user_id, role: c.role }));
       const createdByRole = user.role === 'artist' ? 'artist' : 'organizer';
-      const event = await createEventWithCollaborators({ title: form.title, description: form.description, category: form.category, location_name: form.location_name || 'Lieu à définir', city: form.city, starts_at: form.starts_at, price_min: parseFloat(form.price_min) || 0, cover_url: form.cover_url, capacity: form.capacity ? parseInt(form.capacity) : undefined, created_by_role: createdByRole }, validCollabs, validTickets, user.id);
+      const event = await createEventWithCollaborators({ title: form.title, description: form.description, category: form.category, location_name: form.location_name || t('organizer', 'create.locationFallback'), city: form.city, starts_at: form.starts_at, price_min: parseFloat(form.price_min) || 0, cover_url: form.cover_url, capacity: form.capacity ? parseInt(form.capacity) : undefined, created_by_role: createdByRole }, validCollabs, validTickets, user.id);
       if (!event) throw new Error('Échec de création');
-      onToast({ message: 'Événement créé !', type: 'success' }); setShowCreate(false);
+      onToast({ message: t('organizer', 'toast.created'), type: 'success' }); setShowCreate(false);
       setForm({ title: '', description: '', category: 'concert', location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
       setTicketOptions([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]); setCollaborators([]); loadEvents(); loadMetrics();
-    } catch { onToast({ message: 'Erreur lors de la création', type: 'error' }); } finally { setCreating(false); }
+    } catch { onToast({ message: t('organizer', 'toast.createError'), type: 'error' }); } finally { setCreating(false); }
   };
 
   const isArtist = user?.role === 'artist';
@@ -161,17 +161,17 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     try {
       if (deleteMode === 'cancel') {
         await cancelEvent(deleteTarget.id);
-        onToast({ message: 'Événement annulé.', type: 'success' });
+        onToast({ message: t('organizer', 'toast.cancelled'), type: 'success' });
       } else {
         await deleteEvent(deleteTarget.id);
-        onToast({ message: 'Événement supprimé.', type: 'success' });
+        onToast({ message: t('organizer', 'toast.deleted'), type: 'success' });
       }
       window.dispatchEvent(new CustomEvent('gba-refresh-events'));
       setDeleteTarget(null);
       loadEvents();
       loadMetrics();
     } catch (err) {
-      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur';
+      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : t('common', 'error');
       onToast({ message: msg, type: 'error' });
     } finally {
       setDeleteLoading(false);
@@ -182,8 +182,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     <div className="min-h-screen pb-32">
       <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-[#F7F5F0]/85 dark:bg-[#141216]/85 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
-          <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>
+          <button onClick={onBack} className="text-sm text-gray-500 font-medium"{t('common', 'back')}</button>
+          <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{t('organizer', isArtist ? 'artistTitle' : 'dashboardTitle')}</h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -192,14 +192,15 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 setScannerOpen(true);
               }}
               className="h-9 px-3 rounded-full bg-gradient-to-r from-[#6600FF] to-[#8B5CF6] flex items-center gap-1.5 text-white shadow-purple active:scale-95 transition-all text-xs font-bold cursor-pointer"
-              title="Scanner de billets caméra"
+              title={t('organizer', 'scanner.buttonTitle')}
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Scanner</span>
+              <span>{t('organizer', 'scanner.button')}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowCreate(true)}
+              aria-label={t('organizer', 'create.openAria')}
               className="w-9 h-9 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="w-5 h-5" />
@@ -225,8 +226,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               <ScanLine className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">Scanner de Billets (Caméra)</h3>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Guichet d'accès en direct & contrôle hors-ligne</p>
+              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">{t('organizer', 'scanner.quickTitle')}</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{t('organizer', 'scanner.quickDescription')}</p>
             </div>
           </div>
           <button
@@ -238,7 +239,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             className="btn-purple py-2 px-3 text-xs shrink-0 flex items-center gap-1.5 shadow-purple active:scale-95 transition-all cursor-pointer"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>Ouvrir</span>
+            <span>{t('organizer', 'scanner.open')}</span>
           </button>
         </div>
 
@@ -253,7 +254,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            Mes événements ({events.length})
+            {t('organizer', 'tabs.events')} ({events.length})
           </button>
           <button
             type="button"
@@ -265,7 +266,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Remboursements
+            {t('organizer', 'tabs.refunds')}
           </button>
         </div>
 
@@ -275,7 +276,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
           <>
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
-                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Liste des événements
+                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> {t('organizer', 'events.listTitle')}
               </h2>
               <span className="text-sm text-gray-500">{events.length}</span>
             </div>
@@ -294,9 +295,9 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               </div>
             ) : events.length === 0 ? (
               <EmptyState
-                title="Aucun événement"
-                description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
-                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
+                title={t('organizer', 'events.emptyTitle')}
+                description={t('organizer', 'events.emptyDescription')}
+                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">{t('organizer', 'actions.create')}</button>}
               />
             ) : (
               <div className="space-y-3">
@@ -320,10 +321,10 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
                         <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
-                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
-                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
-                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">Suspendu</span>}
-                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">Reporté</span>}
+                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">{t('organizer', 'events.status.cancelled')}</span>}
+                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">{t('organizer', 'events.status.pending')}</span>}
+                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">{t('organizer', 'events.status.suspended')}</span>}
+                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">{t('organizer', 'events.status.postponed')}</span>}
                       </div>
                     </div>
                     <button
@@ -334,8 +335,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                         setScannerOpen(true);
                       }}
                       className="w-9 h-9 rounded-full flex items-center justify-center text-[#6600FF] bg-[#6600FF]/10 hover:bg-[#6600FF]/20 transition-all shrink-0 cursor-pointer"
-                      aria-label="Scanner les billets de cet événement"
-                      title="Scanner les billets au guichet"
+                      aria-label={t('organizer', 'scanner.scanEventAria')}
+                      title={t('organizer', 'scanner.scanAtDeskTitle')}
                     >
                       <ScanLine className="w-4 h-4" />
                     </button>
@@ -344,8 +345,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
                         className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
-                        aria-label="Modifier l'événement"
-                        title="Modifier l'événement"
+                        aria-label={t('organizer', 'actions.editEventAria')}
+                        title={t('organizer', 'actions.editEventTitle')}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -354,7 +355,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                       type="button"
                       onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
                       className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 cursor-pointer"
-                      aria-label="Gérer la suppression"
+                      aria-label={t('organizer', 'actions.manageDeletionAria')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -367,30 +368,30 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       </div>
 
       {/* Create Event Modal - simplified form */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Créer un événement">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('organizer', 'create.title')}>
         <form onSubmit={handleCreate} className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Titre *</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.titleLabel')}</label>
             <input
               className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
-              placeholder="Nom de l'événement"
+              placeholder={t('organizer', 'create.titlePlaceholder')}
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Description</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.descriptionLabel')}</label>
             <textarea
               className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium min-h-[80px]"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Description courte"
+              placeholder={t('organizer', 'create.descriptionPlaceholder')}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Catégorie</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.categoryLabel')}</label>
               <select
                 className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
                 value={form.category}
@@ -402,7 +403,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ville</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.cityLabel')}</label>
               <input
                 className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
                 value={form.city}
@@ -411,16 +412,16 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Lieu</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.locationLabel')}</label>
             <input
               className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
               value={form.location_name}
               onChange={(e) => setForm({ ...form, location_name: e.target.value })}
-              placeholder="Nom du lieu"
+              placeholder={t('organizer', 'create.locationPlaceholder')}
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Date et heure *</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.dateTimeLabel')}</label>
             <input
               type="datetime-local"
               className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
@@ -431,7 +432,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Prix min (XOF)</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.minPriceLabel')}</label>
               <input
                 type="number"
                 className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
@@ -441,7 +442,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Capacité</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('organizer', 'create.capacityLabel')}</label>
               <input
                 type="number"
                 className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
@@ -456,13 +457,13 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             disabled={creating}
             className="w-full py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm disabled:opacity-50"
           >
-            {creating ? 'Création...' : 'Créer l\'événement'}
+            {creating ? t('organizer', 'create.submitting') : t('organizer', 'create.submit')}
           </button>
         </form>
       </Modal>
 
       {/* Delete / Cancel Modal */}
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Gérer l'événement">
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('organizer', 'delete.title')}>
         <div className="space-y-4">
           {deleteTarget && (
             <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -478,25 +479,25 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                   <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.ticketsCount}</p>
-                  <p className="text-xs text-gray-500">Billets actifs</p>
+                  <p className="text-xs text-gray-500">{t('organizer', 'delete.activeTickets')}</p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                   <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.collaboratorsCount}</p>
-                  <p className="text-xs text-gray-500">Collaborateurs</p>
+                  <p className="text-xs text-gray-500">{t('organizer', 'delete.collaborators')}</p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                   <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.ticketOptionsCount}</p>
-                  <p className="text-xs text-gray-500">Types de billets</p>
+                  <p className="text-xs text-gray-500">{t('organizer', 'delete.ticketTypes')}</p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                   <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.likesCount}</p>
-                  <p className="text-xs text-gray-500">J'aime</p>
+                  <p className="text-xs text-gray-500">{t('organizer', 'delete.likes')}</p>
                 </div>
               </div>
               {deleteInfo.ticketsCount > 0 && (
                 <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                   <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700 dark:text-blue-300">{deleteInfo.ticketsCount} participant(s) ont déjà un billet. L'annulation est recommandée.</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">{t('organizer', 'delete.noticeExistingTickets').replace('{count}', formatNumber(deleteInfo.ticketsCount))}</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -508,9 +509,9 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <XCircle className={`w-5 h-5 ${deleteMode === 'cancel' ? 'text-amber-500' : 'text-gray-400'}`} />
-                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">Annuler l'événement</span>
+                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">{t('organizer', 'delete.cancelTitle')}</span>
                   </div>
-                  <p className="text-xs text-gray-500 ml-7">L'événement reste visible mais marqué comme annulé.</p>
+                  <p className="text-xs text-gray-500 ml-7">{t('organizer', 'delete.cancelDescription')}</p>
                 </button>
                 <button
                   onClick={() => setDeleteMode('delete')}
@@ -520,15 +521,15 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Trash2 className={`w-5 h-5 ${deleteMode === 'delete' ? 'text-red-500' : 'text-gray-400'}`} />
-                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">Supprimer définitivement</span>
+                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">{t('organizer', 'delete.deleteTitle')}</span>
                   </div>
-                  <p className="text-xs text-gray-500 ml-7">Toutes les données seront effacées. Action irréversible.</p>
+                  <p className="text-xs text-gray-500 ml-7">{t('organizer', 'delete.deleteDescription')}</p>
                 </button>
               </div>
               {deleteMode === 'delete' && deleteInfo.ticketsCount > 0 && (
                 <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-500/10 rounded-2xl">
                   <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-600 dark:text-red-300">Attention: {deleteInfo.ticketsCount} billet(s) actif(s) seront supprimés.</p>
+                  <p className="text-xs text-red-600 dark:text-red-300">{t('organizer', 'delete.warningTickets').replace('{count}', formatNumber(deleteInfo.ticketsCount))}</p>
                 </div>
               )}
               <button
@@ -538,7 +539,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                   deleteMode === 'cancel' ? 'bg-amber-500' : 'bg-red-500'
                 }`}
               >
-                {deleteLoading ? 'Traitement...' : deleteMode === 'cancel' ? "Annuler l'événement" : 'Supprimer définitivement'}
+                {deleteLoading ? t('organizer', 'delete.processing') : deleteMode === 'cancel' ? t('organizer', 'delete.cancelTitle') : t('organizer', 'delete.deleteTitle')}
               </button>
             </>
           )}

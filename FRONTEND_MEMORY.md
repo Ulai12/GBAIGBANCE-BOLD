@@ -28,3 +28,16 @@
 ## Backlog
 P1 : i18n OrganizerDashboard (petits commits).
 P2 : États loading/empty.
+
+
+## 2026-11-23 — Localisation du tableau de bord organisateur (FR/EN)
+- Localisé les libellés du `OrganizerDashboardScreen` : titres, onglets, états d'événement, formulaire, scanner, modales, messages toast et erreurs de chargement.
+- Ajout des ressources `src/locales/fr/organizer.json` et `src/locales/en/organizer.json`, enregistrées dans `src/locales/index.ts`.
+- Ajout d'un `aria-label` traduit au bouton icône de création; le lieu par défaut suit désormais la langue active.
+- Aucun changement backend/API, données métier, dépendance, parcours de catégories ou autre écran.
+
+Fichiers : `src/screens/OrganizerDashboardScreen.tsx`, `src/locales/index.ts`, nouveaux JSON FR/EN, `FRONTEND_MEMORY.md`.
+
+Vérifications : contrôle statique des références et clés de traduction effectué; JSON sérialisé/parsable. Typecheck, lint, build et rendu navigateur non exécutés. Les composants enfants (`OrganizerMetricsChart`, `OrganizerRefundsTab`, `TicketScannerModal`, `EventManagementModal`) peuvent encore avoir des libellés à localiser.
+
+Prochaine priorité : localiser progressivement ces composants enfants et harmoniser les états loading/empty, sans modifier Explorer par catégorie.
