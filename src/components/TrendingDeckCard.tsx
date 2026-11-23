@@ -92,6 +92,8 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
           className="h-full w-full object-cover"
           widths={[480, 768, 1080, 1440]}
           sizes="(max-width: 640px) calc(100vw - 2rem), 90vw"
+          loading={active ? 'eager' : 'lazy'}
+          fetchPriority={active ? 'high' : 'low'}
         />
       </motion.div>
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,7,15,.10)_20%,rgba(10,7,15,.35)_42%,rgba(10,7,15,.95)_100%)]" />
