@@ -88,3 +88,13 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Le swipe change désormais réellement d'élément dans le bon sens; seuils et vélocité sont modérés. La pile reste limitée à deux cartes et les contrôles de la carte arrière restent inactifs.
 - Recherche : Chrome Modern Web Guidance (motion, 23 nov. 2026) et web.dev animations guide; références : https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-behaviors/motion.md ; https://web.dev/articles/animations-guide ; Motion AnimatePresence : https://motion.dev/docs/react-animate-presence.
 - Non vérifié : build/typecheck/lint, interaction tactile iPhone, rendu visuel et métriques de frame-time. Pas de capture visuelle disponible. Prochaine validation : build Preview puis test swipe dans les deux sens, pagination clavier et réduction du mouvement.
+
+
+## 2026-11-23 — « À la une » : restauration visuelle et autoplay (P1)
+- À la demande de l'utilisateur, restauration de la présentation antérieure de `FeaturedCarousel` : ratio mobile `16/10`, hauteur minimale `330px`, ombre simple, voile d'image et taille/couleur du prix d'origine. Le format portrait `4/5` et les bordures/ombres ajoutées ont été retirés.
+- Optimisation du changement de slide : remplacement de l'intervalle permanent par un timeout unique de 6 s, réarmé après chaque changement de slide. Il est nettoyé à chaque effet et suspendu pendant le survol, le toucher/drag et lorsque le document est masqué.
+- Le mode de présence est passé de `popLayout` à `sync` car le carrousel est déjà positionné en absolu dans un conteneur à dimensions fixes; cela évite le travail de mesure/insertion de layout inutile. Mouvement limité aux transforms/opacity, inertie de drag désactivée, seuil visuel conservé.
+- L'autoplay n'est plus désactivé par `prefers-reduced-motion`; la préférence réduit plutôt la durée de transition à 0.01 s, afin de garder la fonction tout en respectant la réduction des animations.
+- Commit : `4355550078511de9cb3769065a398e7e10435a3d` sur `FRONTEND-iA`.
+- Aucun changement sur « Explorer par catégorie », les données, favoris, réservation, backend/API, dépendances ou lockfiles.
+- Relecture distante après commit effectuée. Build Vite, typecheck, lint, Preview READY et mesure INP/frame-time non exécutés dans cette passe; test réel sur iPhone à faire. Ne pas déclarer la performance mesurée ou confirmée sans profilage.
