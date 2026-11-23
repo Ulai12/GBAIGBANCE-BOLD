@@ -123,15 +123,15 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
 
         {/* CONTENT LAYER */}
         <div className="absolute inset-0 flex flex-col justify-between p-3">
-          
+
           {/* TOP LAYER */}
           <div className="flex flex-col gap-1.5">
             <div className="flex w-full items-start justify-between gap-2">
               {/* DATE PILL */}
               <div className="
-                inline-flex h-7 min-w-0 max-w-[calc(100%-4.5rem)] 
-                items-center gap-1.5 rounded-full 
-                border border-white/25 bg-black/65 shadow-sm 
+                inline-flex h-7 min-w-0 max-w-[calc(100%-4.5rem)]
+                items-center gap-1.5 rounded-full
+                border border-white/25 bg-black/65 shadow-sm
                 px-2 backdrop-blur-md
               ">
                 <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
@@ -151,8 +151,8 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
                   whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
                   onClick={handleShare}
                   className="
-                    flex h-7 w-7 shrink-0 items-center justify-center 
-                    rounded-full border border-white/30 bg-black/65 shadow-md 
+                    flex h-7 w-7 shrink-0 items-center justify-center
+                    rounded-full border border-white/30 bg-black/65 shadow-md
                     backdrop-blur-md transition-all hover:bg-white/25 active:scale-90 text-white shadow-xs
                   "
                 >
@@ -220,7 +220,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
 
         {/* BOTTOM LAYER */}
         <div className="flex w-full flex-col min-w-0 gap-1 mt-auto">
-          
+
           {/* LOCATION */}
           <div className="flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]"/>
@@ -245,8 +245,8 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
 
             {/* ATTENDEES */}
             <div className="
-              flex h-6 shrink-0 items-center gap-1 
-              rounded-full border border-white/25 bg-black/65 
+              flex h-6 shrink-0 items-center gap-1
+              rounded-full border border-white/25 bg-black/65
               px-2 backdrop-blur-md shadow-sm
             ">
               <Users className="h-3 w-3 text-white/70" />
