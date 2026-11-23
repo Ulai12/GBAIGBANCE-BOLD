@@ -416,7 +416,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     className={`flex min-h-11 shrink-0 snap-start cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-bold transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                       isFamily
                         ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
-                        : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
+                        : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 backdrop-blur-xl dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -425,43 +425,47 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 );
               })}
             </div>
-
             {selectedMainCategory && (
-              <div
-                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
-                role="group"
-                aria-label={`${t('events', 'explore.subcategories')} de ${selectedMainCategory.shortLabel}`}
-              >
-                <button
-                  type="button"
-                  aria-pressed={selectedCategory === selectedMainCategory.id}
-                  onClick={() => setSelectedCategory(selectedMainCategory.id)}
-                  className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
-                    selectedCategory === selectedMainCategory.id
-                      ? 'bg-[#6600FF] text-white'
-                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-                  }`}
+              <div className="pt-1">
+                <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  {t('events', 'explore.subcategories')} · {selectedMainCategory.shortLabel}
+                </p>
+                <div
+                  className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+                  role="group"
+                  aria-label={`${t('events', 'explore.subcategories')} · ${selectedMainCategory.shortLabel}`}
                 >
-                  Toutes
-                </button>
-                {selectedMainCategory.subcategories.map((sub) => {
-                  const isSelected = selectedCategory === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                      className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
-                        isSelected
-                          ? 'bg-[#6600FF] text-white'
-                          : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-                      }`}
-                    >
-                      {sub.shortLabel}
-                    </button>
-                  );
-                })}
+                  <button
+                    type="button"
+                    aria-pressed={selectedCategory === selectedMainCategory.id}
+                    onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                    className={`inline-flex min-h-11 shrink-0 snap-start items-center rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                      selectedCategory === selectedMainCategory.id
+                        ? 'bg-[#6600FF] text-white'
+                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
+                    }`}
+                  >
+                    {t('events', 'explore.allSubcategories')}
+                  </button>
+                  {selectedMainCategory.subcategories.map((sub) => {
+                    const isSelected = selectedCategory === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                        className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                          isSelected
+                            ? 'bg-[#6600FF] text-white'
+                            : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
+                        }`}
+                      >
+                        {sub.shortLabel}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -469,7 +473,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       </div>
 
       {/* Contenu principal : Grille Événements OU Liste Participants */}
-      <div className="px-5 mt-5">
+      <div className="px-5 pb-32">
         {searchMode === 'events' ? (
           loading && events.length === 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
@@ -524,11 +528,11 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div className="mt-8">
               <EmptyState
                 icon={<Users className="w-10 h-10 text-[#6600FF]" />}
-                title={query.trim().length < 2 ? 'Cherchez une personne' : 'Aucun participant trouvé'}
+                title={query.trim().length < 2 ? t('events', 'explore.searchPersonTitle') : t('events', 'explore.noParticipantsTitle')}
                 description={
                   query.trim().length < 2
-                    ? 'Saisissez au moins 2 lettres du prénom ou du nom.'
-                    : 'Aucun profil ne correspond. Essayez une autre orthographe.'
+                    ? t('events', 'explore.searchPersonDesc')
+                    : t('events', 'explore.noParticipantsDesc')
                 }
               />
             </div>
@@ -562,7 +566,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                               <span>{person.city}</span>
                             </>
                           ) : (
-                            <span>Participant Gbaigbance</span>
+                            <span>{t('events', 'explore.defaultParticipantLabel')}</span>
                           )}
                         </p>
                       </div>
@@ -571,21 +575,21 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     <button
                       type="button"
                       onClick={(e) => handleToggleFollowUserInSearch(person.id, e)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                      className={`shrink-0 flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-full text-[11px] font-black transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                         isFollowing
-                          ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border border-black/5 dark:border-white/10'
-                          : 'bg-[#6600FF] hover:bg-[#5200cc] text-white shadow-xs'
+                          ? 'bg-[#6600FF]/10 text-[#6600FF] dark:bg-white/10 dark:text-white'
+                          : 'bg-[#6600FF] text-white shadow-sm hover:bg-[#5200cc]'
                       }`}
                     >
                       {isFollowing ? (
                         <>
                           <UserCheck className="w-3.5 h-3.5 text-[#6600FF] dark:text-white" />
-                          <span>Abonné</span>
+                          <span>{t('events', 'explore.following')}</span>
                         </>
                       ) : (
                         <>
                           <Heart className="w-3.5 h-3.5" />
-                          <span>Suivre</span>
+                          <span>{t('events', 'explore.follow')}</span>
                         </>
                       )}
                     </button>
@@ -597,14 +601,18 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
         )}
       </div>
 
-      {/* BottomSheet Filtres avancés pour les événements */}
-      <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title={t('events', 'explore.filtersTitle')}>
-        <div className="space-y-5 text-[#17131D] dark:text-white max-w-2xl mx-auto">
+      {/* BottomSheet Filtres */}
+      <BottomSheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title={t('events', 'explore.filtersTitle')}
+      >
+        <div className="space-y-6 pb-safe">
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
               {t('events', 'explore.category')}
             </h3>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
+            <div className="flex flex-wrap gap-2">
               {MAIN_CATEGORIES.map((main) => {
                 const Icon = CATEGORY_ICONS[main.iconName] || Palette;
                 const isFamily = selectedMainCategory?.id === main.id;
@@ -635,7 +643,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 <div
                   className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
                   role="group"
-                  aria-label={`${t('events', 'explore.subcategories')} de ${selectedMainCategory.shortLabel}`}
+                  aria-label={`${t('events', 'explore.subcategories')} · ${selectedMainCategory.shortLabel}`}
                 >
                   <button
                     type="button"
@@ -647,7 +655,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                         : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
                   >
-                    Toutes
+                    {t('events', 'explore.allSubcategories')}
                   </button>
                   {selectedMainCategory.subcategories.map((sub) => {
                     const isSelected = selectedCategory === sub.id;
@@ -674,7 +682,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
           <div>
             <h3 className="flex items-center gap-1 text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              <MapPin className="w-3.5 h-3.5" /> Ville
+              <MapPin className="w-3.5 h-3.5" /> {t('events', 'explore.city')}
             </h3>
             <div className="flex flex-wrap gap-2">
               {CITIES.map((city) => {
@@ -684,7 +692,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     key={city.value}
                     type="button"
                     onClick={() => setSelectedCity(isSelected ? null : city.value)}
-                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-full px-3.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                    className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
