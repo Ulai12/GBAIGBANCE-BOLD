@@ -15,6 +15,11 @@ import { SmartImage } from '@/components/SmartImage';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 import { getDefaultEventCover } from '@/utils/defaultImages';
 import { formatCurrency } from '@/utils/format';
+import { buildResponsiveImageSources } from '@/utils/imageOptimizer';
+import { useDataSaver } from '@/hooks/useDataSaver';
+
+// Évite de relancer le préchargement d'une même couverture à chaque rendu.
+const preloadedFeaturedImages = new Set<string>();
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -52,6 +57,7 @@ export function FeaturedCarousel({
   const [direction, setDirection] = useState<number>(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  const { isDataSaverActive } = useDataSaver();
   const { language, t } = useApp();
 
   const featuredList = useMemo(
@@ -102,6 +108,53 @@ export function FeaturedCarousel({
     };
   }, [currentIndex, isPaused, isDocumentVisible, total, nextSlide]);
 
+  // Précharger uniquement les deux couvertures voisines, à basse priorité.
+  // Le changement de slide n'attend jamais le réseau ni le décodage de l'image.
+  useEffect(() => {
+    if (!isDocumentVisible || total <= 1 || typeof window === 'undefined') return;
+
+    const adjacentIndexes = [
+      (safeIndex + 1) % total,
+      (safeIndex - 1 + total) % total,
+    ];
+    const pendingImages: HTMLImageElement[] = [];
+
+    adjacentIndexes.forEach((index) => {
+      const event = featuredList[index];
+      if (!event) return;
+      const url = event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title);
+      if (!url) return;
+
+      const sources = buildResponsiveImageSources(
+        url,
+        isDataSaverActive ? [240, 480] : [480, 768, 1080, 1440],
+        '(max-width: 768px) 100vw, 90vw',
+        isDataSaverActive
+      );
+      const cacheKey = sources.src || url;
+      if (preloadedFeaturedImages.has(cacheKey)) return;
+      preloadedFeaturedImages.add(cacheKey);
+
+      const image = new window.Image();
+      pendingImages.push(image);
+      image.decoding = 'async';
+      image.fetchPriority = 'low';
+      image.sizes = sources.sizes;
+      if (sources.srcSetWebp) image.srcset = sources.srcSetWebp;
+      image.src = sources.src;
+      image.decode().catch(() => {
+        // Le composant visible conserve son propre fallback en cas d'échec.
+        preloadedFeaturedImages.delete(cacheKey);
+      });
+    });
+
+    return () => {
+      // Ne pas annuler les téléchargements : le cache navigateur pourra les réutiliser
+      // si l'utilisateur passe à la slide préchargée.
+      pendingImages.length = 0;
+    };
+  }, [safeIndex, featuredList, total, isDocumentVisible, isDataSaverActive]);
+
   if (featuredList.length === 0) return null;
 
   const currentEvent = featuredList[safeIndex];
@@ -119,22 +172,11 @@ export function FeaturedCarousel({
       ? categoryTranslation
       : rawCategory || t('events', 'event');
 
+  // Le contenu bascule vite ; l'image arrive indépendamment en arrière-plan.
   const variants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? '100%' : '-100%',
-      opacity: 1,
-      zIndex: 2,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      zIndex: 1,
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? '-30%' : '30%',
-      opacity: 0.95,
-      zIndex: 0,
-    }),
+    enter: { x: 0, opacity: 0 },
+    center: { x: 0, opacity: 1 },
+    exit: { x: 0, opacity: 0 },
   };
 
   const coverUrl = currentEvent.cover_url || currentEvent.images?.[0] || getDefaultEventCover(currentEvent.id, currentEvent.category, currentEvent.title);
@@ -161,9 +203,8 @@ export function FeaturedCarousel({
             animate="center"
             exit="exit"
             transition={{
-              x: { type: 'spring', stiffness: 320, damping: 32 },
-              opacity: { duration: prefersReducedMotion ? 0.01 : 0.18 },
-              ...(prefersReducedMotion ? { x: { duration: 0.01 } } : {}),
+              duration: prefersReducedMotion ? 0.01 : 0.12,
+              ease: 'easeOut',
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
