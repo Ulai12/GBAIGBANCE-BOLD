@@ -73,7 +73,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
       setPerfData(data);
     } catch (error) {
-      setMetricsError(error instanceof Error ? error.message : t('events', 'organizerDashboard.metricsError'));
+      setMetricsError(error instanceof Error ? error.message : 'Impossible de charger les statistiques.');
     } finally {
       setMetricsLoading(false);
     }
@@ -145,12 +145,12 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
       const validTickets = ticketOptions.filter((tk) => tk.label.trim() && tk.quantity_total).map((tk) => ({ ticket_type: tk.ticket_type, label: tk.label, price: parseFloat(tk.price) || 0, quantity_total: parseInt(tk.quantity_total) || 100, description: tk.description || undefined }));
       const validCollabs = collaborators.map((c) => ({ user_id: c.user_id, role: c.role }));
       const createdByRole = user.role === 'artist' ? 'artist' : 'organizer';
-      const event = await createEventWithCollaborators({ title: form.title, description: form.description, category: form.category, location_name: form.location_name || t('events', 'organizerDashboard.locationToDefine'), city: form.city, starts_at: form.starts_at, price_min: parseFloat(form.price_min) || 0, cover_url: form.cover_url, capacity: form.capacity ? parseInt(form.capacity) : undefined, created_by_role: createdByRole }, validCollabs, validTickets, user.id);
-      if (!event) throw new Error(t('events', 'organizerDashboard.createFailed'));
-      onToast({ message: t('events', 'organizerDashboard.createSuccess'), type: 'success' }); setShowCreate(false);
+      const event = await createEventWithCollaborators({ title: form.title, description: form.description, category: form.category, location_name: form.location_name || 'Lieu à définir', city: form.city, starts_at: form.starts_at, price_min: parseFloat(form.price_min) || 0, cover_url: form.cover_url, capacity: form.capacity ? parseInt(form.capacity) : undefined, created_by_role: createdByRole }, validCollabs, validTickets, user.id);
+      if (!event) throw new Error('Échec de création');
+      onToast({ message: 'Événement créé !', type: 'success' }); setShowCreate(false);
       setForm({ title: '', description: '', category: 'concert', location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
       setTicketOptions([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]); setCollaborators([]); loadEvents(); loadMetrics();
-    } catch { onToast({ message: t('events', 'organizerDashboard.createError'), type: 'error' }); } finally { setCreating(false); }
+    } catch { onToast({ message: 'Erreur lors de la création', type: 'error' }); } finally { setCreating(false); }
   };
 
   const isArtist = user?.role === 'artist';
@@ -161,10 +161,10 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     try {
       if (deleteMode === 'cancel') {
         await cancelEvent(deleteTarget.id);
-        onToast({ message: t('events', 'organizerDashboard.cancelSuccess'), type: 'success' });
+        onToast({ message: 'Événement annulé.', type: 'success' });
       } else {
         await deleteEvent(deleteTarget.id);
-        onToast({ message: t('events', 'organizerDashboard.deleteSuccess'), type: 'success' });
+        onToast({ message: 'Événement supprimé.', type: 'success' });
       }
       window.dispatchEvent(new CustomEvent('gba-refresh-events'));
       setDeleteTarget(null);
@@ -182,11 +182,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     <div className="min-h-screen pb-32">
       <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-[#F7F5F0]/85 dark:bg-[#141216]/85 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <button onClick={onBack} className="text-sm text-gray-500 font-medium">{t('events', 'organizerDashboard.back')}</button>
-          <div className="text-center">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">{t('events', 'organizerDashboard.eyebrow')}</p>
-            <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? t('events', 'organizerDashboard.artistSpace') : t('events', 'organizerDashboard.dashboard')}</h1>
-          </div>
+          <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
+          <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -195,10 +192,10 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 setScannerOpen(true);
               }}
               className="h-9 px-3 rounded-full bg-gradient-to-r from-[#6600FF] to-[#8B5CF6] flex items-center gap-1.5 text-white shadow-purple active:scale-95 transition-all text-xs font-bold cursor-pointer"
-              title={t('events', 'organizerDashboard.scanner')}
+              title="Scanner de billets caméra"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>{t('events', 'organizerDashboard.scanner')}</span>
+              <span>Scanner</span>
             </button>
             <button
               type="button"
@@ -228,8 +225,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               <ScanLine className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">{t('events', 'organizerDashboard.scannerTitle')}</h3>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{t('events', 'organizerDashboard.scannerSubtitle')}</p>
+              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">Scanner de Billets (Caméra)</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Guichet d'accès en direct & contrôle hors-ligne</p>
             </div>
           </div>
           <button
@@ -241,7 +238,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             className="btn-purple py-2 px-3 text-xs shrink-0 flex items-center gap-1.5 shadow-purple active:scale-95 transition-all cursor-pointer"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>{t('events', 'organizerDashboard.openScanner')}</span>
+            <span>Ouvrir</span>
           </button>
         </div>
 
@@ -256,7 +253,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            {t('events', 'organizerDashboard.myEvents')} ({events.length})
+            Mes événements ({events.length})
           </button>
           <button
             type="button"
@@ -268,7 +265,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
             }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            {t('events', 'organizerDashboard.refunds')}
+            Remboursements
           </button>
         </div>
 
@@ -278,7 +275,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
           <>
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
-                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> {t('events', 'organizerDashboard.eventsList')}
+                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Liste des événements
               </h2>
               <span className="text-sm text-gray-500">{events.length}</span>
             </div>
@@ -297,9 +294,9 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
               </div>
             ) : events.length === 0 ? (
               <EmptyState
-                title={t('events', 'organizerDashboard.noEvents')}
-                description={t('events', 'organizerDashboard.noEventsDesc')}
-                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">{t('events', 'organizerDashboard.create')}</button>}
+                title="Aucun événement"
+                description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
+                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
               />
             ) : (
               <div className="space-y-3">
@@ -323,10 +320,10 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
                         <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
-                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">{t('events', 'organizerDashboard.cancelled')}</span>}
-                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">{t('events', 'organizerDashboard.pending')}</span>}
-                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">{t('events', 'organizerDashboard.suspended')}</span>}
-                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">{t('events', 'organizerDashboard.postponed')}</span>}
+                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
+                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
+                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">Suspendu</span>}
+                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">Reporté</span>}
                       </div>
                     </div>
                     <button
@@ -337,8 +334,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                         setScannerOpen(true);
                       }}
                       className="w-9 h-9 rounded-full flex items-center justify-center text-[#6600FF] bg-[#6600FF]/10 hover:bg-[#6600FF]/20 transition-all shrink-0 cursor-pointer"
-                      aria-label={t('events', 'organizerDashboard.scanEventTickets')}
-                      title={t('events', 'organizerDashboard.scanEventTickets')}
+                      aria-label="Scanner les billets de cet événement"
+                      title="Scanner les billets au guichet"
                     >
                       <ScanLine className="w-4 h-4" />
                     </button>
@@ -347,8 +344,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
                         className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
-                        aria-label={t('events', 'organizerDashboard.editEvent')}
-                        title={t('events', 'organizerDashboard.editEvent')}
+                        aria-label="Modifier l'événement"
+                        title="Modifier l'événement"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -356,8 +353,8 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 cursor-pointer"
-                      aria-label="Supprimer ou annuler"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 cursor-pointer"
+                      aria-label="Gérer la suppression"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -369,8 +366,194 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
         )}
       </div>
 
-      {/* The rest of the file including create modal and delete modal is preserved from original with localized strings */}
-      {/* Full content is the localized version as prepared */}
+      {/* Create Event Modal - simplified form */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Créer un événement">
+        <form onSubmit={handleCreate} className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Titre *</label>
+            <input
+              className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              placeholder="Nom de l'événement"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Description</label>
+            <textarea
+              className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium min-h-[80px]"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Description courte"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Catégorie</label>
+              <select
+                className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value as EventCategory })}
+              >
+                {EVENT_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{t('events', `categories.${c}`) || c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ville</label>
+              <input
+                className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Lieu</label>
+            <input
+              className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+              value={form.location_name}
+              onChange={(e) => setForm({ ...form, location_name: e.target.value })}
+              placeholder="Nom du lieu"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Date et heure *</label>
+            <input
+              type="datetime-local"
+              className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+              value={form.starts_at}
+              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Prix min (XOF)</label>
+              <input
+                type="number"
+                className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+                value={form.price_min}
+                onChange={(e) => setForm({ ...form, price_min: e.target.value })}
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Capacité</label>
+              <input
+                type="number"
+                className="w-full mt-1 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-white/10 border-0 text-sm font-medium"
+                value={form.capacity}
+                onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                min="0"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={creating}
+            className="w-full py-3.5 rounded-2xl bg-[#6600FF] text-white font-bold text-sm disabled:opacity-50"
+          >
+            {creating ? 'Création...' : 'Créer l\'événement'}
+          </button>
+        </form>
+      </Modal>
+
+      {/* Delete / Cancel Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Gérer l'événement">
+        <div className="space-y-4">
+          {deleteTarget && (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              <span className="font-bold text-[#1A1A2E] dark:text-white">{deleteTarget.title}</span>
+            </p>
+          )}
+          {!deleteInfo ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-8 h-8 rounded-full border-3 border-[#6600FF]/30 border-t-[#6600FF] animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
+                  <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.ticketsCount}</p>
+                  <p className="text-xs text-gray-500">Billets actifs</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
+                  <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.collaboratorsCount}</p>
+                  <p className="text-xs text-gray-500">Collaborateurs</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
+                  <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.ticketOptionsCount}</p>
+                  <p className="text-xs text-gray-500">Types de billets</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
+                  <p className="text-2xl font-extrabold text-[#1A1A2E] dark:text-white">{deleteInfo.likesCount}</p>
+                  <p className="text-xs text-gray-500">J'aime</p>
+                </div>
+              </div>
+              {deleteInfo.ticketsCount > 0 && (
+                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                  <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700 dark:text-blue-300">{deleteInfo.ticketsCount} participant(s) ont déjà un billet. L'annulation est recommandée.</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setDeleteMode('cancel')}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+                    deleteMode === 'cancel' ? 'border-amber-400 bg-amber-50 dark:bg-amber-500/10' : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <XCircle className={`w-5 h-5 ${deleteMode === 'cancel' ? 'text-amber-500' : 'text-gray-400'}`} />
+                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">Annuler l'événement</span>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-7">L'événement reste visible mais marqué comme annulé.</p>
+                </button>
+                <button
+                  onClick={() => setDeleteMode('delete')}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+                    deleteMode === 'delete' ? 'border-red-400 bg-red-50 dark:bg-red-500/10' : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Trash2 className={`w-5 h-5 ${deleteMode === 'delete' ? 'text-red-500' : 'text-gray-400'}`} />
+                    <span className="font-semibold text-[#1A1A2E] dark:text-white text-sm">Supprimer définitivement</span>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-7">Toutes les données seront effacées. Action irréversible.</p>
+                </button>
+              </div>
+              {deleteMode === 'delete' && deleteInfo.ticketsCount > 0 && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-500/10 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600 dark:text-red-300">Attention: {deleteInfo.ticketsCount} billet(s) actif(s) seront supprimés.</p>
+                </div>
+              )}
+              <button
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                className={`w-full py-4 rounded-2xl font-bold text-white transition-all disabled:opacity-50 ${
+                  deleteMode === 'cancel' ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+              >
+                {deleteLoading ? 'Traitement...' : deleteMode === 'cancel' ? "Annuler l'événement" : 'Supprimer définitivement'}
+              </button>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      <EventManagementModal event={manageTarget} onClose={() => setManageTarget(null)} onToast={onToast} />
+
+      <TicketScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        events={events}
+        initialEventId={scannerEventId}
+        onToast={onToast}
+      />
     </div>
   );
 }
