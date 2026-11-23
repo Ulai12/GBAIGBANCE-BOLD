@@ -44,7 +44,7 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
         <AnimatePresence initial={false} mode="popLayout">
           {(() => {
             const stackEvents: { event: Event; stackIndex: number }[] = [];
-            const maxVisible = Math.min(3, visibleEvents.length);
+            const maxVisible = Math.min(2, visibleEvents.length);
             for (let i = 0; i < maxVisible; i++) {
               const eventIndex = (activeIndex + i) % visibleEvents.length;
               const currentEvent = visibleEvents[eventIndex];
