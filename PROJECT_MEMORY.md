@@ -4,55 +4,55 @@ Mémoire de travail de GBAIGBANCE-BOLD. À lire en début de session, à mettre 
 
 ## Tâche active
 
-P2 UI/UX — Polish responsive mobile 320px (dock terminé ; catégories Explore déjà en scroll horizontal).
+P4 Performance — Optimisation CSS (glass mobile, transitions, containment) terminée.
 
 ## Objectifs
 
-- Rendre l'application bilingue FR/EN pour les parcours principaux sans impacter la logique ou l'apparence.
-- Améliorer la lisibilité et l'accessibilité de la navigation mobile et préserver le rendu des catégories.
+- Réduire le coût GPU du `backdrop-filter` sur mobile.
+- Éviter `transition: all` et les animations décoratives continues sur petits écrans.
+- Préparer des utilitaires `content-visibility` / `contain` pour les listes longues.
 
 ## Progression
 
 - Terminé :
-  - Contraste des labels inactifs du dock amélioré en dark mode (`dark:text-gray-300`), commit `124e2504`.
-  - Localisation TicketsScreen, ProfileScreen, EventDetailScreen, ExploreScreen, NotificationsScreen.
-  - Polish BottomNav 320px : padding réduit (`px-2` sous 360px), labels `10px`→`11px`, bouton Créer `40px`→`44px` (commit `b19ad435`).
-- En cours / restant :
-  - Confirmer le proxy Vercel `/api/ai/assistant/stream` après déploiement.
-  - Optionnel : revue visuelle catégories Explore sur 320px (déjà snap-x + min-h-11).
+  - CSS modularisé : `src/index.css` importe `theme-base`, `theme-components`, `theme-utilities`, `perf-mobile`.
+  - Blur glass réduit (défaut + caps ≤640px / ≤400px).
+  - Transitions chip/btn ciblées (plus de `transition: all`).
+  - Data-saver élargi (désactive blur + anim lourdes).
+  - Utilitaires `.gba-content-auto`, `.gba-contain-paint`, `.gba-gpu-layer`, `.gba-sticky-cta`.
+- Incident : troncature temporaire de `index.css` pendant le push — restauré via modules.
 
 ## Fichiers concernés
 
-- `src/components/BottomNav.tsx`
+- `src/index.css`
+- `src/styles/theme-base.css`
+- `src/styles/theme-components.css`
+- `src/styles/theme-utilities.css`
+- `src/styles/perf-mobile.css`
 - `PROJECT_MEMORY.md`
 
 ## Dernière action
 
-2026-11-23 — Polish responsive BottomNav pour largeurs ≤320–360px (grille 5 colonnes). Commit `b19ad435` sur main.
+2026-11-23 — Optimisation performances CSS + modularisation. Commits dont `61fa988e`.
 
 ## Prochaine étape
 
-1. Confirmer le proxy Vercel AI et le secret webhook paiements (actions propriétaire).
-2. Optionnel — localiser d'autres écrans ou polish fin catégories si besoin.
+1. Brancher `.gba-content-auto` sur listes EventCard / Explore (petit commit dédié).
+2. Confirmer proxy Vercel AI et secret webhook (propriétaire).
 
 ## Vérifications
 
-- Zones tactiles conservées ≥ 44px (min-h buttons).
-- Labels dock tronqués proprement, pas de débordement attendu en 5 cols sur 320px.
-- Safe-area-inset-bottom inchangé.
+- Fichiers styles présents sur main avec tailles non nulles.
+- Entry `index.css` réimporte les 4 modules.
 
 ## Backlog
 
-1. Confirmer le proxy Vercel AI et le secret webhook paiements.
-2. Optionnel — stream token-par-token côté edge (SSE natif).
-3. Localisation progressive d'autres écrans si nécessaire.
+1. Appliquer `gba-content-auto` aux listes de cartes.
+2. Confirmer le proxy Vercel AI et le secret webhook paiements.
+3. Optionnel — stream token-par-token côté edge.
 
 ## Historique
 
+- 2026-11-23 — Perf CSS (glass mobile + modularisation).
 - 2026-11-23 — Polish BottomNav 320px.
-- 2026-11-23 — Localisation complète NotificationsScreen.
-- 2026-11-23 — Localisation complète ExploreScreen (participants + labels).
-- 2026-11-22 — Restauration EventDetailScreen + localisation ExploreScreen (partielle).
-- 2026-11-21 — Localisation complète EventDetailScreen.
-- 2026-11-18 — Localisation ProfileScreen et TicketsScreen.
-- 2026-11-17 — Contraste labels dock mobile amélioré.
+- 2026-11-23 — Localisation NotificationsScreen + ExploreScreen.
