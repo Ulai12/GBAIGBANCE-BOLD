@@ -117,3 +117,11 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Aucun changement dans « Explorer par catégorie », backend/API, données métier, dépendances ou lockfiles.
 - Commits successifs sur `FRONTEND-iA` : `a6ab1efe` (utilitaire), `1ea7dd13` (À la une), `8846adbf` (Tendances), `aaf1c131` (priorité image active).
 - Validation restante : build Vercel, typecheck/lint, QA tactile iPhone, vérification visuelle du sens du glissement et mesure INP/frame-time. Aucune de ces validations n'est déclarée réussie à ce stade.
+
+
+## 2026-11-23 — Ajustement 3D de la carte « À la une »
+- Clarification utilisateur : le déplacement doit concerner la carte entière (image, conteneur, contenu, contrôles et ombre), pas uniquement les éléments internes ; référence esthétique = carte 3D de « Tendances », sans pile de cartes.
+- `FeaturedCarousel.tsx` : la carte complète reste dans un unique `motion.div` qui porte l'image et tous les éléments. Ajout d'une scène avec perspective 3D, rotation Y subtile, réduction d'échelle légère et ombre portée pendant le remplacement horizontal. La carte sort entièrement du cadre, la suivante entre depuis l'autre côté ; pas de seconde carte empilée. Conteneur de scène ne découpe plus le mouvement ; la carte garde ses propres coins arrondis et son overflow.
+- Durée 320 ms, mouvement directionnel avec ressort/easing court ; chargement d'image toujours indépendant du switch. Respect du réglage de réduction des animations.
+- Commit : `9a7fe9d8` sur `FRONTEND-iA`.
+- Validation restante : build et contrôle visuel mobile ; vérifier que la perspective et les ombres ne sont pas rognées dans Safari iOS.
