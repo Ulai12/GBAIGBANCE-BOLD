@@ -133,8 +133,9 @@ function writeStoredSet(key: string, set: Set<string>): void {
 }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const { user } = useApp();
+  const { user, session, isSessionResolving } = useApp();
   const userId = user?.id || null;
+  const authenticatedUserId = session?.user?.id || null;
 
   const [likedEventIds, setLikedEventIds] = useState<Set<string>>(() =>
     readStoredSet(getFavoritesStorageKey('likes', userId))
@@ -165,7 +166,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   // Fonction de re-synchronisation complète et robuste depuis Supabase
   const refreshAllFavoritesFromSupabase = useCallback(async () => {
-    if (!userId || !isSupabaseConfigured) return;
+    if (!userId || !isSupabaseConfigured || isSessionResolving || authenticatedUserId !== userId) return;
     const likesKey = getFavoritesStorageKey('likes', userId);
     const artistsKey = getFavoritesStorageKey('artists', userId);
     const orgsKey = getFavoritesStorageKey('orgs', userId);
@@ -202,7 +203,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     } catch {
       // Conserver le cache local
     }
-  }, [userId]);
+  }, [userId, authenticatedUserId, isSessionResolving]);
 
   // Synchronisation inter-onglets via BroadcastChannel et Storage events
   useEffect(() => {
@@ -274,7 +275,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [userId, refreshAllFavoritesFromSupabase]);
+  }, [userId, authenticatedUserId, isSessionResolving, refreshAllFavoritesFromSupabase]);
 
   // Update in-memory state when switching between guest and authenticated users
   useEffect(() => {
@@ -298,7 +299,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     setFollowedOrgIds(readStoredSet(orgsKey));
     setFollowedUserIds(readStoredSet(usersKey));
 
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || isSessionResolving || authenticatedUserId !== userId) return;
 
     // Initial fetch from Supabase
     refreshAllFavoritesFromSupabase();
@@ -436,6 +437,24 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const toggleLike = useCallback(
     (eventId: string): Promise<boolean> => {
+      // Le profil local en cache ne suffit pas : attendre le vrai JWT avant le like serveur.
+      if (isSessionResolving) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-optimistic-rollback', {
+            detail: { type: 'favorite', id: eventId, message: 'Connexion en cours. Réessayez dans un instant.' },
+          }));
+        }
+        return Promise.resolve(false);
+      }
+      if (isSupabaseConfigured && userId && authenticatedUserId !== userId) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gba-optimistic-rollback', {
+            detail: { type: 'favorite', id: eventId, message: 'Votre session est absente ou expirée. Reconnectez-vous pour gérer vos favoris.' },
+          }));
+        }
+        return Promise.resolve(false);
+      }
+
       const willBeLiked = !likedEventIds.has(eventId);
       const likesKey = getFavoritesStorageKey('likes', userId);
 
@@ -491,7 +510,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
       return Promise.resolve(willBeLiked);
     },
-    [likedEventIds, userId]
+    [likedEventIds, userId, authenticatedUserId, isSessionResolving]
   );
 
   const isFollowingArtist = useCallback(
