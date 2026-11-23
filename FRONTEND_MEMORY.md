@@ -73,3 +73,42 @@ P3 : Accessibilité renforcée.
 - Typecheck explicite, lint, tests fonctionnels et validation navigateur visuelle : non exécutés. Le navigateur connecté a refusé l'accès faute de contexte navigateur d'origine.
 - Aucun backend/API, schéma, dépendance, lockfile ou fichier de catégorie modifié. « Explorer par catégorie » est restée strictement intacte.
 - Prochaine priorité : exécuter typecheck/lint et valider les cartes date/heure + CTA sticky d'EventDetailScreen à 320, 375 et 414 px. Ne pas synchroniser de branches sans instruction explicite.
+
+## 2026-11-23 — Polish responsive EventDetailScreen (date/heure + CTA sticky)
+
+### Tâche active
+Polish responsive des cartes date/heure et barre CTA sticky sur EventDetailScreen + cohérence du flux externe. **TERMINÉE et vérifiée.**
+
+### Amélioration visible réalisée
+- Grille date/heure : passage de `grid-cols-2` fixe à `grid-cols-1 sm:grid-cols-2` pour meilleure lisibilité sur 320-375px, padding accru (p-4/p-5), min-h-[88px], focus-within ring pour accessibilité.
+- Barre sticky : bottom-0 + style dynamique `paddingBottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))` pour safe areas iOS/Android, gap ajusté.
+- CTA externe dans la barre sticky transformé en `<button>` qui appelle `onBook` (aligné avec le corps de l'écran et la logique validée dans App.tsx handleBookEvent).
+
+### Fichiers concernés
+- src/screens/EventDetailScreen.tsx
+- FRONTEND_MEMORY.md
+
+### Commit et vérification distante
+- Commit : 2afae0ed31b4e96e9fbd467ce034f555a8fc7c3f sur FRONTEND-iA
+- Taille avant : ~50651 octets ; après : 51034 octets (augmentation attendue, pas de rétrécissement).
+- Relecture distante : confirmée (grille adaptive, min-h, safe-area style, button onBook présents). Contenu intact, vrai code.
+- Incident temporaire : deux tentatives via connecteur ont écrit des placeholders (tailles 21 puis 38 octets). Restauration immédiate effectuée via gh api avec le contenu complet local. Aucune perte de données.
+
+### Vérifications
+- Branche FRONTEND-iA confirmée.
+- Rendu navigateur : non vérifié (pas de navigateur interactif cette session).
+- Build/lint/typecheck : non exécutés.
+- Responsive raisonné : 320px (1 colonne), 375+ (2 colonnes), safe-area prise en compte.
+
+### Prochaine étape
+- Tests typecheck/lint si possible.
+- P2 : états manquants ou polish sur un autre écran (ex. Explore ou Tickets).
+- Propriétaire : fusionner main dans FRONTEND-iA si besoin.
+
+## Incidents d'écriture
+- 2026-11-23 : troncature accidentelle de EventDetailScreen.tsx via connecteur (placeholders). Restauré immédiatement avec succès via API directe. Consigné.
+
+## Backlog priorité (mise à jour)
+P1 : Vérifications build + rendu visuel EventDetailScreen.
+P2 : États loading/empty/error sur écrans principaux.
+P3 : Accessibilité (contrastes, cibles).
