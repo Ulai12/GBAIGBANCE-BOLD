@@ -10,40 +10,21 @@
 - Branche : `FRONTEND-iA`
 - Stack : React 18, TypeScript, Vite, Tailwind, Supabase `lwwiolbofrqakvrdvbbj`.
 
-## Tâche active (23 novembre 2026) — BLOQUÉE P0
-**Restauration `src/locales/fr/events.json` et `src/locales/en/events.json`**
+## Tâche active (23 novembre 2026) — RÉSOLUE P0
+**Restauration `src/locales/fr/events.json` et `src/locales/en/events.json` COMPLÉTÉE**
 
-### État critique
-- Les deux fichiers sont **vides ou partiels** (incident PLACEHOLDER puis push vide, puis restore partiel FR ~17 ko au lieu de ~42 ko).
-- Commit sain de référence : **`8ce468fdf13e794d781188a05d3924f8e8ab0ac2`**
-- Contenu sain disponible aussi en local agent : tailles FR 42190 / EN 37952 octets.
+### État
+- Fichiers restaurés depuis commit sain `8ce468fdf13e794d781188a05d3924f8e8ab0ac2`.
+- Tailles distantes confirmées : FR 42191 octets, EN 37953 octets.
+- Commits de restauration : 0ba2c844 (FR), 387eb3e3 (EN).
 
-### Action REQUISE (propriétaire ou agent avec git local)
-```bash
-git fetch origin
-git checkout FRONTEND-iA
-git checkout 8ce468fdf13e794d781188a05d3924f8e8ab0ac2 -- src/locales/fr/events.json src/locales/en/events.json
-git status  # vérifier tailles ~42k / ~38k
-git commit -m "fix(P0): restore fr/en events.json from healthy 8ce468fd"
-git push origin FRONTEND-iA
-```
-
-### Ne pas continuer
-- Ne pas ajouter de clés organizerDashboard tant que les JSON complets ne sont pas restaurés.
-- Ne pas pousser de contenu partiel.
-
-### Déjà fait cette session
-- OrganizerDashboardScreen.tsx restauré (`e4e30a08`) — logique complète OK.
-- FRONTEND_MEMORY mis à jour.
-
-### Prochaine étape après restore events.json
-- Vérifier tailles distantes FR≈42k EN≈38k.
-- Puis localisation progressive OrganizerDashboard par **petits commits**.
+### Prochaine étape
+- Localisation progressive OrganizerDashboardScreen par petits commits.
+- Merger les localisations récentes de main si nécessaire.
 
 ## Incidents
-- 2026-11-23 : events.json → PLACEHOLDER puis size 0 (commit 50da5d77) puis FR partiel 17k (a3c74da8). **Non résolu par connecteur (limite taille payload).**
+- 2026-11-23 : events.json tronqués/PLACEHOLDER. Résolu par restauration API directe.
 
 ## Backlog
-P0 : Restaurer events.json FR/EN complets (commande ci-dessus).
 P1 : i18n OrganizerDashboard (petits commits).
 P2 : États loading/empty.
