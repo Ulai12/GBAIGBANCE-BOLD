@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
@@ -16,7 +16,6 @@ import {
 } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
-import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
 import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
@@ -43,6 +42,12 @@ import {
 } from '@/utils/geo';
 import type { Event, Artist, Organization } from '@/types';
 import type { LucideIcon } from 'lucide-react';
+
+const GbaigbanceStatsDashboard = lazy(() =>
+  import('@/components/GbaigbanceStatsDashboard').then((module) => ({
+    default: module.GbaigbanceStatsDashboard,
+  }))
+);
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
@@ -316,13 +321,6 @@ export function HomeScreen({
     window.addEventListener('gba-event-updated', handleSyncTrigger);
     window.addEventListener('gba-ticket-booked', handleSyncTrigger);
 
-    // Auto-polling de secours toutes les 60 secondes (les mises à jour en direct sont gérées par Supabase Realtime)
-    const periodicSync = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        refreshHomeData(true);
-      }
-    }, 60000);
-
     // Ticker silencieux pour purger les événements terminés (vérification propre toutes les 60 secondes sans re-renders inutiles)
     const pruneTicker = setInterval(() => {
       setFeatured((prev) => {
@@ -351,7 +349,6 @@ export function HomeScreen({
       window.removeEventListener('gba-event-created', handleSyncTrigger);
       window.removeEventListener('gba-event-updated', handleSyncTrigger);
       window.removeEventListener('gba-ticket-booked', handleSyncTrigger);
-      clearInterval(periodicSync);
       clearInterval(pruneTicker);
     };
   }, [refreshHomeData]);
@@ -1084,9 +1081,13 @@ export function HomeScreen({
               Statistiques globales de la plateforme · En Direct
             </p>
           </div>
-        <GbaigbanceStatsDashboard
-          platformStats={platformStats || undefined}
-        />
+        <Suspense
+          fallback={
+            <div className="min-h-64 rounded-3xl bg-white/70 dark:bg-white/5 animate-pulse" aria-label="Chargement des statistiques" />
+          }
+        >
+          <GbaigbanceStatsDashboard platformStats={platformStats || undefined} />
+        </Suspense>
       </section>
 
       {/* DEDICATED SEE MORE FULL SCREEN VIEW / MODAL */}

@@ -9,11 +9,6 @@ import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
 import { EdgeSwipeBack } from '@/components/EdgeSwipeBack';
-import { HomeScreen } from '@/screens/HomeScreen';
-import { ExploreScreen } from '@/screens/ExploreScreen';
-import { TicketsScreen } from '@/screens/TicketsScreen';
-import { FavoritesScreen } from '@/screens/FavoritesScreen';
-import { ProfileScreen } from '@/screens/ProfileScreen';
 import { AIAssistantModal } from '@/components/AIAssistantModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { AppLoadingScreen } from '@/components/Skeleton';
@@ -31,6 +26,12 @@ import {
 } from '@/navigation/RouteWrappers';
 import type { Event, Artist, Organization } from '@/types';
 
+const HomeScreen = lazy(() => import('@/screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
+const ExploreScreen = lazy(() => import('@/screens/ExploreScreen').then((module) => ({ default: module.ExploreScreen })));
+const TicketsScreen = lazy(() => import('@/screens/TicketsScreen').then((module) => ({ default: module.TicketsScreen })));
+const FavoritesScreen = lazy(() => import('@/screens/FavoritesScreen').then((module) => ({ default: module.FavoritesScreen })));
+const ProfileScreen = lazy(() => import('@/screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
+
 const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then((module) => ({ default: module.OnboardingScreen })));
 const AuthScreen = lazy(() => import('@/screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
 const ForgotPasswordScreen = lazy(() => import('@/screens/ForgotPasswordScreen').then((module) => ({ default: module.ForgotPasswordScreen })));
@@ -45,6 +46,17 @@ const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((m
 const GlassSpike = lazy(() => import('@/components/glass/GlassSpike'));
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
+
+function TabLoadingFallback() {
+  return (
+    <div className="min-h-[65vh] flex items-center justify-center" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 text-sm font-semibold text-gray-500 dark:text-zinc-400">
+        <span className="h-5 w-5 rounded-full border-2 border-[#6600FF]/20 border-t-[#6600FF] animate-spin motion-reduce:animate-none" />
+        Chargement de l’écran…
+      </div>
+    </div>
+  );
+}
 
 function OtpRoute() {
   const navigate = useNavigate();
@@ -149,6 +161,23 @@ function AppContent() {
     if (path === '/profile') return 'profile';
     return 'home';
   })();
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const initialTab: Tab =
+      path === '/explore' || path === '/tickets' || path === '/favorites' || path === '/profile'
+        ? path.slice(1) as Tab
+        : 'home';
+    return new Set([initialTab]);
+  });
+
+  useEffect(() => {
+    setVisitedTabs((visited) => {
+      if (visited.has(activeTab)) return visited;
+      const next = new Set(visited);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   const isTabScreen = ['/', '/home', '/explore', '/tickets', '/favorites', '/profile'].includes(location.pathname);
   const navigationType = useNavigationType();
@@ -425,56 +454,76 @@ function AppContent() {
       <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
         {isTabScreen ? (
           <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-w-7xl mx-auto">
-            <div className={activeTab === 'home' ? 'block' : 'hidden'}>
-              <HomeScreen
-                onEventClick={handleEventClick}
-                onBookEvent={handleBookEvent}
-                onSearchClick={() => navigate('/explore')}
-                onOpenNotifications={() => navigate('/notifications')}
-                onProfileClick={() => navigate('/profile')}
-                onArtistClick={handleArtistClick}
-                onOrganizationClick={handleOrganizationClick}
-                onOpenAIAssistant={() => setAiAssistantOpen(true)}
-                onOpenAISettings={() => navigate('/ai-settings')}
-                onOpenSettings={() => setSettingsModalOpen(true)}
-                onToast={addToast}
-              />
-            </div>
-            <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
-              <ExploreScreen
-                onEventClick={handleEventClick}
-                onUserClick={(u) => navigate(`/users/${u.id}`)}
-              />
-            </div>
-            <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
-              <TicketsScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onToast={addToast}
-              />
-            </div>
-            <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
-              <FavoritesScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onArtistClick={handleArtistClick}
-                onOrganizationClick={handleOrganizationClick}
-                onUserClick={(profile) => navigate(`/users/${profile.id}`, { state: { profile } })}
-              />
-            </div>
-            <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
-              <ProfileScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onOrganizerDashboard={() => navigate('/organizer/dashboard')}
-                onOpenNotifications={() => navigate('/notifications')}
-                onOpenNotificationSettings={() => navigate('/notifications/settings')}
-                onOpenSubscriptions={(tab) => navigate(tab ? `/subscriptions?tab=${tab}` : '/subscriptions')}
-                onOpenTickets={() => navigate('/tickets')}
-                onOpenAISettings={() => navigate('/ai-settings')}
-                onToast={addToast}
-              />
-            </div>
+            {(visitedTabs.has('home') || activeTab === 'home') && (
+              <div className={activeTab === 'home' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <HomeScreen
+                    onEventClick={handleEventClick}
+                    onBookEvent={handleBookEvent}
+                    onSearchClick={() => navigate('/explore')}
+                    onOpenNotifications={() => navigate('/notifications')}
+                    onProfileClick={() => navigate('/profile')}
+                    onArtistClick={handleArtistClick}
+                    onOrganizationClick={handleOrganizationClick}
+                    onOpenAIAssistant={() => setAiAssistantOpen(true)}
+                    onOpenAISettings={() => navigate('/ai-settings')}
+                    onOpenSettings={() => setSettingsModalOpen(true)}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('explore') || activeTab === 'explore') && (
+              <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <ExploreScreen
+                    onEventClick={handleEventClick}
+                    onUserClick={(u) => navigate(`/users/${u.id}`)}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('tickets') || activeTab === 'tickets') && (
+              <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <TicketsScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('favorites') || activeTab === 'favorites') && (
+              <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <FavoritesScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onArtistClick={handleArtistClick}
+                    onOrganizationClick={handleOrganizationClick}
+                    onUserClick={(profile) => navigate(`/users/${profile.id}`, { state: { profile } })}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('profile') || activeTab === 'profile') && (
+              <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <ProfileScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onOrganizerDashboard={() => navigate('/organizer/dashboard')}
+                    onOpenNotifications={() => navigate('/notifications')}
+                    onOpenNotificationSettings={() => navigate('/notifications/settings')}
+                    onOpenSubscriptions={(tab) => navigate(tab ? `/subscriptions?tab=${tab}` : '/subscriptions')}
+                    onOpenTickets={() => navigate('/tickets')}
+                    onOpenAISettings={() => navigate('/ai-settings')}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
           </div>
         ) : (
           <Routes>

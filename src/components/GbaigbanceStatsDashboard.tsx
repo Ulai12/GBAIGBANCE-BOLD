@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Ticket,
   Users,
@@ -9,7 +9,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
-import { subscribeToPlatformStatsLive, fetchPlatformStats, type PlatformStats } from '@/services/events';
+import type { PlatformStats } from '@/services/events';
 import { coreTimeline, type TimelineBucket } from '@/lib/rust-core';
 import { useApp } from '@/hooks/useApp';
 
@@ -41,7 +41,6 @@ export function GbaigbanceStatsDashboard({
     useState<string | null>(null);
   const [platformStats, setPlatformStats] = useState(initialPlatformStats);
   const [timelineBuckets, setTimelineBuckets] = useState<TimelineBucket[] | null>(null);
-  const syncSeq = useRef(0);
 
   useEffect(() => {
     setHoveredIndex(null);
@@ -59,29 +58,6 @@ export function GbaigbanceStatsDashboard({
       setPlatformStats(initialPlatformStats);
     }
   }, [initialPlatformStats]);
-
-  // Une réponse lente ne doit pas écraser une synchro plus récente.
-  useEffect(() => {
-    const handleStatsUpdate = () => {
-      const seq = ++syncSeq.current;
-      fetchPlatformStats().then((data) => {
-        if (seq !== syncSeq.current || !data) return;
-        setPlatformStats(data);
-        }).catch(() => {});
-    };
-
-    const unsubscribe = subscribeToPlatformStatsLive(handleStatsUpdate);
-    window.addEventListener('gba-ticket-booked', handleStatsUpdate);
-    window.addEventListener('gba-event-created', handleStatsUpdate);
-    window.addEventListener('gba-refresh-events', handleStatsUpdate);
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-      window.removeEventListener('gba-ticket-booked', handleStatsUpdate);
-      window.removeEventListener('gba-event-created', handleStatsUpdate);
-      window.removeEventListener('gba-refresh-events', handleStatsUpdate);
-    };
-  }, []);
 
   // Totaux réels de la plateforme (100% dynamiques et vérifiés)
   const totals = useMemo(() => {
