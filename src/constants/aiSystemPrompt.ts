@@ -1,6 +1,6 @@
 /**
  * GBAIGBANCE — Directives du Système Assistant Concierge IA
- * 
+ *
  * Constante partagée du system prompt garantissant la stricte délimitation
  * de données et la véracité absolue (cf. AGENTS.md).
  */
