@@ -497,7 +497,7 @@ export function EventDetailScreen({
 
   return (
     <div className="min-h-screen relative overflow-x-hidden bg-[#f7f5f0] dark:bg-[#141216] text-[#242126] dark:text-white antialiased selection:bg-[#6600FF]/20">
-      {/* 
+      {/*
         AMBIENT BACKGROUND (Statique, très flouté, optimisé mobile)
         Fournit la radiance colorimétrique de l'affiche sans saccade matérielle.
       */}
@@ -512,7 +512,7 @@ export function EventDetailScreen({
         <div className="absolute inset-0 bg-[#f7f5f0]/90 dark:bg-[#141216]/94" />
       </div>
 
-      {/* 
+      {/*
         EN-TÊTE COMPACT AU SCROLL (Fond de verre ultra-opaque pour zéro chevauchement)
         N'apparaît que quand le hero défile hors champ (scrollY > 260px).
       */}
@@ -578,7 +578,7 @@ export function EventDetailScreen({
         </div>
       </header>
 
-      {/* 
+      {/*
         HERO VISUEL PROGRESSIF (Flou multi-strates & boutons circulaires 44px)
       */}
       <ProgressiveBlurHero
@@ -599,7 +599,7 @@ export function EventDetailScreen({
         onOpenManage={() => setShowManage(true)}
       />
 
-      {/* 
+      {/*
         FEUILLE DE CONTENU (Bottom Sheet en Verre Liquid Glass)
         Positionnée avec un léger décalage (-mt-4 sm:-mt-6) pour préserver l'affiche de couverture intacte.
         Padding-bottom de sécurité généreux (pb-44) pour dégager complètement la barre flottante.
@@ -630,7 +630,7 @@ export function EventDetailScreen({
 
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="min-w-0 space-y-5">
-          {/* 
+          {/*
             COMPTE À REBOURS ÉLÉGANT (4 tuiles en verre sombre)
           */}
           <EventCountdown
@@ -642,7 +642,7 @@ export function EventDetailScreen({
             isValid={countdown.isValid}
           />
 
-          {/* 
+          {/*
             GRILLE 2 COLONNES DATE + HEURE (Haute lisibilité, zéro chevauchement)
           */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
@@ -687,7 +687,7 @@ export function EventDetailScreen({
             </div>
           </div>
 
-          {/* 
+          {/*
             CARTE LIEU & MINI-CARTE LAZY INTERSECTIONOBSERVER
           */}
           <div className="p-4 sm:p-5 rounded-[24px] glass-ios space-y-2 shadow-2xs">
@@ -715,7 +715,7 @@ export function EventDetailScreen({
             />
           </div>
 
-          {/* 
+          {/*
             CONSEILLER IA DE L'ÉVÉNEMENT (Gemini)
           */}
           <EventAIInsights
@@ -723,7 +723,7 @@ export function EventDetailScreen({
             onOpenSettings={onOpenAISettings || (() => {})}
           />
 
-          {/* 
+          {/*
             PASS & BILLETS OU MODALITÉ D'ACCÈS SPÉCIALE (WhatsApp / Externe / Gratuit)
           */}
           {displayEvent.access_type === 'whatsapp' ? (
@@ -840,7 +840,7 @@ export function EventDetailScreen({
             />
           )}
 
-          {/* 
+          {/*
             MÉDIAS, TEASER VIDÉO & GALERIE PHOTO
           */}
           {(videoInfo || galleryImages.length > 1) && (
@@ -896,7 +896,7 @@ export function EventDetailScreen({
             </div>
           )}
 
-          {/* 
+          {/*
             DESCRIPTION / À PROPOS (Gestion soignée des descriptions longues avec dégradé fondu)
           */}
           <div className="pt-2 space-y-2.5">
@@ -945,7 +945,7 @@ export function EventDetailScreen({
             )}
           </div>
 
-          {/* 
+          {/*
             ARTISTES INVITÉS / LINEUP
           */}
           {artists.length > 0 && (
@@ -977,7 +977,7 @@ export function EventDetailScreen({
             </div>
           )}
 
-          {/* 
+          {/*
             ORGANISATEUR
           */}
           {fullEvent?.organizer && (
@@ -1007,7 +1007,7 @@ export function EventDetailScreen({
             </div>
           )}
 
-          {/* 
+          {/*
             COLLABORATEURS & PARTENAIRES
           */}
           {collaborators.length > 0 && (
@@ -1043,7 +1043,7 @@ export function EventDetailScreen({
 
             </div>
 
-          {/* 
+          {/*
             PARTICIPANTS RÉELS AVEC AMIS EN PRIORITÉ & VUES INTÉGRÉES
           */}
           <EventAttendeesSection
@@ -1057,7 +1057,7 @@ export function EventDetailScreen({
           </div>
         </section>
 
-        {/* 
+        {/*
           SECTIONS AUXILIAIRES : Programme, Liens Live, Sponsors & Onglets Communauté
         */}
         <div className="space-y-4">
@@ -1068,12 +1068,12 @@ export function EventDetailScreen({
         </div>
       </main>
 
-      {/* 
+      {/*
         CAPSULE DE VERRE FLOTTANTE D'ACHAT OU DE RÉSERVATION (Barre inférieure fixe décollée des bords)
         Positionnée avec marge basse et safe-area. Le padding-bottom du contenu (pb-44)
         garantit qu'aucun élément ne sera masqué derrière elle !
       */}
-      <div 
+      <div
         className="fixed bottom-0 inset-x-0 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto z-40 p-3.5 sm:p-4 glass-floating-bar flex items-center justify-between gap-3 sm:gap-4 shadow-2xl"
         style={{ paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))' }}
       >
