@@ -98,3 +98,12 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Commit : `4355550078511de9cb3769065a398e7e10435a3d` sur `FRONTEND-iA`.
 - Aucun changement sur « Explorer par catégorie », les données, favoris, réservation, backend/API, dépendances ou lockfiles.
 - Relecture distante après commit effectuée. Build Vite, typecheck, lint, Preview READY et mesure INP/frame-time non exécutés dans cette passe; test réel sur iPhone à faire. Ne pas déclarer la performance mesurée ou confirmée sans profilage.
+
+
+## 2026-11-23 — « À la une » : switch non bloquant et préchargement léger
+- Retour utilisateur : le switch devait être beaucoup plus rapide ; le chargement des images ne doit pas bloquer le changement de slide.
+- `FeaturedCarousel.tsx` : transitions du contenu ramenées à 120 ms (0.01 s si réduction des animations), sans translation horizontale longue. Le changement d'index ne dépend d'aucune promesse réseau/décodage.
+- Préchargement en arrière-plan des couvertures immédiatement précédente et suivante via `Image`, `srcset` responsive construit avec `buildResponsiveImageSources`, `decoding=async` et `fetchPriority=low`. Le cache navigateur peut réutiliser la ressource au switch. Le préchargement est suspendu quand le document est masqué et tient compte du mode économiseur de données ; il ne précharge pas toute la liste.
+- Le layout historique restauré (16:10 mobile) reste inchangé.
+- Commit : `5c7d33de5d334d45cbf882c0601c89a53176793d` sur `FRONTEND-iA`.
+- Vérification statique distante : switch non bloquant, priorité basse, durée courte, responsive/data saver et ratio historique présents. Build/typecheck/lint, mesures INP et QA iPhone non encore exécutés.
