@@ -4,33 +4,35 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Revue progressive des grants SECURITY DEFINER : révocation EXECUTE de anon sur les fonctions qui exigent une authentification ou sont internes.
+Correction des favoris (toggle_event_like + cohérence likes_count).
 
 ## Objectif
-Réduire la surface d'exposition RPC pour les fonctions SECURITY DEFINER non destinées aux utilisateurs anonymes. Les fonctions vérifient déjà auth.uid(), mais l'appel anonyme est inutile et génère des warnings advisors.
+Rendre le like/favori fiable : compteur basé sur la table source `event_likes`, pas de double-comptage, pas d'écrasement des compteurs seed des démos.
 
 ## Progression
-- Migration 20261123120000 appliquée en base (apply_migration success) et versionnée sur FRONTEND-iA.
-- REVOKE EXECUTE FROM anon sur ~22 fonctions (book_ticket, initiate_ticket_payment, toggles, refunds, create_notification, rls_auto_enable, etc.).
-- Conservées pour anon : get_platform_stats, increment_event_views, record_event_view (usage public légitime).
-- Advisors security : le nombre de anon_security_definer_function_executable a baissé.
+- Diagnostic : ancienne RPC avait une condition `NOT EXISTS` après INSERT qui empêchait le +1 ; un recount partiel suivait. Données seed démo : likes_count affiché ≠ 0 lignes réelles (volontaire marketing).
+- Migration 20261123130000 appliquée et versionnée.
+- Nouvelle logique : DELETE ou INSERT ON CONFLICT DO NOTHING, puis COUNT(*) comme source de vérité ; UPDATE likes_count seulement si `is_demo = false`.
+- GRANT authenticated + service_role ; REVOKE anon (déjà en place).
+- Client existant (`toggleEventLike` → RPC, FavoritesContext optimiste) inchangé côté front.
 
 ## Fichiers concernés
-- supabase/migrations/20261123120000_revoke_anon_execute_on_auth_required_functions.sql
+- supabase/migrations/20261123130000_fix_toggle_event_like_and_likes_count.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-23 — Application migration revoke anon EXECUTE + versionnement. Mémoire mise à jour.
+2026-11-23 — Fix toggle_event_like + versionnement. Mémoire mise à jour.
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
-- Continuer revue authenticated grants si nécessaire (beaucoup sont intentionnels).
+- Tester un like réel sur un événement non-démo (likes_count doit suivre).
 
 ## Vérifications
-- Migration enregistrée et fichier distant présent (taille ~2.2ko). OK.
+- Fonction distante = nouvelle définition. OK.
+- Fichier migration distant présent (~1.9 ko). OK.
 - Aucune troncature cette session.
-- Les fonctions conservent leurs checks auth.uid() internes.
+- Table event_likes : PK (event_id, user_id), RLS select public / insert-delete own.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -49,11 +51,13 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 
 ## Liaisons front/back
 - OK : initiate_ticket_payment / confirm_ticket_payment / webhook, purchase_tickets_multi, claim_ticket_by_token, refunds, presence badges, get_event_attendees, comment_reactions, event lifecycle columns.
+- OK favoris : toggle_event_like (RPC corrigée), FavoritesContext + realtime event_likes.
 - Restaurées : set_event_status (setEventStatus), validate_ticket_qr (validateTicketQr).
 - Client : payment.ts, tickets service branchés.
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261123130000_fix_toggle_event_like_and_likes_count (appliquée 2026-11-23)
 - 20261123120000_revoke_anon_execute_on_auth_required_functions (appliquée 2026-11-23)
 - 20261123010000_fix_event_view_daily_rls_and_duplicate_index (appliquée 2026-11-23)
 - 20261119010000_optimize_rls_remaining_tables (appliquée 2026-11-21)
@@ -61,19 +65,20 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - 20261119100000_restore_event_status_and_qr_validation_rpcs
 - 20261118143000_drop_example_and_optimize_rls_critical
 - 20261118120000_add_remaining_fk_indexes
-- Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon partiel.
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 - Configurer PAYMENT_WEBHOOK_SECRET dans le dashboard Supabase.
 - Confirmer le proxy Vercel AI en production.
 - Tester flux complet initiate/confirm/webhook en staging.
 - Tester validation QR et changement de statut événement en staging.
+- Tester un like sur un événement réel (non démo) et vérifier likes_count.
 
 ## Dette backend
 - Nombreux SECURITY DEFINER callable par authenticated — revue progressive des grants (beaucoup sont nécessaires).
 - Extension pg_net in public.
 - Quelques multiple permissive policies (event_comments, event_questions, etc.).
 - Indexes unused (info, normal en faible trafic).
+- likes_count des événements is_demo = valeurs seed (volontaire, non synchronisées avec event_likes).
 
 ## Incidents
 - Troncature BACKEND_MEMORY.md à PLACEHOLDER3 (détectée et restaurée session précédente).
@@ -85,6 +90,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Revue grants SECURITY DEFINER authenticated.
 
 ## Historique
+- 2026-11-23 : Fix toggle_event_like (compteur fiable, protection is_demo).
 - 2026-11-23 : Revoke EXECUTE anon sur fonctions auth-required (batch ~22).
 - 2026-11-23 : Policy RLS event_view_daily + drop index dupliqué tickets.
 - 2026-11-21 : Optimisation RLS auth initplan complétée (50 → 0).
@@ -98,25 +104,16 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Branche unique FRONTEND-iA.
 - Ne pas toucher aux fichiers visuels ni FRONTEND_MEMORY.md.
 - Paiements : secret webhook requis pour confirmer billets.
-- Localisation TicketsScreen et ProfileScreen faites côté frontend, liaisons intactes.
-- RPCs set_event_status et validate_ticket_qr maintenant présentes.
+- Favoris : RPC toggle_event_like corrigée ; le front (FavoritesContext) reste inchangé.
+- RPCs set_event_status et validate_ticket_qr présentes.
 - Indexes FK complétés.
-- RLS auth initplan optimisée sur toutes les tables exposées.
-- event_view_daily : policy service_role en place (table interne).
+- RLS auth initplan optimisée.
+- event_view_daily : policy service_role en place.
 - EXECUTE anon révoqué sur les RPCs qui exigent auth.uid().
 
 ## Taches À faire
-- [Automatisation frontend / main] EventDetailScreen.tsx avait été tronqué en placeholder sur main ; restauré depuis FRONTEND-iA. Continuer localisation ExploreScreen (partiellement faite). Merger main dans FRONTEND-iA si besoin pour synchroniser les clés i18n.
-
-- [Automatisation frontend] Continuer la localisation des écrans restants.
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
-- [Backend] Tester les RPCs restaurées en conditions réelles.
+- [Backend] Tester les RPCs restaurées + un like réel non-démo.
 - [Backend] Revue progressive des grants SECURITY DEFINER (authenticated).
-- [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer les localisations récentes si divergences.
-
-## Taches À faire (mise à jour 2026-11-23 — automatisation frontend/main)
-- [Automatisation frontend / main] NotificationsScreen localisé (domaine notifications FR/EN). Continuer revue mobile 320px.
-- [Automatisation frontend / FRONTEND-iA] events.json FR/EN restaurés (tailles 42191 / 37953). Prochaine : localisation progressive OrganizerDashboardScreen par petits commits.
-- [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
-- [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
+- [Automatisation frontend] Continuer la localisation des écrans restants (OrganizerDashboard, etc.).
