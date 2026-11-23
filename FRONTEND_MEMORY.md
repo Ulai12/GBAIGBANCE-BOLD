@@ -125,3 +125,13 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Durée 320 ms, mouvement directionnel avec ressort/easing court ; chargement d'image toujours indépendant du switch. Respect du réglage de réduction des animations.
 - Commit : `9a7fe9d8` sur `FRONTEND-iA`.
 - Validation restante : build et contrôle visuel mobile ; vérifier que la perspective et les ombres ne sont pas rognées dans Safari iOS.
+
+
+## 2026-11-23 — « À la une » : suppression du cadre parasite et motion premium
+- Retour utilisateur : contour de la carte jugé laid et présence d'un aplat violet derrière la carte.
+- `src/components/FeaturedCarousel.tsx` : suppression du contour blanc de la carte, du dégradé violet de fond indépendant et de la perspective/rotation Y qui donnaient un aspect artificiellement encadré.
+- La scène de slide découpe désormais le mouvement à ses limites avec des coins arrondis. La carte reste un seul bloc : image, contenu, badges, actions et ombre voyagent ensemble.
+- Transition directionnelle affinée : translation horizontale complète, légère variation d'échelle (0,985 → 1) et fondu discret. Courbe remplacée par un ressort contrôlé (stiffness 280, damping 32, mass 0,9), sans rotation 3D forcée. Le mouvement est court, continu et cohérent avec le geste ; `prefers-reduced-motion` conserve un changement quasi instantané.
+- Référence de conception : Apple Human Interface Guidelines — Motion (mouvement utile, bref, précis, facultatif et non bloquant) : https://developer.apple.com/design/human-interface-guidelines/motion ; WWDC23 Explore SwiftUI animation (ressorts Smooth/Snappy) : https://developer.apple.com/videos/play/wwdc2023/10156/.
+- Commit : `49a7d4f7d92b45c5f58d577a8156333a845d9e91` sur `FRONTEND-iA`.
+- Validation : changement appliqué via GitHub et commit enregistré. Build du nouveau commit, QA visuelle iPhone/Safari et vérification du rendu final encore à effectuer. Le précédent déploiement READY correspondait à l'ancien commit `e7f682f`, pas à cette correction.
