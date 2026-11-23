@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type, Modality } from '@google/genai';
-import type { LiveServerMessage } from '@google/genai';
+import type { Content, LiveServerMessage, Part } from '@google/genai';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import {
@@ -30,37 +30,91 @@ import {
   getAIAnswerStyleInstruction,
   normalizeAIAssistantPreferences,
 } from './src/constants/aiPreferences.ts';
-import { AI_SYSTEM_INSTRUCTION as SHARED_AI_SYSTEM_INSTRUCTION } from './src/constants/aiSystemPrompt.ts';
+import { AI_SYSTEM_INSTRUCTION } from './src/constants/aiSystemPrompt.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialisation officielle du SDK Google GenAI côté serveur
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
-
-function getRequestGeminiClient(req: Request): GoogleGenAI | null {
-  const apiKey = req.header('x-gemini-api-key')?.trim() || process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  if (apiKey === process.env.GEMINI_API_KEY) return ai;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
-  });
+// Initialisation paresseuse du SDK Google GenAI côté serveur (évite tout avertissement au démarrage si la clé est absente)
+let aiInstance: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY non configurée sur le serveur.');
+    }
+    aiInstance = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return aiInstance;
 }
 
 const DEFAULT_SUPABASE_URL = 'https://lwwiolbofrqakvrdvbbj.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3d2lvbGJvZnJxYWt2cmR2YmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNTIzNjIsImV4cCI6MjEwNDcyODM2Mn0.TCCj8D-K_CmVwlFK1yiE2WL6kQRcjvPR_Bq3QrCLalw';
 
-const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+function getUrlProjectRef(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/^https?:\/\/([a-z0-9-]+)\.supabase\.co/i);
+  return match?.[1] ?? null;
+}
+
+function getJwtProjectRef(token?: string): string | null {
+  if (!token || !token.includes('.')) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const parsed = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return parsed?.ref || null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveServerSupabaseCredentials(): { url: string; anonKey: string; serviceKey: string | null } {
+  const url = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    DEFAULT_SUPABASE_URL
+  ).replace(/\/+$/, '');
+
+  const urlRef = getUrlProjectRef(url);
+  const candidateKeys = [
+    process.env.VITE_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    DEFAULT_SUPABASE_ANON_KEY,
+  ].filter((k): k is string => Boolean(k && k.trim()));
+
+  const matchedAnonKey =
+    (urlRef ? candidateKeys.find((k) => getJwtProjectRef(k) === urlRef) : undefined) ||
+    candidateKeys[0] ||
+    DEFAULT_SUPABASE_ANON_KEY;
+
+  const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || null;
+  const serviceRef = rawServiceKey ? getJwtProjectRef(rawServiceKey) : null;
+  const matchedServiceKey =
+    rawServiceKey &&
+    ((serviceRef && urlRef && serviceRef === urlRef) ||
+      (!serviceRef && urlRef && getUrlProjectRef(process.env.SUPABASE_URL) === urlRef))
+      ? rawServiceKey
+      : null;
+
+  return { url, anonKey: matchedAnonKey, serviceKey: matchedServiceKey };
+}
+
+const {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
+  serviceKey: supabaseServiceKey,
+} = resolveServerSupabaseCredentials();
 
 const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -94,7 +148,7 @@ async function checkAiQuota(
   actor: { userId: string | null },
   req: Request
 ): Promise<{ allowed: boolean; message?: string; reason?: string }> {
-  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = supabaseServiceKey;
   if (!serviceRoleKey) return { allowed: true };
 
   try {
@@ -132,11 +186,124 @@ async function checkAiQuota(
   }
 }
 
-const AI_SYSTEM_INSTRUCTION = SHARED_AI_SYSTEM_INSTRUCTION;
+const GEMINI_DEFAULT_MODEL = 'gemini-4-hydrogen';
+const GEMINI_FAST_MODEL = 'gemini-3.1-flash-lite';
+const GEMINI_LIVE_MODEL = 'gemini-3.8-live';
 
-const GEMINI_TOOLS = [
-  {
-    functionDeclarations: [
+interface MapsGroundingPlace {
+  title: string;
+  uri: string;
+  placeId?: string;
+  reviewSnippets?: string[];
+}
+
+function collectMapsGroundingFromCandidate(
+  candidate: unknown,
+  targetMap: Map<string, MapsGroundingPlace>
+): void {
+  if (!candidate || typeof candidate !== 'object') return;
+  const gm = (candidate as { groundingMetadata?: { groundingChunks?: unknown[] } }).groundingMetadata;
+  const chunks = gm?.groundingChunks;
+  if (!Array.isArray(chunks)) return;
+
+  for (const rawChunk of chunks) {
+    if (!rawChunk || typeof rawChunk !== 'object') continue;
+    const maps = (rawChunk as {
+      maps?: {
+        uri?: string;
+        title?: string;
+        placeId?: string;
+        placeAnswerSources?: {
+          reviewSnippets?: Array<string | { content?: string; text?: string; author?: string }>;
+        };
+      };
+    }).maps;
+
+    if (!maps?.uri || typeof maps.uri !== 'string') continue;
+
+    const rawSnippets = maps.placeAnswerSources?.reviewSnippets;
+    const snippets: string[] = Array.isArray(rawSnippets)
+      ? rawSnippets
+          .map((s) => {
+            if (typeof s === 'string') return s.trim();
+            if (s && typeof s === 'object') {
+              return String(s.content || s.text || '').trim();
+            }
+            return '';
+          })
+          .filter(Boolean)
+      : [];
+
+    const existing = targetMap.get(maps.uri);
+    if (existing) {
+      if (snippets.length > 0) {
+        const merged = new Set([...(existing.reviewSnippets || []), ...snippets]);
+        existing.reviewSnippets = Array.from(merged).slice(0, 3);
+      }
+      continue;
+    }
+
+    targetMap.set(maps.uri, {
+      title: String(maps.title || 'Lieu sur Google Maps').trim(),
+      uri: maps.uri,
+      ...(maps.placeId ? { placeId: String(maps.placeId) } : {}),
+      ...(snippets.length > 0 ? { reviewSnippets: snippets.slice(0, 3) } : {}),
+    });
+  }
+}
+
+function parseLatLng(raw: unknown): { latitude: number; longitude: number } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as { lat?: unknown; lng?: unknown; latitude?: unknown; longitude?: unknown };
+  const lat = Number(obj.lat ?? obj.latitude);
+  const lng = Number(obj.lng ?? obj.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    return { latitude: lat, longitude: lng };
+  }
+  return undefined;
+}
+
+function formatGeminiError(err: unknown): { status: number; message: string } {
+  const raw = err instanceof Error ? err.message : String(err || 'Erreur serveur Gemini');
+  const statusObj = err as { status?: number; code?: number };
+  let status = typeof statusObj?.status === 'number' ? statusObj.status : 500;
+  let parsedMessage = raw;
+
+  const tryExtract = (text: string): string | null => {
+    try {
+      const json = JSON.parse(text) as { error?: { code?: number; message?: string; status?: string } };
+      if (json?.error?.code && status === 500) status = json.error.code;
+      if (json?.error?.message) {
+        const inner = json.error.message.trim();
+        if (inner.startsWith('{')) {
+          return tryExtract(inner) || inner;
+        }
+        return inner;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  if (raw.trim().startsWith('{')) {
+    parsedMessage = tryExtract(raw.trim()) || raw;
+  }
+
+  if (status === 429 || raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
+    return {
+      status: 429,
+      message: 'Quota temporaire de l’API Gemini atteint (429). Réessayez dans quelques instants.',
+    };
+  }
+
+  return {
+    status: status >= 400 && status < 600 ? status : 500,
+    message: parsedMessage.slice(0, 300),
+  };
+}
+
+const GEMINI_FUNCTION_DECLARATIONS = [
       {
         name: 'search_events',
         description: 'Recherche des événements publics actifs par mot-clé, catégorie, gratuité ou période.',
@@ -206,16 +373,12 @@ const GEMINI_TOOLS = [
           properties: {},
         },
       },
-      {
-        name: 'get_my_follows',
-        description: 'Récupère les artistes, organisateurs et profils suivis par l’utilisateur connecté.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {},
-        },
-      },
-    ],
-  },
+];
+
+const GEMINI_TOOLS_STANDARD = [{ functionDeclarations: GEMINI_FUNCTION_DECLARATIONS }];
+const GEMINI_TOOLS_HYBRID = [
+  { googleMaps: {} },
+  { functionDeclarations: GEMINI_FUNCTION_DECLARATIONS },
 ];
 
 async function executeToolCall(
@@ -443,41 +606,6 @@ async function executeToolCall(
       };
     }
 
-    case 'get_my_follows': {
-      if (!userId) return { authenticated: false, message: 'Connectez-vous pour consulter vos abonnements.' };
-
-      const [artistFollows, organizationFollows, userFollows] = await Promise.all([
-        client.from('artist_follows').select('artist_id').eq('user_id', userId).limit(10),
-        client.from('organization_follows').select('organization_id').eq('user_id', userId).limit(10),
-        client.from('user_follows').select('following_id').eq('follower_id', userId).limit(10),
-      ]);
-      const followError = artistFollows.error || organizationFollows.error || userFollows.error;
-      if (followError) return { error: 'Impossible de récupérer les abonnements de votre compte.' };
-
-      const artistIds = (artistFollows.data || []).map((row) => row.artist_id);
-      const organizationIds = (organizationFollows.data || []).map((row) => row.organization_id);
-      const followedUserIds = (userFollows.data || []).map((row) => row.following_id);
-      const [artists, organizations, profiles] = await Promise.all([
-        artistIds.length
-          ? client.from('artists').select('id, name, genres').in('id', artistIds)
-          : Promise.resolve({ data: [], error: null }),
-        organizationIds.length
-          ? client.from('organizations').select('id, name, city, country').in('id', organizationIds)
-          : Promise.resolve({ data: [], error: null }),
-        followedUserIds.length
-          ? client.from('public_profiles').select('id, name, role, city, country').in('id', followedUserIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      const detailsError = artists.error || organizations.error || profiles.error;
-      if (detailsError) return { error: 'Impossible de récupérer les détails de vos abonnements.' };
-
-      return {
-        artists: artists.data || [],
-        organizations: organizations.data || [],
-        people: profiles.data || [],
-      };
-    }
-
     default:
       return { error: `Outil ${name} non reconnu.` };
   }
@@ -501,20 +629,28 @@ app.use('/_vercel', (_req: Request, res: Response) => {
 // Health / Status endpoint
 app.get('/api/ai/status', (_req: Request, res: Response) => {
   res.json({
-    active: Boolean(process.env.GEMINI_API_KEY),
-    model: 'gemini-2.5-flash',
+    active: true,
+    model: GEMINI_DEFAULT_MODEL,
+    fastModel: GEMINI_FAST_MODEL,
+    liveModel: GEMINI_LIVE_MODEL,
+    mapsGrounding: true,
     provider: 'GoogleGenAI',
   });
 });
 
-// Endpoint de streaming conversationnel (SSE)
+// Endpoint de streaming conversationnel (SSE) avec historique multi-tours et Google Maps Grounding
 app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const { messages = [], userLocation } = req.body ?? {};
+  const {
+    messages = [],
+    userLocation,
+    fastMode = false,
+    useMapsGrounding = true,
+  } = req.body ?? {};
   const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
   const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
@@ -524,120 +660,177 @@ app.post('/api/ai/assistant/stream', async (req: Request, res: Response) => {
     res.end();
     return;
   }
+
   const turnEventIds = new Set<string>();
+  const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+  const resolvedLatLng = parseLatLng(userLocation);
+  const useFast = Boolean(fastMode);
+  const activeModel = useFast ? GEMINI_FAST_MODEL : GEMINI_DEFAULT_MODEL;
+  const enableMaps = !useFast && useMapsGrounding !== false;
 
   try {
-    const requestAi = getRequestGeminiClient(req);
-    if (!requestAi) {
-      res.write(`event: error\ndata: ${JSON.stringify({ error: 'Aucune clé Gemini personnelle ou serveur n’est configurée.' })}\n\n`);
+    const contents: Content[] = [];
+
+    if (resolvedLatLng) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `[Contexte GPS : lat=${resolvedLatLng.latitude}, lng=${resolvedLatLng.longitude}]` }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Bien noté, je prends en compte votre localisation pour vos sorties et les lieux autour.' }],
+      });
+    }
+
+    if (Array.isArray(messages)) {
+      for (const msg of messages) {
+        if (!msg || typeof msg !== 'object') continue;
+        const textVal = String((msg as { text?: string; content?: string }).text || (msg as { content?: string }).content || '').trim();
+        if (!textVal) continue;
+        contents.push({
+          role: (msg as { role?: string }).role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: textVal }],
+        });
+      }
+    }
+
+    if (contents.length === 0) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: 'Aucun message fourni.' })}\n\n`);
       res.end();
       return;
     }
 
-    // Construction de l'historique Gemini
-    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text?: string; functionCall?: unknown; functionResponse?: unknown }> }> = [];
+    const activeTools = enableMaps ? GEMINI_TOOLS_HYBRID : GEMINI_TOOLS_STANDARD;
+    const toolConfig = enableMaps
+      ? {
+          includeServerSideToolInvocations: true,
+          ...(resolvedLatLng ? { retrievalConfig: { latLng: resolvedLatLng } } : {}),
+        }
+      : undefined;
 
-    // Contexte initial si fourni
-    if (userLocation?.lat && userLocation?.lng) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: `[Contexte GPS : lat=${userLocation.lat}, lng=${userLocation.lng}]` }],
-      });
-      contents.push({
-        role: 'model',
-        parts: [{ text: 'Bien noté, je prends en compte votre localisation pour vos sorties.' }],
-      });
-    }
-
-    for (const msg of messages) {
-      contents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.text || '' }],
-      });
-    }
-
-    // Boucle de dialogue avec résolution des Function Calls
-    let finalAnswer = '';
+    let iterations = 0;
     const maxIterations = 5;
 
-    for (let iteration = 1; iteration <= maxIterations; iteration++) {
-      const responseStream = await requestAi.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+    while (iterations < maxIterations) {
+      iterations++;
+
+      const ai = getAiClient();
+      const responseStream = await ai.models.generateContentStream({
+        model: activeModel,
         contents,
         config: {
           systemInstruction,
-          tools: GEMINI_TOOLS,
+          tools: activeTools,
+          ...(toolConfig ? { toolConfig } : {}),
           temperature: preferences.temperature,
           maxOutputTokens: preferences.maxOutputTokens,
         },
       });
 
-      const functionCalls = new Map<string, { name: string; args: Record<string, unknown> }>();
-      let responseText = '';
+      const collectedParts: Part[] = [];
+      const pendingCalls: Array<{ id?: string; name: string; args: Record<string, unknown> }> = [];
 
       for await (const chunk of responseStream) {
-        if (chunk.text) {
-          responseText += chunk.text;
+        const candidate = chunk.candidates?.[0];
+        collectMapsGroundingFromCandidate(candidate, mapsPlacesMap);
+
+        if (candidate?.content?.parts) {
+          for (const part of candidate.content.parts) {
+            collectedParts.push(part);
+          }
         }
 
-        for (const fc of chunk.functionCalls || []) {
-          if (!fc.name) throw new Error('Gemini a demandé un outil sans nom.');
-          const args = (fc.args as Record<string, unknown>) || {};
-          functionCalls.set(`${fc.name}:${JSON.stringify(args)}`, { name: fc.name, args });
+        if (chunk.text) {
+          res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk.text })}\n\n`);
+        }
+
+        if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+          for (const fc of chunk.functionCalls) {
+            if (fc.name) {
+              pendingCalls.push({
+                ...(fc.id ? { id: fc.id } : {}),
+                name: fc.name,
+                args: (fc.args as Record<string, unknown>) || {},
+              });
+            }
+          }
         }
       }
 
-      if (functionCalls.size > 0) {
-        if (iteration === maxIterations) {
-          throw new Error('La recherche a nécessité trop d’étapes. Simplifiez votre demande et réessayez.');
-        }
-        const calls = Array.from(functionCalls.values());
-        contents.push({
+      if (pendingCalls.length > 0) {
+        const modelContent: Content = {
           role: 'model',
-          parts: calls.map(({ name, args }) => ({ functionCall: { name, args } })),
-        });
+          parts:
+            collectedParts.length > 0
+              ? collectedParts
+              : pendingCalls.map((fc) => ({
+                  functionCall: { ...(fc.id ? { id: fc.id } : {}), name: fc.name, args: fc.args },
+                })),
+        };
+        contents.push(modelContent);
+
+        const responseParts: Part[] = [];
+        for (const call of pendingCalls) {
+          const toolResult = await executeToolCall(call.name, call.args, {
+            userId: actor.userId,
+            client: actor.client,
+            userLocation: resolvedLatLng
+              ? { lat: resolvedLatLng.latitude, lng: resolvedLatLng.longitude }
+              : null,
+            turnEventIds,
+          });
+          responseParts.push({
+            functionResponse: {
+              ...(call.id ? { id: call.id } : {}),
+              name: call.name,
+              response: { result: toolResult },
+            },
+          });
+        }
+
         contents.push({
           role: 'user',
-          parts: await Promise.all(calls.map(async ({ name, args }) => {
-            const response = await executeToolCall(name, args, {
-              userId: actor.userId,
-              client: actor.client,
-              userLocation,
-              turnEventIds,
-            });
-            return { functionResponse: { name, response } };
-          })),
+          parts: responseParts,
         });
+
         continue;
       }
 
-      finalAnswer = responseText.trim();
       break;
     }
 
-    if (!finalAnswer) {
-      throw new Error('Gemini n’a renvoyé aucun texte. Reformulez votre question ou réessayez.');
-    }
-
-    const answerParts = Array.from(finalAnswer);
-    for (let offset = 0; offset < answerParts.length; offset += 96) {
-      res.write(`event: chunk\ndata: ${JSON.stringify({ text: answerParts.slice(offset, offset + 96).join('') })}\n\n`);
-    }
-
-    // Événement final avec les IDs vérifiés
-    res.write(`event: done\ndata: ${JSON.stringify({ verifiedEventIds: Array.from(turnEventIds) })}\n\n`);
+    const groundingPlaces = Array.from(mapsPlacesMap.values());
+    res.write(
+      `event: done\ndata: ${JSON.stringify({
+        verifiedEventIds: Array.from(turnEventIds),
+        groundingPlaces,
+        model: activeModel,
+      })}\n\n`
+    );
     res.end();
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la génération avec Gemini';
+    const formatted = formatGeminiError(err);
     console.error('[Gemini Stream Error]:', err);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.write(
+      `event: error\ndata: ${JSON.stringify({
+        error: formatted.message,
+        ...(formatted.status === 429 ? { reason: 'quota_exceeded' } : {}),
+      })}\n\n`
+    );
     res.end();
   }
 });
 
-// Endpoint synchrone non-streaming
+// Endpoint synchrone multi-tours (utilisé par EventAIAssistantModal & façades)
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
-  const { prompt, currentEvent, userLocation } = req.body ?? {};
+  const {
+    prompt,
+    history = [],
+    currentEvent,
+    userLocation,
+    fastMode = false,
+    useMapsGrounding = true,
+  } = req.body ?? {};
   const preferences = normalizeAIAssistantPreferences(req.body?.preferences);
   const systemInstruction = `${AI_SYSTEM_INSTRUCTION}\n\n${getAIAnswerStyleInstruction(preferences.answerStyle)}`;
   const actor = await resolveRequestActor(req);
@@ -646,79 +839,235 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
     res.status(429).json({ error: quota.message, reason: quota.reason });
     return;
   }
+
   const turnEventIds = new Set<string>();
+  const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+  const useFast = Boolean(fastMode);
+  const activeModel = useFast ? GEMINI_FAST_MODEL : GEMINI_DEFAULT_MODEL;
+  const enableMaps = !useFast && useMapsGrounding !== false;
+
+  const eventLatLng = currentEvent
+    ? parseLatLng({ lat: currentEvent.latitude, lng: currentEvent.longitude })
+    : undefined;
+  const userLatLng = parseLatLng(userLocation);
+  const retrievalLatLng = eventLatLng || userLatLng;
 
   try {
-    const requestAi = getRequestGeminiClient(req);
-    if (!requestAi) {
-      res.status(503).json({ error: 'Aucune clé Gemini personnelle ou serveur n’est configurée.' });
+    const contents: Content[] = [];
+
+    if (currentEvent && typeof currentEvent === 'object') {
+      const eventSummary = [
+        `Événement consulté : "${currentEvent.title || ''}"`,
+        currentEvent.id ? `ID : ${currentEvent.id}` : '',
+        currentEvent.category ? `Catégorie : ${currentEvent.category}` : '',
+        currentEvent.starts_at ? `Début : ${currentEvent.starts_at}` : '',
+        currentEvent.location_name ? `Lieu : ${currentEvent.location_name}` : '',
+        currentEvent.location_address ? `Adresse : ${currentEvent.location_address}` : '',
+        currentEvent.city ? `Ville : ${currentEvent.city}` : '',
+        currentEvent.country ? `Pays : ${currentEvent.country}` : '',
+        typeof currentEvent.price_min === 'number'
+          ? `Tarif min : ${currentEvent.price_min} ${currentEvent.currency || 'XOF'}`
+          : '',
+        retrievalLatLng ? `Coordonnées : lat=${retrievalLatLng.latitude}, lng=${retrievalLatLng.longitude}` : '',
+        currentEvent.description ? `Description : ${String(currentEvent.description).slice(0, 600)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
+      contents.push({
+        role: 'user',
+        parts: [{ text: `[Contexte fiche événement Gbaigbance] ${eventSummary}` }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Parfait, je connais la fiche de cet événement et sa localisation exacte pour répondre à vos questions.' }],
+      });
+    } else if (retrievalLatLng) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `[Contexte GPS : lat=${retrievalLatLng.latitude}, lng=${retrievalLatLng.longitude}]` }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Bien noté, je prends en compte votre localisation.' }],
+      });
+    }
+
+    if (Array.isArray(history)) {
+      for (const h of history) {
+        if (!h || typeof h !== 'object') continue;
+        const msgText = String((h as { text?: string; content?: string }).text || (h as { content?: string }).content || '').trim();
+        if (!msgText) continue;
+        contents.push({
+          role: (h as { role?: string }).role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msgText }],
+        });
+      }
+    }
+
+    const cleanPrompt = String(prompt || '').trim();
+    if (cleanPrompt) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: cleanPrompt }],
+      });
+    }
+
+    if (contents.length === 0) {
+      res.status(400).json({ error: 'Prompt manquant.' });
       return;
     }
 
-    let fullPrompt = prompt || '';
-    if (currentEvent) {
-      fullPrompt = `À propos de l'événement "${currentEvent.title}" (${currentEvent.location_name || ''}, ${currentEvent.city || 'Lomé'}) : ${prompt}`;
-    }
+    const activeTools = enableMaps ? GEMINI_TOOLS_HYBRID : GEMINI_TOOLS_STANDARD;
+    const toolConfig = enableMaps
+      ? {
+          includeServerSideToolInvocations: true,
+          ...(retrievalLatLng ? { retrievalConfig: { latLng: retrievalLatLng } } : {}),
+        }
+      : undefined;
 
-    const contents: Array<{ role: 'user' | 'model'; parts: Array<Record<string, unknown>> }> = [
-      { role: 'user', parts: [{ text: fullPrompt }] },
-    ];
-    let text = '';
+    const ai = getAiClient();
+    let finalText = '';
+    let iterations = 0;
     const maxIterations = 5;
 
-    for (let iteration = 1; iteration <= maxIterations; iteration++) {
-      const response = await requestAi.models.generateContent({
-        model: 'gemini-2.5-flash',
+    while (iterations < maxIterations) {
+      iterations++;
+      const response = await ai.models.generateContent({
+        model: activeModel,
         contents,
         config: {
           systemInstruction,
-          tools: GEMINI_TOOLS,
+          tools: activeTools,
+          ...(toolConfig ? { toolConfig } : {}),
           temperature: preferences.temperature,
           maxOutputTokens: preferences.maxOutputTokens,
         },
       });
 
-      const functionCalls = response.functionCalls || [];
-      if (functionCalls.length === 0) {
-        text = response.text || '';
-        break;
-      }
-      if (iteration === maxIterations) {
-        throw new Error('La recherche a nécessité trop d’étapes. Simplifiez votre demande et réessayez.');
+      const candidate = response.candidates?.[0];
+      collectMapsGroundingFromCandidate(candidate, mapsPlacesMap);
+      if (response.text) {
+        finalText = response.text;
       }
 
-      const calls = functionCalls.map((fc) => {
-        if (!fc.name) throw new Error('Gemini a demandé un outil sans nom.');
-        return { name: fc.name, args: (fc.args as Record<string, unknown>) || {} };
-      });
-      contents.push({
-        role: 'model',
-        parts: calls.map(({ name, args }) => ({ functionCall: { name, args } })),
-      });
-      const responses = await Promise.all(calls.map(async ({ name, args }) => {
-        const response = await executeToolCall(name, args, {
-          userId: actor.userId,
-          client: actor.client,
-          userLocation,
-          turnEventIds,
+      const functionCalls = response.functionCalls;
+      if (functionCalls && functionCalls.length > 0 && candidate?.content) {
+        contents.push(candidate.content);
+
+        const responseParts: Part[] = [];
+        for (const fc of functionCalls) {
+          if (!fc.name) continue;
+          const toolResult = await executeToolCall(
+            fc.name,
+            (fc.args as Record<string, unknown>) || {},
+            {
+              userId: actor.userId,
+              client: actor.client,
+              userLocation: retrievalLatLng
+                ? { lat: retrievalLatLng.latitude, lng: retrievalLatLng.longitude }
+                : null,
+              turnEventIds,
+            }
+          );
+          responseParts.push({
+            functionResponse: {
+              ...(fc.id ? { id: fc.id } : {}),
+              name: fc.name,
+              response: { result: toolResult },
+            },
+          });
+        }
+
+        contents.push({
+          role: 'user',
+          parts: responseParts,
         });
-        return { functionResponse: { name, response } };
-      }));
-      contents.push({ role: 'user', parts: responses });
-    }
+        continue;
+      }
 
-    if (!text.trim()) {
-      throw new Error('Gemini n’a renvoyé aucun texte. Reformulez votre question ou réessayez.');
+      break;
     }
 
     res.json({
-      text,
+      text: finalText || 'Aucune réponse générée.',
       verifiedEventIds: Array.from(turnEventIds),
+      groundingPlaces: Array.from(mapsPlacesMap.values()),
+      model: activeModel,
     });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erreur serveur';
+    const formatted = formatGeminiError(err);
     console.error('[Gemini Generate Error]:', err);
-    res.status(500).json({ error: errorMsg });
+    res.status(formatted.status).json({ error: formatted.message });
+  }
+});
+
+// Endpoint dédié Google Maps Grounding pour l'explorateur de lieu d'un événement (EventMapPreview)
+app.post('/api/ai/maps-insights', async (req: Request, res: Response) => {
+  const {
+    locationName,
+    locationAddress,
+    city,
+    country,
+    latitude,
+    longitude,
+    focus = 'overview',
+  } = req.body ?? {};
+
+  if (!locationName && !city && (!latitude || !longitude)) {
+    res.status(400).json({ error: 'Informations de lieu insuffisantes.' });
+    return;
+  }
+
+  const actor = await resolveRequestActor(req);
+  const quota = await checkAiQuota(actor, req);
+  if (!quota.allowed) {
+    res.status(429).json({ error: quota.message, reason: quota.reason });
+    return;
+  }
+
+  const retrievalLatLng = parseLatLng({ latitude, longitude });
+  const placeLabel = [locationName, locationAddress, city, country].filter(Boolean).join(', ');
+
+  let focusInstruction =
+    'Donne un aperçu pratique et vérifié de ce lieu et de ses environs immédiats : accès routier, repères pour taxi/zem, stationnement éventuel et 2-3 adresses sympas autour.';
+  if (focus === 'food') {
+    focusInstruction =
+      'Liste 3 à 5 restaurants, maquis, cafés ou bars bien situés et vérifiés sur Google Maps à proximité immédiate pour boire un verre ou dîner avant/après l’événement.';
+  } else if (focus === 'transport') {
+    focusInstruction =
+      'Explique comment rejoindre ce lieu facilement (grands axes, repères connus, dépose taxi ou zémidjan, stationnement et zones de prise en charge autour).';
+  }
+
+  const prompt = `Lieu cible : "${placeLabel}". ${
+    retrievalLatLng ? `(Coordonnées GPS : ${retrievalLatLng.latitude}, ${retrievalLatLng.longitude})` : ''
+  }\n${focusInstruction}`;
+
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: GEMINI_DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Tu es le guide géographique Gbaigbance pour l'Afrique de l'Ouest. Réponds en français clair, structuré et concis en Markdown. Utilise Google Maps pour vérifier tous les noms de lieux, adresses et points d'intérêt réels à proximité. N'invente aucun établissement. N'ajoute pas d'URL brute dans le texte (les liens Google Maps sont affichés automatiquement par l'interface).",
+        tools: [{ googleMaps: {} }],
+        ...(retrievalLatLng ? { toolConfig: { retrievalConfig: { latLng: retrievalLatLng } } } : {}),
+      },
+    });
+
+    const mapsPlacesMap = new Map<string, MapsGroundingPlace>();
+    collectMapsGroundingFromCandidate(response.candidates?.[0], mapsPlacesMap);
+
+    res.json({
+      text: response.text || 'Informations de localisation chargées.',
+      groundingPlaces: Array.from(mapsPlacesMap.values()),
+      model: GEMINI_DEFAULT_MODEL,
+    });
+  } catch (err: unknown) {
+    const formatted = formatGeminiError(err);
+    console.error('[Gemini Maps Insights Error]:', err);
+    res.status(formatted.status).json({ error: formatted.message });
   }
 });
 
@@ -738,13 +1087,62 @@ app.post('/api/tickets/verify-qr', async (req: Request, res: Response) => {
 
 app.post('/api/finance/calculate-fees', async (req: Request, res: Response) => {
   const { pricePaid, quantity, paymentMethod } = req.body ?? {};
+  const price = Math.max(0, Number(pricePaid) || 0);
+  const qty = Math.max(1, Math.trunc(Number(quantity) || 1));
+  const method = typeof paymentMethod === 'string' ? paymentMethod : 'mobile_money';
   const result = await execRustServer({
     op: 'financial_fees',
-    price_paid: Number(pricePaid) || 0,
-    quantity: Number(quantity) || 1,
-    payment_method: paymentMethod || 'mobile_money',
+    price_paid: price,
+    quantity: qty,
+    payment_method: method,
   });
-  res.json(result || { error: 'Calcul de commissions indisponible' });
+  if (result) {
+    res.json(result);
+    return;
+  }
+  const total = price * qty;
+  const pct = method === 'card' || method === 'stripe' ? 0.035 : method === 'free' ? 0 : 0.025;
+  const fixed = method === 'card' || method === 'stripe' ? 100 : method === 'free' ? 0 : 50;
+  const platformFee = total > 0 ? Math.round(total * pct + fixed) : 0;
+  const operatorFee = total > 0 ? Math.round(total * 0.012) : 0;
+  res.json({
+    total_amount: Math.round(total),
+    platform_fee: platformFee,
+    operator_fee: operatorFee,
+    organizer_payout: Math.max(0, Math.round(total - platformFee)),
+    fee_percent: Math.round(pct * 100),
+    fixed_fee: fixed,
+    currency: 'XOF',
+  });
+});
+
+app.get('/api/events/nearby', async (req: Request, res: Response) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    res.status(400).json({ error: 'Paramètres lat et lng requis.' });
+    return;
+  }
+  const radiusKm = clampRadiusKm(req.query.radius_km);
+  const limit = clampLimit(req.query.limit, 12, 50);
+
+  const { data, error } = await supabaseServer
+    .from('events')
+    .select('id, title, category, starts_at, location_name, city, price_min, currency, latitude, longitude')
+    .eq('status', 'published')
+    .gte('starts_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+    .limit(120);
+
+  if (error) {
+    res.status(500).json({ error: 'Impossible de charger les événements à proximité.' });
+    return;
+  }
+
+  let nearby = await serverNearbyEvents(lat, lng, radiusKm, limit, data || []);
+  if (!nearby || nearby.length === 0) {
+    nearby = withinRadius(data || [], lat, lng, radiusKm, limit);
+  }
+  res.json({ count: nearby.length, radius_km: radiusKm, events: nearby });
 });
 
 app.get('/api/health/rust', async (_req: Request, res: Response) => {
@@ -756,15 +1154,246 @@ app.get('/api/health/rust', async (_req: Request, res: Response) => {
   });
 });
 
+const FAKE_SEED_ARTIST_NAMES = new Set([
+  'kafui mensah',
+  'aminata diallo',
+  'dj eklu',
+  'kofi & the roots',
+  'sira kone',
+  'ama rhythm',
+]);
+
+const FAKE_SEED_ORG_NAMES = new Set([
+  'afrovibe events',
+  'afrovibes events',
+  'culture bénin',
+  'culture benin',
+  'grand place productions',
+]);
+
+function isRealServerEvent(ev: { id?: string | null; title?: string | null }): boolean {
+  const id = String(ev.id || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('e1000000-')) return false;
+  return true;
+}
+
+function isRealServerArtist(a: { id?: string | null; name?: string | null }): boolean {
+  const id = String(a.id || '').trim().toLowerCase();
+  const name = String(a.name || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('b1000000-')) return false;
+  if (!name || FAKE_SEED_ARTIST_NAMES.has(name) || name.startsWith('test ') || name.startsWith('artiste démo')) return false;
+  return true;
+}
+
+function isRealServerOrg(o: { id?: string | null; name?: string | null }): boolean {
+  const id = String(o.id || '').trim().toLowerCase();
+  const name = String(o.name || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('a1000000-')) return false;
+  if (!name || FAKE_SEED_ORG_NAMES.has(name) || name.startsWith('test ') || name.startsWith('orga démo')) return false;
+  return true;
+}
+
+function isRealServerProfile(p: { id?: string | null; name?: string | null; email?: string | null }): boolean {
+  const id = String(p.id || '').trim().toLowerCase();
+  const name = String(p.name || '').trim().toLowerCase();
+  const email = String(p.email || '').trim().toLowerCase();
+  if (!id || id.startsWith('mock-') || id.startsWith('test-') || id === 'd0ebe334-ba93-413e-a64e-fb2787bcafaa') return false;
+  if (
+    name === 'test user' ||
+    name === 'test' ||
+    name === 'fake user' ||
+    name === 'demo user' ||
+    name === 'utilisateur test' ||
+    name.startsWith('test ') ||
+    name.startsWith('fake ')
+  ) {
+    return false;
+  }
+  if (email.includes('testuser@') || email.includes('example.com') || email.includes('test@') || email === 'test@gbaigbance.com') {
+    return false;
+  }
+  return true;
+}
+
+function isServerEventActive(ev: { status?: string | null; starts_at?: string | null; ends_at?: string | null }, now: number): boolean {
+  if (ev.status !== 'published') return false;
+  if (ev.ends_at) {
+    const endMs = Date.parse(ev.ends_at);
+    if (!Number.isNaN(endMs)) return endMs >= now;
+  }
+  if (ev.starts_at) {
+    const startMs = Date.parse(ev.starts_at);
+    if (!Number.isNaN(startMs)) return startMs + 6 * 60 * 60 * 1000 >= now;
+  }
+  return false;
+}
+
+async function handlePlatformStats(_req: Request, res: Response) {
+  try {
+    const db = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        })
+      : supabaseServer;
+
+    const [eventsRes, optionsRes, orgsRes, artistsRes, profilesRes, ticketsRes] = await Promise.all([
+      db.from('events').select('id, title, category, attendees_count, views_count, starts_at, ends_at, status, created_at').limit(1000),
+      db.from('ticket_options').select('id, event_id, price, quantity_sold').limit(2000),
+      db.from('organizations').select('id, name').limit(1000),
+      db.from('artists').select('id, name').limit(1000),
+      db.from('profiles').select('id, name, email, role').limit(2000),
+      db.from('tickets').select('id, event_id, user_id, price_paid, status, created_at').limit(2000),
+    ]);
+
+    const events = (Array.isArray(eventsRes.data) ? eventsRes.data : []).filter(isRealServerEvent);
+    const realEventIds = new Set(events.map((ev) => ev.id));
+    const ticketOptions = (Array.isArray(optionsRes.data) ? optionsRes.data : []).filter((opt) =>
+      realEventIds.has(opt.event_id)
+    );
+    const organizations = (Array.isArray(orgsRes.data) ? orgsRes.data : []).filter(isRealServerOrg);
+    const artists = (Array.isArray(artistsRes.data) ? artistsRes.data : []).filter(isRealServerArtist);
+    const profiles = (Array.isArray(profilesRes.data) ? profilesRes.data : []).filter(isRealServerProfile);
+    const realProfileIds = new Set(profiles.map((p) => p.id));
+    const tickets = (Array.isArray(ticketsRes.data) ? ticketsRes.data : []).filter(
+      (t) => realEventIds.has(t.event_id) && (!t.user_id || realProfileIds.has(t.user_id) || t.user_id !== 'd0ebe334-ba93-413e-a64e-fb2787bcafaa')
+    );
+
+    const now = Date.now();
+    const activeEvents = events.filter((ev) => isServerEventActive(ev, now));
+    const attendanceEvents = events.filter((ev) => ['published', 'completed'].includes(String(ev.status || '')));
+    const totalParticipants = attendanceEvents.reduce(
+      (sum, ev) => sum + Math.max(0, Number(ev.attendees_count) || 0),
+      0
+    );
+
+    const countedStatuses = new Set(['active', 'valid', 'used']);
+    const countedTickets = tickets.filter((t) =>
+      countedStatuses.has(String(t.status || '').toLowerCase())
+    );
+    const cancelledTickets = tickets.filter(
+      (t) => String(t.status || '').toLowerCase() === 'cancelled'
+    );
+    const refundedTickets = tickets.filter(
+      (t) => String(t.status || '').toLowerCase() === 'refunded'
+    );
+
+    const inventorySold = ticketOptions.reduce(
+      (sum, opt) => sum + Math.max(0, Number(opt.quantity_sold) || 0),
+      0
+    );
+    const totalTickets = inventorySold > 0 ? inventorySold : countedTickets.length;
+
+    const optionsRevenue = ticketOptions.reduce(
+      (sum, opt) =>
+        sum + Math.max(0, Number(opt.quantity_sold) || 0) * Math.max(0, Number(opt.price) || 0),
+      0
+    );
+    const ticketsRevenue = countedTickets.reduce(
+      (sum, t) => sum + Math.max(0, Number(t.price_paid) || 0),
+      0
+    );
+    const totalRevenue = Math.round(ticketsRevenue > 0 ? ticketsRevenue : optionsRevenue);
+
+    const nonParticipantRoles = new Set(['organizer', 'artist', 'admin']);
+    const totalParticipantAccounts = profiles.filter(
+      (p) => !nonParticipantRoles.has(String(p.role || 'participant').toLowerCase())
+    ).length;
+
+    const rustStats = await execRustServer<{
+      total_events: number;
+      total_views: number;
+      category_basis: 'revenue' | 'events';
+      category_shares: Array<{ id: string; count: number; amount: number; percent: number }>;
+    }>({
+      op: 'platform_stats',
+      users: profiles.length,
+      events: events.map((ev) => ({
+        id: ev.id,
+        category: ev.category || 'other',
+        active: isServerEventActive(ev, now),
+        views: Math.max(0, Number(ev.views_count) || 0),
+      })),
+      tickets: countedTickets.map((t) => ({
+        id: t.id,
+        price_paid: Math.max(0, Number(t.price_paid) || 0),
+        status: t.status || 'valid',
+        created_at_ms: t.created_at ? Date.parse(t.created_at) || 0 : 0,
+        event_id: t.event_id,
+        source: 'server',
+      })),
+    });
+
+    const categories: Record<string, number> = {};
+    for (const ev of activeEvents) {
+      const cat = String(ev.category || 'other');
+      categories[cat] = (categories[cat] || 0) + 1;
+    }
+
+    const totalViews =
+      rustStats?.total_views ??
+      events.reduce((sum, ev) => sum + Math.max(0, Number(ev.views_count) || 0), 0);
+
+    const categoryBasis = rustStats?.category_basis ?? 'events';
+    const categoryShares = rustStats?.category_shares ?? [];
+
+    const ticketsTimeline = countedTickets.map((t) => ({
+      id: t.id,
+      created_at: t.created_at || '',
+      created_at_ms: t.created_at ? Date.parse(t.created_at) || 0 : 0,
+      price_paid: Number(t.price_paid) || 0,
+      event_id: t.event_id,
+    }));
+
+    const eventsTimeline = attendanceEvents.map((ev) => ({
+      id: ev.id,
+      starts_at_ms: ev.starts_at ? Date.parse(ev.starts_at) || 0 : 0,
+      attendees: Math.max(0, Number(ev.attendees_count) || 0),
+    }));
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      totalEvents: rustStats?.total_events ?? activeEvents.length,
+      totalAllEvents: events.length,
+      totalArtists: artists.length,
+      totalOrganizers: organizations.length,
+      totalTickets,
+      totalParticipants,
+      totalParticipantAccounts,
+      totalProfiles: profiles.length,
+      totalPendingPlatformInvitations: 0,
+      totalUsers: profiles.length,
+      totalViews,
+      totalRevenue,
+      totalCancelledTickets: cancelledTickets.length,
+      totalRefundedTickets: refundedTickets.length,
+      categories,
+      categoryBasis,
+      categoryShares,
+      ticketsTimeline,
+      eventsTimeline,
+      isAvailable: true,
+    });
+  } catch (err) {
+    console.error('[api/platform-stats] error:', err);
+    res.status(500).json({ error: 'Unable to load platform statistics' });
+  }
+}
+
+app.get('/api/platform-stats', handlePlatformStats);
+app.post('/api/platform-stats', handlePlatformStats);
 
 // WebSocket Live API pour streaming voix temps réel
 const wss = new WebSocketServer({ server: httpServer, path: '/live' });
+wss.on('error', (err) => {
+  console.error('[Live API WebSocketServer Error]:', err);
+});
 
 wss.on('connection', async (clientWs: WebSocket) => {
   console.log('[Live API] Client connected');
-  let session: Awaited<ReturnType<typeof ai.live.connect>> | null = null;
+  let session: Awaited<ReturnType<GoogleGenAI['live']['connect']>> | null = null;
 
   try {
+    const ai = getAiClient();
     session = await ai.live.connect({
       model: 'gemini-3.8-live',
       config: {
@@ -835,15 +1464,67 @@ wss.on('connection', async (clientWs: WebSocket) => {
 async function startServer() {
   await initServerRustCore();
   const distDir = path.resolve(__dirname, 'dist');
-  const hasDist = fs.existsSync(path.resolve(distDir, 'index.html'));
-  const isProd = process.env.NODE_ENV === 'production' || hasDist;
+  const distIndexPath = path.resolve(distDir, 'index.html');
+  const isProd = process.env.NODE_ENV === 'production';
 
-  if (isProd && hasDist) {
+  if (isProd && fs.existsSync(distIndexPath)) {
     app.use(express.static(distDir));
     app.use((_req: Request, res: Response) => {
-      res.sendFile(path.resolve(distDir, 'index.html'));
+      if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+      } else {
+        res.status(503).send('Application en cours de compilation, veuillez patienter.');
+      }
     });
   } else {
+    // En mode développement, neutraliser tout ancien Service Worker Workbox mis en cache
+    const swCleanupScript = `self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch {}
+    try {
+      await self.clients.claim();
+    } catch {}
+    try {
+      const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      await self.registration.unregister();
+      for (const c of clients) {
+        try {
+          await c.navigate(c.url);
+        } catch {}
+      }
+    } catch {
+      try {
+        await self.registration.unregister();
+      } catch {}
+    }
+  })());
+});
+self.addEventListener('fetch', () => {});`;
+
+    app.get(['/sw.js', '/dev-sw.js'], (_req: Request, res: Response) => {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.send(swCleanupScript);
+    });
+
+    app.use((req: Request, res: Response, next) => {
+      if (
+        req.method === 'GET' &&
+        !req.path.startsWith('/api/') &&
+        !req.path.includes('.')
+      ) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      }
+      next();
+    });
+
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -852,7 +1533,10 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  const PORT = Number(process.env.PORT) || 3000;
+  // Toujours utiliser le port applicatif (3000 derrière nginx en dev) pour éviter EADDRINUSE sur le port proxy (8080)
+  const PORT =
+    Number(process.env.DEFAULT_APP_PORT) ||
+    (process.env.PORT && process.env.PORT !== process.env.NGINX_PORT ? Number(process.env.PORT) : 3000);
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[Gbaigbance Server] Listening on http://0.0.0.0:${PORT}`);
   });
@@ -862,4 +1546,3 @@ startServer().catch((err) => {
   console.error('[Server Start Error]:', err);
   process.exit(1);
 });
-

@@ -268,7 +268,6 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       </div>
     );
   }
-
   // Filtrage intelligent selon les besoins :
   // 1. Billet acheté pour un ami
   const isGiftedToFriend = (t: Ticket & { event?: Event }) => {
@@ -325,7 +324,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
             {t('tickets', 'title')}
           </h1>
           <span className="px-2.5 py-0.5 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-bold">
-            {myActiveTickets.length > 1 
+            {myActiveTickets.length > 1
               ? t('tickets', 'activeCountPlural').replace('{count}', String(myActiveTickets.length))
               : t('tickets', 'activeCount').replace('{count}', String(myActiveTickets.length))}
           </span>
@@ -404,10 +403,10 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
           <div className="mt-8">
             <EmptyState
               title={
-                activeTab === 'my_tickets' 
-                  ? t('tickets', 'emptyMyTitle') 
-                  : activeTab === 'gifted' 
-                  ? t('tickets', 'emptyGiftedTitle') 
+                activeTab === 'my_tickets'
+                  ? t('tickets', 'emptyMyTitle')
+                  : activeTab === 'gifted'
+                  ? t('tickets', 'emptyGiftedTitle')
                   : t('tickets', 'emptyHistoryTitle')
               }
               description={
@@ -505,4 +504,3 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
     </div>
   );
 }
-

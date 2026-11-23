@@ -1,0 +1,261 @@
+/* GBAIGBANCE — CSS performance overlay
+   Aligné best practices 2025-2026 :
+   - content-visibility: auto + contain-intrinsic-size: auto <h>
+   - blur glass ≤ 8–10px mobile, max 2–3 layers actives
+   - contain layout/paint, pas de will-change permanent sur listes
+   - Data Saver + prefers-reduced-motion / transparency
+   Refs: MDN content-visibility, Chrome Modern Web Guidance, Core Web Vitals 2026
+*/
+
+/* ---------- Mobile ≤ 640px : budget GPU strict ---------- */
+@media (max-width: 640px) {
+  :root {
+    --glass-intensity: 0.42;
+    --glass-blur: 8px;
+    --glass-saturate: 112%;
+  }
+
+  .liquid-glass-header {
+    backdrop-filter: blur(10px) saturate(112%);
+    -webkit-backdrop-filter: blur(10px) saturate(112%);
+    /* sticky header = 1 seule couche glass critique */
+    transform: translateZ(0);
+  }
+
+  .glass-surface,
+  .glass,
+  .glass-card,
+  .glass-ios,
+  .glass-floating-bar,
+  .search-bar,
+  .form-surface,
+  .bottom-nav,
+  .dark .glass-surface,
+  .dark .glass,
+  .dark .glass-card,
+  .dark .glass-ios,
+  .dark .glass-floating-bar,
+  .dark .bottom-nav {
+    backdrop-filter: blur(8px) saturate(112%);
+    -webkit-backdrop-filter: blur(8px) saturate(112%);
+  }
+
+  /* Animations infinies coûteuses → off sur mobile */
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-shimmer-text,
+  .animate-laser-scan {
+    animation: none !important;
+  }
+
+  /* Ombres allégées (moins de paint) */
+  .card,
+  .glass-card,
+  .glass-surface {
+    box-shadow: 0 4px 14px rgba(37, 28, 42, 0.05);
+  }
+
+  .dark .card,
+  .dark .glass-card,
+  .dark .glass-surface {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Cibles tactiles (Apple HIG) */
+  .chip {
+    min-height: 40px;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+}
+
+/* ---------- Très petits écrans ≤ 400px ---------- */
+@media (max-width: 400px) {
+  :root {
+    --glass-blur: 6px;
+    --glass-intensity: 0.32;
+  }
+
+  .glass-ticket,
+  .countdown-box {
+    backdrop-filter: blur(6px) saturate(108%);
+    -webkit-backdrop-filter: blur(6px) saturate(108%);
+  }
+
+  .liquid-glass-header {
+    backdrop-filter: blur(8px) saturate(108%);
+    -webkit-backdrop-filter: blur(8px) saturate(108%);
+  }
+}
+
+/* ---------- content-visibility (Baseline 2024+, obligatoire avec contain-intrinsic-size) ----------
+   Règle d’or 2026 : TOUJOURS pairer avec contain-intrinsic-size: auto <estimate>
+   et ne PAS appliquer sur le above-the-fold (LCP).
+*/
+.gba-content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
+.gba-content-auto-sm {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+/* Cartes événement / feed (hauteur médiane ~240–280px mobile) */
+.gba-feed-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+
+/* Skip les 3 premiers items (souvent above-the-fold) pour ne pas retarder LCP */
+.gba-feed-item:nth-child(-n + 3) {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+
+@media (max-width: 640px) {
+  .gba-feed-item {
+    contain-intrinsic-size: auto 280px;
+  }
+}
+
+/* Conteneurs de section longs (Home sections, Explore results) */
+.gba-section-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+
+/* ---------- CSS Containment (isolation layout/paint) ---------- */
+.gba-contain-paint {
+  contain: layout paint style;
+}
+
+.gba-contain-content {
+  contain: content; /* layout + paint + style, sans size → sûr pour cartes */
+}
+
+.gba-contain-strict {
+  contain: strict;
+}
+
+/* GPU layer ciblé — NE PAS mettre sur chaque item de liste (layer explosion) */
+.gba-gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Sticky CTA / barres flottantes uniquement */
+.gba-sticky-cta {
+  transform: translateZ(0);
+  contain: layout paint;
+  /* will-change retiré en permanence : trop coûteux en VRAM sur listes */
+}
+
+.gba-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  contain: layout style;
+}
+
+/* ---------- Data Saver (réseau / batterie / GPU faible) ---------- */
+.gba-data-saver {
+  --glass-blur: 0px !important;
+  --glass-intensity: 0 !important;
+  --glass-saturate: 100% !important;
+}
+
+.gba-data-saver .glass-glow,
+.gba-data-saver .ambient-glow,
+.gba-data-saver [class*="animate-pulse"],
+.gba-data-saver [class*="animate-bounce"] {
+  animation: none !important;
+}
+
+.gba-data-saver .backdrop-blur-2xl,
+.gba-data-saver .backdrop-blur-xl,
+.gba-data-saver .backdrop-blur-lg,
+.gba-data-saver .backdrop-blur-md,
+.gba-data-saver .glass-surface,
+.gba-data-saver .glass,
+.gba-data-saver .glass-card,
+.gba-data-saver .glass-ios,
+.gba-data-saver .glass-floating-bar,
+.gba-data-saver .search-bar,
+.gba-data-saver .form-surface,
+.gba-data-saver .liquid-glass-header,
+.gba-data-saver .bottom-nav,
+.gba-data-saver .glass-ticket,
+.gba-data-saver .countdown-box {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.gba-data-saver .animate-float,
+.gba-data-saver .animate-pulse-glow,
+.gba-data-saver .animate-shimmer-text,
+.gba-data-saver .animate-laser-scan,
+.gba-data-saver .skeleton,
+.gba-data-saver .animate-heartbeat {
+  animation: none !important;
+}
+
+/* ---------- Accessibilité ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-shimmer-text,
+  .animate-laser-scan,
+  .skeleton {
+    animation: none !important;
+  }
+
+  .gba-sticky-cta,
+  .gba-gpu-layer {
+    will-change: auto;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface,
+  .glass,
+  .glass-card,
+  .glass-ios,
+  .glass-floating-bar,
+  .liquid-glass-header,
+  .bottom-nav,
+  .search-bar,
+  .form-surface {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ---------- Landscape mobile ---------- */
+@media (max-width: 640px) and (orientation: landscape) {
+  .pt-safe-header {
+    padding-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+  }
+  .liquid-glass-header {
+    backdrop-filter: blur(8px) saturate(108%);
+    -webkit-backdrop-filter: blur(8px) saturate(108%);
+  }
+}
+
+/* ---------- Fallback navigateurs sans backdrop-filter ---------- */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-surface,
+  .glass,
+  .glass-card,
+  .glass-ios,
+  .glass-floating-bar,
+  .liquid-glass-header,
+  .bottom-nav,
+  .search-bar,
+  .form-surface {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

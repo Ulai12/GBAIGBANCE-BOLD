@@ -4,7 +4,7 @@ import { useApp } from '@/hooks/useApp';
 
 /**
  * GBAIGBANCE — EventMapPreview (Mini-Carte & Navigation iOS)
- * 
+ *
  * Carte interactive avec :
  * - Chargement différé LAZY (IntersectionObserver) pour préserver les performances et la batterie
  * - Marqueur animé pulsant sur le lieu de l'événement
@@ -156,7 +156,7 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
           <div className="relative flex items-center justify-center">
             <span className="absolute w-12 h-12 rounded-full bg-[#6600FF]/30 animate-ping" />
             <span className="absolute w-8 h-8 rounded-full bg-[#6600FF]/40 animate-pulse" />
-            
+
             <div className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6600FF] p-0.5 shadow-xl shadow-[#6600FF]/50 flex items-center justify-center text-white ring-2 ring-white">
               <MapPin className="w-5 h-5 fill-white text-white" />
             </div>
@@ -168,7 +168,7 @@ export const EventMapPreview: React.FC<EventMapPreviewProps> = ({
         </div>
       </a>
 
-      {/* 
+      {/*
         Actions épurées : 2 boutons distincts et non redondants (touch target ≥ 44px)
         1. Itinéraire direct vers Google / Apple Maps
         2. Copier l'adresse complète dans le presse-papier

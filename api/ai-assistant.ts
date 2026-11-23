@@ -12,6 +12,11 @@ export interface VercelResponse extends ServerResponse {
   send: (body: unknown) => VercelResponse;
 }
 
+/**
+ * Proxy Vercel plat (même pattern que api/events.ts) vers l'edge Supabase ai-assistant.
+ * Évite le 502 "Requested function was not found" des chemins nested api/ai/...
+ */
+
 const DEFAULT_SUPABASE_URL = 'https://lwwiolbofrqakvrdvbbj.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3d2lvbGJvZnJxYWt2cmR2YmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNTIzNjIsImV4cCI6MjEwNDcyODM2Mn0.TCCj8D-K_CmVwlFK1yiE2WL6kQRcjvPR_Bq3QrCLalw';
@@ -57,7 +62,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'Access-Control-Allow-Headers',
     'authorization, apikey, content-type, x-client-info, x-gemini-api-key, x-request-id',
   );
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST, OPTIONS');
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -79,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     userLocation?: { lat?: number; lng?: number } | null;
     preferences?: unknown;
   };
+
   const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
   const edgeHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -98,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     userLocation: body.userLocation || null,
     preferences: body.preferences || null,
   };
+
   try {
     const edgeRes = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
       method: 'POST',
@@ -105,6 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(edgePayload),
     });
     const contentType = edgeRes.headers.get('content-type') || '';
+
     if (contentType.includes('text/event-stream') && edgeRes.body) {
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -120,6 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
     const data = (await edgeRes.json().catch(() => ({}))) as Record<string, unknown>;
+
     if (!edgeRes.ok) {
       const message =
         (typeof data.error === 'string' && data.error) ||
@@ -130,6 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+
     const text =
       (typeof data.text === 'string' && data.text) ||
       (typeof data.message === 'string' && data.message) ||
@@ -139,7 +152,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : Array.isArray(data.verifiedEventIds)
         ? data.verifiedEventIds
         : [];
-    if (text) writeSse(res, { text, done: false });
+    if (text) {
+      writeSse(res, { text, done: false });
+    }
     writeSse(res, { done: true, verifiedEventIds: eventIds, event_ids: eventIds });
     res.end();
   } catch (err: unknown) {

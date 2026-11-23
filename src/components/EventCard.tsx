@@ -93,6 +93,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         onMouseEnter={prefetchEventDetail}
         className="
+          gba-feed-item gba-contain-content
           group relative isolate w-full
           aspect-[0.78] sm:aspect-[0.82]
           overflow-hidden rounded-[1.5rem]

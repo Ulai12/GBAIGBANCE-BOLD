@@ -5,7 +5,7 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
 import type { PaymentProvider } from '@/types';
 import { coreFinancialFees, type FinancialFeesResult } from '@/lib/rust-core';
-import { handleRpcResult, isRpcPayloadSuccess } from '@/lib/rpcErrors';
+import { handleRpcResult, isRpcSuccess } from '@/lib/rpcErrors';
 
 export interface TicketFeeQuote {
   currency: string;
@@ -138,7 +138,7 @@ export async function initiateTicketPayment(params: {
     });
 
     const parsed = handleRpcResult(error, data, 'Impossible d’initier le paiement.');
-    if (isRpcPayloadSuccess(parsed)) {
+    if (isRpcSuccess(parsed)) {
       const feesRaw = parsed.data.fees;
       return {
         success: true,
@@ -177,10 +177,8 @@ export async function initiateTicketPayment(params: {
     };
   } catch (err: unknown) {
     const parsed = handleRpcResult(err, null, 'Erreur initiation paiement');
-    if (isRpcPayloadSuccess(parsed)) {
-      return { success: false, error: 'Erreur initiation paiement' };
-    }
-    return { success: false, error: parsed.error, code: parsed.code };
+    if (!isRpcSuccess(parsed)) return { success: false, error: parsed.error, code: parsed.code };
+    return { success: false, error: 'Erreur initiation paiement' };
   }
 }
 
@@ -202,13 +200,13 @@ export async function updateTicketOptionForOrganizer(
     const { error } = await supabase.from('ticket_options').update(patch).eq('id', optionId);
     if (error) {
       const parsed = handleRpcResult(error, null, 'Erreur mise à jour de l’option');
-      if (isRpcPayloadSuccess(parsed)) return { success: false, error: 'Erreur mise à jour de l’option' };
-      return { success: false, error: parsed.error, code: parsed.code };
+      if (!isRpcSuccess(parsed)) return { success: false, error: parsed.error, code: parsed.code };
+      return { success: false, error: 'Erreur mise à jour de l’option' };
     }
     return { success: true };
   } catch (err: unknown) {
     const parsed = handleRpcResult(err, null, 'Erreur maj option');
-    if (isRpcPayloadSuccess(parsed)) return { success: false, error: 'Erreur maj option' };
-    return { success: false, error: parsed.error, code: parsed.code };
+    if (!isRpcSuccess(parsed)) return { success: false, error: parsed.error, code: parsed.code };
+    return { success: false, error: 'Erreur maj option' };
   }
 }

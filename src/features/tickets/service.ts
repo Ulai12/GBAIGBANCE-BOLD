@@ -217,7 +217,7 @@ export async function purchaseTicketsMulti(params: {
   error?: string;
   code?: string;
 }> {
-  const { eventId, ticketOptionId, recipients, paymentProvider, paymentPhone, userId, buyerName } = params;
+  const { eventId, ticketOptionId, recipients, userId, buyerName, paymentProvider, paymentPhone } = params;
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
   const amountXof = unitPrice * Math.max(1, recipients.length);
 
@@ -234,6 +234,16 @@ export async function purchaseTicketsMulti(params: {
         provider: paymentProvider || 'pending',
         paymentPhone,
       });
+      if (res.success) {
+        return {
+          success: false,
+          payment_id: res.payment_id,
+          amount_xof: res.amount_charged_xof ?? res.amount_face_xof ?? amountXof,
+          tickets: [],
+          error: 'Paiement initié. Confirmez sur Mobile Money ; les billets seront émis après confirmation serveur.',
+          code: 'PAYMENT_PENDING',
+        };
+      }
       return {
         success: false,
         payment_id: res.payment_id,
@@ -487,11 +497,11 @@ export async function fetchUserTickets(
   for (const ticket of [...dbTickets, ...localTickets, ...friendGifts]) {
     if (ticket?.id && !pool.has(ticket.id)) pool.set(ticket.id, ticket);
   }
-  const order = await coreMergeIds(
+  const order = (await coreMergeIds(
     dbTickets.map((ticket) => ticket.id),
     [...localTickets, ...friendGifts].map((ticket) => ticket.id),
     []
-  ) ?? [...new Set([...dbTickets, ...localTickets, ...friendGifts].map((ticket) => ticket.id))];
+  )) ?? Array.from(pool.keys());
   const merged: Ticket[] = [];
   for (const id of order) {
     const t = pool.get(id);

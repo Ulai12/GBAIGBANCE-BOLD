@@ -71,6 +71,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
       onMouseEnter={prefetchEventDetail}
       onTouchStart={prefetchEventDetail}
       className="
+        gba-contain-content
         group relative w-[235px] sm:w-[255px] shrink-0 snap-start
         rounded-[1.6rem] p-2.5
         bg-white/90 dark:bg-[#1A1829]/90 backdrop-blur-xl

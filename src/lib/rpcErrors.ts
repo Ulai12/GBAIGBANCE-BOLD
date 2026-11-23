@@ -32,9 +32,7 @@ export interface RpcNormalizedError {
 
 export type RpcResult = { ok: true; data: Record<string, unknown> } | RpcNormalizedError;
 
-export function isRpcPayloadSuccess(
-  result: RpcResult,
-): result is { ok: true; data: Record<string, unknown> } {
+export function isRpcSuccess(result: RpcResult): result is Extract<RpcResult, { ok: true }> {
   return 'ok' in result;
 }
 

@@ -1,24 +1,28 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/infrastructure/supabase';
-import { getAIAssistantPreferences, getUserGeminiApiKey } from '@/services/aiSettings';
-
-// ====================================================================
-// GBAIGBANCE — CLIENT SERVICE POUR L'ASSISTANT IA (EDGE-FIRST + PROXY)
-// ====================================================================
+import { getAIAssistantPreferences } from '@/services/aiSettings';
+import type { MapsGroundingPlace } from '@/services/gemini';
 
 export interface AIAssistantMessage {
   role: 'user' | 'assistant';
   text: string;
 }
 
+export interface StreamDoneMeta {
+  groundingPlaces?: MapsGroundingPlace[];
+  model?: string;
+}
+
 export interface StreamCallbacks {
   onChunk: (text: string) => void;
-  onDone: (verifiedEventIds: string[]) => void;
+  onDone: (verifiedEventIds: string[], meta?: StreamDoneMeta) => void;
   onError: (error: string, isQuotaExceeded?: boolean) => void;
 }
 
 export interface SendMessageOptions {
   messages: AIAssistantMessage[];
   userLocation?: { lat: number; lng: number } | null;
+  fastMode?: boolean;
+  useMapsGrounding?: boolean;
 }
 
 function sanitizeLocation(
@@ -30,8 +34,8 @@ function sanitizeLocation(
     typeof userLocation.lng === 'number'
   ) {
     return {
-      lat: Number(userLocation.lat.toFixed(2)),
-      lng: Number(userLocation.lng.toFixed(2)),
+      lat: Number(userLocation.lat.toFixed(4)),
+      lng: Number(userLocation.lng.toFixed(4)),
     };
   }
   return null;
@@ -45,6 +49,14 @@ function extractEventIds(data: Record<string, unknown>): string[] {
     return data.event_ids.filter((id): id is string => typeof id === 'string');
   }
   return [];
+}
+
+function extractGroundingPlaces(data: Record<string, unknown>): MapsGroundingPlace[] {
+  if (!Array.isArray(data.groundingPlaces)) return [];
+  return data.groundingPlaces.filter(
+    (place): place is MapsGroundingPlace =>
+      Boolean(place && typeof place === 'object' && typeof (place as MapsGroundingPlace).uri === 'string')
+  );
 }
 
 async function parseSseResponse(
@@ -61,6 +73,9 @@ async function parseSseResponse(
   const decoder = new TextDecoder();
   let buffer = '';
   let verifiedEventIds: string[] = [];
+  let groundingPlaces: MapsGroundingPlace[] = [];
+  let modelName: string | undefined;
+
   const processLine = (line: string): boolean => {
     const trimmed = line.trim();
     if (!trimmed || !trimmed.startsWith('data:')) return false;
@@ -79,6 +94,10 @@ async function parseSseResponse(
       const ids = extractEventIds(data);
       if (ids.length > 0) verifiedEventIds = ids;
 
+      const places = extractGroundingPlaces(data);
+      if (places.length > 0) groundingPlaces = places;
+
+      if (typeof data.model === 'string' && data.model) modelName = data.model;
       if (typeof data.error === 'string' && data.error) {
         callbacks.onError(data.error);
         return true;
@@ -99,19 +118,18 @@ async function parseSseResponse(
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-
       for (const line of lines) {
         if (processLine(line)) return;
       }
     }
 
     buffer += decoder.decode();
-    if (processLine(buffer)) return;
+    if (buffer && processLine(buffer)) return;
   } finally {
     reader.releaseLock();
   }
 
-  callbacks.onDone(verifiedEventIds);
+  callbacks.onDone(verifiedEventIds, { groundingPlaces, model: modelName });
 }
 
 async function parseJsonResponse(
@@ -128,7 +146,10 @@ async function parseJsonResponse(
     (typeof data.message === 'string' && data.message) ||
     '';
   if (text) callbacks.onChunk(text);
-  callbacks.onDone(extractEventIds(data));
+  callbacks.onDone(extractEventIds(data), {
+    groundingPlaces: extractGroundingPlaces(data),
+    model: typeof data.model === 'string' ? data.model : undefined,
+  });
 }
 
 async function postAssistant(
@@ -137,8 +158,6 @@ async function postAssistant(
   body: unknown,
   signal: AbortSignal
 ): Promise<Response> {
-  const apiKey = getUserGeminiApiKey();
-  if (apiKey) headers['x-gemini-api-key'] = apiKey;
   return fetch(url, {
     method: 'POST',
     headers,
@@ -147,12 +166,6 @@ async function postAssistant(
   });
 }
 
-/**
- * Envoie la conversation :
- * 1) Edge Function Supabase `ai-assistant` (chemin principal fiable)
- * 2) `/api/ai-assistant` (proxy Vercel plat)
- * 3) `/api/ai/assistant/stream` (compat Express local)
- */
 export async function streamAIAssistant(
   options: SendMessageOptions,
   callbacks: StreamCallbacks
@@ -174,96 +187,67 @@ export async function streamAIAssistant(
   };
 
   (async () => {
-    const sanitizedLocation = sanitizeLocation(options.userLocation ?? null);
-
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
+      const token = session?.access_token || supabaseAnonKey;
       const payload = {
-        messages: options.messages.map((m) => ({
-          role: m.role,
-          text: m.text.slice(0, 1000),
-          content: m.text.slice(0, 1000),
+        messages: options.messages.map((message) => ({
+          role: message.role,
+          text: message.text.slice(0, 1500),
+          content: message.text.slice(0, 1500),
         })),
-        userLocation: sanitizedLocation,
+        userLocation: sanitizeLocation(options.userLocation ?? null),
+        fastMode: Boolean(options.fastMode),
+        useMapsGrounding: options.useMapsGrounding !== false,
         preferences: getAIAssistantPreferences(),
       };
+      const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
+      const candidates: Array<{ url: string; headers: Record<string, string> }> = [
+        {
+          url: '/api/ai/assistant/stream',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        },
+        {
+          url: edgeUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        {
+          url: '/api/ai-assistant',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        },
+      ];
 
       let response: Response | null = null;
       let lastError = '';
+      for (const candidate of candidates) {
+        try {
+          const result = await postAssistant(candidate.url, candidate.headers, payload, controller.signal);
+          if (result.ok) {
+            response = result;
+            break;
+          }
 
-      const edgeUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/ai-assistant`;
-      const edgeHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnonKey,
-      };
-      if (session?.access_token) {
-        edgeHeaders.Authorization = `Bearer ${session.access_token}`;
-      } else {
-        edgeHeaders.Authorization = `Bearer ${supabaseAnonKey}`;
-      }
-
-      try {
-        response = await postAssistant(edgeUrl, edgeHeaders, payload, controller.signal);
-        if (!response.ok) {
-          const errorData = await response.clone().json().catch(() => ({}));
+          const errorData = (await result.clone().json().catch(() => ({}))) as Record<string, unknown>;
           lastError =
-            (errorData as { error?: string }).error ||
-            (errorData as { message?: string }).message ||
-            `Erreur edge IA (${response.status})`;
-          if (response.status === 429) {
+            (typeof errorData.error === 'string' && errorData.error) ||
+            (typeof errorData.message === 'string' && errorData.message) ||
+            `Erreur serveur IA (${result.status})`;
+          if (result.status === 429) {
             callbacks.onError(lastError, true);
             return;
           }
-          if ([400, 401, 403].includes(response.status)) {
-            callbacks.onError(lastError);
+        } catch (error) {
+          if (controller.signal.aborted) {
+            reportTimeout();
             return;
           }
-          response = null;
-        }
-      } catch (err) {
-        if (controller.signal.aborted) {
-          reportTimeout();
-          return;
-        }
-        lastError = err instanceof Error ? err.message : 'Edge IA inaccessible';
-        response = null;
-      }
-
-      if (!response) {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
-        }
-        for (const path of ['/api/ai-assistant', '/api/ai/assistant/stream']) {
-          try {
-            const res = await postAssistant(path, headers, payload, controller.signal);
-            if (res.ok) {
-              response = res;
-              break;
-            }
-            const errorData = await res.clone().json().catch(() => ({}));
-            lastError =
-              (errorData as { error?: string }).error ||
-              (errorData as { message?: string }).message ||
-              `Erreur serveur (${res.status})`;
-            if (res.status === 429) {
-              callbacks.onError(lastError, true);
-              return;
-            }
-            if ([400, 401, 403].includes(res.status)) {
-              callbacks.onError(lastError);
-              return;
-            }
-          } catch (err) {
-            if (controller.signal.aborted) {
-              reportTimeout();
-              return;
-            }
-            lastError = err instanceof Error ? err.message : lastError || 'Proxy API inaccessible';
-          }
+          lastError = error instanceof Error ? error.message : lastError || 'Service IA inaccessible';
         }
       }
 
@@ -272,26 +256,22 @@ export async function streamAIAssistant(
         return;
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
+      if ((response.headers.get('content-type') || '').includes('application/json')) {
         await parseJsonResponse(response, callbacks);
       } else {
         await parseSseResponse(response, callbacks, controller.signal);
         reportTimeout();
       }
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       if (controller.signal.aborted) {
         reportTimeout();
         return;
       }
-      const errorMsg = err instanceof Error ? err.message : 'Erreur inattendue';
-      callbacks.onError(errorMsg);
+      callbacks.onError(error instanceof Error ? error.message : 'Erreur inattendue');
     } finally {
       clearTimeout(timeoutId);
     }
   })();
 
-  return () => {
-    controller.abort();
-  };
+  return () => controller.abort();
 }

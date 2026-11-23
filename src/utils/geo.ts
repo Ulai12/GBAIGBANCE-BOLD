@@ -1,4 +1,5 @@
 import type { Event } from '@/types';
+import { coreHaversineDetails, coreNearbyEvents } from '@/lib/rust-core';
 
 // Default center of Lomé (capital)
 export const LOME_CENTER = {
@@ -253,4 +254,62 @@ export async function requestUserLocation(): Promise<UserLocationState> {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
+}
+
+/**
+ * Calcul haute précision distance route + temps de trajet via le cœur Rust WebAssembly.
+ */
+export async function calculateDistanceWithRust(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): Promise<{ distanceKm: number; roadDistanceKm: number; travelMinutes: number | null }> {
+  const res = await coreHaversineDetails(lat1, lon1, lat2, lon2);
+  return {
+    distanceKm: res.distance_km,
+    roadDistanceKm: res.road_distance_km,
+    travelMinutes: res.travel_minutes,
+  };
+}
+
+/**
+ * Trie et filtre les événements par proximité via le cœur Rust WebAssembly.
+ */
+export async function rankNearbyEventsWithRust(
+  userLat: number,
+  userLng: number,
+  events: Event[],
+  radiusKm = 25,
+  limit = 12
+): Promise<Array<Event & { distanceKm: number }>> {
+  const payload = events.map((ev) => {
+    const coords = getEventCoordinates(ev);
+    return {
+      id: ev.id,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      title: ev.title,
+      city: ev.city,
+      category: ev.category,
+      starts_at: ev.starts_at,
+      location_name: ev.location_name,
+      price_min: ev.price_min ?? null,
+      currency: ev.currency ?? 'XOF',
+    };
+  });
+
+  const ranked = await coreNearbyEvents(userLat, userLng, radiusKm, limit, payload);
+  const byId = new Map(events.map((ev) => [ev.id, ev]));
+  const result: Array<Event & { distanceKm: number }> = [];
+
+  for (const item of ranked.events) {
+    const orig = byId.get(item.id);
+    if (!orig) continue;
+    result.push({
+      ...orig,
+      distanceKm: item.road_distance_km ?? item.distance_km,
+    });
+  }
+  return result;
 }
