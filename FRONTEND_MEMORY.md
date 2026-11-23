@@ -144,3 +144,11 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Référence technique : le clipping doit être porté par le viewport plein écran et non par le petit cadre interne ; `overflow: hidden` sur un parent coupe les transformations de ses descendants. Références : CSS Overflow Module Level 3 et Apple HIG Motion (mouvement bref, précis et cohérent avec le geste).
 - Commit code : 1ce95e80451ceffbc099a66e0abe86e1f0a25122 sur `FRONTEND-iA`.
 - Validation restante : build/typecheck/lint, déploiement preview et QA tactile sur Safari iPhone ; ces validations ne sont pas encore déclarées réussies.
+
+## 2026-11-23 — Retour au mouvement initial 3D de « À la une »
+- À la demande de l'utilisateur, la base visuelle et le comportement reviennent au commit `9a7fe9d8d6be12646b85531e6cc8e0f12be1e0d5` : une seule `motion.div` porte toute la carte et son contenu, avec glissement horizontal, inclinaison 3D discrète, swipe et direction avant/arrière.
+- Retouches demandées appliquées sans ajouter de nouveau conteneur : suppression du wash violet derrière la carte, suppression du contour blanc et remplacement du fond dégradé violet de secours par un fond neutre sombre. L'ombre reste attachée à la carte.
+- Le wrapper extérieur reste `relative w-full` sans `overflow-hidden` ; la scène intérieure ne coupe pas le mouvement. La translation ±108% permet à la carte entière de quitter la zone du carrousel et de passer au-delà des bords visibles du téléphone, sans viewport artificiel plein écran.
+- Aucun changement dans `HomeScreen` ni dans « Explorer par catégorie ».
+- Commit code : d6b75dc14e93efa4e86250854808098925503a8b sur `FRONTEND-iA`.
+- Validation : code source restauré depuis le commit de référence puis retouché de façon ciblée ; QA visuelle iPhone/Safari et test du build restent à effectuer.
