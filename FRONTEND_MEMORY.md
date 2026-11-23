@@ -107,3 +107,13 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Le layout historique restauré (16:10 mobile) reste inchangé.
 - Commit : `5c7d33de5d334d45cbf882c0601c89a53176793d` sur `FRONTEND-iA`.
 - Vérification statique distante : switch non bloquant, priorité basse, durée courte, responsive/data saver et ratio historique présents. Build/typecheck/lint, mesures INP et QA iPhone non encore exécutés.
+
+
+## 2026-11-23 — Préchargement partagé et switch horizontal des cartes
+- Création de `src/utils/preloadResponsiveImages.ts` : utilitaire partagé de préchargement responsive limité, dédupliqué, asynchrone et à priorité basse. Il tient compte du mode économiseur de données, utilise les variantes responsive et n'expose aucune promesse à attendre côté interaction.
+- `src/components/FeaturedCarousel.tsx` : « À la une » adopte un remplacement horizontal directionnel : au suivant, la carte courante sort à gauche et la suivante entre depuis la droite ; navigation précédente inversée. Une seule carte occupe la scène, sans pile, sans effet de profondeur et sans attente réseau. Durée courte (220 ms), quasi instantanée avec réduction des animations. Ratio et apparence restaurés précédemment conservés.
+- `src/components/TrendingDeck.tsx` : filtrage mémoïsé et préchargement basse priorité des couvertures immédiatement précédente/suivante via le même utilitaire. `TrendingDeckCard.tsx` donne priorité haute à l'image active et lazy/basse priorité à la carte arrière ; le style de pile existant de Tendances est conservé.
+- Les grilles et listes ordinaires continuent d'utiliser le chargement lazy de `SmartImage` : pas de préchargement global de toutes les images, afin de ne pas consommer inutilement le réseau et la mémoire. Le nouvel utilitaire est réutilisable dans les autres flux à navigation séquentielle (rails, galeries, carrousels).
+- Aucun changement dans « Explorer par catégorie », backend/API, données métier, dépendances ou lockfiles.
+- Commits successifs sur `FRONTEND-iA` : `a6ab1efe` (utilitaire), `1ea7dd13` (À la une), `8846adbf` (Tendances), `aaf1c131` (priorité image active).
+- Validation restante : build Vercel, typecheck/lint, QA tactile iPhone, vérification visuelle du sens du glissement et mesure INP/frame-time. Aucune de ces validations n'est déclarée réussie à ce stade.
