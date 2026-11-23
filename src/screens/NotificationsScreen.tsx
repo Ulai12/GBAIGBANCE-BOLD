@@ -61,27 +61,8 @@ function getIconColor(type: string) {
   }
 }
 
-function getActionLabel(type: string) {
-  switch (type) {
-    case 'comment_reply':
-      return 'a répondu à votre commentaire';
-    case 'new_comment':
-      return 'a commenté votre événement';
-    case 'new_question':
-      return 'a posé une question';
-    case 'question_answered':
-      return 'a répondu à votre question';
-    case 'new_follower':
-      return 'a commencé à vous suivre';
-    case 'invite_accepted':
-      return 'a accepté votre invitation';
-    default:
-      return '';
-  }
-}
-
 export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsScreenProps) {
-  const { user } = useApp();
+  const { user, t } = useApp();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,16 +85,16 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     }
     fetchNotifications(user.id)
       .then((data) => setNotifications(data || []))
-      .catch(() => onToast({ message: 'Erreur de chargement des notifications', type: 'error' }))
+      .catch(() => onToast({ message: t('notifications', 'loadingError'), type: 'error' }))
       .finally(() => setLoading(false));
-  }, [user, onToast]);
+  }, [user, onToast, t]);
 
   const handleMarkRead = async (id: string) => {
     try {
       await markNotificationRead(id);
       setNotifications(notifications.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     } catch {
-      onToast({ message: 'Erreur', type: 'error' });
+      onToast({ message: t('notifications', 'markReadError'), type: 'error' });
     }
   };
 
@@ -122,16 +103,21 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     try {
       await markAllNotificationsRead(user.id);
       setNotifications(notifications.map((n) => ({ ...n, is_read: true })));
-      onToast({ message: 'Toutes les notifications sont lues', type: 'success' });
+      onToast({ message: t('notifications', 'markAllSuccess'), type: 'success' });
     } catch {
-      onToast({ message: 'Erreur', type: 'error' });
+      onToast({ message: t('notifications', 'markReadError'), type: 'error' });
     }
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const displayedNotifications = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
 
-  // Redirection directe vers l'endroit exact concerné par la notification (événement, profil, billet, etc.)
+  const getActionLabel = (type: string) => {
+    const key = `actions.${type}`;
+    const translated = t('notifications', key);
+    return translated !== key ? translated : '';
+  };
+
   const handleNotificationClick = (n: Notification) => {
     if (!n.is_read) {
       handleMarkRead(n.id);
@@ -160,33 +146,32 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   if (!user) {
     return (
       <div className="min-h-screen pb-32">
-        {/* Header harmonisé style Favoris & Tickets */}
         <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
           <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={onBack}
               className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform cursor-pointer"
-              aria-label="Retour"
+              aria-label={t('notifications', 'back')}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-              Centre d'Activité
+              {t('notifications', 'headerBadge')}
             </p>
             <div className="w-10" />
           </div>
 
           <div className="flex items-center justify-between mt-2">
             <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
-              Notifications
+              {t('notifications', 'title')}
             </h1>
             <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
               0
             </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Suivi de vos réservations, alertes artistes et actualités en direct
+            {t('notifications', 'subtitle')}
           </p>
         </div>
 
@@ -195,10 +180,10 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
             <Bell className="w-10 h-10" />
           </div>
           <h2 className="text-xl font-black text-[#17131D] dark:text-white mb-2">
-            Restez informé en temps réel
+            {t('notifications', 'loginTitle')}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto leading-relaxed">
-            Connectez-vous pour recevoir vos confirmations de réservation, alertes artistes et rappels d'événements.
+            {t('notifications', 'loginDescription')}
           </p>
           {onLogin && (
             <button
@@ -206,7 +191,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               onClick={onLogin}
               className="px-6 py-3.5 rounded-full bg-[#6600FF] text-white font-black text-xs inline-flex items-center gap-2 shadow-md hover:bg-[#5200cc] transition-all"
             >
-              <LogIn className="w-4 h-4" /> Se connecter à mon compte
+              <LogIn className="w-4 h-4" /> {t('notifications', 'loginButton')}
             </button>
           )}
         </div>
@@ -214,21 +199,28 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     );
   }
 
+  const countLabel = unreadCount > 0
+    ? (unreadCount > 1
+        ? t('notifications', 'unreadCountPlural').replace('{count}', String(unreadCount))
+        : t('notifications', 'unreadCount').replace('{count}', String(unreadCount)))
+    : (notifications.length > 1
+        ? t('notifications', 'receivedCountPlural').replace('{count}', String(notifications.length))
+        : t('notifications', 'receivedCount').replace('{count}', String(notifications.length)));
+
   return (
     <div className="min-h-screen pb-32">
-      {/* Header harmonisé style Favoris & Tickets */}
       <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
             className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[#17131D] dark:text-white active:scale-90 transition-transform cursor-pointer"
-            aria-label="Retour"
+            aria-label={t('notifications', 'back')}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-            Centre d'Activité
+            {t('notifications', 'headerBadge')}
           </p>
           {unreadCount > 0 ? (
             <button
@@ -237,7 +229,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] active:scale-95 transition-all cursor-pointer"
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              <span>Tout lire</span>
+              <span>{t('notifications', 'markAllRead')}</span>
             </button>
           ) : (
             <div className="w-10" />
@@ -246,19 +238,18 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
 
         <div className="flex items-center justify-between mt-2">
           <h1 className="text-2xl sm:text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
-            Notifications
+            {t('notifications', 'title')}
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
-            {unreadCount > 0 ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}` : `${notifications.length} reçue${notifications.length > 1 ? 's' : ''}`}
+            {countLabel}
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Suivi de vos réservations, alertes artistes et actualités en direct
+          {t('notifications', 'subtitle')}
         </p>
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-3">
-        {/* Segmented filter style Apple HIG */}
         <div className="p-1 bg-gray-200/80 dark:bg-white/10 rounded-2xl flex items-center mb-4">
           <button
             type="button"
@@ -269,7 +260,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            Toutes ({notifications.length})
+            {t('notifications', 'filterAll').replace('{count}', String(notifications.length))}
           </button>
           <button
             type="button"
@@ -280,7 +271,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            Non lues ({unreadCount})
+            {t('notifications', 'filterUnread').replace('{count}', String(unreadCount))}
           </button>
         </div>
 
@@ -294,12 +285,12 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               <Bell className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-sm font-black text-[#17131D] dark:text-white mb-1">
-              {filter === 'unread' ? 'Aucune notification non lue' : 'Aucune notification'}
+              {filter === 'unread' ? t('notifications', 'emptyUnreadTitle') : t('notifications', 'emptyAllTitle')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed">
               {filter === 'unread'
-                ? 'Vous êtes à jour avec toutes vos alertes.'
-                : 'Vos notifications apparaîtront ici quand quelqu’un interagira avec vos événements ou répondra à vos questions.'}
+                ? t('notifications', 'emptyUnreadDesc')
+                : t('notifications', 'emptyAllDesc')}
             </p>
           </div>
         ) : (
@@ -342,7 +333,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                       </p>
                     )}
                     <p className="text-[10px] font-semibold text-gray-400 mt-1.5">
-                      {new Date(n.created_at).toLocaleString('fr-FR', {
+                      {new Date(n.created_at).toLocaleString(undefined, {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',
