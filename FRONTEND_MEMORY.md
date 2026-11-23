@@ -1,69 +1,49 @@
 # FRONTEND_MEMORY.md — Mémoire frontend
 
 ## Règles permanentes
-- Branche Git unique : `FRONTEND-iA`. Vérifier la branche avant toute écriture et avant chaque commit.
-- Ne jamais créer ou ouvrir de pull request sans demande explicite.
-- Ne jamais modifier `main` ni une autre branche.
-- Ne jamais lire, modifier ou utiliser `PROJECT_MEMORY.md`.
-- Ne pas toucher à la section « Explorer par catégorie » (intouchable sauf demande explicite).
-- Préserver les fonctionnalités, données, hiérarchies métier et contrats backend existants.
-- Un seul chantier principal par session ; pas de commits de remplissage.
-- Distinguer systématiquement réalisé, testé, non vérifié et recommandé.
-- Après chaque commit : relecture distante + comparaison de tailles. Si rétrécissement >20 % non voulu → ARRÊT et restauration.
+- Branche Git unique : `FRONTEND-iA`.
+- Après chaque commit : relecture distante + tailles. Rétrécissement >20 % non voulu → ARRÊT + restauration.
+- Fichiers >25 ko : risque de troncature via connecteur ; préférer git local / API complète.
 
 ## Projet
 - Dépôt : https://github.com/Ulai12/GBAIGBANCE-BOLD
-- Branche autorisée : `FRONTEND-iA`
-- Stack : React 18, TypeScript, Vite, Tailwind, Supabase.
-- Projet Supabase client : `lwwiolbofrqakvrdvbbj`.
+- Branche : `FRONTEND-iA`
+- Stack : React 18, TypeScript, Vite, Tailwind, Supabase `lwwiolbofrqakvrdvbbj`.
 
-## Tâche active (23 novembre 2026)
-**P0 terminé** — Restauration de `OrganizerDashboardScreen.tsx` après troncature.
+## Tâche active (23 novembre 2026) — BLOQUÉE P0
+**Restauration `src/locales/fr/events.json` et `src/locales/en/events.json`**
 
-### Objectif atteint
-Remettre un fichier complet et fonctionnel (liste, métriques, scanner, modals création/suppression).
+### État critique
+- Les deux fichiers sont **vides ou partiels** (incident PLACEHOLDER puis push vide, puis restore partiel FR ~17 ko au lieu de ~42 ko).
+- Commit sain de référence : **`8ce468fdf13e794d781188a05d3924f8e8ab0ac2`**
+- Contenu sain disponible aussi en local agent : tailles FR 42190 / EN 37952 octets.
 
-### Progression
-- Fichier tronqué (~21 ko, modals absents) restauré depuis le commit sain `8ce468fd`.
-- Commit de restauration : `e4e30a08` sur FRONTEND-iA.
-- Taille distante post-restore : ~29,4 ko (logique complète, accolades équilibrées, TicketScannerModal + modals présents).
-- Différence de taille vs original (~33 ko) due au reformatage whitespace, pas à une perte de logique.
+### Action REQUISE (propriétaire ou agent avec git local)
+```bash
+git fetch origin
+git checkout FRONTEND-iA
+git checkout 8ce468fdf13e794d781188a05d3924f8e8ab0ac2 -- src/locales/fr/events.json src/locales/en/events.json
+git status  # vérifier tailles ~42k / ~38k
+git commit -m "fix(P0): restore fr/en events.json from healthy 8ce468fd"
+git push origin FRONTEND-iA
+```
 
-### Fichiers concernés
-- `src/screens/OrganizerDashboardScreen.tsx` — restauré
-- `FRONTEND_MEMORY.md` — restauré et mis à jour
+### Ne pas continuer
+- Ne pas ajouter de clés organizerDashboard tant que les JSON complets ne sont pas restaurés.
+- Ne pas pousser de contenu partiel.
 
-### Dernière action
-2026-11-23 — Restauration P0 OrganizerDashboardScreen + mémoire. Vérification distante OK (contenu complet).
+### Déjà fait cette session
+- OrganizerDashboardScreen.tsx restauré (`e4e30a08`) — logique complète OK.
+- FRONTEND_MEMORY mis à jour.
 
-### Prochaine étape (session suivante)
-- Localisation FR/EN progressive de OrganizerDashboardScreen (clés `organizerDashboard` dans events.json) par **petits commits** pour éviter les troncatures.
-- Ou polish responsive / états loading-empty sur un autre écran prioritaire (Favorites, Notifications déjà avancés).
-- Propriétaire : merger main → FRONTEND-iA si divergences de localisation.
+### Prochaine étape après restore events.json
+- Vérifier tailles distantes FR≈42k EN≈38k.
+- Puis localisation progressive OrganizerDashboard par **petits commits**.
 
-### Vérifications
-- Branche FRONTEND-iA confirmée.
-- Relecture distante OrganizerDashboardScreen : contenu complet, vrai code, fin de fichier correcte.
-- Rendu navigateur / build / lint : non exécutés cette session.
+## Incidents
+- 2026-11-23 : events.json → PLACEHOLDER puis size 0 (commit 50da5d77) puis FR partiel 17k (a3c74da8). **Non résolu par connecteur (limite taille payload).**
 
-## Incidents d'écriture
-- 2026-11-23 : troncature OrganizerDashboardScreen (placeholders puis contenu partiel). Restauré via `e4e30a08` depuis `8ce468fd`.
-- 2026-11-23 : FRONTEND_MEMORY écrasé en version courte. Restauré dans ce commit.
-- Consigne : préférer push_files / API pour fichiers >25 ko ; jamais de contenu partiel.
-
-## Backlog priorité
-P0 : — (restauration faite)
-P1 : Localisation OrganizerDashboard (petits commits) ou vérif build.
-P2 : États loading/empty/error cohérents sur écrans principaux.
-P3 : Accessibilité (contrastes, cibles ≥44px).
-
-## Cartographie écrans (résumé)
-- Finalisé / localisé : Home, Tickets, Profile, Explore, Notifications, EventDetail (polish responsive).
-- À traiter : OrganizerDashboard (logique OK, i18n partielle), Favorites (déjà riche), CreateEventWizard, Auth/Onboarding.
-- Intouchable : section Explorer par catégorie.
-
-## Historique concis récent
-- 2026-11-23 : Polish EventDetailScreen (grille date/heure, CTA sticky safe-area).
-- 2026-11-23 : Incident troncature OrganizerDashboard → restauration P0.
-- 2026-11-22/23 : Localisation ExploreScreen complète.
-- Précédent : localisations Home / Profile / Tickets ; fondation paiements ; RLS optimisée.
+## Backlog
+P0 : Restaurer events.json FR/EN complets (commande ci-dessus).
+P1 : i18n OrganizerDashboard (petits commits).
+P2 : États loading/empty.
