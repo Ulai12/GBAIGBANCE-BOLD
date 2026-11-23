@@ -4,35 +4,33 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Correction advisor RLS event_view_daily (policy manquante) + suppression index dupliqué sur tickets.
+Revue progressive des grants SECURITY DEFINER : révocation EXECUTE de anon sur les fonctions qui exigent une authentification ou sont internes.
 
 ## Objectif
-Éliminer le lint rls_enabled_no_policy sur la table interne event_view_daily et le duplicate_index sur tickets.user_id.
+Réduire la surface d'exposition RPC pour les fonctions SECURITY DEFINER non destinées aux utilisateurs anonymes. Les fonctions vérifient déjà auth.uid(), mais l'appel anonyme est inutile et génère des warnings advisors.
 
 ## Progression
-- Policy service_role_manage_event_view_daily créée (FOR ALL TO service_role).
-- Index dupliqué tickets_user_idx supprimé (gardé idx_tickets_user_id).
-- Migration 20261123010000 appliquée en base et versionnée.
-- Advisors security : rls_enabled_no_policy disparu.
+- Migration 20261123120000 appliquée en base (apply_migration success) et versionnée sur FRONTEND-iA.
+- REVOKE EXECUTE FROM anon sur ~22 fonctions (book_ticket, initiate_ticket_payment, toggles, refunds, create_notification, rls_auto_enable, etc.).
+- Conservées pour anon : get_platform_stats, increment_event_views, record_event_view (usage public légitime).
+- Advisors security : le nombre de anon_security_definer_function_executable a baissé.
 
 ## Fichiers concernés
-- supabase/migrations/20261123010000_fix_event_view_daily_rls_and_duplicate_index.sql
+- supabase/migrations/20261123120000_revoke_anon_execute_on_auth_required_functions.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-23 — Application migration event_view_daily RLS + drop duplicate index. Mémoire mise à jour.
+2026-11-23 — Application migration revoke anon EXECUTE + versionnement. Mémoire mise à jour.
 
 ## Prochaine étape
-- Revue progressive des SECURITY DEFINER grants (révoquer anon sur fonctions non nécessaires).
-- Vérifier liaisons end-to-end (setEventStatus, validateTicketQr).
+- Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
+- Continuer revue authenticated grants si nécessaire (beaucoup sont intentionnels).
 
 ## Vérifications
-- Policy présente sur event_view_daily. OK.
-- Index tickets_user_idx absent, idx_tickets_user_id présent. OK.
-- Advisors security : plus de rls_enabled_no_policy. OK.
-- Migration enregistrée (apply_migration success). OK.
+- Migration enregistrée et fichier distant présent (taille ~2.2ko). OK.
 - Aucune troncature cette session.
+- Les fonctions conservent leurs checks auth.uid() internes.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -56,13 +54,14 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261123120000_revoke_anon_execute_on_auth_required_functions (appliquée 2026-11-23)
 - 20261123010000_fix_event_view_daily_rls_and_duplicate_index (appliquée 2026-11-23)
 - 20261119010000_optimize_rls_remaining_tables (appliquée 2026-11-21)
 - 20261120100000_add_remaining_fk_indexes
 - 20261119100000_restore_event_status_and_qr_validation_rpcs
 - 20261118143000_drop_example_and_optimize_rls_critical
 - 20261118120000_add_remaining_fk_indexes
-- Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon.
+- Précédentes : payments, access_type, P2 features, FK indexes partiels, revoke EXECUTE anon partiel.
 
 ## ACTIONS REQUISES DU PROPRIÉTAIRE
 - Configurer PAYMENT_WEBHOOK_SECRET dans le dashboard Supabase.
@@ -71,7 +70,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Tester validation QR et changement de statut événement en staging.
 
 ## Dette backend
-- Nombreux SECURITY DEFINER callable par anon/authenticated — revue progressive des grants.
+- Nombreux SECURITY DEFINER callable par authenticated — revue progressive des grants (beaucoup sont nécessaires).
 - Extension pg_net in public.
 - Quelques multiple permissive policies (event_comments, event_questions, etc.).
 - Indexes unused (info, normal en faible trafic).
@@ -83,9 +82,10 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Vérification end-to-end des nouvelles RPCs.
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
-- Revue grants SECURITY DEFINER (priorité : révoquer anon sur fonctions sensibles non nécessaires).
+- Revue grants SECURITY DEFINER authenticated.
 
 ## Historique
+- 2026-11-23 : Revoke EXECUTE anon sur fonctions auth-required (batch ~22).
 - 2026-11-23 : Policy RLS event_view_daily + drop index dupliqué tickets.
 - 2026-11-21 : Optimisation RLS auth initplan complétée (50 → 0).
 - 2026-11-20 : Indexes FK restants + restauration mémoire.
@@ -103,6 +103,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Indexes FK complétés.
 - RLS auth initplan optimisée sur toutes les tables exposées.
 - event_view_daily : policy service_role en place (table interne).
+- EXECUTE anon révoqué sur les RPCs qui exigent auth.uid().
 
 ## Taches À faire
 - [Automatisation frontend / main] EventDetailScreen.tsx avait été tronqué en placeholder sur main ; restauré depuis FRONTEND-iA. Continuer localisation ExploreScreen (partiellement faite). Merger main dans FRONTEND-iA si besoin pour synchroniser les clés i18n.
@@ -111,7 +112,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Tester les RPCs restaurées en conditions réelles.
-- [Backend] Revue progressive des grants SECURITY DEFINER.
+- [Backend] Revue progressive des grants SECURITY DEFINER (authenticated).
 - [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer les localisations récentes si divergences.
 
 ## Taches À faire (mise à jour 2026-11-23 — automatisation frontend/main)
