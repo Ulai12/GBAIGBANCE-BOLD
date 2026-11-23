@@ -234,6 +234,18 @@ export async function purchaseTicketsMulti(params: {
       return { success: false, error: 'Connectez-vous pour réserver un billet.', code: 'AUTH_REQUIRED' };
     }
 
+    // Ne jamais considérer le profil local en cache comme une session Supabase valide.
+    // Les RPC de billetterie sont volontairement interdites au rôle anon.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const authenticatedUserId = sessionData.session?.user?.id;
+    if (sessionError || !authenticatedUserId || authenticatedUserId !== userId) {
+      return {
+        success: false,
+        error: 'Votre session est absente ou expirée. Reconnectez-vous pour réserver un billet.',
+        code: 'AUTH_REQUIRED',
+      };
+    }
+
     if (unitPrice > 0) {
       const res = await rpcInitiateTicketPayment({
         eventId,
