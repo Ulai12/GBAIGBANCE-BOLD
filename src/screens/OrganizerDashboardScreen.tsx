@@ -182,7 +182,7 @@ export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, on
     <div className="min-h-screen pb-32">
       <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-[#F7F5F0]/85 dark:bg-[#141216]/85 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <button onClick={onBack} className="text-sm text-gray-500 font-medium"{t('common', 'back')}</button>
+          <button onClick={onBack} className="text-sm text-gray-500 font-medium">{t('common', 'back')}</button>
           <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{t('organizer', isArtist ? 'artistTitle' : 'dashboardTitle')}</h1>
           <div className="flex items-center gap-2">
             <button
