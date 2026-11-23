@@ -149,17 +149,15 @@ export function FeaturedCarousel({
   // Une seule carte est visible à la fois : aucune pile ni attente du chargement d'image.
   const variants = {
     enter: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '108%' : '-108%',
-      rotateY: slideDirection >= 0 ? -13 : 13,
-      scale: 0.94,
-      opacity: 0.92,
+      x: slideDirection >= 0 ? '100%' : '-100%',
+      scale: 0.985,
+      opacity: 0.88,
     }),
-    center: { x: '0%', rotateY: 0, scale: 1, opacity: 1 },
+    center: { x: '0%', scale: 1, opacity: 1 },
     exit: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '-108%' : '108%',
-      rotateY: slideDirection >= 0 ? 13 : -13,
-      scale: 0.94,
-      opacity: 0.92,
+      x: slideDirection >= 0 ? '-100%' : '100%',
+      scale: 0.985,
+      opacity: 0.88,
     }),
   };
 
@@ -167,16 +165,14 @@ export function FeaturedCarousel({
 
   return (
     <div
-      className="relative w-full [perspective:1400px] group select-none"
+      className="relative w-full group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] bg-transparent">
-        {/* Static color wash avoids a duplicate cover download and an animated blur layer. */}
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/15 via-transparent to-fuchsia-500/10 pointer-events-none" />
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] overflow-hidden rounded-[2rem] bg-transparent">
 
         <AnimatePresence initial={false} custom={direction} mode="sync">
           <motion.div
@@ -186,11 +182,9 @@ export function FeaturedCarousel({
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{
-              duration: prefersReducedMotion ? 0.01 : 0.32,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            style={{ transformPerspective: 1400, transformStyle: 'preserve-3d' }}
+            transition={prefersReducedMotion
+              ? { duration: 0.01 }
+              : { type: 'spring', stiffness: 280, damping: 32, mass: 0.9 }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.12}
@@ -205,7 +199,7 @@ export function FeaturedCarousel({
                 prevSlide();
               }
             }}
-            className="absolute inset-0 overflow-hidden rounded-[2rem] border border-white/15 bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22] shadow-[0_24px_60px_rgba(12,7,24,0.34)] cursor-grab active:cursor-grabbing will-change-transform"
+            className="absolute inset-0 overflow-hidden rounded-[2rem] bg-[#111318] shadow-[0_18px_48px_rgba(0,0,0,0.28)] cursor-grab active:cursor-grabbing will-change-transform"
             onClick={() => onEventClick(currentEvent)}
           >
             {/* BACKGROUND COVER IMAGE */}
