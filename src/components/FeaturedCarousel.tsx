@@ -145,17 +145,17 @@ export function FeaturedCarousel({
       ? categoryTranslation
       : rawCategory || t('events', 'event');
 
-  // Une carte sort à gauche pendant que la suivante entre depuis la droite (et inversement).
-  // Une seule carte est visible à la fois : aucune pile ni attente du chargement d'image.
+  // La carte entière traverse la largeur de l'écran, pas seulement celle de son cadre.
+  // Le viewport plein écran masque ce qui sort ; l'image et tout le contenu restent solidaires.
   const variants = {
     enter: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '100%' : '-100%',
+      x: slideDirection >= 0 ? '110vw' : '-110vw',
       scale: 0.985,
       opacity: 0.88,
     }),
     center: { x: '0%', scale: 1, opacity: 1 },
     exit: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '-100%' : '100%',
+      x: slideDirection >= 0 ? '-110vw' : '110vw',
       scale: 0.985,
       opacity: 0.88,
     }),
@@ -165,14 +165,14 @@ export function FeaturedCarousel({
 
   return (
     <div
-      className="relative w-full group select-none"
+      className="relative left-1/2 -translate-x-1/2 w-screen max-w-[100vw] overflow-x-clip group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] overflow-hidden rounded-[2rem] bg-transparent">
+      <div className="mx-5 relative aspect-[16/10] sm:aspect-[21/10] min-h-[330px] sm:min-h-[350px] overflow-visible bg-transparent">
 
         <AnimatePresence initial={false} custom={direction} mode="sync">
           <motion.div
