@@ -121,3 +121,13 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - `CreateEventWizardScreen.tsx` récupère ces avertissements et les fusionne avec les erreurs des photos, du programme, des liens Live et des sponsors. L'organisateur voit un message partiel et l'événement n'est pas recréé par erreur.
 - Commits : `5118143e6bb5b4955a9a126388a8eca868aa4db2` (service) et `22cba4f339ccdfeea09a9b5800c7b1a0e7af2e43` (wizard).
 - Limite de vérification : les requêtes Supabase sont confirmées par lecture du code, mais aucun test d'écriture en base ni création réelle n'a été exécuté dans cette session. Aucun changement de schéma Supabase.
+
+
+## 2026-11-23 — Découverte premium : cartes, À la une et Tendances
+- Recherche de référence : Apple HIG Materials/Liquid Glass (réserver le matériau aux contrôles/navigation, garder le contenu lisible) ; web.dev INP et guide d'animations (réduire le travail des interactions, privilégier transform/opacity, respecter reduced motion).
+- `src/components/FeaturedCarousel.tsx` : hero mobile plus immersif au format portrait, ratio paysage conservé sur écran large, contraste du dégradé renforcé, contour et profondeur plus subtils. Navigation, autoplay, données et callbacks inchangés.
+- `src/components/EventCard.tsx` : cartes plus éditoriales (rayon, proportions, bordure, ombre et respiration du contenu), contraste du voile et accent violet éclairci. Données, prix, partage, favoris et statut inchangés.
+- `src/components/TrendingDeck.tsx` et `TrendingDeckCard.tsx` : pile limitée à deux cartes pour réduire le coût de rendu ; correction du swipe dont les contraintes de ±30 px empêchaient d'atteindre le seuil de déclenchement de 80 px ; déplacement borné à ±280 px et élasticité réduite.
+- Commits sur `FRONTEND-iA` : `bf9d4d5`, `d2e4fd4`, `f3dc788`, `7eaf96a`.
+- Aucun changement de « Explorer par catégorie », navigation, logique de réservation, API, schéma Supabase, dépendance ou lockfile.
+- Validation restant à faire : build Preview, typecheck/lint et QA visuelle/tactile réelle sur mobile. Ne pas déclarer les modifications validées avant ces contrôles.
