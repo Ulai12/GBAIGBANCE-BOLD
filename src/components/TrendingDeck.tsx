@@ -1,9 +1,12 @@
 import { AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
 import { TrendingDeckCard } from '@/components/TrendingDeckCard';
+import { useDataSaver } from '@/hooks/useDataSaver';
+import { getDefaultEventCover } from '@/utils/defaultImages';
+import { preloadResponsiveImages } from '@/utils/preloadResponsiveImages';
 
 interface TrendingDeckProps {
   events: Event[];
@@ -14,11 +17,37 @@ interface TrendingDeckProps {
 export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeckProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const { t } = useApp();
-  const visibleEvents = events.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date());
+  const { isDataSaverActive } = useDataSaver();
+  const visibleEvents = useMemo(
+    () => events.filter((event) => event.status === 'published' && new Date(event.ends_at || event.starts_at) > new Date()),
+    [events]
+  );
 
   useEffect(() => {
     setActiveIndex((current) => Math.min(current, Math.max(visibleEvents.length - 1, 0)));
   }, [visibleEvents.length]);
+
+  // Précharge seulement les deux événements voisins, à basse priorité.
+  // La carte active change immédiatement ; son image n'est jamais attendue.
+  useEffect(() => {
+    if (visibleEvents.length <= 1) return;
+
+    const nextIndex = (activeIndex + 1) % visibleEvents.length;
+    const previousIndex = (activeIndex - 1 + visibleEvents.length) % visibleEvents.length;
+    const adjacentUrls = [nextIndex, previousIndex].map((index) => {
+      const event = visibleEvents[index];
+      return event
+        ? event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)
+        : null;
+    });
+
+    preloadResponsiveImages(adjacentUrls, {
+      widths: isDataSaverActive ? [240, 480] : [480, 768, 1080, 1440],
+      sizes: '(max-width: 640px) calc(100vw - 2rem), 90vw',
+      dataSaver: isDataSaverActive,
+      limit: 2,
+    });
+  }, [activeIndex, visibleEvents, isDataSaverActive]);
 
   if (visibleEvents.length === 0) return null;
 
