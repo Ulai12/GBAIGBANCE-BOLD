@@ -146,3 +146,14 @@ P3 : Accessibilité (contrastes, cibles).
 - Build complet Vite, lint, typecheck, test PWA installable et validation sur iOS 27 réel : non exécutés à cette étape.
 - Le manifeste Web ne garantit pas la sélection d'une image selon le thème; les liens HTML Apple Touch Icon/favicon déclarent les variantes via prefers-color-scheme. L'icône PWA de manifeste reste le visuel clair par défaut.
 - Branche FRONTEND-iA confirmée avant écriture; pas de PR.
+
+
+## 2026-11-23 — Retour à l'icône précédente, conservation du thème adaptatif
+- Demande utilisateur : annuler l'icône G ruban Liquid Glass et revenir à l'identité antérieure, tout en conservant la sélection d'icône selon le thème.
+- `public/icon.svg` et `public/icon-maskable.svg` restaurés exactement depuis le parent du commit Liquid Glass : emblème historique blanc avec arc orange/rose, fond violet dégradé et horizon géométrique discret.
+- `public/icon-dark.svg` et `public/icon-maskable-dark.svg` reprennent le même dessin historique; seul le fond violet est assombri pour la variante sombre.
+- Générateur Sharp, génération PNG clair/sombre, intégration Vite et liens favicon/Apple Touch Icon conditionnés par `prefers-color-scheme` conservés.
+- Métadonnées de couleur de barre de navigateur clair/sombre rétablies aux valeurs historiques.
+- Aucun changement backend/API, dépendance, lockfile ou parcours « Explorer par catégorie ».
+- Validation statique des SVG et des références HTML effectuée; build Vite, rendu navigateur et test sur iOS réel non exécutés.
+- Branche cible FRONTEND-iA confirmée avant commit.

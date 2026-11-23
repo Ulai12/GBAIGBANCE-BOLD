@@ -34,10 +34,6 @@ export default defineConfig({
         description: 'Découvrez, réservez et participez aux meilleurs événements en Afrique de l’Ouest.',
         theme_color: '#FFFFFF',
         background_color: '#F8F5FF',
-        color_scheme_dark: {
-          theme_color: '#08060D',
-          background_color: '#08060D',
-        },
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
