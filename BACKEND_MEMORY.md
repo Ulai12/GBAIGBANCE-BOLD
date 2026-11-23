@@ -113,3 +113,9 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - [Backend] Tester les RPCs restaurées en conditions réelles.
 - [Backend] Revue progressive des grants SECURITY DEFINER.
 - [Automatisation frontend / Propriétaire] Merger main dans FRONTEND-iA pour intégrer les localisations récentes si divergences.
+
+## Taches À faire (mise à jour 2026-11-23 — automatisation frontend/main)
+- [Automatisation frontend / main] NotificationsScreen localisé (domaine notifications FR/EN). Continuer revue mobile 320px.
+- [Automatisation frontend / FRONTEND-iA] events.json FR/EN restaurés (tailles 42191 / 37953). Prochaine : localisation progressive OrganizerDashboardScreen par petits commits.
+- [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
+- [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
