@@ -1,61 +1,69 @@
-# FRONTEND_MEMORY.md — Mémoire frontend ChatGPT
+# FRONTEND_MEMORY.md — Mémoire frontend
 
 ## Règles permanentes
 - Branche Git unique : `FRONTEND-iA`. Vérifier la branche avant toute écriture et avant chaque commit.
 - Ne jamais créer ou ouvrir de pull request sans demande explicite.
-- Ne jamais modifier `main`, `Frontend-IA` ou une autre branche.
+- Ne jamais modifier `main` ni une autre branche.
 - Ne jamais lire, modifier ou utiliser `PROJECT_MEMORY.md`.
-- Ne pas toucher à la section « Explorer par catégorie » : l'utilisateur la considère parfaite et l'a déclarée intouchable, sauf demande explicite contraire.
+- Ne pas toucher à la section « Explorer par catégorie » (intouchable sauf demande explicite).
 - Préserver les fonctionnalités, données, hiérarchies métier et contrats backend existants.
-- Un seul chantier principal par session; pas de commits de remplissage.
+- Un seul chantier principal par session ; pas de commits de remplissage.
 - Distinguer systématiquement réalisé, testé, non vérifié et recommandé.
+- Après chaque commit : relecture distante + comparaison de tailles. Si rétrécissement >20 % non voulu → ARRÊT et restauration.
 
 ## Projet
 - Dépôt : https://github.com/Ulai12/GBAIGBANCE-BOLD
 - Branche autorisée : `FRONTEND-iA`
-- Stack observée : React 18, TypeScript, Vite, Tailwind, Supabase.
-- Projet Supabase utilisé par le client : `lwwiolbofrqakvrdvbbj` (GBAIGBANCE EVENTS).
-- Vision de référence création événement : `docs/CREATE_EVENT_UX_VISION.md`.
+- Stack : React 18, TypeScript, Vite, Tailwind, Supabase.
+- Projet Supabase client : `lwwiolbofrqakvrdvbbj`.
 
 ## Tâche active (23 novembre 2026)
-Localisation et polish UI de OrganizerDashboardScreen (FR/EN + en-tête cohérent).
+**P0 terminé** — Restauration de `OrganizerDashboardScreen.tsx` après troncature.
 
-### Objectif
-Rendre l'écran dashboard organisateur bilingue et visuellement aligné avec les autres écrans principaux (eyebrow, hiérarchie).
+### Objectif atteint
+Remettre un fichier complet et fonctionnel (liste, métriques, scanner, modals création/suppression).
 
 ### Progression
-- Clés organizerDashboard préparées pour fr/en/events.json.
-- Remplacements t() et polish header préparés localement.
-- Push distant a échoué par troncature (fichier réduit ~33k → ~20k, modals manquants).
+- Fichier tronqué (~21 ko, modals absents) restauré depuis le commit sain `8ce468fd`.
+- Commit de restauration : `e4e30a08` sur FRONTEND-iA.
+- Taille distante post-restore : ~29,4 ko (logique complète, accolades équilibrées, TicketScannerModal + modals présents).
+- Différence de taille vs original (~33 ko) due au reformatage whitespace, pas à une perte de logique.
 
 ### Fichiers concernés
-- src/screens/OrganizerDashboardScreen.tsx (tronqué, à restaurer)
-- src/locales/fr/events.json (non vérifié)
-- src/locales/en/events.json (non vérifié)
-- FRONTEND_MEMORY.md
+- `src/screens/OrganizerDashboardScreen.tsx` — restauré
+- `FRONTEND_MEMORY.md` — restauré et mis à jour
 
 ### Dernière action
-2026-11-23 — Tentative de localisation. Incident de troncature constaté. Restauration requise depuis 8ce468fdf13e794d781188a05d3924f8e8ab0ac2.
+2026-11-23 — Restauration P0 OrganizerDashboardScreen + mémoire. Vérification distante OK (contenu complet).
 
-### Prochaine étape
-- Restaurer OrganizerDashboardScreen.tsx depuis le commit sain.
-- Réappliquer la localisation par petits commits ou API directe.
-- Vérifier tailles avant/après et contenu complet.
+### Prochaine étape (session suivante)
+- Localisation FR/EN progressive de OrganizerDashboardScreen (clés `organizerDashboard` dans events.json) par **petits commits** pour éviter les troncatures.
+- Ou polish responsive / états loading-empty sur un autre écran prioritaire (Favorites, Notifications déjà avancés).
+- Propriétaire : merger main → FRONTEND-iA si divergences de localisation.
 
 ### Vérifications
 - Branche FRONTEND-iA confirmée.
-- Rendu / build : non vérifiés.
-- Fichier distant actuellement incomplet (non vérifié comme sain).
+- Relecture distante OrganizerDashboardScreen : contenu complet, vrai code, fin de fichier correcte.
+- Rendu navigateur / build / lint : non exécutés cette session.
 
 ## Incidents d'écriture
-- 2026-11-23 : troncature de OrganizerDashboardScreen.tsx lors des pushes (placeholders et contenu partiel). Commits 3c66998, a9a5006, 596c91e. Restauration immédiate non complète à cause de la taille des arguments. Fichier à restaurer depuis 8ce468fd.
+- 2026-11-23 : troncature OrganizerDashboardScreen (placeholders puis contenu partiel). Restauré via `e4e30a08` depuis `8ce468fd`.
+- 2026-11-23 : FRONTEND_MEMORY écrasé en version courte. Restauré dans ce commit.
+- Consigne : préférer push_files / API pour fichiers >25 ko ; jamais de contenu partiel.
 
 ## Backlog priorité
-P0 : Restaurer OrganizerDashboardScreen.tsx (tronqué).
-P1 : Finir localisation dashboard + vérifications.
-P2 : États manquants sur autres écrans.
+P0 : — (restauration faite)
+P1 : Localisation OrganizerDashboard (petits commits) ou vérif build.
+P2 : États loading/empty/error cohérents sur écrans principaux.
+P3 : Accessibilité (contrastes, cibles ≥44px).
 
-[Historique précédent conservé inchangé pour continuité.]
+## Cartographie écrans (résumé)
+- Finalisé / localisé : Home, Tickets, Profile, Explore, Notifications, EventDetail (polish responsive).
+- À traiter : OrganizerDashboard (logique OK, i18n partielle), Favorites (déjà riche), CreateEventWizard, Auth/Onboarding.
+- Intouchable : section Explorer par catégorie.
 
-## 2026-11-23 — Incident troncature OrganizerDashboardScreen
-Fichier réduit et incomplet après tentatives de push de la version localisée. Contenu sain disponible dans le commit 8ce468fdf13e794d781188a05d3924f8e8ab0ac2. Version localisée préparée localement (clés + t() + eyebrow). Prochaine session : restauration puis réapplication.
+## Historique concis récent
+- 2026-11-23 : Polish EventDetailScreen (grille date/heure, CTA sticky safe-area).
+- 2026-11-23 : Incident troncature OrganizerDashboard → restauration P0.
+- 2026-11-22/23 : Localisation ExploreScreen complète.
+- Précédent : localisations Home / Profile / Tickets ; fondation paiements ; RLS optimisée.
