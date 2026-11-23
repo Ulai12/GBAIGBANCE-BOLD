@@ -145,19 +145,21 @@ export function FeaturedCarousel({
       ? categoryTranslation
       : rawCategory || t('events', 'event');
 
-  // La carte entière traverse la largeur de l'écran, pas seulement celle de son cadre.
-  // Le viewport plein écran masque ce qui sort ; l'image et tout le contenu restent solidaires.
+  // Une carte sort à gauche pendant que la suivante entre depuis la droite (et inversement).
+  // Une seule carte est visible à la fois : aucune pile ni attente du chargement d'image.
   const variants = {
     enter: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '110vw' : '-110vw',
-      scale: 0.985,
-      opacity: 0.88,
+      x: slideDirection >= 0 ? '108%' : '-108%',
+      rotateY: slideDirection >= 0 ? -13 : 13,
+      scale: 0.94,
+      opacity: 0.92,
     }),
-    center: { x: '0%', scale: 1, opacity: 1 },
+    center: { x: '0%', rotateY: 0, scale: 1, opacity: 1 },
     exit: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '-110vw' : '110vw',
-      scale: 0.985,
-      opacity: 0.88,
+      x: slideDirection >= 0 ? '-108%' : '108%',
+      rotateY: slideDirection >= 0 ? 13 : -13,
+      scale: 0.94,
+      opacity: 0.92,
     }),
   };
 
@@ -165,15 +167,14 @@ export function FeaturedCarousel({
 
   return (
     <div
-      className="relative left-1/2 -translate-x-1/2 w-screen max-w-[100vw] overflow-x-clip group select-none"
+      className="relative w-full [perspective:1400px] group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="mx-5 relative aspect-[16/10] sm:aspect-[21/10] min-h-[330px] sm:min-h-[350px] overflow-visible bg-transparent">
-
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] bg-transparent">
         <AnimatePresence initial={false} custom={direction} mode="sync">
           <motion.div
             key={currentEvent.id}
@@ -182,9 +183,11 @@ export function FeaturedCarousel({
             initial="enter"
             animate="center"
             exit="exit"
-            transition={prefersReducedMotion
-              ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 280, damping: 32, mass: 0.9 }}
+            transition={{
+              duration: prefersReducedMotion ? 0.01 : 0.32,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            style={{ transformPerspective: 1400, transformStyle: 'preserve-3d' }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.12}
