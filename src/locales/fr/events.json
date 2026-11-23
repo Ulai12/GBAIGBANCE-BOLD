@@ -108,7 +108,16 @@
     "subcategories": "Sous-catégories",
     "price": "Tarif",
     "reset": "Réinitialiser",
-    "seeResults": "Voir les résultats"
+    "seeResults": "Voir les résultats",
+    "searchPersonTitle": "Cherchez une personne",
+    "noParticipantsTitle": "Aucun participant trouvé",
+    "searchPersonDesc": "Saisissez au moins 2 lettres du prénom ou du nom.",
+    "noParticipantsDesc": "Aucun profil ne correspond. Essayez une autre orthographe.",
+    "allSubcategories": "Toutes",
+    "defaultParticipantLabel": "Participant Gbaigbance",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "city": "Ville"
   },
   "artist": {
     "followers": "Abonnés",
