@@ -149,13 +149,64 @@ export async function toggleOrganizationFollow(organizationId: string, userId: s
   return true;
 }
 
-/** Favori / like evenement — RPC atomique (RLS + compteur). */
+/** Favori / like evenement — RPC atomique, avec repli compatible si la RPC manque. */
 export async function toggleEventLike(eventId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('toggle_event_like', {
     p_event_id: eventId,
   });
-  const rec = assertRpcOk(error, data, 'Impossible de mettre en favori');
-  return rec.liked === true;
+
+  if (!error) {
+    const rec = assertRpcOk(null, data, 'Impossible de mettre en favori');
+    return rec.liked === true;
+  }
+
+  // Certaines bases n'ont pas encore reçu la migration RPC. La table event_likes
+  // et ses policies RLS existent déjà : on utilise alors le chemin SQL standard.
+  const rpcUnavailable =
+    error.code === 'PGRST202' ||
+    error.code === '42883' ||
+    (/toggle_event_like/i.test(error.message || '') &&
+      /(schema cache|could not find|does not exist|not found)/i.test(error.message || ''));
+
+  if (!rpcUnavailable) {
+    throw new Error(error.message || 'Impossible de mettre en favori');
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  const user = authData?.user;
+  if (authError || !user) {
+    throw new Error('Connectez-vous pour gérer vos favoris.');
+  }
+
+  const { data: existing, error: selectError } = await supabase
+    .from('event_likes')
+    .select('event_id')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (selectError) throw new Error(selectError.message);
+
+  if (existing) {
+    const { error: deleteError } = await supabase
+      .from('event_likes')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_id', user.id);
+    if (deleteError) throw new Error(deleteError.message);
+    return false;
+  }
+
+  const { error: insertError } = await supabase
+    .from('event_likes')
+    .insert({ event_id: eventId, user_id: user.id });
+  if (insertError) {
+    // Un second clic ou un autre onglet peut avoir créé le même like entre-temps.
+    if (insertError.code === '23505') return true;
+    throw new Error(insertError.message);
+  }
+
+  return true;
 }
 
 export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
