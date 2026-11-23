@@ -40,7 +40,7 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ open, event, initialOptionId, onClose, onSuccess }: BookingModalProps) {
-  const { user } = useApp();
+  const { user, session, isSessionResolving } = useApp();
   const [options, setOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -304,6 +304,17 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
 
   const handleBook = async () => {
     if (!liveOption || !event) return;
+
+    // Le profil local peut être affiché avant la restauration de la session Supabase.
+    if (isSessionResolving) {
+      setError('Vérification de votre session en cours. Réessayez dans un instant.');
+      return;
+    }
+    if (!session?.user?.id || !user?.id || session.user.id !== user.id) {
+      setError('Votre session est absente ou expirée. Reconnectez-vous pour réserver un billet.');
+      return;
+    }
+
     if (quantity > available) {
       setError('Quantité demandée supérieure au stock disponible.');
       return;
@@ -863,7 +874,7 @@ export function BookingModal({ open, event, initialOptionId, onClose, onSuccess 
                 <button
                   type="button"
                   onClick={handleBook}
-                  disabled={booking}
+                  disabled={booking || isSessionResolving}
                   className="w-full min-h-12 py-3.5 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 transition-all motion-reduce:transition-none shadow-md shadow-purple-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
                 >
                   {booking ? (
