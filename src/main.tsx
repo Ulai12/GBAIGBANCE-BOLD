@@ -6,63 +6,63 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Enregistrement PWA avec détection rapide et application automatique des mises à jour.
-if ('serviceWorker' in navigator) {
-  if (!import.meta.env.PROD) {
-    navigator.serviceWorker.getRegistrations().then(async (regs) => {
-      let unregistered = false;
-      for (const reg of regs) {
-        const ok = await reg.unregister().catch(() => false);
-        if (ok) unregistered = true;
-      }
-      if ('caches' in window) {
-        const keys = await caches.keys().catch(() => [] as string[]);
-        await Promise.all(
-          keys
-            .filter((key) => key.includes('workbox') || key.includes('vite') || key.includes('precache'))
-            .map((key) => caches.delete(key).catch(() => false))
-        );
-      }
-      if (unregistered && !sessionStorage.getItem('gba_sw_cleaned')) {
-        sessionStorage.setItem('gba_sw_cleaned', '1');
-        window.location.reload();
-      }
-    }).catch(() => {});
-  } else {
-    const updateSW = registerSW({
-      immediate: true,
-      onNeedRefresh() {
-        window.dispatchEvent(
-          new CustomEvent('pwa-update-available', {
-            detail: { update: () => updateSW(true) },
-          }),
-        );
-      },
-      onRegisteredSW(_swUrl, registration) {
-        if (!registration) return;
+window.addEventListener('vite:preloadError', (event) => {
+  const retryKey = 'gba-vite-preload-retry-at';
+  const now = Date.now();
+  let shouldReload = false;
 
-        let lastCheck = 0;
-        const checkForUpdate = () => {
-          if (!navigator.onLine || document.visibilityState !== 'visible') return;
-
-          const now = Date.now();
-          if (now - lastCheck < 10_000) return;
-          lastCheck = now;
-
-          void registration.update().catch(() => {});
-        };
-
-        window.setInterval(checkForUpdate, 30_000);
-        document.addEventListener('visibilitychange', checkForUpdate);
-        window.addEventListener('focus', checkForUpdate);
-        window.addEventListener('online', checkForUpdate);
-        checkForUpdate();
-      },
-      onOfflineReady() {
-        console.log('[PWA] Prêt pour le mode hors ligne.');
-      },
-    });
+  try {
+    const lastRetry = Number(sessionStorage.getItem(retryKey));
+    shouldReload = !lastRetry || now - lastRetry > 30_000;
+    if (shouldReload) sessionStorage.setItem(retryKey, String(now));
+  } catch (error) {
+    console.error('[app] Unable to retry a failed module load because session storage is unavailable.', error);
   }
+
+  if (!shouldReload) return;
+  event.preventDefault();
+  window.location.reload();
+});
+
+// Enregistrement PWA avec mise à jour disponible à la demande.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      window.dispatchEvent(
+        new CustomEvent('pwa-update-available', {
+          detail: { update: () => updateSW(true) },
+        }),
+      );
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+
+      let lastCheck = 0;
+      const checkForUpdate = () => {
+        if (!navigator.onLine || document.visibilityState !== 'visible') return;
+
+        const now = Date.now();
+        if (now - lastCheck < 60_000) return;
+        lastCheck = now;
+
+        void registration.update().catch(() => {
+          if (navigator.onLine) {
+            console.warn('[PWA] La vérification de mise à jour a échoué; elle sera retentée plus tard.');
+          }
+        });
+      };
+
+      window.setInterval(checkForUpdate, 5 * 60_000);
+      document.addEventListener('visibilitychange', checkForUpdate);
+      window.addEventListener('focus', checkForUpdate);
+      window.addEventListener('online', checkForUpdate);
+      checkForUpdate();
+    },
+    onOfflineReady() {
+      console.log('[PWA] Prêt pour le mode hors ligne.');
+    },
+  });
 }
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN || 'https://c2234e7544eb3870989a6695d76cb0fb@o4511833867091968.ingest.de.sentry.io/4511838676451408';

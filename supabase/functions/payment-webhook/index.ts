@@ -47,17 +47,21 @@ Deno.serve(async (req: Request) => {
   const rawBody = await req.text();
   const secret = Deno.env.get('PAYMENT_WEBHOOK_SECRET') || '';
 
-  if (secret) {
-    const provided = req.headers.get('x-gba-signature') || '';
-    const expected = await hmacHex(secret, rawBody);
-    if (!provided || !timingSafeEqual(provided.toLowerCase(), expected.toLowerCase())) {
-      return new Response(JSON.stringify({ success: false, error: 'Invalid signature' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-  } else {
-    console.warn('[payment-webhook] PAYMENT_WEBHOOK_SECRET non configure');
+  if (!secret) {
+    console.error('[payment-webhook] PAYMENT_WEBHOOK_SECRET non configure');
+    return new Response(JSON.stringify({ success: false, error: 'Webhook signature verification is unavailable' }), {
+      status: 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const provided = req.headers.get('x-gba-signature') || '';
+  const expected = await hmacHex(secret, rawBody);
+  if (!provided || !timingSafeEqual(provided.toLowerCase(), expected.toLowerCase())) {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid signature' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   let body: {

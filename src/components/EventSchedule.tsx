@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Clock, MapPin, Music2, Calendar } from 'lucide-react';
 import { fetchEventSchedule } from '@/services/events';
 import { UserAvatar } from '@/components/UserAvatar';
+import { useApp } from '@/hooks/useApp';
 import type { Event, EventScheduleSlot, Artist } from '@/types';
 
 interface EventScheduleProps {
@@ -11,6 +12,7 @@ interface EventScheduleProps {
 }
 
 export function EventSchedule({ event, onArtistClick, isDark }: EventScheduleProps) {
+  const { language, t } = useApp();
   const [slots, setSlots] = useState<(EventScheduleSlot & { artist?: Artist })[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDay, setActiveDay] = useState<string | null>(null);
@@ -40,7 +42,9 @@ export function EventSchedule({ event, onArtistClick, isDark }: EventSchedulePro
     <div>
       <h2 className={`flex items-center gap-2 text-lg font-extrabold mb-3 ${textMain}`}>
         <Calendar className="w-5 h-5 text-[#6600FF]" />
-        Programme{isMultiDay ? ` (${days.length} jours)` : ''}
+        {isMultiDay
+          ? t('events', 'detail.program.days').replace('{count}', String(days.length))
+          : t('events', 'detail.program.title')}
       </h2>
 
       {isMultiDay && (
@@ -63,8 +67,9 @@ export function EventSchedule({ event, onArtistClick, isDark }: EventSchedulePro
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#6600FF]/15" />
         <div className="space-y-3 animate-stagger">
           {daySlots.map((slot) => {
-            const time = new Date(slot.start_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-            const endTime = slot.end_time ? new Date(slot.end_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+            const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+            const time = new Date(slot.start_time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+            const endTime = slot.end_time ? new Date(slot.end_time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : null;
             return (
               <div key={slot.id} className="relative pl-12">
                 <div className="absolute left-3 top-3 w-3 h-3 rounded-full bg-[#6600FF] ring-4 ring-[#6600FF]/10" />

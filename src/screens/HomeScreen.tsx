@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search,
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater,
@@ -16,7 +16,6 @@ import {
 } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { NotificationBell } from '@/components/NotificationBell';
-import { GbaigbanceStatsDashboard } from '@/components/GbaigbanceStatsDashboard';
 import { SeeMoreModal, type SeeMoreSectionType } from '@/components/SeeMoreModal';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useApp } from '@/hooks/useApp';
@@ -32,23 +31,27 @@ import {
   type PlatformStats,
 } from '@/services/events';
 import { checkFollowedArtistsNewDates } from '@/services/eventReminderService';
-import { collectFollowTargets } from '@/services/eventReminderRules';
 import { getCachedHomeData, saveCachedHomeData, hydrateHomeFromIndexedDB } from '@/services/cache';
 import { coreTrendIds } from '@/lib/rust-core';
 import {
   calculateDistanceKm,
   getCurrentUserLocation,
   getEventCoordinates,
-  rankNearbyEventsWithRust,
   LOME_CENTER,
   type UserLocationState,
 } from '@/utils/geo';
 import type { Event, Artist, Organization } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
+const GbaigbanceStatsDashboard = lazy(() =>
+  import('@/components/GbaigbanceStatsDashboard').then((module) => ({
+    default: module.GbaigbanceStatsDashboard,
+  }))
+);
+
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Music, PartyPopper, Mic, GraduationCap, Palette, Theater, Landmark, Lock,
-  Briefcase, Flame, Trophy, Heart,
+  Briefcase, Flame, Trophy, Heart, Sparkles,
 };
 
 interface HomeScreenProps {
@@ -77,7 +80,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user } = useApp();
+  const { user, t } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -89,7 +92,9 @@ export function HomeScreen({
   const [nearby, setNearby] = useState<Event[]>(initialCache.data?.nearby || []);
   const [artists, setArtists] = useState<Artist[]>(initialCache.data?.artists || []);
   const [organizations, setOrganizations] = useState<Organization[]>(initialCache.data?.organizations || []);
-  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(initialCache.data?.stats || null);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(() =>
+    initialCache.data?.stats?.analyticsVersion === 2 ? initialCache.data.stats : null
+  );
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(!initialCache.hasCache);
   const onToastRef = useRef(onToast);
@@ -135,7 +140,7 @@ export function HomeScreen({
           setNearby(cached.nearby);
           setArtists(cached.artists);
           setOrganizations(cached.organizations);
-          setPlatformStats(cached.stats);
+          setPlatformStats(cached.stats?.analyticsVersion === 2 ? cached.stats : null);
           setLoading(false);
         }
       });
@@ -243,11 +248,8 @@ export function HomeScreen({
       setOrganizations(cappedOrgs);
       setPlatformStats(stats);
 
-      // Artistes et festivals suivis : le catalogue d'accueil ne couvre pas les organisations seules.
-      checkFollowedArtistsNewDates(
-        masterEvents,
-        collectFollowTargets(followedArtistIds, followedOrgIds)
-      );
+      // Vérifier si de nouveaux événements annoncés concernent des artistes suivis
+      checkFollowedArtistsNewDates(masterEvents, followedArtistIds);
 
       // Save fresh data into the 0ms synchronous cache
       saveCachedHomeData({
@@ -261,14 +263,14 @@ export function HomeScreen({
     } catch {
       if (typeof navigator !== 'undefined' && !navigator.onLine && !silent) {
         onToastRef.current({
-          message: 'Mode hors-ligne : données sauvegardées affichées',
+          message: t('events', 'home.offline'),
           type: 'info',
         });
       }
     } finally {
       setLoading(false);
     }
-  }, [initialCache.hasCache, followedArtistIds, followedOrgIds]);
+  }, [initialCache.hasCache, followedArtistIds, t]);
 
   // Initial load
   useEffect(() => {
@@ -319,13 +321,6 @@ export function HomeScreen({
     window.addEventListener('gba-event-updated', handleSyncTrigger);
     window.addEventListener('gba-ticket-booked', handleSyncTrigger);
 
-    // Auto-polling de secours toutes les 60 secondes (les mises à jour en direct sont gérées par Supabase Realtime)
-    const periodicSync = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        refreshHomeData(true);
-      }
-    }, 60000);
-
     // Ticker silencieux pour purger les événements terminés (vérification propre toutes les 60 secondes sans re-renders inutiles)
     const pruneTicker = setInterval(() => {
       setFeatured((prev) => {
@@ -354,7 +349,6 @@ export function HomeScreen({
       window.removeEventListener('gba-event-created', handleSyncTrigger);
       window.removeEventListener('gba-event-updated', handleSyncTrigger);
       window.removeEventListener('gba-ticket-booked', handleSyncTrigger);
-      clearInterval(periodicSync);
       clearInterval(pruneTicker);
     };
   }, [refreshHomeData]);
@@ -456,26 +450,6 @@ export function HomeScreen({
     });
   }, [allActiveEvents, userLocation]);
 
-  const [rustNearbyEvents, setRustNearbyEvents] = useState<Array<Event & { distanceKm: number }> | null>(null);
-
-  useEffect(() => {
-    if (!userLocation.isActual || allActiveEvents.length === 0) {
-      setRustNearbyEvents(null);
-      return;
-    }
-    let active = true;
-    rankNearbyEventsWithRust(userLocation.latitude, userLocation.longitude, allActiveEvents, 50, 12)
-      .then((ranked) => {
-        if (active && ranked.length > 0) {
-          setRustNearbyEvents(ranked);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [allActiveEvents, userLocation]);
-
   // Section: Proximité / Sorties locales adaptées (uniquement si l'utilisateur a autorisé la localisation)
   const nearbySectionData = useMemo(() => {
     // Ne pas afficher la section de lieu si l'utilisateur n'a pas autorisé la géolocalisation
@@ -488,24 +462,21 @@ export function HomeScreen({
       };
     }
 
-    const source =
-      rustNearbyEvents && rustNearbyEvents.length > 0
-        ? rustNearbyEvents
-        : [...allEventsWithDistance]
-            .filter((e) => typeof e.distanceKm === 'number')
-            .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+    const sorted = [...allEventsWithDistance]
+      .filter((e) => typeof e.distanceKm === 'number')
+      .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
 
-    const strictlyUnder10 = source.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
-    const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : source;
+    const strictlyUnder10 = sorted.filter((e) => typeof e.distanceKm === 'number' && e.distanceKm <= 10.0);
+    const selected = strictlyUnder10.length > 0 ? strictlyUnder10 : sorted;
 
     // Plafonnement strict à 12 événements max pour garder le flux fini et performant
     return {
-      title: 'À proximité de vous',
-      subtitle: `Autour de votre position (${userLocation.cityName || 'GPS'})`,
+      title: t('events', 'home.nearbyTitle'),
+      subtitle: t('events', 'home.nearbyAround').replace('{city}', userLocation.cityName || 'GPS'),
       events: selected.slice(0, 12),
       isActual: true,
     };
-  }, [allEventsWithDistance, rustNearbyEvents, userLocation]);
+  }, [allEventsWithDistance, userLocation, t]);
 
   // Section: Recommandations personnalisées (Algorithme fondé sur les préférences, abonnements, favoris et popularité)
   const recommendedEvents = useMemo(() => {
@@ -574,10 +545,10 @@ export function HomeScreen({
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Bonjour';
-    if (hour >= 12 && hour < 18) return 'Salut';
-    if (hour >= 18 && hour < 23) return 'Bonsoir';
-    return 'Douce nuit';
+    if (hour >= 5 && hour < 12) return t('events', 'home.greetingMorning');
+    if (hour >= 12 && hour < 18) return t('events', 'home.greetingAfternoon');
+    if (hour >= 18 && hour < 23) return t('events', 'home.greetingEvening');
+    return t('events', 'home.greetingNight');
   };
 
   return (
@@ -594,7 +565,7 @@ export function HomeScreen({
     />
     <div className="leading-tight">
       <p className="text-[15px] font-black text-[#171726] dark:text-white tracking-tight">GBAIGBANCE</p>
-      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">Billetterie & Événements</p>
+      <p className="text-[9px] font-bold text-gray-400 dark:text-gray-400 tracking-[0.16em] uppercase">{t('events', 'home.brandTagline')}</p>
     </div>
   </div>
 
@@ -603,11 +574,11 @@ export function HomeScreen({
   <div className="flex items-center justify-between mb-4 mr-2">
     <div>
       <h1 className="text-xl sm:text-2xl font-black text-[#171726] dark:text-white tracking-tight flex items-center gap-1.5">
-        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || 'Invité'}
+        <span>{getDynamicGreeting()} {user?.name?.split(' ')[0] || t('events', 'home.guest')}
         <span className="text-xl"> 👋</span>
         </span>
       </h1>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Trouve ta prochaine sortie</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">{t('events', 'home.greetingSubtitle')}</p>
     </div>
 
     {/* Boutons d'actions harmonisés (Notification, Paramètres, Profil) */}
@@ -619,8 +590,8 @@ export function HomeScreen({
           id="home-strategic-settings-btn"
           type="button"
           onClick={onOpenSettings}
-          aria-label="Paramètres de l'application"
-          title="Paramètres"
+          aria-label={t('events', 'home.settings')}
+          title={t('events', 'home.settings')}
           className="w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
         >
           <Settings className="w-5 h-5 transition-transform hover:rotate-45" />
@@ -630,15 +601,16 @@ export function HomeScreen({
       <button
         onClick={onProfileClick}
         className="w-10 h-10 rounded-full ring-2 ring-[#6600FF]/25 overflow-hidden shadow-xs active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-        aria-label="Profil"
+        aria-label={t('events', 'home.profile')}
       >
         <UserAvatar
           id={user?.id}
           src={user?.avatar_url}
-          name={user?.name || 'Invité'}
+          name={user?.name || t('events', 'home.guest')}
           role={user?.role || 'attendee'}
           size="sm"
           className="w-full h-full"
+          eager
         />
       </button>
     </div>
@@ -654,7 +626,7 @@ export function HomeScreen({
       {/* ✅ px-4 py-3, gap-3 et texte responsive d'origine */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs hover:border-[#6600FF]/30 transition-all">
         <Search className="w-4 h-4 text-gray-400" />
-        <span className="text-xs sm:text-sm text-gray-400 font-medium">Concerts, soirées, festivals...</span>
+        <span className="text-xs sm:text-sm text-gray-400 font-medium">{t('events', 'home.searchPlaceholder')}</span>
       </div>
     </button>
 
@@ -665,8 +637,8 @@ export function HomeScreen({
       type="button"
       onClick={onOpenAIAssistant}
       className="w-12 h-12 shrink-0 rounded-2xl bg-white/90 dark:bg-white/10 backdrop-blur-md shadow-xs border border-black/5 dark:border-white/10 flex items-center justify-center text-[#6600FF] hover:bg-white dark:hover:bg-white/15 active:scale-90 transition-all relative group cursor-pointer"
-      aria-label="Assistant IA Gbaigbance"
-      title="Assistant IA Gbaigbance"
+      aria-label={t('events', 'home.aiAssistant')}
+      title={t('events', 'home.aiAssistant')}
     >
       <div className="relative flex items-center justify-center">
         <Sparkles className="w-5 h-5 text-[#6600FF] transition-transform group-hover:scale-110" />
@@ -677,7 +649,7 @@ export function HomeScreen({
 </header>
 
       {/* SECTION 1: Événements à la une */}
-      <section className="mt-3 px-5" aria-label="Événements à la une">
+      <section className="mt-3 px-5" aria-label={t('events', 'featured')}>
         {loading && featured.length === 0 ? (
           <FeaturedCarouselSkeleton />
         ) : featured.length > 0 ? (
@@ -690,12 +662,12 @@ export function HomeScreen({
       </section>
 
       {/* SECTION 2: Explorer par catégorie */}
-      <section className="mt-6 mx-auto w-full max-w-[1320px] px-5" aria-label="Explorer les catégories d'événements">
+      <section className="mt-6 mx-auto w-full max-w-[1320px] px-5" aria-label={t('events', 'home.exploreCategories')}>
         <h2 className="mb-2.5 text-center text-base font-black uppercase tracking-[-0.04em] text-[#17131d] dark:text-white sm:text-lg">
-          Explorer par catégorie
+          {t('events', 'home.exploreCategories')}
         </h2>
 
-        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label="Catégories principales">
+        <div className="grid grid-cols-2 justify-center gap-2 py-1 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-6 lg:gap-3" role="group" aria-label={t('events', 'home.mainCategories')}>
           {MAIN_CATEGORIES.map((main) => {
             const Icon = CATEGORY_ICONS[main.iconName] || Palette;
             const isActive = selectedMainCategory?.id === main.id;
@@ -716,7 +688,7 @@ export function HomeScreen({
               >
                 <Icon className={`h-4 w-4 shrink-0 sm:h-[17px] sm:w-[17px] ${isActive ? 'text-white' : 'text-[#6600FF] dark:text-purple-300'}`} strokeWidth={1.8} />
                 <span className={`max-w-full break-words text-center text-[11px] font-semibold leading-tight sm:text-xs ${isActive ? 'text-white' : 'text-[#171726] dark:text-white'}`}>
-                  {main.shortLabel}
+                  {t('events', `explore.search.mainCategoriesLabels.${main.id}`)}
                 </span>
               </button>
             );
@@ -724,41 +696,48 @@ export function HomeScreen({
         </div>
 
         {selectedMainCategory && (
-          <div
-            className="mt-2.5 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 no-scrollbar"
-            role="group"
-            aria-label={`Sous-catégories de ${selectedMainCategory.shortLabel}`}
-          >
-            <button
-              type="button"
-              aria-pressed={selectedCategory === selectedMainCategory.id}
-              onClick={() => setSelectedCategory(selectedMainCategory.id)}
-              className={`min-h-11 shrink-0 snap-start rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
-                selectedCategory === selectedMainCategory.id
-                  ? 'bg-[#6600FF] text-white'
-                  : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-              }`}
+          <div className="mt-2.5">
+            <p className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {t('events', 'explore.search.subcategories').replace('{category}', t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`))}
+            </p>
+            <div
+              className="flex flex-wrap items-center justify-center gap-1.5"
+              role="group"
+              aria-label={t('events', 'home.subcategoriesOf').replace('{category}', t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`))}
             >
-              Toutes
-            </button>
-            {selectedMainCategory.subcategories.map((sub) => {
-              const isSelected = selectedCategory === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                  className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ${
-                    isSelected
-                      ? 'bg-[#6600FF] text-white'
-                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
-                  }`}
-                >
-                  {sub.shortLabel}
-                </button>
-              );
-            })}
+              <button
+                type="button"
+                aria-pressed={selectedCategory === selectedMainCategory.id}
+                onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                className={
+                  'inline-flex min-h-11 max-w-full min-w-0 items-center justify-center rounded-full px-3 py-2 text-center text-[11px] font-semibold leading-tight whitespace-normal break-words transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ' +
+                  (selectedCategory === selectedMainCategory.id
+                    ? 'bg-[#6600FF] text-white'
+                    : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200')
+                }
+              >
+                {t('events', 'home.allSubcategories')}
+              </button>
+              {selectedMainCategory.subcategories.map((sub) => {
+                const isSelected = selectedCategory === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                    className={
+                      'inline-flex min-h-11 max-w-full min-w-0 items-center justify-center rounded-full px-3 py-2 text-center text-[11px] font-semibold leading-tight whitespace-normal break-words transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#17131d] ' +
+                      (isSelected
+                        ? 'bg-[#6600FF] text-white'
+                        : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200')
+                    }
+                  >
+                    {t('events', `explore.search.subcategoriesLabels.${sub.id}`)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </section>
@@ -769,15 +748,15 @@ export function HomeScreen({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg sm:text-xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
               {selectedCategory === selectedMainCategory?.id
-                ? selectedMainCategory.shortLabel
-                : selectedMainCategory?.subcategories.find((sub) => sub.id === selectedCategory)?.shortLabel || 'Événements'}
+                ? t('events', `explore.search.mainCategoriesLabels.${selectedMainCategory.id}`)
+                : t('events', `explore.search.subcategoriesLabels.${selectedCategory}`)}
             </h2>
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
               className="text-xs font-bold text-[#6600FF] bg-[#6600FF]/10 px-3 py-1.5 rounded-full cursor-pointer"
             >
-              Fermer
+              {t('events', 'home.close')}
             </button>
           </div>
           {categoryLoading ? (
@@ -785,7 +764,7 @@ export function HomeScreen({
               {Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}
             </div>
           ) : categoryEvents.length === 0 ? (
-            <EmptyState title="Aucun événement" description="Pas d'événement dans cette catégorie pour le moment" />
+            <EmptyState title={t('events', 'noEvents')} description={t('events', 'home.noCategoryEvents')} />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {categoryEvents.map((event) => (
@@ -798,11 +777,11 @@ export function HomeScreen({
 
       {/* SECTION 3: Tendances de la semaine (placé sous la section catégorie) */}
       {loading && trending.length === 0 ? (
-        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
           <TrendingDeckSkeleton />
         </section>
       ) : trending.length > 0 ? (
-        <section className="mt-8 px-5" aria-label="Tendances de la semaine">
+        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
           <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
         </section>
       ) : null}
@@ -827,7 +806,7 @@ export function HomeScreen({
                 onClick={() => setSeeMoreType('nearby')}
                 className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
               >
-                <span>Voir plus</span>
+                <span>{t('events', 'home.seeMore')}</span>
                 <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
               </button>
             </div>
@@ -857,7 +836,7 @@ export function HomeScreen({
 
       {/* SECTION 5: Recommandé pour vous (Algorithme fondé sur les goûts, affinités et tendances) */}
       {recommendedEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Recommandations personnalisées">
+        <section className="mt-9 px-5" aria-label={t('events', 'recommended')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -865,10 +844,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  Recommandé pour vous
+                  {t('events', 'recommended')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Sélection intelligente selon vos goûts et affinités
+                  {t('events', 'home.recommendationSubtitle')}
                 </p>
               </div>
             </div>
@@ -878,7 +857,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('preferences')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -893,7 +872,7 @@ export function HomeScreen({
 
       {/* SECTION 6: Événements 100% Gratuits */}
       {freeEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="Événements gratuits">
+        <section className="mt-9 px-5" aria-label={t('events', 'home.freeEvents')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -901,10 +880,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  Événements Gratuits
+                  {t('events', 'home.freeEvents')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Entrée 100% libre sans frais
+                  {t('events', 'home.freeEventsSubtitle')}
                 </p>
               </div>
             </div>
@@ -914,7 +893,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('free')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -929,7 +908,7 @@ export function HomeScreen({
 
       {/* SECTION 7: À ne pas manquer */}
       {unmissableEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label="À ne pas manquer">
+        <section className="mt-9 px-5" aria-label={t('events', 'home.unmissable')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -937,10 +916,10 @@ export function HomeScreen({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white">
-                  À ne pas manquer
+                  {t('events', 'home.unmissable')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Les événements les plus attendus
+                  {t('events', 'home.unmissableSubtitle')}
                 </p>
               </div>
             </div>
@@ -950,7 +929,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('unmissable')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -965,7 +944,7 @@ export function HomeScreen({
 
       {/* SECTION 8: Artistes du moment (vrais comptes artistes) */}
       {artists.length > 0 && (
-        <section className="mt-8" aria-label="Artistes du moment">
+        <section className="mt-8" aria-label={t('events', 'home.artistsNow')}>
           <div className="px-5 flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -973,10 +952,10 @@ export function HomeScreen({
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
-                  Artistes du moment
+                  {t('events', 'home.artistsNow')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                  Talents et créateurs de la communauté
+                  {t('events', 'home.artistsSubtitle')}
                 </p>
               </div>
             </div>
@@ -986,7 +965,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('artists')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -995,10 +974,9 @@ export function HomeScreen({
             <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {artists.map((artist) => {
                 const followersCount = artist.followers_count ?? 0;
-                const fansText =
-                  followersCount > 1000
-                    ? `${(followersCount / 1000).toFixed(1)}K fans`
-                    : `${followersCount} fan${followersCount > 1 ? 's' : ''}`;
+                const fansText = followersCount > 1000
+                  ? `${(followersCount / 1000).toFixed(1)}K ${t('events', 'home.fans')}`
+                  : `${followersCount} ${t('events', followersCount > 1 ? 'home.fans' : 'home.fan')}`;
                 return (
                   <button
                     type="button"
@@ -1018,7 +996,7 @@ export function HomeScreen({
                       <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
                         {artist.name}
                       </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-semibold text-center truncate w-full leading-tight">
                         {fansText}
                       </span>
                     </div>
@@ -1032,7 +1010,7 @@ export function HomeScreen({
 
       {/* SECTION 9: Organisateurs officiels (vrais comptes organisateurs) */}
       {organizations.length > 0 && (
-        <section className="mt-8" aria-label="Organisateurs officiels">
+        <section className="mt-8" aria-label={t('events', 'home.officialOrganizers')}>
           <div className="px-5 flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -1040,10 +1018,10 @@ export function HomeScreen({
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black tracking-[-0.04em] text-[#17131d] dark:text-white truncate">
-                  Organisateurs officiels
+                  {t('events', 'home.officialOrganizers')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                  Collectifs et créateurs d’expériences
+                  {t('events', 'home.organizersSubtitle')}
                 </p>
               </div>
             </div>
@@ -1053,7 +1031,7 @@ export function HomeScreen({
               onClick={() => setSeeMoreType('organizations')}
               className="flex items-center gap-1 text-[13px] font-bold text-[#6600FF] hover:text-[#5200cc] active:scale-95 transition-all bg-[#6600FF]/[0.08] hover:bg-[#6600FF]/15 dark:bg-[#6600FF]/20 px-3 py-1.5 rounded-full cursor-pointer shrink-0 ml-2"
             >
-              <span>Voir plus</span>
+              <span>{t('events', 'home.seeMore')}</span>
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
@@ -1062,7 +1040,7 @@ export function HomeScreen({
             <div className="flex gap-3.5 items-start overflow-x-auto no-scrollbar px-5 snap-x snap-mandatory scroll-pl-5">
               {organizations.map((org) => {
                 const count = org.events_count ?? 0;
-                const countText = `${count} événement${count > 1 ? 's' : ''}`;
+                const countText = `${count} ${t('events', count > 1 ? 'eventPlural' : 'event')}`;
                 return (
                   <button
                     type="button"
@@ -1082,7 +1060,7 @@ export function HomeScreen({
                       <span className="text-[11.5px] font-bold text-[#1A1A2E] dark:text-white text-center truncate w-full leading-tight">
                         {org.name}
                       </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-semibold text-center truncate w-full leading-tight">
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-semibold text-center truncate w-full leading-tight">
                         {countText}
                       </span>
                     </div>
@@ -1103,9 +1081,13 @@ export function HomeScreen({
               Statistiques globales de la plateforme · En Direct
             </p>
           </div>
-        <GbaigbanceStatsDashboard
-          platformStats={platformStats || undefined}
-        />
+        <Suspense
+          fallback={
+            <div className="min-h-64 rounded-3xl bg-white/70 dark:bg-white/5 animate-pulse" aria-label="Chargement des statistiques" />
+          }
+        >
+          <GbaigbanceStatsDashboard platformStats={platformStats || undefined} />
+        </Suspense>
       </section>
 
       {/* DEDICATED SEE MORE FULL SCREEN VIEW / MODAL */}

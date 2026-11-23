@@ -7,6 +7,7 @@ import {
   X,
   Calendar,
   Clock,
+  Users,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -15,6 +16,7 @@ import { getCachedHomeData } from '@/services/cache';
 import { isEventTerminated, subscribeToGlobalEventsLive } from '@/services/events';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
+import { UserAvatar } from '@/components/UserAvatar';
 import { getDefaultArtistAvatar } from '@/utils/defaultImages';
 import type { Event, Artist, Organization, Profile } from '@/types';
 
@@ -23,9 +25,10 @@ interface FavoritesScreenProps {
   onLogin: () => void;
   onArtistClick?: (artist: Artist) => void;
   onOrganizationClick?: (org: Organization) => void;
+  onUserClick?: (profile: Profile) => void;
 }
 
-type FavTab = 'events' | 'artists' | 'organizations';
+type FavTab = 'events' | 'artists' | 'organizations' | 'users';
 type EventStatusFilter = 'all' | 'upcoming' | 'past';
 
 function getInitialFavEvents(likedIds: Set<string>): Event[] {
@@ -80,9 +83,10 @@ export function FavoritesScreen({
   onLogin,
   onArtistClick,
   onOrganizationClick,
+  onUserClick,
 }: FavoritesScreenProps) {
   const { session, t } = useApp();
-  const { likedEventIds, followedArtistIds, followedOrgIds, isFollowingArtist, isFollowingOrg, toggleFollowArtist, toggleFollowOrg } = useFavorites();
+  const { likedEventIds, followedArtistIds, followedOrgIds, followedUserIds, toggleFollowArtist, toggleFollowOrg, toggleFollowUser } = useFavorites();
 
   const [activeTab, setActiveTab] = useState<FavTab>('events');
   const [eventFilter, setEventFilter] = useState<EventStatusFilter>('all');
@@ -92,6 +96,7 @@ export function FavoritesScreen({
   const [events, setEvents] = useState<Event[]>(() => getInitialFavEvents(likedEventIds));
   const [artists, setArtists] = useState<Artist[]>(() => getInitialFavArtists(followedArtistIds));
   const [organizations, setOrganizations] = useState<Organization[]>(() => getInitialFavOrgs(followedOrgIds));
+  const [followedUsers, setFollowedUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(() => likedEventIds.size > 0 && getInitialFavEvents(likedEventIds).length === 0);
 
   // Clear data immediately on user sign out or reset
@@ -100,6 +105,7 @@ export function FavoritesScreen({
       setEvents([]);
       setArtists([]);
       setOrganizations([]);
+      setFollowedUsers([]);
       setLoading(false);
       try {
         localStorage.removeItem('gba_fav_events_cache');
@@ -124,6 +130,34 @@ export function FavoritesScreen({
       window.removeEventListener('gba-follows-updated', handleReset);
     };
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const ids = Array.from(followedUserIds);
+    if (ids.length === 0) {
+      setFollowedUsers([]);
+      return;
+    }
+
+    supabase
+      .from('profiles')
+      .select('id, name, avatar_url, role, city, country, bio, created_at, updated_at, email, phone')
+      .in('id', ids)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[favorites] Unable to load followed profiles.', error);
+          return;
+        }
+        if (!isCancelled) {
+          const profilesById = new Map((data as Profile[] || []).map((profile) => [profile.id, profile]));
+          setFollowedUsers(ids.map((id) => profilesById.get(id)).filter((profile): profile is Profile => Boolean(profile)));
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [followedUserIds]);
 
   // Charger les événements favoris avec découpage en lots sécurisé (support des passés et actifs)
   useEffect(() => {
@@ -262,36 +296,44 @@ export function FavoritesScreen({
             }
           }
 
-          // b) Recherche dans les profiles pour les profils créateurs/artistes
-          const missingForProfiles = rawArtistIds.filter((id) => !foundIds.has(id) && UUID_REGEX.test(id));
-          if (missingForProfiles.length > 0) {
-            const { data: profileArts } = await supabase
+          // b) Enrichit les artistes depuis leurs profils et prend en charge les profils sans ligne dédiée.
+          const artistProfileIds = [...new Set([
+            ...rawArtistIds.filter((id) => UUID_REGEX.test(id)),
+            ...loadedArtists.map((artist) => artist.user_id).filter((id): id is string => Boolean(id)),
+          ])];
+          const profileArts = artistProfileIds.length
+            ? await supabase
               .from('profiles')
-              .select('*')
-              .in('id', missingForProfiles)
-              .eq('role', 'artist');
-            if (profileArts && profileArts.length > 0) {
-              (profileArts as unknown as Profile[]).forEach((p) => {
-                loadedArtists.push({
-                  id: p.id,
-                  user_id: p.id,
-                  name: p.name || 'Artiste Gbaïgbancê',
-                  bio: p.bio || 'Artiste de la communauté',
-                  photo_url: p.avatar_url || null,
-                  cover_url: '',
-                  genres: ['Afrobeats', 'Live'],
-                  city: p.city || 'Lomé',
-                  country: p.country || 'TG',
-                  // Valeur initiale : 0 (sera enrichie via la table artist_follows ci-dessous)
-                  followers_count: 0,
-                  events_count: 0,
-                  is_verified: true,
-                  created_at: p.created_at || new Date().toISOString(),
-                });
-                foundIds.add(p.id);
-              });
-            }
-          }
+              .select('id, name, bio, avatar_url, city, country, created_at')
+              .in('id', artistProfileIds)
+              .eq('role', 'artist')
+            : { data: [] };
+          const artistProfiles = (profileArts.data || []) as Pick<Profile, 'id' | 'name' | 'bio' | 'avatar_url' | 'city' | 'country' | 'created_at'>[];
+          const artistProfilesById = new Map(artistProfiles.map((profile) => [profile.id, profile]));
+          loadedArtists.forEach((artist) => {
+            const profile = artistProfilesById.get(artist.user_id || artist.id);
+            artist.photo_url = artist.photo_url || profile?.avatar_url || getDefaultArtistAvatar(artist.id || artist.name);
+            artist.name = artist.name || profile?.name || t('events', 'favorites.fallbackArtist');
+          });
+          artistProfiles.forEach((p) => {
+            if (foundIds.has(p.id)) return;
+            loadedArtists.push({
+              id: p.id,
+              user_id: p.id,
+              name: p.name || t('events', 'favorites.fallbackArtist'),
+              bio: p.bio || t('events', 'favorites.fallbackArtistBio'),
+              photo_url: p.avatar_url || getDefaultArtistAvatar(p.id || p.name),
+              cover_url: '',
+              genres: ['Afrobeats', 'Live'],
+              city: p.city || 'Lomé',
+              country: p.country || 'TG',
+              followers_count: 0,
+              events_count: 0,
+              is_verified: true,
+              created_at: p.created_at || new Date().toISOString(),
+            });
+            foundIds.add(p.id);
+          });
 
           // c) Recherche dans le cache local (pour les artistes mis en avant)
           const cachedArtists = getCachedHomeData().data?.artists || [];
@@ -350,36 +392,43 @@ export function FavoritesScreen({
             }
           }
 
-          // b) Recherche dans profiles pour les comptes organisateurs
-          const missingOrgUuids = rawOrgIds.filter((id) => !foundIds.has(id) && UUID_REGEX.test(id));
-          if (missingOrgUuids.length > 0) {
-            const { data: profileOrgs } = await supabase
+          // b) Enrichit le logo depuis le profil propriétaire et prend en charge les profils seuls.
+          const orgProfileIds = [...new Set([
+            ...rawOrgIds.filter((id) => UUID_REGEX.test(id)),
+            ...loadedOrgs.map((org) => org.owner_id).filter((id): id is string => Boolean(id)),
+          ])];
+          const profileOrgs = orgProfileIds.length
+            ? await supabase
               .from('profiles')
-              .select('*')
-              .in('id', missingOrgUuids)
-              .eq('role', 'organizer');
-
-            if (profileOrgs && profileOrgs.length > 0) {
-              (profileOrgs as unknown as Profile[]).forEach((p) => {
-                loadedOrgs.push({
-                  id: p.id,
-                  owner_id: p.id,
-                  name: p.name || 'Organisateur',
-                  description: p.bio || 'Organisateur sur Gbaïgbancê',
-                  logo_url: p.avatar_url || null,
-                  cover_url: null,
-                  city: p.city || 'Lomé',
-                  country: p.country || 'TG',
-                  verification_status: 'verified',
-                  // Valeur initiale : 0 (sera enrichie via la table organization_follows ci-dessous)
-                  followers_count: 0,
-                  events_count: 0,
-                  created_at: p.created_at || new Date().toISOString(),
-                });
-                foundIds.add(p.id);
-              });
-            }
-          }
+              .select('id, name, bio, avatar_url, city, country, created_at')
+              .in('id', orgProfileIds)
+              .eq('role', 'organizer')
+            : { data: [] };
+          const organizerProfiles = (profileOrgs.data || []) as Pick<Profile, 'id' | 'name' | 'bio' | 'avatar_url' | 'city' | 'country' | 'created_at'>[];
+          const organizerProfilesById = new Map(organizerProfiles.map((profile) => [profile.id, profile]));
+          loadedOrgs.forEach((org) => {
+            const profile = organizerProfilesById.get(org.owner_id || org.id);
+            org.logo_url = org.logo_url || profile?.avatar_url || null;
+            org.name = org.name || profile?.name || t('events', 'favorites.fallbackOrganizer');
+          });
+          organizerProfiles.forEach((p) => {
+            if (foundIds.has(p.id)) return;
+            loadedOrgs.push({
+              id: p.id,
+              owner_id: p.id,
+              name: p.name || t('events', 'favorites.fallbackOrganizer'),
+              description: p.bio || t('events', 'favorites.fallbackOrganizerBio'),
+              logo_url: p.avatar_url || null,
+              cover_url: null,
+              city: p.city || 'Lomé',
+              country: p.country || 'TG',
+              verification_status: 'verified',
+              followers_count: 0,
+              events_count: 0,
+              created_at: p.created_at || new Date().toISOString(),
+            });
+            foundIds.add(p.id);
+          });
 
           // c) Recherche dans le cache local
           const cachedOrgs = getCachedHomeData().data?.organizations || [];
@@ -425,7 +474,7 @@ export function FavoritesScreen({
     return () => {
       isCancelled = true;
     };
-  }, [followedArtistIds, followedOrgIds]);
+  }, [followedArtistIds, followedOrgIds, t]);
 
   // Séparation organisée des événements en cours / à venir et des événements passés
   const { activeEvents, terminatedEvents } = useMemo(() => {
@@ -471,7 +520,7 @@ export function FavoritesScreen({
     return list.filter((o) => o.name.toLowerCase().includes(q) || o.city?.toLowerCase().includes(q));
   }, [organizations, followedOrgIds, query]);
 
-  const totalFavoritesCount = likedEventIds.size + followedArtistIds.size + followedOrgIds.size;
+  const totalFavoritesCount = likedEventIds.size + followedArtistIds.size + followedOrgIds.size + followedUserIds.size;
   const totalFavEventsCount = activeEvents.length + terminatedEvents.length;
 
   return (
@@ -479,18 +528,18 @@ export function FavoritesScreen({
       {/* Header */}
       <div className="px-5 pt-safe-header pb-3">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-          Vos Coups de Cœur
+          {t('events', 'favorites.eyebrow')}
         </p>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-3xl font-black text-[#17131D] dark:text-white tracking-tight">
-            Favoris & Suivis
+            {t('events', 'favorites.pageTitle')}
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
             {totalFavoritesCount}
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Retrouvez vos sorties préférées, artistes et organisateurs abonnés
+          {t('events', 'favorites.subtitle')}
         </p>
       </div>
 
@@ -498,9 +547,9 @@ export function FavoritesScreen({
       {!session && (
         <div className="mx-5 mb-2 p-3.5 rounded-2xl bg-gradient-to-r from-[#6600FF]/10 to-pink-500/10 dark:from-[#6600FF]/20 dark:to-pink-500/20 border border-[#6600FF]/20 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black text-[#17131D] dark:text-white">Mode Invité</p>
+            <p className="text-xs font-black text-[#17131D] dark:text-white">{t('events', 'favorites.guestMode')}</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-              Connectez-vous pour synchroniser vos favoris sur tous vos appareils
+              {t('events', 'favorites.guestDescription')}
             </p>
           </div>
           <button
@@ -508,7 +557,7 @@ export function FavoritesScreen({
             onClick={onLogin}
             className="px-3.5 py-1.5 rounded-full bg-[#6600FF] text-white text-xs font-black shrink-0 shadow-xs hover:bg-[#5200cc] transition-colors"
           >
-            Connexion
+            {t('events', 'favorites.connect')}
           </button>
         </div>
       )}
@@ -521,13 +570,15 @@ export function FavoritesScreen({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher dans votre sélection..."
+            aria-label={t('events', 'favorites.search')}
+            placeholder={t('events', 'favorites.search')}
             className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#1A1829] border border-black/[0.06] dark:border-white/[0.08] text-xs font-semibold text-[#17131D] dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#6600FF]/40 shadow-xs"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
+              aria-label={t('common', 'close')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
@@ -549,7 +600,7 @@ export function FavoritesScreen({
             }`}
           >
             <Heart className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'events' ? 'fill-current text-red-500 dark:text-white' : ''}`} />
-            <span className="font-extrabold">Événements</span>
+            <span className="font-extrabold">{t('events', 'favorites.eventsTab')}</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'events'
                 ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
@@ -568,7 +619,7 @@ export function FavoritesScreen({
             }`}
           >
             <Music2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-extrabold">Artistes</span>
+            <span className="font-extrabold">{t('events', 'favorites.artistsTab')}</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'artists'
                 ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
@@ -587,13 +638,32 @@ export function FavoritesScreen({
             }`}
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-extrabold">Organisateurs</span>
+            <span className="font-extrabold">{t('events', 'favorites.organizersTab')}</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'organizations'
                 ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
                 : 'bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400'
             }`}>
               {followedOrgIds.size}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 min-w-[108px] py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-extrabold">{t('events', 'favorites.usersTab')}</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeTab === 'users'
+                ? 'bg-black/5 dark:bg-white/20 text-[#17131D] dark:text-white'
+                : 'bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400'
+            }`}>
+              {followedUserIds.size}
             </span>
           </button>
         </div>
@@ -645,14 +715,14 @@ export function FavoritesScreen({
         <div className="px-5 mt-4">
           <div className="p-3.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 border border-[#6600FF]/25 flex items-center justify-between gap-3">
             <p className="text-xs text-[#17131D] dark:text-white font-medium">
-              Synchronisez vos favoris et vos alertes sur tous vos appareils.
+              {t('events', 'favorites.syncPrompt')}
             </p>
             <button
               type="button"
               onClick={onLogin}
               className="px-3.5 py-1.5 rounded-full bg-[#6600FF] text-white text-xs font-bold shrink-0 hover:bg-[#5200cc] transition-all"
             >
-              Se connecter
+              {t('events', 'favorites.login')}
             </button>
           </div>
         </div>
@@ -674,11 +744,11 @@ export function FavoritesScreen({
               </div>
             ) : totalFavEventsCount === 0 ? (
               <EmptyState
-                title={query ? 'Aucun événement correspondant' : (t('events', 'favorites.emptyAll') || 'Aucun événement aimé')}
+                title={query ? t('events', 'favorites.emptyEventSearch') : t('events', 'favorites.emptyAll')}
                 description={
                   query
-                    ? 'Essayez avec un autre terme de recherche'
-                    : 'Touchez le cœur sur une affiche ou carte pour retrouver vos événements préférés ici'
+                    ? t('events', 'favorites.emptyEventSearchDescription')
+                    : t('events', 'favorites.emptyEventsHint')
                 }
                 icon={<Heart className="w-12 h-12 text-[#6600FF]/40" />}
               />
@@ -715,8 +785,8 @@ export function FavoritesScreen({
                 {/* État vide spécifique filtre "À venir" */}
                 {eventFilter === 'upcoming' && activeEvents.length === 0 && (
                   <EmptyState
-                    title="Aucun événement à venir"
-                    description="Tous vos événements favoris sont déjà passés."
+                    title={t('events', 'favorites.emptyUpcoming')}
+                    description={t('events', 'favorites.allUpcomingPassed')}
                     icon={<Calendar className="w-12 h-12 text-emerald-500/40" />}
                   />
                 )}
@@ -752,8 +822,8 @@ export function FavoritesScreen({
                 {/* État vide spécifique filtre "Terminés" */}
                 {eventFilter === 'past' && terminatedEvents.length === 0 && (
                   <EmptyState
-                    title="Aucun événement terminé"
-                    description="Vous n'avez aucun événement passé dans votre sélection."
+                    title={t('events', 'favorites.emptyPastTitle')}
+                    description={t('events', 'favorites.emptyPastDescription')}
                     icon={<Clock className="w-12 h-12 text-gray-400/40" />}
                   />
                 )}
@@ -767,11 +837,11 @@ export function FavoritesScreen({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredArtists.length === 0 ? (
               <EmptyState
-                title={query ? 'Aucun artiste trouvé' : 'Aucun artiste suivi'}
+                title={query ? t('events', 'favorites.emptyArtistSearch') : t('events', 'favorites.emptyArtistList')}
                 description={
                   query
-                    ? 'Aucun artiste ne correspond à votre filtre'
-                    : 'Abonnez-vous à vos DJ et artistes préférés pour ne manquer aucune date'
+                    ? t('events', 'favorites.emptyArtistSearchDescription')
+                    : t('events', 'favorites.emptyArtistDescription')
                 }
                 icon={<Music2 className="w-12 h-12 text-[#6600FF]/40" />}
               />
@@ -786,10 +856,14 @@ export function FavoritesScreen({
                     onClick={() => onArtistClick?.(art)}
                     className="flex items-center gap-3 min-w-0 flex-1 text-left"
                   >
-                    <img
+                    <UserAvatar
+                      id={art.user_id || art.id}
                       src={art.photo_url || getDefaultArtistAvatar(art.id || art.name)}
-                      alt={art.name}
-                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-[#6600FF]/20 shrink-0"
+                      name={art.name}
+                      role="artist"
+                      size="lg"
+                      shape="squircle"
+                      className="shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1">
@@ -798,8 +872,7 @@ export function FavoritesScreen({
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {/* Compteur dynamique : +1 si l'utilisateur suit actuellement (optimistic) */}
-                        {art.city || 'Lomé'} · {(art.followers_count || 0) + (isFollowingArtist(art.id) ? 1 : 0)} {((art.followers_count || 0) + (isFollowingArtist(art.id) ? 1 : 0)) > 1 ? 'abonnés' : 'abonné'} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
+                        {art.city || t('events', 'favorites.defaultCity')} · {art.followers_count || 0} {t('events', (art.followers_count || 0) === 1 ? 'favorites.follower' : 'favorites.followersPlural')} · {art.genres?.slice(0, 2).join(', ') || 'Afro'}
                       </p>
                     </div>
                   </button>
@@ -808,7 +881,7 @@ export function FavoritesScreen({
                     onClick={() => toggleFollowArtist(art.id)}
                     className="px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
                   >
-                    Abonné
+                    {t('events', 'artist.following')}
                   </button>
                 </div>
               ))
@@ -821,11 +894,11 @@ export function FavoritesScreen({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredOrgs.length === 0 ? (
               <EmptyState
-                title={query ? 'Aucun organisateur trouvé' : 'Aucun organisateur suivi'}
+                title={query ? t('events', 'favorites.emptyOrganizerSearch') : t('events', 'favorites.emptyOrganizerList')}
                 description={
                   query
-                    ? 'Aucun organisateur ne correspond à votre filtre'
-                    : 'Suivez vos clubs, festivals et agences événementielles pour être les premiers informés'
+                    ? t('events', 'favorites.emptyOrganizerSearchDescription')
+                    : t('events', 'favorites.emptyOrganizerDescription')
                 }
                 icon={<Building2 className="w-12 h-12 text-[#6600FF]/40" />}
               />
@@ -854,8 +927,7 @@ export function FavoritesScreen({
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {/* Compteur dynamique : +1 si l'utilisateur suit actuellement (optimistic) */}
-                        {org.city || 'Lomé'} · {(org.followers_count || 0) + (isFollowingOrg(org.id) ? 1 : 0)} {((org.followers_count || 0) + (isFollowingOrg(org.id) ? 1 : 0)) > 1 ? 'abonnés' : 'abonné'} · {org.events_count || 0} événement{(org.events_count || 0) > 1 ? 's' : ''}
+                        {org.city || t('events', 'favorites.defaultCity')} · {org.followers_count || 0} {t('events', (org.followers_count || 0) === 1 ? 'favorites.follower' : 'favorites.followersPlural')} · {org.events_count || 0} {t('events', (org.events_count || 0) === 1 ? 'favorites.event' : 'favorites.eventsPlural')}
                       </p>
                     </div>
                   </button>
@@ -864,12 +936,61 @@ export function FavoritesScreen({
                     onClick={() => toggleFollowOrg(org.id)}
                     className="px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
                   >
-                    Abonné
+                    {t('events', 'organizer.following')}
                   </button>
                 </div>
               ))
             )}
           </div>
+        )}
+
+        {activeTab === 'users' && (
+          followedUsers.length === 0 ? (
+            <EmptyState
+              title={query ? t('events', 'favorites.emptyUserSearch') : t('events', 'favorites.emptyUserList')}
+              description={query ? t('events', 'favorites.emptyUserSearchDescription') : t('events', 'favorites.emptyUserDescription')}
+              icon={<Users className="w-12 h-12 text-[#6600FF]/40" />}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {followedUsers
+                .filter((profile) => !query.trim() || profile.name.toLowerCase().includes(query.toLowerCase()) || profile.city?.toLowerCase().includes(query.toLowerCase()))
+                .map((profile) => (
+                  <div
+                    key={profile.id}
+                    className="p-3.5 rounded-3xl bg-white dark:bg-[#1A1829] border border-black/[0.05] dark:border-white/[0.08] shadow-xs flex items-center justify-between gap-3"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onUserClick?.(profile)}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                    >
+                      <UserAvatar
+                        id={profile.id}
+                        src={profile.avatar_url}
+                        name={profile.name}
+                        role={profile.role}
+                        size="lg"
+                        className="shrink-0"
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-extrabold text-sm text-[#17131D] dark:text-white truncate">{profile.name}</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                          {profile.city || t('events', 'favorites.defaultCity')}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleFollowUser(profile.id)}
+                      className="px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                    >
+                      {t('events', 'following')}
+                    </button>
+                  </div>
+                ))}
+            </div>
+          )
         )}
       </div>
     </div>

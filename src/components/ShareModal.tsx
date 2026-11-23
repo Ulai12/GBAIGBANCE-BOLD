@@ -20,6 +20,7 @@ import {
   shareEventNative,
   triggerAppToast,
 } from '@/utils/share';
+import { useApp } from '@/hooks/useApp';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps) {
+  const { language, t } = useApp();
   const [copied, setCopied] = useState(false);
   const notify = onToast || triggerAppToast;
 
@@ -48,11 +50,11 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
 
   if (!isOpen || !event) return null;
 
-  const shareData = getEventShareData(event);
+  const shareData = getEventShareData(event, language);
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const handleCopy = async () => {
-    const success = await copyEventToClipboard(event, notify);
+    const success = await copyEventToClipboard(event, notify, language);
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -60,7 +62,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
   };
 
   const handleNativeShare = async () => {
-    const status = await shareEventNative(event, notify);
+    const status = await shareEventNative(event, notify, language);
     if (status === 'shared') {
       onClose();
     }
@@ -81,7 +83,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
 
   // X / Twitter share
   const handleTwitter = () => {
-    const text = encodeURIComponent(`🔥 ${event.title} sur @Gbaigbance`);
+    const text = encodeURIComponent(t('events', 'detail.share.twitter').replace('{title}', event.title));
     const url = encodeURIComponent(shareData.url);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer');
   };
@@ -94,8 +96,8 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
 
   // Email share
   const handleEmail = () => {
-    const subject = encodeURIComponent(`Invitation : ${event.title} sur Gbaïgbancê`);
-    const body = encodeURIComponent(`${shareData.text}\n\nLien de l'événement :\n${shareData.url}`);
+    const subject = encodeURIComponent(t('events', 'detail.share.emailSubject').replace('{title}', event.title));
+    const body = encodeURIComponent(`${shareData.text}\n\n${t('events', 'detail.share.emailBody')}\n${shareData.url}`);
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
@@ -140,17 +142,17 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
               </div>
               <div>
                 <h2 id="share-modal-title" className="text-base font-black text-[#17131D] dark:text-white tracking-tight">
-                  Partager l'événement
+                  {t('events', 'detail.share.modalTitle')}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Invitez vos amis et vos réseaux
+                  {t('events', 'detail.share.modalDescription')}
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fermer la fenêtre de partage"
+              aria-label={t('events', 'detail.share.closeModal')}
               className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -203,14 +205,14 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
                 "
               >
                 <Share2 className="w-4 h-4" />
-                <span>Partager via le système (Applications, AirDrop...)</span>
+                <span>{t('events', 'detail.share.system')}</span>
               </button>
             )}
 
             {/* Direct Messaging Apps Grid */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
-                Envoyer via une application
+                {t('events', 'detail.share.sendViaApp')}
               </p>
               <div className="grid grid-cols-4 gap-2.5">
                 {/* WhatsApp */}
@@ -308,7 +310,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-bold text-gray-800 dark:text-gray-100">Facebook</p>
-                    <p className="text-[10px] text-gray-400">Fil d'actualité</p>
+                    <p className="text-[10px] text-gray-400">{t('events', 'detail.share.facebookSubtitle')}</p>
                   </div>
                 </button>
 
@@ -327,8 +329,8 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
                     <Mail className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-bold text-gray-800 dark:text-gray-100">Courriel</p>
-                    <p className="text-[10px] text-gray-400">Invitation par mail</p>
+                    <p className="text-xs font-bold text-gray-800 dark:text-gray-100">{t('events', 'detail.share.emailLabel')}</p>
+                    <p className="text-[10px] text-gray-400">{t('events', 'detail.share.emailSubtitle')}</p>
                   </div>
                 </button>
               </div>
@@ -337,7 +339,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
             {/* Copy Link Section */}
             <div className="pt-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
-                Lien direct
+                {t('events', 'detail.share.directLink')}
               </p>
               <div className="flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white dark:bg-[#1C1A2B] border border-black/[0.08] dark:border-white/[0.1]">
                 <input
@@ -345,7 +347,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
                   readOnly
                   value={shareData.url}
                   className="w-full bg-transparent text-xs text-gray-600 dark:text-gray-300 outline-none truncate font-mono select-all"
-                  aria-label="Lien de l'événement"
+                  aria-label={t('events', 'detail.share.eventLink')}
                 />
                 <button
                   type="button"
@@ -363,12 +365,12 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
                   {copied ? (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Copié</span>
+                      <span>{t('events', 'detail.share.copiedButton')}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copier</span>
+                      <span>{t('events', 'detail.share.copyButton')}</span>
                     </>
                   )}
                 </button>
@@ -381,7 +383,7 @@ export function ShareModal({ isOpen, event, onClose, onToast }: ShareModalProps)
             <p className="text-[11px] text-gray-400 flex items-center justify-center gap-1">
               <span>Gbaïgbancê</span>
               <span>·</span>
-              <span>L'événementiel africain partagé</span>
+              <span>{t('events', 'detail.share.footer')}</span>
               <ExternalLink className="w-3 h-3 opacity-60" />
             </p>
           </div>

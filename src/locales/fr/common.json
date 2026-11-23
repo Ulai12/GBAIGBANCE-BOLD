@@ -30,5 +30,57 @@
   "theme": "Thème",
   "light": "Clair",
   "dark": "Sombre",
-  "notifications": "Notifications"
+  "notifications": "Notifications",
+  "favorites": "Favoris",
+  "create": "Créer",
+  "mainNavigation": "Navigation principale",
+  "ticketSingular": "billet",
+  "ticketsPlural": "billets",
+  "day": "Jour",
+  "attendee": "Participant",
+  "closeDialog": "Fermer la boîte de dialogue",
+  "closeNotification": "Fermer la notification",
+  "errorBoundary": {
+    "title": "Une anomalie passagère est survenue",
+    "description": "L'application a rencontré une interruption inattendue. Vos données et vos billets restent en sécurité.",
+    "reload": "Relancer l'application",
+    "clearCache": "Vider le cache local et recharger",
+    "technicalDetails": "Détails techniques"
+  },
+  "network": {
+    "offlineTitle": "Mode hors-ligne",
+    "offlineDescription": "Billets disponibles via le cache",
+    "reconnectedTitle": "Connexion rétablie",
+    "reconnectedDescription": "Synchronisation en direct active"
+  },
+  "homeScreen": {
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Salut",
+      "evening": "Bonsoir",
+      "night": "Douce nuit"
+    },
+    "guest": "Invité",
+    "subtitle": "Trouve ta prochaine sortie",
+    "settingsAria": "Paramètres de l'application",
+    "settingsTitle": "Paramètres",
+    "aiAssistantTitle": "Assistant IA Gbaigbance",
+    "profileAria": "Profil",
+    "nearbyTitle": "À proximité de vous",
+    "nearbySubtitle": "Autour de votre position ({city})",
+    "recommended": "Recommandations personnalisées",
+    "freeEvents": "Événements gratuits",
+    "unmissable": "À ne pas manquer",
+    "artistsSpotlight": "Artistes du moment",
+    "verifiedOrgs": "Organisateurs officiels",
+    "exploreCategories": "Explorer par catégorie",
+    "mainCategories": "Catégories principales",
+    "allCategories": "Toutes",
+    "noEventsInCategory": "Aucun événement",
+    "noEventsInCategoryDesc": "Pas d'événement dans cette catégorie pour le moment",
+    "offlineMode": "Mode hors-ligne : données sauvegardées affichées",
+    "ticketingEvents": "Billetterie & Événements",
+    "concertsParties": "Concerts, soirées, festivals..."
+  },
+  "dialog": "Boîte de dialogue"
 }

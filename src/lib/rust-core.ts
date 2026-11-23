@@ -7,6 +7,7 @@
 export interface RustTicket {
   id: string;
   price_paid: number;
+  quantity?: number;
   status: string;
   created_at_ms: number;
   event_id: string;
@@ -156,15 +157,20 @@ export async function corePlatformStats(input: {
   events: RustEvent[];
   users: number;
 }): Promise<PlatformCoreStats | null> {
+  if (input.tickets.some((ticket) => (ticket.quantity ?? 1) > 1)) return null;
   return exec<PlatformCoreStats>({ op: 'platform_stats', ...input });
 }
 
 export async function coreTimeline(input: {
   period: 'current_month' | 'last_month' | 'quarter';
   nowMs: number;
-  tickets: Array<{ id: string; created_at_ms: number; price_paid: number; status: string }>;
+  tickets: Array<{ id: string; created_at_ms: number; price_paid: number; quantity: number; status: string }>;
   events: Array<{ id: string; starts_at_ms: number; attendees: number }>;
 }): Promise<TimelineBucket[] | null> {
+  if (input.tickets.some((ticket) => ticket.quantity > 1)) {
+    return timelineWithQuantities(input);
+  }
+
   const result = await exec<{ buckets: TimelineBucket[] }>({
     op: 'timeline',
     period: input.period,
@@ -174,6 +180,63 @@ export async function coreTimeline(input: {
     events: input.events,
   });
   return result?.buckets ?? null;
+}
+
+function timelineWithQuantities(input: {
+  period: 'current_month' | 'last_month' | 'quarter';
+  nowMs: number;
+  tickets: Array<{ created_at_ms: number; price_paid: number; quantity: number }>;
+  events: Array<{ starts_at_ms: number; attendees: number }>;
+}): TimelineBucket[] {
+  const offsetMs = tzOffsetMin() * 60_000;
+  const now = new Date(input.nowMs + offsetMs);
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
+  const quarter = input.period === 'quarter';
+  const start = new Date(Date.UTC(
+    currentYear,
+    currentMonth + (quarter ? -2 : input.period === 'last_month' ? -1 : 0),
+    1,
+  ));
+  const monthCount = quarter ? 3 : 1;
+  const buckets: TimelineBucket[] = [];
+
+  for (let index = 0; index < monthCount; index++) {
+    const date = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + index, 1));
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const weeks = quarter ? [null] : [0, 1, 2, 3];
+    for (const week of weeks) {
+      buckets.push({ year, month, week, tickets: 0, revenue: 0, attendees: 0, events: 0 });
+    }
+  }
+
+  const bucketFor = (timestamp: number): TimelineBucket | undefined => {
+    if (!Number.isFinite(timestamp) || timestamp <= 0) return undefined;
+    const date = new Date(timestamp + offsetMs);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const monthBucket = buckets.find((bucket) => bucket.year === year && bucket.month === month);
+    if (!monthBucket) return undefined;
+    if (quarter) return monthBucket;
+    const day = date.getUTCDate();
+    const week = Math.min(3, Math.floor((day - 1) / 7));
+    return buckets.find((bucket) => bucket.year === year && bucket.month === month && bucket.week === week);
+  };
+
+  for (const ticket of input.tickets) {
+    const bucket = bucketFor(ticket.created_at_ms);
+    if (!bucket) continue;
+    bucket.tickets += Math.max(1, Math.floor(ticket.quantity || 1));
+    bucket.revenue += Math.max(0, ticket.price_paid || 0);
+  }
+  for (const event of input.events) {
+    const bucket = bucketFor(event.starts_at_ms);
+    if (!bucket) continue;
+    bucket.events += 1;
+    bucket.attendees += Math.max(0, event.attendees || 0);
+  }
+  return buckets;
 }
 
 export async function coreMergeIds(serverIds: string[], localIds: string[], dropIds: string[]): Promise<string[] | null> {
@@ -208,6 +271,7 @@ export async function coreOrganizerSeries(days: number, tickets: RustTicket[]): 
   revenue: number;
   by_type: Array<{ key: string; count: number; revenue: number }>;
 } | null> {
+  if (tickets.some((ticket) => (ticket.quantity ?? 1) > 1)) return null;
   return exec({
     op: 'organizer_series',
     days,

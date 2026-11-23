@@ -14,6 +14,7 @@ import { getDefaultEventCover } from '@/utils/defaultImages';
 import { formatDistanceKm, getAccurateTravelEstimate } from '@/utils/geo';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { useApp } from '@/hooks/useApp';
 
 interface NearbyEventTileProps {
   event: Event & { distanceKm?: number };
@@ -22,12 +23,12 @@ interface NearbyEventTileProps {
   onBook?: () => void;
 }
 
-function formatDate(dateString?: string | null) {
+function formatDate(dateString?: string | null, language: string = 'fr') {
   if (!dateString) return '';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -39,13 +40,14 @@ function formatDate(dateString?: string | null) {
 
 export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLocation = false, onClick, onBook }: NearbyEventTileProps) {
   const prefersReducedMotion = useReducedMotion();
+  const { language, t } = useApp();
 
   const formattedPrice =
     event.price_min === 0
-      ? 'Gratuit'
+      ? t('events', 'free')
       : event.price_min != null
-        ? `${Number(event.price_min).toLocaleString('fr-FR')} F`
-        : 'Gratuit';
+        ? `${Number(event.price_min).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')} F`
+        : t('events', 'free');
 
   const travel = isActualLocation ? getAccurateTravelEstimate(event.distanceKm) : null;
   const showRealDistance = isActualLocation && typeof event.distanceKm === 'number' && event.distanceKm < 50;
@@ -65,7 +67,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
       }}
       role="button"
       tabIndex={0}
-      aria-label={`Événement à proximité : ${event.title}`}
+      aria-label={t('events', 'home.nearbyEvent').replace('{title}', event.title)}
       onMouseEnter={prefetchEventDetail}
       onTouchStart={prefetchEventDetail}
       className="
@@ -114,7 +116,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
               backdrop-blur-md text-white text-[10px] font-semibold shadow-xs
             ">
               <MapPin className="w-2.5 h-2.5 text-blue-300" />
-              <span className="truncate max-w-[110px]">{event.city || 'Lomé'}</span>
+              <span className="truncate max-w-[110px]">{event.city || t('events', 'home.defaultCity')}</span>
             </div>
           )}
 
@@ -135,13 +137,13 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
             </span>
           ) : (
             <span className="px-2 py-0.5 rounded-full bg-black/45 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10">
-              {event.category || 'Sortie'}
+              {event.category || t('events', 'home.defaultCategory')}
             </span>
           )}
 
           {travel && (
             <span className="px-1.5 py-0.5 rounded-full bg-[#6600FF]/80 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider">
-              {event.category || 'Sortie'}
+              {event.category || t('events', 'home.defaultCategory')}
             </span>
           )}
         </div>
@@ -153,7 +155,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
           {/* Date */}
           <div className="flex items-center gap-1 text-[11px] font-bold text-[#6600FF] dark:text-[#A78BFA]">
             <Calendar className="w-3 h-3 shrink-0" />
-            <span className="truncate">{formatDate(event.starts_at)}</span>
+            <span className="truncate">{formatDate(event.starts_at, language)}</span>
           </div>
 
           {/* Title */}
@@ -164,7 +166,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
           {/* Venue */}
           <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
             <MapPin className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" />
-            <span className="truncate">{event.location_name || event.city || 'Lomé'}</span>
+            <span className="truncate">{event.location_name || event.city || t('events', 'home.defaultCity')}</span>
           </div>
         </div>
 
@@ -172,7 +174,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
         <div className="mt-2.5 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
           <div className="flex items-baseline gap-1">
             <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Dès
+              {t('events', 'from')}
             </span>
             <span className="text-xs font-black text-[#17131D] dark:text-white">
               {formattedPrice}
@@ -193,7 +195,7 @@ export const NearbyEventTile = memo(function NearbyEventTile({ event, isActualLo
               transition-all active:scale-95
             "
           >
-            <span>Voir</span>
+            <span>{t('events', 'viewEvent')}</span>
             <ArrowUpRight className="w-3 h-3" />
           </button>
         </div>

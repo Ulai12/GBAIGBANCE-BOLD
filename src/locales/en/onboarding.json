@@ -1,0 +1,49 @@
+{
+  "skip": "Skip",
+  "previousStep": "Previous step",
+  "goToStep": "Go to step {number}",
+  "progress": "Progress",
+  "continue": "Continue",
+  "startExperience": "Start the experience",
+  "slides": {
+    "0": {
+      "eyebrow": "EXPLORATION & LIVE",
+      "title": "The greatest moments start here.",
+      "subtitle": "Discover all the must-see concerts, festivals and parties in Togo, Benin, Ivory Coast and across Africa.",
+      "badge": "Live Events"
+    },
+    "1": {
+      "eyebrow": "NATIVE TICKETING",
+      "title": "Your secure tickets, in a blink.",
+      "subtitle": "Pay instantly via T-Money, Moov Money, Wave or Bank Card. Your access QR Code remains available offline.",
+      "badge": "Mobile Payment"
+    },
+    "2": {
+      "eyebrow": "CLOSE TO YOUR ARTISTS",
+      "title": "Never miss your favorite stars again.",
+      "subtitle": "Follow artists, get exclusive alerts as soon as ticketing opens and enjoy VIP rates.",
+      "badge": "VIP Alerts"
+    },
+    "3": {
+      "eyebrow": "TAILORED EXPERIENCE",
+      "title": "Personalize your local scene.",
+      "subtitle": "Choose your city and music styles to receive tailored recommendations from your first look.",
+      "badge": "Your Preferences"
+    }
+  },
+  "live": "LIVE",
+  "ambiance": "100% Atmosphere",
+  "verifiedPass": "Verified Pass",
+  "valid": "Valid",
+  "scanAtEntrance": "Scan at the entrance",
+  "quickAccess": "Quick NFC & QR access",
+  "acceptedPayments": "Direct payments accepted:",
+  "artistsToDiscover": "Artists to discover:",
+  "subscribers": "subscribers",
+  "followedVip": "Subscribed to VIP alerts!",
+  "followArtist": "Follow {name}",
+  "presaleTicket": "Presale ticket · {name}",
+  "yourCountry": "Your main country:",
+  "yourAmbiances": "Your preferred atmospheres:",
+  "soonNotice": "Coming soon in your country."
+}

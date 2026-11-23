@@ -15,6 +15,7 @@ import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { formatDistance, getAccurateTravelEstimate } from '@/utils/geo';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { useApp } from '@/hooks/useApp';
 
 interface NearbySeeMoreCardProps {
   event: Event & { distanceKm?: number };
@@ -22,12 +23,12 @@ interface NearbySeeMoreCardProps {
   onShare?: (event: Event) => void;
 }
 
-function formatDate(dateString?: string | null) {
+function formatDate(dateString?: string | null, language: string = 'fr') {
   if (!dateString) return '';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -38,20 +39,23 @@ function formatDate(dateString?: string | null) {
   }
 }
 
-function formatAttendees(count: number) {
+function formatAttendees(count?: number | null) {
+  if (typeof count !== 'number' || !Number.isFinite(count)) return '—';
+  count = Math.max(0, Math.floor(count));
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
   return count.toString();
 }
 
 export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCardProps) {
+  const { language, t } = useApp();
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 
   const formattedPrice =
     event.price_min === 0
-      ? 'Gratuit'
-      : `${event.price_min.toLocaleString('fr-FR')} FCFA`;
+      ? t('events', 'free')
+      : `${event.price_min.toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')} FCFA`;
 
   const hasDistance = typeof event.distanceKm === 'number';
   const travel = hasDistance ? getAccurateTravelEstimate(event.distanceKm) : null;
@@ -62,7 +66,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
       onShare(event);
       return;
     }
-    const status = await shareEventNative(event);
+    const status = await shareEventNative(event, undefined, language);
     if (status !== 'shared' && status !== 'cancelled') {
       setShowShareModal(true);
     }
@@ -85,7 +89,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
           bg-neutral-100 dark:bg-[#1E172E] text-white cursor-pointer
           shadow-[0_8px_30px_rgba(0,0,0,0.12)]
         "
-        aria-label={`Événement à proximité : ${event.title}`}
+        aria-label={t('events', 'home.nearbyEvent').replace('{title}', event.title)}
       >
         {/* COVER IMAGE */}
         <motion.div
@@ -117,7 +121,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
             ">
               <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
               <span className="truncate text-[10px] sm:text-[11px] font-semibold text-white">
-                {formatDate(event.starts_at)}
+                {formatDate(event.starts_at, language)}
               </span>
             </div>
 
@@ -125,7 +129,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
             <div className="flex items-center gap-1.5 shrink-0">
               <motion.button
                 type="button"
-                aria-label={`Partager ${event.title}`}
+                aria-label={`${t('events', 'share')} ${event.title}`}
                 whileTap={{ scale: 0.88 }}
                 onClick={handleShare}
                 className="
@@ -167,7 +171,7 @@ export function NearbySeeMoreCard({ event, onClick, onShare }: NearbySeeMoreCard
             <div className="flex min-w-0 items-center gap-1">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]" />
               <span className="truncate text-[11px] font-medium leading-tight text-white/90">
-                {event.location_name || event.city || 'Lieu à confirmer'}
+                {event.location_name || event.city || t('events', 'locationToConfirm')}
               </span>
             </div>
 

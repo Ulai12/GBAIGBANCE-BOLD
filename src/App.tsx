@@ -3,25 +3,20 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams
 import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { BookingModal } from '@/components/BookingModal';
 import { AppProvider } from '@/contexts/AppContext';
-import { FavoritesProvider, useFavorites } from '@/contexts/FavoritesContext';
+import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { DataSaverProvider } from '@/contexts/DataSaverContext';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
 import { ToastContainer, type ToastData } from '@/components/Toast';
 import { EdgeSwipeBack } from '@/components/EdgeSwipeBack';
-import { HomeScreen } from '@/screens/HomeScreen';
-import { ExploreScreen } from '@/screens/ExploreScreen';
-import { TicketsScreen } from '@/screens/TicketsScreen';
-import { FavoritesScreen } from '@/screens/FavoritesScreen';
-import { ProfileScreen } from '@/screens/ProfileScreen';
 import { AIAssistantModal } from '@/components/AIAssistantModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { HomeScreenSkeleton } from '@/components/Skeleton';
+import { AppLoadingScreen } from '@/components/Skeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { subscribeToUserTicketsLive } from '@/services/events';
 import { getSyncCachedUserTickets } from '@/services/cache';
-import { checkAndTriggerTicketReminders, checkFollowedArtistsAnnouncements } from '@/services/eventReminderService';
+import { checkAndTriggerTicketReminders } from '@/services/eventReminderService';
 import {
   EventDetailRoute,
   EditEventRoute,
@@ -30,6 +25,12 @@ import {
   UserProfileRoute,
 } from '@/navigation/RouteWrappers';
 import type { Event, Artist, Organization } from '@/types';
+
+const HomeScreen = lazy(() => import('@/screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
+const ExploreScreen = lazy(() => import('@/screens/ExploreScreen').then((module) => ({ default: module.ExploreScreen })));
+const TicketsScreen = lazy(() => import('@/screens/TicketsScreen').then((module) => ({ default: module.TicketsScreen })));
+const FavoritesScreen = lazy(() => import('@/screens/FavoritesScreen').then((module) => ({ default: module.FavoritesScreen })));
+const ProfileScreen = lazy(() => import('@/screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
 
 const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then((module) => ({ default: module.OnboardingScreen })));
 const AuthScreen = lazy(() => import('@/screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
@@ -45,6 +46,17 @@ const AISettingsScreen = lazy(() => import('@/screens/AISettingsScreen').then((m
 const GlassSpike = lazy(() => import('@/components/glass/GlassSpike'));
 
 type Tab = 'home' | 'explore' | 'tickets' | 'favorites' | 'profile';
+
+function TabLoadingFallback() {
+  return (
+    <div className="min-h-[65vh] flex items-center justify-center" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 text-sm font-semibold text-gray-500 dark:text-zinc-400">
+        <span className="h-5 w-5 rounded-full border-2 border-[#6600FF]/20 border-t-[#6600FF] animate-spin motion-reduce:animate-none" />
+        Chargement de l’écran…
+      </div>
+    </div>
+  );
+}
 
 function OtpRoute() {
   const navigate = useNavigate();
@@ -65,8 +77,7 @@ function OtpRoute() {
 }
 
 function AppContent() {
-  const { loading, session, user } = useApp();
-  const { followedArtistIds, followedOrgIds } = useFavorites();
+  const { loading, session, user, t } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -150,6 +161,23 @@ function AppContent() {
     if (path === '/profile') return 'profile';
     return 'home';
   })();
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const initialTab: Tab =
+      path === '/explore' || path === '/tickets' || path === '/favorites' || path === '/profile'
+        ? path.slice(1) as Tab
+        : 'home';
+    return new Set([initialTab]);
+  });
+
+  useEffect(() => {
+    setVisitedTabs((visited) => {
+      if (visited.has(activeTab)) return visited;
+      const next = new Set(visited);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   const isTabScreen = ['/', '/home', '/explore', '/tickets', '/favorites', '/profile'].includes(location.pathname);
   const navigationType = useNavigationType();
@@ -238,14 +266,22 @@ function AppContent() {
 
   const addToast = useCallback((toast: Omit<ToastData, 'id'>) => {
     const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { ...toast, id }]);
+    setToasts((prev) => {
+      const next = [...prev, { ...toast, id }];
+      if (next.length <= 4) return next;
+
+      const oldestTransient = next.findIndex((item) => item.id !== id && !item.persistent);
+      return oldestTransient === -1
+        ? next.slice(-4)
+        : next.filter((_, index) => index !== oldestTransient);
+    });
   }, []);
 
   const closeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Confirmation après l'application automatique d'une nouvelle version PWA.
+  // Confirmation après l'application d'une nouvelle version PWA.
   useEffect(() => {
     const updateFlag = 'gbaigbance:pwa-update-complete';
 
@@ -253,7 +289,7 @@ function AppContent() {
       if (window.sessionStorage.getItem(updateFlag) === '1') {
         window.sessionStorage.removeItem(updateFlag);
         addToast({
-          message: 'Gbaïgbancê a été mis à jour avec succès !',
+          message: t('settings', 'pwa.updateComplete'),
           type: 'success',
         });
       }
@@ -266,37 +302,40 @@ function AppContent() {
       const applyUpdate = customEvent.detail?.update;
 
       addToast({
-        message: 'Nouvelle version détectée. Mise à jour automatique…',
+        message: t('settings', 'pwa.updateAvailable'),
         type: 'info',
+        persistent: true,
+        action: applyUpdate
+          ? {
+              label: t('settings', 'pwa.updateNow'),
+              onClick: () => {
+                try {
+                  window.sessionStorage.setItem(updateFlag, '1');
+                } catch {
+                  // La mise à jour reste possible même sans stockage de session.
+                }
+
+                void Promise.resolve(applyUpdate()).catch((error: unknown) => {
+                  try {
+                    window.sessionStorage.removeItem(updateFlag);
+                  } catch {
+                    // Ignore les restrictions de stockage.
+                  }
+                  console.error('[PWA] Impossible d’appliquer la mise à jour.', error);
+                  addToast({
+                    message: t('settings', 'pwa.updateFailed'),
+                    type: 'error',
+                  });
+                });
+              },
+            }
+          : undefined,
       });
-
-      if (!applyUpdate) return;
-
-      try {
-        window.sessionStorage.setItem(updateFlag, '1');
-      } catch {
-        // La mise à jour reste possible même sans stockage de session.
-      }
-
-      // Laisse le toast apparaître avant le rechargement contrôlé par le Service Worker.
-      window.setTimeout(() => {
-        void Promise.resolve(applyUpdate()).catch(() => {
-          try {
-            window.sessionStorage.removeItem(updateFlag);
-          } catch {
-            // Ignore les restrictions de stockage.
-          }
-          addToast({
-            message: 'La mise à jour a échoué. Réessaie lorsque le réseau sera stable.',
-            type: 'error',
-          });
-        });
-      }, 1_200);
     };
 
     window.addEventListener('pwa-update-available', handleUpdate);
     return () => window.removeEventListener('pwa-update-available', handleUpdate);
-  }, [addToast]);
+  }, [addToast, t]);
 
   // Écouteur in-app pour les notifications Web Push PWA (rappels 24h/2h, alertes artistes)
   useEffect(() => {
@@ -313,62 +352,22 @@ function AppContent() {
     return () => window.removeEventListener('gba-inapp-push-received', handleInAppPush);
   }, [addToast]);
 
-  // Rappels 24h / 2h : déjà planifiés ici (pas seulement sur l'accueil).
-  // Le retour au premier plan relance tout de suite, sans attendre le prochain cycle de 15 min.
+  // Surveillance et déclenchement automatique des rappels 24h et 2h pour les événements réservés
   useEffect(() => {
     if (!user?.id) return;
 
-    const run = () => {
-      void checkAndTriggerTicketReminders(user.id);
-    };
+    // Vérification initiale
+    checkAndTriggerTicketReminders(user.id);
 
-    run();
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') run();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-
+    // Vérification périodique toutes les 15 minutes
     const interval = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        run();
+        checkAndTriggerTicketReminders(user.id);
       }
     }, 15 * 60 * 1000);
 
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.clearInterval(interval);
-    };
+    return () => window.clearInterval(interval);
   }, [user?.id]);
-
-  // Alertes « nouvelle date » : l'accueil est démonté hors des onglets (fiche, réglages, dashboard).
-  // Cette planification reste active quel que soit l'écran ouvert.
-  const artistFollowKey = Array.from(followedArtistIds).sort().join('\n');
-  const orgFollowKey = Array.from(followedOrgIds).sort().join('\n');
-
-  useEffect(() => {
-    if (!artistFollowKey && !orgFollowKey) return;
-    const artistIds = artistFollowKey ? artistFollowKey.split('\n') : [];
-    const orgIds = orgFollowKey ? orgFollowKey.split('\n') : [];
-
-    const run = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      void checkFollowedArtistsAnnouncements(artistIds, orgIds);
-    };
-
-    run();
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') run();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    const interval = window.setInterval(run, 15 * 60 * 1000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.clearInterval(interval);
-    };
-  }, [artistFollowKey, orgFollowKey]);
 
   // Global toast and rollback event listeners
   useEffect(() => {
@@ -447,7 +446,7 @@ function AppContent() {
   };
 
   if (loading) {
-    return <HomeScreenSkeleton />;
+    return <AppLoadingScreen />;
   }
 
   return (
@@ -455,55 +454,76 @@ function AppContent() {
       <div ref={scrollRef} className="min-h-screen relative z-10 bg-transparent">
         {isTabScreen ? (
           <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-w-7xl mx-auto">
-            <div className={activeTab === 'home' ? 'block' : 'hidden'}>
-              <HomeScreen
-                onEventClick={handleEventClick}
-                onBookEvent={handleBookEvent}
-                onSearchClick={() => navigate('/explore')}
-                onOpenNotifications={() => navigate('/notifications')}
-                onProfileClick={() => navigate('/profile')}
-                onArtistClick={handleArtistClick}
-                onOrganizationClick={handleOrganizationClick}
-                onOpenAIAssistant={() => setAiAssistantOpen(true)}
-                onOpenAISettings={() => navigate('/ai-settings')}
-                onOpenSettings={() => setSettingsModalOpen(true)}
-                onToast={addToast}
-              />
-            </div>
-            <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
-              <ExploreScreen
-                onEventClick={handleEventClick}
-                onUserClick={(u) => navigate(`/users/${u.id}`)}
-              />
-            </div>
-            <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
-              <TicketsScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onToast={addToast}
-              />
-            </div>
-            <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
-              <FavoritesScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onArtistClick={handleArtistClick}
-                onOrganizationClick={handleOrganizationClick}
-              />
-            </div>
-            <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
-              <ProfileScreen
-                onEventClick={handleEventClick}
-                onLogin={() => navigate('/login')}
-                onOrganizerDashboard={() => navigate('/organizer/dashboard')}
-                onOpenNotifications={() => navigate('/notifications')}
-                onOpenNotificationSettings={() => navigate('/notifications/settings')}
-                onOpenSubscriptions={(tab) => navigate(tab ? `/subscriptions?tab=${tab}` : '/subscriptions')}
-                onOpenTickets={() => navigate('/tickets')}
-                onOpenAISettings={() => navigate('/ai-settings')}
-                onToast={addToast}
-              />
-            </div>
+            {(visitedTabs.has('home') || activeTab === 'home') && (
+              <div className={activeTab === 'home' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <HomeScreen
+                    onEventClick={handleEventClick}
+                    onBookEvent={handleBookEvent}
+                    onSearchClick={() => navigate('/explore')}
+                    onOpenNotifications={() => navigate('/notifications')}
+                    onProfileClick={() => navigate('/profile')}
+                    onArtistClick={handleArtistClick}
+                    onOrganizationClick={handleOrganizationClick}
+                    onOpenAIAssistant={() => setAiAssistantOpen(true)}
+                    onOpenAISettings={() => navigate('/ai-settings')}
+                    onOpenSettings={() => setSettingsModalOpen(true)}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('explore') || activeTab === 'explore') && (
+              <div className={activeTab === 'explore' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <ExploreScreen
+                    onEventClick={handleEventClick}
+                    onUserClick={(u) => navigate(`/users/${u.id}`)}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('tickets') || activeTab === 'tickets') && (
+              <div className={activeTab === 'tickets' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <TicketsScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('favorites') || activeTab === 'favorites') && (
+              <div className={activeTab === 'favorites' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <FavoritesScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onArtistClick={handleArtistClick}
+                    onOrganizationClick={handleOrganizationClick}
+                    onUserClick={(profile) => navigate(`/users/${profile.id}`, { state: { profile } })}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {(visitedTabs.has('profile') || activeTab === 'profile') && (
+              <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <ProfileScreen
+                    onEventClick={handleEventClick}
+                    onLogin={() => navigate('/login')}
+                    onOrganizerDashboard={() => navigate('/organizer/dashboard')}
+                    onOpenNotifications={() => navigate('/notifications')}
+                    onOpenNotificationSettings={() => navigate('/notifications/settings')}
+                    onOpenSubscriptions={(tab) => navigate(tab ? `/subscriptions?tab=${tab}` : '/subscriptions')}
+                    onOpenTickets={() => navigate('/tickets')}
+                    onOpenAISettings={() => navigate('/ai-settings')}
+                    onToast={addToast}
+                  />
+                </Suspense>
+              </div>
+            )}
           </div>
         ) : (
           <Routes>
@@ -708,7 +728,7 @@ function App() {
 
   if (isSpikeRequested) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoadingScreen />}>
         <GlassSpike />
       </Suspense>
     );
@@ -720,7 +740,7 @@ function App() {
         <AppProvider>
           <DataSaverProvider>
             <FavoritesProvider>
-              <Suspense fallback={null}>
+              <Suspense fallback={<AppLoadingScreen />}>
                 <AppContent />
               </Suspense>
             </FavoritesProvider>

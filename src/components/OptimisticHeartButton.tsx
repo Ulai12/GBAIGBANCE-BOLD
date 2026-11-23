@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useApp } from '@/hooks/useApp';
 import { haptic } from '@/hooks/useHaptics';
 
 export interface OptimisticHeartButtonProps {
@@ -22,6 +23,7 @@ export function OptimisticHeartButton({
   ariaLabel,
 }: OptimisticHeartButtonProps) {
   const { isLiked, toggleLike } = useFavorites();
+  const { t } = useApp();
   const liked = isLiked(eventId);
   const prefersReducedMotion = useReducedMotion();
   const [burstKey, setBurstKey] = useState(0);
@@ -88,7 +90,7 @@ export function OptimisticHeartButton({
 
       <motion.button
         type="button"
-        aria-label={ariaLabel || (liked ? 'Retirer des favoris' : 'Ajouter aux favoris')}
+        aria-label={ariaLabel || (liked ? t('events', 'removeFavorite') : t('events', 'addFavorite'))}
         whileTap={{ scale: 0.82 }}
         whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
         onClick={handleClick}

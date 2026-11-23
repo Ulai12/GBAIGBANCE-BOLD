@@ -122,6 +122,12 @@ function getWarmExploreEvents(): Event[] {
 
 export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps) {
   const { user: currentUser, t } = useApp();
+  const searchText = (key: string) => t('events', `explore.search.${key}`);
+  const categoryText = (group: 'mainCategoriesLabels' | 'subcategoriesLabels', id: string, fallback: string) => {
+    const key = `explore.search.${group}.${id}`;
+    const value = t('events', key);
+    return value === key ? fallback : value;
+  };
   const { isFollowingUser, toggleFollowUser } = useFavorites();
 
   // Mode de recherche : événements ou participants/amis
@@ -279,24 +285,20 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       {/* Header harmonisé style Favoris & Tickets */}
       <div className="px-5 pt-safe-header pb-2">
         <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-          {t('events', 'explore.headerBadge')}
+          {searchText('eyebrow')}
         </p>
         <div className="mt-1 flex items-center justify-between gap-3">
           <h1 className="min-w-0 text-[1.7rem] font-black leading-none tracking-tight text-[#17131D] dark:text-white min-[380px]:text-3xl">
-            {t('events', 'explore.title')}
+            {searchText('title')}
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
             {searchMode === 'events'
-              ? (events.length > 1 
-                  ? t('events', 'explore.resultsCountPlural').replace('{count}', String(events.length))
-                  : t('events', 'explore.resultsCount').replace('{count}', String(events.length)))
-              : (participants.length > 1
-                  ? t('events', 'explore.profilesCountPlural').replace('{count}', String(participants.length))
-                  : t('events', 'explore.profilesCount').replace('{count}', String(participants.length)))}
+              ? searchText('results').replace('{count}', String(events.length))
+              : searchText('profiles').replace('{count}', String(participants.length))}
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {t('events', 'explore.subtitle')}
+          {searchText('description')}
         </p>
       </div>
 
@@ -317,7 +319,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>{t('events', 'explore.modes.events')}</span>
+            <span>{searchText('events')}</span>
           </button>
           <button
             type="button"
@@ -332,8 +334,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             }`}
           >
             <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className="min-[400px]:hidden">{t('events', 'explore.modes.friends')}</span>
-            <span className="hidden min-[400px]:inline">{t('events', 'explore.modes.friendsFull')}</span>
+            <span className="min-[400px]:hidden">{searchText('friends')}</span>
+            <span className="hidden min-[400px]:inline">{searchText('participants')}</span>
           </button>
         </div>
 
@@ -347,8 +349,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               onChange={(e) => setQuery(e.target.value)}
               placeholder={
                 searchMode === 'events'
-                  ? t('events', 'explore.searchPlaceholderEvents')
-                  : t('events', 'explore.searchPlaceholderFriends')
+                  ? t('events', 'searchPlaceholder')
+                  : searchText('peoplePlaceholder')
               }
               className="min-h-11 w-full rounded-2xl border border-black/[0.05] bg-black/[0.03] py-3 pl-10 pr-12 text-xs font-semibold text-[#17131D] shadow-2xs backdrop-blur-xl transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-white sm:text-sm"
             />
@@ -356,7 +358,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label={t('events', 'explore.clearSearch')}
+                aria-label={searchText('clear')}
                 className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:hover:text-gray-200"
               >
                 <X className="w-4 h-4" />
@@ -368,7 +370,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <button
               type="button"
               onClick={() => setShowFilters(true)}
-              aria-label={t('events', 'explore.advancedFilters')}
+              aria-label={searchText('advancedFilters')}
               className={`relative flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-2xl transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                 hasActiveFilters
                   ? 'bg-[#6600FF] text-white shadow-purple'
@@ -388,7 +390,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div
               className="flex snap-x snap-mandatory gap-2 overflow-x-auto pt-1 no-scrollbar"
               role="group"
-              aria-label={t('events', 'explore.categoriesAria')}
+              aria-label={searchText('mainCategories')}
             >
               <button
                 type="button"
@@ -401,7 +403,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{t('events', 'categories.all') && !t('events', 'categories.all').includes('categories.all') ? t('events', 'categories.all') : 'Tous'}</span>
+                <span>{t('events', 'categories.all')}</span>
               </button>
               {MAIN_CATEGORIES.map((main) => {
                 const Icon = CATEGORY_ICONS[main.iconName] || Palette;
@@ -416,56 +418,57 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     className={`flex min-h-11 shrink-0 snap-start cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-bold transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
                       isFamily
                         ? 'bg-[#6600FF] text-white shadow-[0_6px_18px_rgba(102,0,255,0.22)]'
-                        : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 backdrop-blur-xl dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
+                        : 'border border-black/[0.05] bg-black/[0.03] text-gray-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-gray-300'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="whitespace-nowrap">{main.shortLabel}</span>
+                    <span className="whitespace-nowrap">
+                      {categoryText('mainCategoriesLabels', main.id, main.shortLabel)}
+                    </span>
                   </button>
                 );
               })}
             </div>
+
             {selectedMainCategory && (
-              <div className="pt-1">
-                <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                  {t('events', 'explore.subcategories')} · {selectedMainCategory.shortLabel}
-                </p>
-                <div
-                  className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
-                  role="group"
-                  aria-label={`${t('events', 'explore.subcategories')} · ${selectedMainCategory.shortLabel}`}
+              <div
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 no-scrollbar"
+                role="group"
+                aria-label={searchText('subcategories').replace(
+                  '{category}',
+                  categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                )}
+              >
+                <button
+                  type="button"
+                  aria-pressed={selectedCategory === selectedMainCategory.id}
+                  onClick={() => setSelectedCategory(selectedMainCategory.id)}
+                  className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                    selectedCategory === selectedMainCategory.id
+                      ? 'bg-[#6600FF] text-white'
+                      : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                  }`}
                 >
-                  <button
-                    type="button"
-                    aria-pressed={selectedCategory === selectedMainCategory.id}
-                    onClick={() => setSelectedCategory(selectedMainCategory.id)}
-                    className={`inline-flex min-h-11 shrink-0 snap-start items-center rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
-                      selectedCategory === selectedMainCategory.id
-                        ? 'bg-[#6600FF] text-white'
-                        : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
-                    }`}
-                  >
-                    {t('events', 'explore.allSubcategories')}
-                  </button>
-                  {selectedMainCategory.subcategories.map((sub) => {
-                    const isSelected = selectedCategory === sub.id;
-                    return (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
-                        className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
-                          isSelected
-                            ? 'bg-[#6600FF] text-white'
-                            : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
-                        }`}
-                      >
-                        {sub.shortLabel}
-                      </button>
-                    );
-                  })}
-                </div>
+                  {searchText('all')}
+                </button>
+                {selectedMainCategory.subcategories.map((sub) => {
+                  const isSelected = selectedCategory === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedCategory(isSelected ? selectedMainCategory.id : sub.id)}
+                      className={`inline-flex min-h-11 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-3.5 text-[12px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E] ${
+                        isSelected
+                          ? 'bg-[#6600FF] text-white'
+                          : 'bg-black/[0.04] text-gray-700 dark:bg-white/[0.08] dark:text-gray-200'
+                      }`}
+                    >
+                      {categoryText('subcategoriesLabels', sub.id, sub.shortLabel)}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -473,7 +476,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       </div>
 
       {/* Contenu principal : Grille Événements OU Liste Participants */}
-      <div className="px-5 pb-32">
+      <div className="px-5 mt-5">
         {searchMode === 'events' ? (
           loading && events.length === 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
@@ -484,8 +487,8 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
           ) : events.length === 0 ? (
             <div className="mt-8">
               <EmptyState
-                title={t('events', 'explore.noEventsTitle')}
-                description={t('events', 'explore.noEventsDesc')}
+                title={searchText('noEvents')}
+                description={searchText('noEventsDescription')}
                 action={
                   hasActiveFilters ? (
                     <button
@@ -493,7 +496,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                       onClick={resetFilters}
                       className="px-6 py-2.5 rounded-full bg-[#6600FF] text-white text-xs font-black shadow-md hover:bg-[#5200cc] transition-all cursor-pointer"
                     >
-                      {t('events', 'explore.reset')}
+                      {searchText('resetFilters')}
                     </button>
                   ) : undefined
                 }
@@ -528,11 +531,11 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             <div className="mt-8">
               <EmptyState
                 icon={<Users className="w-10 h-10 text-[#6600FF]" />}
-                title={query.trim().length < 2 ? t('events', 'explore.searchPersonTitle') : t('events', 'explore.noParticipantsTitle')}
+                title={query.trim().length < 2 ? searchText('searchPerson') : searchText('noParticipants')}
                 description={
                   query.trim().length < 2
-                    ? t('events', 'explore.searchPersonDesc')
-                    : t('events', 'explore.noParticipantsDesc')
+                    ? searchText('searchPersonDescription')
+                    : searchText('noParticipantsDescription')
                 }
               />
             </div>
@@ -566,7 +569,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                               <span>{person.city}</span>
                             </>
                           ) : (
-                            <span>{t('events', 'explore.defaultParticipantLabel')}</span>
+                            <span>{searchText('participant')}</span>
                           )}
                         </p>
                       </div>
@@ -575,21 +578,21 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     <button
                       type="button"
                       onClick={(e) => handleToggleFollowUserInSearch(person.id, e)}
-                      className={`shrink-0 flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-full text-[11px] font-black transition-all motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
                         isFollowing
-                          ? 'bg-[#6600FF]/10 text-[#6600FF] dark:bg-white/10 dark:text-white'
-                          : 'bg-[#6600FF] text-white shadow-sm hover:bg-[#5200cc]'
+                          ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border border-black/5 dark:border-white/10'
+                          : 'bg-[#6600FF] hover:bg-[#5200cc] text-white shadow-xs'
                       }`}
                     >
                       {isFollowing ? (
                         <>
                           <UserCheck className="w-3.5 h-3.5 text-[#6600FF] dark:text-white" />
-                          <span>{t('events', 'explore.following')}</span>
+                          <span>{searchText('following')}</span>
                         </>
                       ) : (
                         <>
                           <Heart className="w-3.5 h-3.5" />
-                          <span>{t('events', 'explore.follow')}</span>
+                          <span>{searchText('follow')}</span>
                         </>
                       )}
                     </button>
@@ -601,18 +604,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
         )}
       </div>
 
-      {/* BottomSheet Filtres */}
-      <BottomSheet
-        open={showFilters}
-        onClose={() => setShowFilters(false)}
-        title={t('events', 'explore.filtersTitle')}
-      >
-        <div className="space-y-6 pb-safe">
+      {/* BottomSheet Filtres avancés pour les événements */}
+      <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title={searchText('filterTitle')}>
+        <div className="space-y-5 text-[#17131D] dark:text-white max-w-2xl mx-auto">
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              {t('events', 'explore.category')}
+              {searchText('category')}
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
               {MAIN_CATEGORIES.map((main) => {
                 const Icon = CATEGORY_ICONS[main.iconName] || Palette;
                 const isFamily = selectedMainCategory?.id === main.id;
@@ -630,7 +629,9 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="whitespace-nowrap">{main.shortLabel}</span>
+                    <span className="whitespace-nowrap">
+                      {categoryText('mainCategoriesLabels', main.id, main.shortLabel)}
+                    </span>
                   </button>
                 );
               })}
@@ -638,12 +639,18 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
             {selectedMainCategory && (
               <div className="pt-3">
                 <p className="mb-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                  {t('events', 'explore.subcategories')} · {selectedMainCategory.shortLabel}
+                  {searchText('subcategories').replace(
+                    '{category}',
+                    categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                  )}
                 </p>
                 <div
                   className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
                   role="group"
-                  aria-label={`${t('events', 'explore.subcategories')} · ${selectedMainCategory.shortLabel}`}
+                  aria-label={searchText('subcategories').replace(
+                    '{category}',
+                    categoryText('mainCategoriesLabels', selectedMainCategory.id, selectedMainCategory.shortLabel)
+                  )}
                 >
                   <button
                     type="button"
@@ -655,7 +662,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                         : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                     }`}
                   >
-                    {t('events', 'explore.allSubcategories')}
+                    {searchText('all')}
                   </button>
                   {selectedMainCategory.subcategories.map((sub) => {
                     const isSelected = selectedCategory === sub.id;
@@ -671,7 +678,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                             : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
                         }`}
                       >
-                        {sub.shortLabel}
+                        {categoryText('subcategoriesLabels', sub.id, sub.shortLabel)}
                       </button>
                     );
                   })}
@@ -682,7 +689,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
           <div>
             <h3 className="flex items-center gap-1 text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              <MapPin className="w-3.5 h-3.5" /> {t('events', 'explore.city')}
+              <MapPin className="w-3.5 h-3.5" /> {searchText('city')}
             </h3>
             <div className="flex flex-wrap gap-2">
               {CITIES.map((city) => {
@@ -692,7 +699,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
                     key={city.value}
                     type="button"
                     onClick={() => setSelectedCity(isSelected ? null : city.value)}
-                    className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
+                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-full px-3.5 text-xs font-bold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] ${
                       isSelected
                         ? 'bg-[#6600FF] text-white shadow-xs'
                         : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
@@ -708,7 +715,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
 
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2.5">
-              {t('events', 'explore.price')}
+              {searchText('price')}
             </h3>
             <div className="flex gap-2">
               {(['any', 'free', 'paid'] as const).map((p) => {
@@ -738,14 +745,14 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               onClick={resetFilters}
               className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-gray-100 py-3 text-xs font-black text-gray-700 transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:bg-white/10 dark:text-gray-300"
             >
-              {t('events', 'explore.reset')}
+              {searchText('reset')}
             </button>
             <button
               type="button"
               onClick={() => setShowFilters(false)}
               className="min-h-11 flex-1 cursor-pointer rounded-2xl bg-[#6600FF] py-3 text-xs font-black text-white shadow-md transition-colors hover:bg-[#5200cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2"
             >
-              {t('events', 'explore.seeResults')}
+              {searchText('viewResults')}
             </button>
           </div>
         </div>

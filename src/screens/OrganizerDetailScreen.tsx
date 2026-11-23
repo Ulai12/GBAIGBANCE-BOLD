@@ -120,8 +120,8 @@ export function OrganizerDetailScreen({
   const handleShare = async () => {
     const orgToShare = fullOrg || organization;
     const shareData = {
-      title: `${orgToShare.name} sur Gbaigbance`,
-      text: `Découvrez les événements organisés par ${orgToShare.name} sur Gbaigbance`,
+      title: t('events', 'organizer.shareTitle').replace('{name}', orgToShare.name),
+      text: t('events', 'organizer.shareDescription').replace('{name}', orgToShare.name),
       url: window.location.href,
     };
     try {
@@ -158,7 +158,7 @@ export function OrganizerDetailScreen({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Retour"
+            aria-label={t('common', 'back')}
             className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -168,7 +168,7 @@ export function OrganizerDetailScreen({
               <button
                 type="button"
                 onClick={handleFollow}
-                aria-label={following ? 'Ne plus suivre' : 'Suivre'}
+                aria-label={following ? t('events', 'organizer.unfollowLabel') : t('events', 'organizer.follow')}
                 className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
               >
                 <Heart className={`w-5 h-5 ${following ? 'text-red-500 fill-red-500' : ''}`} />
@@ -177,7 +177,7 @@ export function OrganizerDetailScreen({
             <button
               type="button"
               onClick={handleShare}
-              aria-label="Partager l'organisateur"
+              aria-label={t('events', 'organizer.shareProfile')}
               className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
             >
               <Share2 className="w-5 h-5" />
@@ -205,7 +205,9 @@ export function OrganizerDetailScreen({
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-[#6600FF]" />
-              <span>{displayOrg.city || 'Abidjan'}, {displayOrg.country || 'Côte d’Ivoire'}</span>
+              <span>
+                {displayOrg.city || t('events', 'organizer.defaultCity')}, {displayOrg.country || t('events', 'organizer.defaultCountry')}
+              </span>
             </div>
           </div>
         </div>
@@ -246,10 +248,10 @@ export function OrganizerDetailScreen({
           <div className="w-full mt-4 p-3.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 border border-[#6600FF]/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#6600FF] dark:text-[#A78BFA]">
               <Sparkles className="w-4 h-4 shrink-0" />
-              <span>Votre organisation (Vue publique des participants)</span>
+              <span>{t('events', 'organizer.publicAttendeeView')}</span>
             </div>
             <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-black/30 px-2.5 py-1 rounded-full">
-              Organisateur certifié
+              {t('events', 'organizer.certified')}
             </span>
           </div>
         ) : (
@@ -296,7 +298,7 @@ export function OrganizerDetailScreen({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-2xl bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center active:scale-90 transition-transform text-[#6600FF] dark:text-purple-300"
-                title="Site web"
+                title={t('events', 'organizer.website')}
               >
                 <Globe className="w-4 h-4" />
               </a>
@@ -305,7 +307,7 @@ export function OrganizerDetailScreen({
               <a
                 href={`tel:${displayOrg.phone}`}
                 className="w-10 h-10 rounded-2xl bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center active:scale-90 transition-transform text-[#6600FF] dark:text-purple-300"
-                title="Appeler"
+                title={t('events', 'organizer.call')}
               >
                 <Phone className="w-4 h-4" />
               </a>
@@ -314,7 +316,7 @@ export function OrganizerDetailScreen({
               <a
                 href={`mailto:${displayOrg.email}`}
                 className="w-10 h-10 rounded-2xl bg-white/90 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center active:scale-90 transition-transform text-[#6600FF] dark:text-purple-300"
-                title="Envoyer un email"
+                title={t('events', 'organizer.email')}
               >
                 <Mail className="w-4 h-4" />
               </a>
@@ -329,7 +331,7 @@ export function OrganizerDetailScreen({
               {t('events', 'organizer.eventsOrganized') || 'Événements organisés'}
             </h2>
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              {events.length} {t('common', 'total') || 'au total'}
+              {events.length} {t('events', 'organizer.totalLabel')}
             </span>
           </div>
 

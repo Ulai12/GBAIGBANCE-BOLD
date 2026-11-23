@@ -9,7 +9,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ onOpen }: NotificationBellProps) {
-  const { user } = useApp();
+  const { user, t } = useApp();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function NotificationBell({ onOpen }: NotificationBellProps) {
       type="button"
       onClick={onOpen}
       className="relative w-10 h-10 rounded-full bg-white/90 dark:bg-white/10 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs flex items-center justify-center text-[#1A1A2E] dark:text-white hover:text-[#6600FF] active:scale-90 transition-all cursor-pointer"
-      aria-label="Notifications"
+      aria-label={t('events', 'home.notifications')}
     >
       <Bell className="w-5 h-5 transition-transform hover:rotate-12" />
       {unreadCount > 0 && (

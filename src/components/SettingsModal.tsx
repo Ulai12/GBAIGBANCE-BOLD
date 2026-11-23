@@ -4,6 +4,7 @@ import {
   X,
   Moon,
   Sun,
+  Monitor,
   Globe,
   Sparkles,
   Bell,
@@ -34,7 +35,7 @@ export function SettingsModal({
   onOpenNotificationSettings,
   onEditProfile,
 }: SettingsModalProps) {
-  const { user, theme, toggleTheme, language, setLanguage, signOut, t } = useApp();
+  const { user, theme, themeMode, setThemeMode, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
@@ -62,16 +63,16 @@ export function SettingsModal({
         <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-white/70 dark:bg-[#181624]/80 backdrop-blur-md">
           <div>
             <h2 className="text-lg font-black text-[#17131D] dark:text-white tracking-tight">
-              Paramètres
+              {t('settings', 'appModal.title')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-              Gbaigbance Système & Préférences
+              {t('settings', 'appModal.subtitle')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t('settings', 'appModal.close')}
             className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-gray-200 transition-all active:scale-95"
           >
             <X className="w-5 h-5" />
@@ -112,7 +113,7 @@ export function SettingsModal({
                   }}
                   className="px-3.5 py-1.5 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-[#17131D] dark:text-white hover:bg-gray-200 transition-all shrink-0"
                 >
-                  Modifier
+                  {t('settings', 'appModal.editProfile')}
                 </button>
               )}
             </div>
@@ -121,27 +122,47 @@ export function SettingsModal({
           {/* Groupe 1: Préférences d'affichage */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              Affichage & Langue
+              {t('settings', 'appModal.displayGroup')}
             </h3>
             <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] overflow-hidden divide-y divide-black/[0.04] dark:divide-white/[0.06] shadow-xs">
               {/* Thème */}
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                    {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    {themeMode === 'system' ? <Monitor className="w-5 h-5" /> : theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#17131D] dark:text-white">Thème d'affichage</p>
-                    <p className="text-xs text-gray-400">Mode sombre ou clair</p>
+                    <p className="text-sm font-bold text-[#17131D] dark:text-white">{t('settings', 'appModal.themeTitle')}</p>
+                    <p className="text-xs text-gray-400">{t('settings', 'appModal.themeDescription')}</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs font-bold text-[#17131D] dark:text-white active:scale-95 transition-all"
+                <div
+                  role="group"
+                  aria-label={t('settings', 'appModal.themeTitle')}
+                  className="flex items-center gap-0.5 p-1 rounded-full bg-gray-100 dark:bg-white/10"
                 >
-                  {theme === 'dark' ? '🌙 Sombre' : '☀️ Clair'}
-                </button>
+                  {([
+                    ['system', Monitor, 'system'],
+                    ['light', Sun, 'light'],
+                    ['dark', Moon, 'dark'],
+                  ] as const).map(([mode, Icon, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setThemeMode(mode)}
+                      aria-label={t('settings', `appModal.${label}`)}
+                      aria-pressed={themeMode === mode}
+                      title={t('settings', `appModal.${label}`)}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                        themeMode === mode
+                          ? 'bg-white dark:bg-[#302b38] text-[#6600FF] dark:text-purple-300 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-[#17131D] dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Langue */}
@@ -151,8 +172,8 @@ export function SettingsModal({
                     <Globe className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#17131D] dark:text-white">Langue de l'interface</p>
-                    <p className="text-xs text-gray-400">Français ou English</p>
+                    <p className="text-sm font-bold text-[#17131D] dark:text-white">{t('settings', 'appModal.languageTitle')}</p>
+                    <p className="text-xs text-gray-400">{t('settings', 'appModal.languageDescription')}</p>
                   </div>
                 </div>
                 <button
@@ -169,7 +190,7 @@ export function SettingsModal({
           {/* Groupe 2: Intelligence Artificielle (Accès Stratégique Direct) */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              Intelligence Artificielle
+              {t('settings', 'appModal.aiGroup')}
             </h3>
             <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] overflow-hidden shadow-xs">
               <button
@@ -190,11 +211,11 @@ export function SettingsModal({
                         Google Gemini & Maps Grounding
                       </p>
                       <span className="px-1.5 py-0.5 rounded-md bg-[#6600FF]/15 text-[#6600FF] text-[9px] font-extrabold">
-                        Actif
+                        {t('settings', 'appModal.aiActive')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400">
-                      Choix du modèle Gemini 4, Google Maps Grounding & préférences
+                      {t('settings', 'appModal.aiDescription')}
                     </p>
                   </div>
                 </div>
@@ -206,7 +227,7 @@ export function SettingsModal({
           {/* Groupe 3: Performance & Réseau */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              Performance & Réseau
+              {t('settings', 'appModal.performanceGroup')}
             </h3>
             <DataSaverToggle variant="card" />
           </div>
@@ -214,7 +235,7 @@ export function SettingsModal({
           {/* Groupe 4: Notifications & Application */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              Notifications & Application
+              {t('settings', 'appModal.notificationsGroup')}
             </h3>
             <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] overflow-hidden divide-y divide-black/[0.04] dark:divide-white/[0.06] shadow-xs">
               {/* Boîte de notifications */}
@@ -233,10 +254,10 @@ export function SettingsModal({
                     </div>
                     <div>
                       <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                        Boîte de notifications
+                        {t('settings', 'appModal.inboxTitle')}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Historique des annonces et invitations
+                        {t('settings', 'appModal.inboxDescription')}
                       </p>
                     </div>
                   </div>
@@ -259,10 +280,10 @@ export function SettingsModal({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#17131D] dark:text-white">
-                      Alertes & Rappels
+                      {t('settings', 'appModal.alertsTitle')}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Rappels de billets, sorties d'artistes
+                      {t('settings', 'appModal.alertsDescription')}
                     </p>
                   </div>
                 </div>
@@ -283,7 +304,7 @@ export function SettingsModal({
                 {confirmSignOut ? (
                   <div className="p-4 space-y-3 bg-red-50/50 dark:bg-red-950/20">
                     <p className="text-xs font-bold text-red-600 dark:text-red-400 text-center">
-                      Voulez-vous vraiment vous déconnecter de votre compte Gbaigbance ?
+                      {t('settings', 'appModal.signOutPrompt')}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -294,14 +315,14 @@ export function SettingsModal({
                         }}
                         className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-all"
                       >
-                        Confirmer la déconnexion
+                        {t('settings', 'appModal.confirmSignOut')}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmSignOut(false)}
                         className="flex-1 py-2.5 rounded-xl bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold"
                       >
-                        Annuler
+                        {t('settings', 'appModal.cancelSignOut')}
                       </button>
                     </div>
                   </div>
@@ -315,7 +336,7 @@ export function SettingsModal({
                       <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
                         <LogOut className="w-5 h-5" />
                       </div>
-                      <span className="text-sm font-bold">Se déconnecter</span>
+                      <span className="text-sm font-bold">{t('settings', 'appModal.signOut')}</span>
                     </div>
                     <ChevronRight className="w-5 h-5 text-red-300" />
                   </button>
@@ -327,31 +348,31 @@ export function SettingsModal({
           {/* Groupe 5: Crédits & Système */}
           <div>
             <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 ml-1">
-              À Propos & Crédits
+              {t('settings', 'appModal.aboutGroup')}
             </h3>
             <div className="rounded-[1.8rem] bg-white dark:bg-[#1C1A29] border border-black/[0.05] dark:border-white/[0.08] p-4 text-xs space-y-2.5 shadow-xs">
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Version</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">{t('settings', 'appModal.version')}</span>
                 <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
-                  v4.0 · Back-Stack Router & Full Event Studio
+                  {t('settings', 'appModal.versionValue')}
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Traduction</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">{t('settings', 'appModal.translation')}</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
                   Français · English (i18n)
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Moteurs & APIs</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">{t('settings', 'appModal.engines')}</span>
                 <span className="font-semibold text-[#17131D] dark:text-gray-200">
-                  Supabase · Gemini 4 · Google Maps
+                  Supabase · Gemini 2.5/Flash
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5 border-t border-black/[0.04] dark:border-white/[0.06] pt-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Licence</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">{t('settings', 'appModal.license')}</span>
                 <span className="text-gray-600 dark:text-gray-300">
-                  Propriétaire · GBAIGBANCE © 2026
+                  {t('settings', 'appModal.proprietaryLicense')}
                 </span>
               </div>
             </div>
@@ -360,7 +381,7 @@ export function SettingsModal({
           {/* Footer note */}
           <div className="text-center pt-1 pb-3">
             <p className="text-[11px] text-gray-400 font-medium">
-              GBAIGBANCE v4.1 · Architecture iOS 27 Fluid
+              {t('settings', 'appModal.footer')}
             </p>
           </div>
         </div>

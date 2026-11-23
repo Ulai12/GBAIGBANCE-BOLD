@@ -801,14 +801,15 @@ export function EventDetailScreen({
               </div>
 
               {displayEvent.external_ticket_url && (
-                <button
-                  type="button"
-                  onClick={() => onBook(displayEvent)}
-                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#14121E]"
+                <a
+                  href={displayEvent.external_ticket_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6600FF]/25 transition-transform active:scale-98"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>{detailText('external.open')}</span>
-                </button>
+                </a>
               )}
             </div>
           ) : displayEvent.access_type === 'free' ? (

@@ -62,7 +62,7 @@ function getIconColor(type: string) {
 }
 
 export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsScreenProps) {
-  const { user, t } = useApp();
+  const { user, language, t } = useApp();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +85,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     }
     fetchNotifications(user.id)
       .then((data) => setNotifications(data || []))
-      .catch(() => onToast({ message: t('notifications', 'loadingError'), type: 'error' }))
+      .catch(() => onToast({ message: t('notifications', 'loadError'), type: 'error' }))
       .finally(() => setLoading(false));
   }, [user, onToast, t]);
 
@@ -94,7 +94,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
       await markNotificationRead(id);
       setNotifications(notifications.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     } catch {
-      onToast({ message: t('notifications', 'markReadError'), type: 'error' });
+      onToast({ message: t('notifications', 'error'), type: 'error' });
     }
   };
 
@@ -103,21 +103,16 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     try {
       await markAllNotificationsRead(user.id);
       setNotifications(notifications.map((n) => ({ ...n, is_read: true })));
-      onToast({ message: t('notifications', 'markAllSuccess'), type: 'success' });
+      onToast({ message: t('notifications', 'allReadToast'), type: 'success' });
     } catch {
-      onToast({ message: t('notifications', 'markReadError'), type: 'error' });
+      onToast({ message: t('notifications', 'error'), type: 'error' });
     }
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const displayedNotifications = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
 
-  const getActionLabel = (type: string) => {
-    const key = `actions.${type}`;
-    const translated = t('notifications', key);
-    return translated !== key ? translated : '';
-  };
-
+  // Redirection directe vers l'endroit exact concerné par la notification (événement, profil, billet, etc.)
   const handleNotificationClick = (n: Notification) => {
     if (!n.is_read) {
       handleMarkRead(n.id);
@@ -146,6 +141,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
   if (!user) {
     return (
       <div className="min-h-screen pb-32">
+        {/* Header harmonisé style Favoris & Tickets */}
         <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
           <div className="flex items-center justify-between">
             <button
@@ -157,7 +153,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               <ChevronLeft className="w-5 h-5" />
             </button>
             <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-              {t('notifications', 'headerBadge')}
+              {t('notifications', 'eyebrow')}
             </p>
             <div className="w-10" />
           </div>
@@ -171,7 +167,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
             </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('notifications', 'subtitle')}
+            {t('notifications', 'description')}
           </p>
         </div>
 
@@ -199,16 +195,9 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
     );
   }
 
-  const countLabel = unreadCount > 0
-    ? (unreadCount > 1
-        ? t('notifications', 'unreadCountPlural').replace('{count}', String(unreadCount))
-        : t('notifications', 'unreadCount').replace('{count}', String(unreadCount)))
-    : (notifications.length > 1
-        ? t('notifications', 'receivedCountPlural').replace('{count}', String(notifications.length))
-        : t('notifications', 'receivedCount').replace('{count}', String(notifications.length)));
-
   return (
     <div className="min-h-screen pb-32">
+      {/* Header harmonisé style Favoris & Tickets */}
       <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
         <div className="flex items-center justify-between">
           <button
@@ -220,7 +209,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
             <ChevronLeft className="w-5 h-5" />
           </button>
           <p className="text-xs uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-            {t('notifications', 'headerBadge')}
+            {t('notifications', 'eyebrow')}
           </p>
           {unreadCount > 0 ? (
             <button
@@ -241,15 +230,18 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
             {t('notifications', 'title')}
           </h1>
           <span className="px-3 py-1 rounded-full bg-[#6600FF]/10 dark:bg-[#6600FF]/25 text-[#6600FF] dark:text-[#A78BFA] text-xs font-black">
-            {countLabel}
+            {unreadCount > 0
+              ? t('notifications', 'unreadCount').replace('{count}', String(unreadCount))
+              : t('notifications', 'receivedCount').replace('{count}', String(notifications.length))}
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {t('notifications', 'subtitle')}
+          {t('notifications', 'description')}
         </p>
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-3">
+        {/* Segmented filter style Apple HIG */}
         <div className="p-1 bg-gray-200/80 dark:bg-white/10 rounded-2xl flex items-center mb-4">
           <button
             type="button"
@@ -260,7 +252,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            {t('notifications', 'filterAll').replace('{count}', String(notifications.length))}
+            {t('notifications', 'all').replace('{count}', String(notifications.length))}
           </button>
           <button
             type="button"
@@ -271,7 +263,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            {t('notifications', 'filterUnread').replace('{count}', String(unreadCount))}
+            {t('notifications', 'unread').replace('{count}', String(unreadCount))}
           </button>
         </div>
 
@@ -285,19 +277,21 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
               <Bell className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-sm font-black text-[#17131D] dark:text-white mb-1">
-              {filter === 'unread' ? t('notifications', 'emptyUnreadTitle') : t('notifications', 'emptyAllTitle')}
+              {filter === 'unread'
+                ? t('notifications', 'emptyUnreadTitle')
+                : t('notifications', 'emptyTitle')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed">
               {filter === 'unread'
-                ? t('notifications', 'emptyUnreadDesc')
-                : t('notifications', 'emptyAllDesc')}
+                ? t('notifications', 'emptyUnreadDescription')
+                : t('notifications', 'emptyDescription')}
             </p>
           </div>
         ) : (
           <div className="space-y-2.5">
             {displayedNotifications.map((n) => {
               const Icon = getIcon(n.type);
-              const actionLabel = getActionLabel(n.type);
+              const actionLabel = t('notifications', `actions.${n.type}`);
               return (
                 <div
                   key={n.id}
@@ -318,7 +312,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                           {n.actor.name}
                         </span>
                       )}
-                      {actionLabel && (
+                      {actionLabel !== `actions.${n.type}` && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {actionLabel}
                         </span>
@@ -333,7 +327,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
                       </p>
                     )}
                     <p className="text-[10px] font-semibold text-gray-400 mt-1.5">
-                      {new Date(n.created_at).toLocaleString(undefined, {
+                      {new Date(n.created_at).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US', {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',

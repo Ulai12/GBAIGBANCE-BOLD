@@ -8,6 +8,7 @@ import { OrganizerCard } from '@/components/OrganizerCard';
 import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { Event, Artist, Organization } from '@/types';
+import { useApp } from '@/hooks/useApp';
 
 export type SeeMoreSectionType =
   | 'nearby'
@@ -38,6 +39,7 @@ export function SeeMoreModal({
   onArtistClick,
   onOrganizationClick,
 }: SeeMoreModalProps) {
+  const { t } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilter, setDistanceFilter] = useState<number | 'all'>(5);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -47,56 +49,56 @@ export function SeeMoreModal({
       case 'nearby': {
         const hasRealDistance = events.some((e) => typeof e.distanceKm === 'number');
         return {
-          title: hasRealDistance ? 'À proximité de vous' : 'Sorties à Lomé',
-          subtitle: hasRealDistance ? 'Événements autour de votre position' : 'Sélection des sorties locales',
+          title: hasRealDistance ? t('events', 'home.seeMore.nearbyTitle') : t('events', 'home.seeMore.lomeTitle'),
+          subtitle: hasRealDistance ? t('events', 'home.seeMore.nearbySubtitle') : t('events', 'home.seeMore.lomeSubtitle'),
           icon: Navigation,
           badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
         };
       }
       case 'preferences':
         return {
-          title: 'Selon vos préférences',
-          subtitle: 'Sélection personnalisée selon vos goûts',
+          title: t('events', 'home.seeMore.preferencesTitle'),
+          subtitle: t('events', 'home.seeMore.preferencesSubtitle'),
           icon: Sparkles,
           badgeColor: 'bg-purple-500/15 text-[#6600FF] dark:text-purple-400',
         };
       case 'free':
         return {
-          title: 'Événements Gratuits',
-          subtitle: 'Entrée 100% libre sans frais',
+          title: t('events', 'home.freeEvents'),
+          subtitle: t('events', 'home.freeEventsSubtitle'),
           icon: Gift,
           badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
         };
       case 'unmissable':
         return {
-          title: 'À ne pas manquer',
-          subtitle: 'Les rendez-vous les plus attendus',
+          title: t('events', 'home.unmissable'),
+          subtitle: t('events', 'home.unmissableSubtitle'),
           icon: Flame,
           badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
         };
       case 'artists':
         return {
-          title: 'Artistes du moment',
-          subtitle: 'Talents et créateurs de la communauté',
+          title: t('events', 'home.artistsNow'),
+          subtitle: t('events', 'home.seeMore.artistsSubtitle'),
           icon: Music,
           badgeColor: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
         };
       case 'organizations':
         return {
-          title: 'Organisateurs officiels',
-          subtitle: 'Collectifs et créateurs d’expériences',
+          title: t('events', 'home.officialOrganizers'),
+          subtitle: t('events', 'home.seeMore.organizersSubtitle'),
           icon: Building2,
           badgeColor: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
         };
       default:
         return {
-          title: 'Explorer',
-          subtitle: 'Découvrez plus de contenus',
+          title: t('events', 'home.exploreCategories'),
+          subtitle: t('events', 'home.seeMore.defaultSubtitle'),
           icon: Sparkles,
           badgeColor: 'bg-purple-500/15 text-[#6600FF] dark:text-purple-400',
         };
     }
-  }, [type, events]);
+  }, [type, events, t]);
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
@@ -182,16 +184,16 @@ export function SeeMoreModal({
             className="flex items-center gap-1.5 text-sm font-bold text-[#6600FF] active:scale-95 transition-transform cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
-            <span>Retour</span>
+            <span>{t('events', 'home.seeMore.back')}</span>
           </button>
 
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/[0.04] dark:bg-white/[0.08] text-gray-600 dark:text-gray-300">
             {totalCount}{' '}
             {type === 'artists'
-              ? 'artiste' + (totalCount > 1 ? 's' : '')
+              ? `${totalCount} ${t('events', totalCount > 1 ? 'home.seeMore.artists' : 'home.seeMore.artist')}`
               : type === 'organizations'
-              ? 'organisateur' + (totalCount > 1 ? 's' : '')
-              : 'événement' + (totalCount > 1 ? 's' : '')}
+              ? `${totalCount} ${t('events', totalCount > 1 ? 'home.seeMore.organizers' : 'home.seeMore.organizer')}`
+              : `${totalCount} ${t('events', totalCount > 1 ? 'eventPlural' : 'event')}`}
           </span>
         </div>
 
@@ -219,10 +221,10 @@ export function SeeMoreModal({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               type === 'artists'
-                ? 'Rechercher un artiste...'
+                ? t('events', 'home.seeMore.searchArtist')
                 : type === 'organizations'
-                ? 'Rechercher un organisateur...'
-                : 'Rechercher un événement...'
+                ? t('events', 'home.seeMore.searchOrganizer')
+                : t('events', 'home.seeMore.searchPlaceholder')
             }
             className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-gray-100/90 dark:bg-white/[0.07] border border-transparent focus:border-[#6600FF]/40 text-sm font-medium text-[#17131D] dark:text-white placeholder-gray-400 outline-hidden transition-all"
           />
@@ -251,7 +253,7 @@ export function SeeMoreModal({
                     : 'bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.14]'
                 }`}
               >
-                {dist === 'all' ? 'Tout Lomé' : `< ${dist} km`}
+                {dist === 'all' ? t('events', 'home.seeMore.allLome') : `< ${dist} km`}
               </button>
             ))}
           </div>
@@ -271,7 +273,7 @@ export function SeeMoreModal({
                     : 'bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.14]'
                 }`}
               >
-                {cat === 'all' ? 'Tous les genres' : cat}
+                {t('events', `home.seeMore.genres.${cat}`)}
               </button>
             ))}
           </div>
@@ -283,8 +285,8 @@ export function SeeMoreModal({
         {type === 'artists' ? (
           filteredArtists.length === 0 ? (
             <EmptyState
-              title="Aucun artiste trouvé"
-              description="Aucun artiste ne correspond à votre recherche"
+              title={t('events', 'home.seeMore.noArtist')}
+              description={t('events', 'home.seeMore.noArtistDescription')}
             />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -310,10 +312,10 @@ export function SeeMoreModal({
                     {artist.name}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
-                    {artist.city || 'Lomé, Togo'}
+                    {artist.city || t('events', 'home.defaultCity') + ', Togo'}
                   </p>
                   <div className="mt-2.5 px-2.5 py-0.5 rounded-full bg-[#6600FF]/10 text-[#6600FF] text-[11px] font-bold">
-                    {artist.events_count ?? 0} événement{(artist.events_count ?? 0) > 1 ? 's' : ''}
+                    {artist.events_count ?? 0} {t('events', (artist.events_count ?? 0) > 1 ? 'eventPlural' : 'event')}
                   </div>
                 </div>
               ))}
@@ -322,8 +324,8 @@ export function SeeMoreModal({
         ) : type === 'organizations' ? (
           filteredOrganizations.length === 0 ? (
             <EmptyState
-              title="Aucun organisateur trouvé"
-              description="Aucun organisateur ne correspond à votre recherche"
+              title={t('events', 'home.seeMore.noOrganizer')}
+              description={t('events', 'home.seeMore.noOrganizerDescription')}
             />
           ) : (
             <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
@@ -341,8 +343,8 @@ export function SeeMoreModal({
           )
         ) : filteredEvents.length === 0 ? (
           <EmptyState
-            title="Aucun événement trouvé"
-            description="Aucun événement ne correspond à ce filtre pour le moment"
+            title={t('events', 'noEvents')}
+            description={t('events', 'home.seeMore.noEventsDescription')}
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4">

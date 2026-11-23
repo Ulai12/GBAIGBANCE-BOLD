@@ -231,3 +231,101 @@
 - Déploiement Vercel du commit `b687962` : `READY`; statut Vercel : `success`. Cela valide la compilation Vite configurée, pas un typecheck, lint ou test dédié.
 - PR #14 toujours `mergeable: false`; la divergence reste à 152 commits d'avance et 16 de retard. Le statut `dirty` indique des conflits non résolus.
 - Aucun merge de branches n'a été effectué. La session ne dispose pas d'un workflow de résolution/merge de branches qui permette de fusionner proprement les changements de `main` vers `FRONTEND-iA`; aucun merge commit artificiel n'a été créé.
+
+## 2026-11-19 — Rééquilibrage responsive d’Explorer par catégorie
+### Constat
+- Le parcours est rendu dans `src/screens/HomeScreen.tsx`; les six catégories métier et leurs sous-catégories restent définies dans `src/constants/categories.ts`.
+- La grille basculait à six colonnes dès `lg` (1024 px), ce qui réduisait la largeur utile de chaque carte et provoquait des retours à la ligne prématurés sur les libellés.
+- Les cartes avaient des min-heights croissantes par breakpoint et un padding vertical qui amplifiait la hauteur des lignes.
+- Les sous-catégories étaient forcées sur une seule ligne avec défilement horizontal; les éléments longs restaient partiellement masqués.
+- Le mapping d’icônes de l’accueil ne contenait pas `Sparkles`, icône de la catégorie « Loisirs & Découvertes », qui tombait donc sur l’icône de secours Palette.
+
+### Intervention réalisée
+- Grille parentale désormais équilibrée en 2 colonnes sur mobile, 3 de `sm` à `lg`, puis 6 à `xl`; la grille intermédiaire est plafonnée à 780 px afin de garder des cartes regroupées plutôt qu’étirées.
+- Cartes parentes ramenées à une hauteur minimale de 48 px avec padding vertical réduit; les libellés gardent leur retour à la ligne naturel et peuvent augmenter la hauteur uniquement si nécessaire.
+- Sous-catégories passées en retour à la ligne responsive, sans défilement horizontal obligatoire; les boutons gardent une cible tactile minimale de 44 px et acceptent les libellés longs.
+- Ajout d’un intitulé de sous-catégories lié à la catégorie parente, réutilisant le catalogue FR/EN existant.
+- Ajout de `Sparkles` au mapping des icônes de l’accueil.
+- Identifiants, ordre, libellés métier, couleurs, états actifs, callbacks, filtrage et données inchangés. Aucun backend/API ni `src/constants/categories.ts` modifié.
+- Cette intervention suit la demande explicite de ce chantier, qui réautorise l’ajustement visuel après le gel précédent des cartes.
+
+### Fichiers concernés
+- `src/screens/HomeScreen.tsx`
+- `FRONTEND_MEMORY.md`
+
+### Vérifications et limites
+- Branche cible contrôlée avant intervention : `FRONTEND-iA`, HEAD de départ `e27b4085177e5dc61397e2339c205a1e4721cd84`.
+- Contrôles statiques du diff : une seule section remplacée; grille responsive présente; ancien breakpoint six colonnes dès `lg` absent; min-height/padding compacts; sous-catégories enveloppées; sélection parent/enfant conservée; données métier intactes.
+- Prévisualisation Vercel du commit candidat `6dc12d8eef9f9221d3318b41209de6de7503f8b7` : état `READY`; Vite 8.3.7 a transformé 3 303 modules et terminé le build en 4,11 s; PWA 63 entrées précachées; 14 fichiers de preview synchronisés. Le commit de branche final reprend exactement le même code applicatif; seule cette mémoire diffère.
+- Le contrôle TypeScript Vercel a signalé `api/ai/assistant/stream.ts(1,25): TS5097`; le même diagnostic apparaît déjà sur le déploiement de référence du HEAD précédent `e27b4085177e5dc61397e2339c205a1e4721cd84`, qui est lui aussi `READY`. Ce problème préexistant n’est pas causé par ce chantier et le fichier API n’a pas été modifié.
+- `npm run typecheck`, lint et tests dédiés non exécutés séparément.
+- Contrôle visuel navigateur non réalisé : le navigateur connecté n’était pas accessible. La capture reçue pendant cette exécution concernait la résolution de conflits PR #14, pas le bloc catégories; aucune capture de ce bloc n’était disponible.
+- UIAudit et Superdesign non disponibles dans les outils/skills exposés; aucun audit ni maquette de ces outils n’est revendiqué.
+- Aucun changement à `main`, aucune autre branche, aucun PR; `PROJECT_MEMORY.md` n’a pas été lu ni modifié.
+
+### Prochaine priorité
+- Vérifier visuellement la section sur mobile étroit (320–390 px), tablette (768–1024 px) et desktop (1280 px et plus), surtout les libellés longs et la répartition des sous-catégories.
+- Traiter séparément le diagnostic TypeScript TS5097 de `api/ai/assistant/stream.ts` dans un chantier autorisé, sans le mélanger à cette correction UI.
+
+
+## 2026-11-19 — Restauration complète de HomeScreen
+- Demande utilisateur : restaurer la page d'accueil comme avant le commit `46b7c59b936d1101a9a5f792ce01216e2528572e`.
+- Constat : le commit demandé ne modifiait que `PROJECT_MEMORY.md`; sur `FRONTEND-iA`, `src/screens/HomeScreen.tsx` contenait une restauration incomplète avec marqueurs `RESTORE_MARKER` / `RESTORED PARTIAL` et un composant ne restituant qu'une partie de la page.
+- Source de restauration : version complète de `src/screens/HomeScreen.tsx` récupérée depuis le commit `c1ba934e702073f468d6a4f8a7f607be96646d5e`, conformément à la référence de récupération déjà consignée dans le contexte frontend.
+- Intervention : remplacement intégral de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA` uniquement. Version restaurée : 49 382 caractères, 1 117 lignes, sans marqueur de restauration partielle.
+- Commit : `3f41f4911a43adf6c8855f9fe343e1614ef7e243`.
+- Vérification après écriture : relecture distante de `src/screens/HomeScreen.tsx` sur `FRONTEND-iA`; blob SHA confirmé `ba5e0ad6d0cf77435daacb29740375090a5023ed`, 1 117 lignes.
+- Limites : aucun build, typecheck, lint, test automatisé ou contrôle visuel navigateur exécuté après restauration. La restauration rétablit le code complet de la source référencée; elle ne certifie pas à elle seule le rendu/runtime.
+- Aucun autre fichier applicatif modifié; aucun backend/API, aucune PR, aucun changement sur `main`. `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+- Prochaine priorité : exécuter les contrôles de compilation et vérifier visuellement la page d'accueil sur mobile et desktop avant toute autre évolution.
+
+
+## 2026-11-19 — Restauration ciblée des catégories principales et centrage des sous-catégories
+- Demande : remettre l'apparence des catégories principales telle qu'avant le commit `738790184ebc0dfb1f7d149c7ccabb4aa8843cbd`, conserver l'apparence actuelle des sous-catégories et centrer leur titre ainsi que leurs boutons.
+- Source de référence pour les catégories principales : `src/screens/HomeScreen.tsx` au commit `35d17160d4d90e1d7931762abecb2c95d8ad4565`.
+- Intervention dans `src/screens/HomeScreen.tsx` : restauration du markup/classes originaux de la grille et des cartes principales (2 colonnes mobile, 3 dès sm, 6 dès lg; min-heights 56/60/64 px; padding et proportions verticaux d'origine). Le mapping `Sparkles` déjà présent a été conservé.
+- Sous-catégories : conservation du style actuel des boutons (arrondis, hauteur tactile minimale 44 px, retours à la ligne, couleurs et états sélectionnés); centrage du titre et du groupe de boutons via `text-center` et `justify-center`.
+- Logique métier, IDs, ordre, sélection, callbacks, filtrage, traductions et données non modifiés. Aucun backend/API touché.
+- Commit direct sur `FRONTEND-iA` : `b75d556a90d17e077acb6000ddebfee40b7312b6`.
+- Vérification après écriture : relecture GitHub du fichier sur `FRONTEND-iA`; blob SHA `e24a9801c03e3f442a1696b3de467be19088cb27`; contrôles statiques confirmant les classes originales des cartes principales, le centrage des sous-catégories et l'absence de défilement horizontal forcé dans leur conteneur.
+- Limites : aucun build, typecheck, lint, test automatisé ni contrôle visuel navigateur exécuté après ce changement.
+- Aucun PR, aucun changement sur `main` ou autre branche; `PROJECT_MEMORY.md` non lu/non modifié.
+- Prochaine priorité : vérifier visuellement le centrage des sous-catégories sur mobile étroit, tablette et desktop, ainsi que les retours à la ligne des libellés longs.
+
+
+## 2026-11-19 — Localisation FR/EN de la page Home et de ses composants
+### Périmètre et règles préservées
+- Demande : traduire les textes de l'en-tête, des sections Home et de leurs composants, sans altérer l'apparence actuelle.
+- Branche de travail : `FRONTEND-iA` uniquement.
+- Aucun style Tailwind, layout, dimensions, espacement, couleur, animation, interaction, donnée métier, filtre ou comportement de composant n'a été volontairement modifié.
+- La présentation et le libellé de l'en-tête « GBAIGBANCE EN CHIFFRES » sont laissés intacts conformément à la consigne antérieure de préserver cette zone.
+- La section « Explorer par catégorie » conserve ses classes et proportions; seuls les libellés de catégories/sous-catégories et textes d'accessibilité passent par les catalogues FR/EN.
+
+### Interventions
+- `src/screens/HomeScreen.tsx` : en-tête de marque, salutation dynamique selon l'heure, profil, paramètres, recherche, assistant IA, à la une, exploration par catégories, sous-catégories, résultats de catégorie, tendances, proximité, recommandations, événements gratuits, à ne pas manquer, artistes et organisateurs.
+- `src/components/EventCard.tsx` : dates localisées, gratuité, statuts, partage, lieu de secours et libellé accessible.
+- `src/components/NearbyEventTile.tsx` : dates, prix, libellés de proximité, ville/catégorie de secours, prix « dès » et action Voir.
+- `src/components/NotificationBell.tsx` : libellé accessible.
+- `src/components/GbaigbanceStatsDashboard.tsx` : filtres de période, KPI, descriptions, graphique, états vides, unités et libellés des catégories; formatage dates/montants selon la langue.
+- `src/components/SeeMoreModal.tsx` : titres/sous-titres, recherche, filtres, compteurs singulier/pluriel, états vides et boutons.
+- `src/components/UserAvatar.tsx` : infobulle du compte vérifié.
+- `src/components/OptimisticHeartButton.tsx` : libellés accessibles Ajouter/Retirer des favoris.
+- `src/locales/fr/events.json` et `src/locales/en/events.json` : ajout des clés Home, statistiques, filtres, catégories et accessibilité.
+- Les composants `FeaturedCarousel`, `TrendingDeck`, `TrendingDeckCard` et `BottomNav` possédaient déjà leurs traductions et n'ont pas nécessité de modification.
+
+### Vérifications et limites
+- Les deux catalogues JSON ont été parsés avec succès.
+- Contrôle statique des appels `t('events', '...')` dans les fichiers modifiés : aucune clé statique manquante entre FR et EN.
+- Contrôle statique de motifs JSX mal formés dans les attributs `className`, `title` et `aria-label` : aucun motif détecté.
+- Relecture distante des fichiers modifiés sur `FRONTEND-iA` effectuée après les écritures.
+- Aucun build, typecheck, lint, test automatisé ou contrôle visuel navigateur n'a été exécuté. La conformité du rendu visuel FR/EN reste donc à confirmer sur mobile et desktop.
+- Aucun backend/API touché, aucun PR, aucun changement sur `main`; `PROJECT_MEMORY.md` n'a pas été lu ni modifié.
+
+### Prochaine priorité
+- Exécuter un build et un typecheck dans l'environnement autorisé, puis vérifier visuellement les versions FR et EN de Home sur mobile et desktop, en contrôlant notamment les longueurs de libellés et les débordements sans modifier le design.
+
+
+### Complément de périmètre — composants secondaires de la modale « Voir plus »
+- `src/components/NearbySeeMoreCard.tsx` : date/prix localisés, libellés accessibles, partage et lieu de secours.
+- `src/components/OrganizerCard.tsx` : partage, région de secours, compteur d'événements, abonnés et actions Suivre/Suivi.
+- Ces composants conservent leurs classes, dimensions, animations, structure et interactions.

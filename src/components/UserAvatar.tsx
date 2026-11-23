@@ -14,6 +14,7 @@ interface UserAvatarProps {
   className?: string;
   imageClassName?: string;
   ring?: boolean;
+  eager?: boolean;
 }
 
 const SIZE_MAP = {
@@ -35,6 +36,7 @@ export function UserAvatar({
   className = '',
   imageClassName = '',
   ring = true,
+  eager = false,
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false);
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
@@ -63,6 +65,15 @@ export function UserAvatar({
     return getDefaultUserAvatar(name || 'user', typeof role === 'string' ? role : undefined, id);
   }, [src, imageError, name, role, id]);
 
+  const intrinsicSize = {
+    xs: 28,
+    sm: 36,
+    md: 48,
+    lg: 64,
+    xl: 80,
+    '2xl': 112,
+  }[size];
+
   const RoleIcon = role === 'artist' ? Music2 : role === 'organizer' ? Building2 : User;
 
   return (
@@ -77,8 +88,11 @@ export function UserAvatar({
             onError={() => {
               if (!imageError) setImageError(true);
             }}
-            loading="lazy"
+            width={intrinsicSize}
+            height={intrinsicSize}
+            loading={eager ? 'eager' : 'lazy'}
             decoding="async"
+            fetchPriority={eager ? 'high' : 'low'}
             referrerPolicy="no-referrer"
             className={`absolute inset-0 w-full h-full object-cover object-center ${imageClassName}`}
           />
@@ -97,7 +111,7 @@ export function UserAvatar({
       {/* {isVerified && (
         <div
           className={`absolute ${sizeConfig.badge} rounded-full bg-[#6600FF] ring-2 ring-white dark:ring-[#14121E] flex items-center justify-center text-white shadow-xs z-10`}
-          title="Compte Vérifié"
+          title={t('events', 'home.verifiedAccount')}
         >
           <BadgeCheck className="w-full h-full p-0.5 text-white" />
         </div>

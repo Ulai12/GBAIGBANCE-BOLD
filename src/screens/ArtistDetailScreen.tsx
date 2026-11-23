@@ -106,8 +106,8 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
 
   const handleShare = async () => {
     const shareData = {
-      title: `${fullArtist.name} sur Gbaigbance`,
-      text: `Découvrez le profil et les événements de ${fullArtist.name} sur Gbaigbance`,
+      title: t('events', 'artist.shareTitle').replace('{name}', fullArtist.name),
+      text: t('events', 'artist.shareDescription').replace('{name}', fullArtist.name),
       url: window.location.href,
     };
     try {
@@ -146,7 +146,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           <button
             type="button"
             onClick={onBack}
-            aria-label="Retour"
+            aria-label={t('common', 'back')}
             className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -154,7 +154,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           <button
             type="button"
             onClick={handleShare}
-            aria-label="Partager le profil"
+            aria-label={t('events', 'artist.shareProfile')}
             className="w-10 h-10 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-lg active:scale-90 transition-transform text-[#17131D] dark:text-white cursor-pointer"
           >
             <Share2 className="w-5 h-5" />
@@ -180,7 +180,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
               </h1>
             </div>
             <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mt-0.5">
-              {flag} {fullArtist.city || 'Côte d’Ivoire'}
+              {flag} {fullArtist.city || t('events', 'artist.defaultCity')}
             </p>
           </div>
         </div>
@@ -236,10 +236,10 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
           <div className="w-full mt-5 p-3.5 rounded-2xl bg-[#6600FF]/10 dark:bg-[#6600FF]/20 border border-[#6600FF]/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#6600FF] dark:text-[#A78BFA]">
               <Sparkles className="w-4 h-4 shrink-0" />
-              <span>Votre page Artiste (Vue publique des fans)</span>
+              <span>{t('events', 'artist.publicFanView')}</span>
             </div>
             <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-black/30 px-2.5 py-1 rounded-full">
-              Compte vérifié
+              {t('events', 'artist.verifiedAccount')}
             </span>
           </div>
         ) : (
@@ -288,7 +288,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
                 }}
                 className="mt-2 text-xs font-bold text-[#6600FF] dark:text-[#A78BFA] hover:underline cursor-pointer flex items-center gap-1"
               >
-                <span>{isBioExpanded ? 'Afficher moins' : 'Lire la suite'}</span>
+                <span>{t('events', isBioExpanded ? 'artist.readLess' : 'artist.readMore')}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isBioExpanded ? 'rotate-180' : ''}`} />
               </button>
             )}

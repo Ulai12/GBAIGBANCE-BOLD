@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useApp } from '@/hooks/useApp';
 
 interface BottomSheetProps {
   open: boolean;
@@ -11,6 +12,8 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onClose, children, title }: BottomSheetProps) {
+  const { t } = useApp();
+
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -41,7 +44,7 @@ export function BottomSheet({ open, onClose, children, title }: BottomSheetProps
         {title && (
           <div className="flex items-center justify-between mb-4">
             <h2 id="bottom-sheet-title" className="text-lg font-bold text-[#1A1A2E] dark:text-white">{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Fermer" className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-white/10 active:scale-90 transition-transform">
+            <button type="button" onClick={onClose} aria-label={t('common', 'close')} className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-white/10 active:scale-90 transition-transform">
               <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
             </button>
           </div>

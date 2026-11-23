@@ -49,10 +49,10 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
     try {
       if (mode === 'signup') {
         await signUp(email, password, sanitizeInput(name), role);
-        onToast({ message: 'Compte créé avec succès', type: 'success' });
+        onToast({ message: t('auth', 'accountCreated'), type: 'success' });
       } else {
         await signIn(email, password);
-        onToast({ message: 'Connexion réussie', type: 'success' });
+        onToast({ message: t('auth', 'loginSuccess'), type: 'success' });
       }
       onSuccess();
     } catch (err: unknown) {
@@ -79,10 +79,10 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
             Gbaigbance
           </p>
           <h1 className="mt-2 text-[1.75rem] font-extrabold leading-tight tracking-tight text-[#17131D] dark:text-white min-[380px]:text-3xl">
-            {mode === 'login' ? 'Bon retour !' : 'Créer un compte'}
+            {mode === 'login' ? t('auth', 'loginHeading') : t('auth', 'signupHeading')}
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {mode === 'login' ? 'Connectez-vous pour continuer' : 'Rejoignez la communauté Gbaigbance'}
+            {mode === 'login' ? t('auth', 'loginDescription') : t('auth', 'signupDescription')}
           </p>
         </header>
 
@@ -104,7 +104,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
                   aria-invalid={Boolean(errors.name)}
                   aria-describedby={errors.name ? 'auth-name-error' : undefined}
                   className={`${fieldClass(Boolean(errors.name))} pr-4`}
-                  placeholder="Koffi Mensah"
+                  placeholder={t('auth', 'namePlaceholder')}
                 />
               </div>
               {errors.name && (
@@ -136,7 +136,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
                 aria-invalid={Boolean(errors.email)}
                 aria-describedby={errors.email ? 'auth-email-error' : undefined}
                 className={`${fieldClass(Boolean(errors.email))} pr-4`}
-                placeholder="vous@exemple.com"
+                placeholder={t('auth', 'emailPlaceholder')}
               />
             </div>
             {errors.email && (
@@ -169,7 +169,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
                 type="button"
                 onClick={() => setShowPassword((current) => !current)}
                 aria-pressed={showPassword}
-                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-label={showPassword ? t('auth', 'hidePassword') : t('auth', 'showPassword')}
                 className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] dark:hover:text-gray-200"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -252,7 +252,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
             onClick={onSuccess}
             className="inline-flex min-h-11 items-center text-sm font-medium text-gray-500 transition-colors hover:text-[#6600FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 motion-reduce:transition-none dark:text-gray-400 dark:hover:text-[#A78BFA] dark:focus-visible:ring-offset-[#14121E]"
           >
-            Explorer en tant qu'invité →
+            {t('auth', 'guestContinue')}
           </button>
         </div>
       </div>

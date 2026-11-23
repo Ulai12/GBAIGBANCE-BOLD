@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { ToastData } from '@/components/Toast';
 import { haptic } from '@/hooks/useHaptics';
+import { useApp } from '@/hooks/useApp';
 
 interface DynamicIslandProps {
   toasts: ToastData[];
@@ -30,6 +31,7 @@ interface DynamicIslandProps {
  * - Synchronized Taptic Engine feedback
  */
 export function DynamicIsland({ toasts, onClose }: DynamicIslandProps) {
+  const { t } = useApp();
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
@@ -156,8 +158,8 @@ export function DynamicIsland({ toasts, onClose }: DynamicIslandProps) {
                   <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                 </div>
                 <div className="flex-1 min-w-0 pr-1">
-                  <p className="font-bold text-white text-[13px] leading-tight">Mode Hors-ligne</p>
-                  <p className="text-zinc-400 text-[11px] truncate">Billets disponibles via le cache</p>
+                  <p className="font-bold text-white text-[13px] leading-tight">{t('common', 'network.offlineTitle')}</p>
+                  <p className="text-zinc-400 text-[11px] truncate">{t('common', 'network.offlineDescription')}</p>
                 </div>
                 <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
               </div>
@@ -170,8 +172,8 @@ export function DynamicIsland({ toasts, onClose }: DynamicIslandProps) {
                   <Wifi className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <div className="flex-1 min-w-0 pr-1">
-                  <p className="font-bold text-white text-[13px] leading-tight">Connexion Rétablie</p>
-                  <p className="text-zinc-400 text-[11px]">Synchronisation en direct active</p>
+                  <p className="font-bold text-white text-[13px] leading-tight">{t('common', 'network.reconnectedTitle')}</p>
+                  <p className="text-zinc-400 text-[11px]">{t('common', 'network.reconnectedDescription')}</p>
                 </div>
               </div>
             )}
@@ -207,7 +209,7 @@ export function DynamicIsland({ toasts, onClose }: DynamicIslandProps) {
                     haptic.light();
                     onClose(activeToast.id);
                   }}
-                  aria-label="Fermer la capsule"
+                  aria-label={t('common', 'closeNotification')}
                   className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />

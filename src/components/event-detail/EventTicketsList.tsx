@@ -1,6 +1,7 @@
 import React from 'react';
 import { Ticket, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import type { TicketOption, Event } from '@/types';
+import { useApp } from '@/hooks/useApp';
 
 /**
  * GBAIGBANCE — EventTicketsList (Liquid Glass Passes & Billetterie)
@@ -26,9 +27,10 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
   canBook,
   onSelectPass,
 }) => {
+  const { language, t } = useApp();
   const formatPrice = (price: number) => {
-    if (price === 0) return 'Gratuit';
-    return `${price.toLocaleString('fr-FR')} FCFA`;
+    if (price === 0) return t('events', 'detail.tickets.currencyFree');
+    return `${price.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-US')} FCFA`;
   };
 
   return (
@@ -40,11 +42,11 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
             <Ticket className="w-4 h-4" />
           </div>
           <h2 className="text-base font-black tracking-tight">
-            Pass & Billets disponibles
+            {t('events', 'detail.tickets.title')}
           </h2>
         </div>
         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06]">
-          {ticketOptions.length} formule{ticketOptions.length > 1 ? 's' : ''}
+          {t('events', 'detail.tickets.count').replace('{count}', String(ticketOptions.length))}
         </span>
       </div>
 
@@ -52,14 +54,14 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
       {ticketOptions.length === 0 ? (
         <div className="p-5 rounded-[22px] glass-ios text-center space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-400">
-            Tarif d'entrée générale
+            {t('events', 'detail.tickets.generalPrice')}
           </p>
           <p className="text-xl font-black text-[#1A1A2E] dark:text-white">
             {formatPrice(event.price_min)}
           </p>
           <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Placement libre lors de l'accès au site</span>
+            <span>{t('events', 'detail.tickets.freePlacement')}</span>
           </div>
         </div>
       ) : (
@@ -88,7 +90,7 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                   <div className="absolute top-0 right-6 -translate-y-1/2">
                     <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
                       <Sparkles className="w-2.5 h-2.5" />
-                      Populaire
+                      {t('events', 'detail.tickets.popular')}
                     </span>
                   </div>
                 )}
@@ -130,7 +132,7 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                     {isSoldOut ? (
                       <span className="font-bold text-red-500 flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        Guichet complet / Épuisé
+                        {t('events', 'detail.tickets.soldOutFull')}
                       </span>
                     ) : (
                       <span
@@ -142,18 +144,18 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>
-                          {remaining} place{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
+                          {t('events', 'detail.tickets.remaining').replace('{count}', String(remaining))}
                         </span>
                         {isLowStock && (
                           <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10">
-                            Dernières places !
+                            {t('events', 'detail.tickets.lastSeats')}
                           </span>
                         )}
                       </span>
                     )}
 
                     <span className="text-[11px] font-medium text-gray-400">
-                      sur {total}
+                      {t('events', 'detail.tickets.of').replace('{count}', String(total))}
                     </span>
                   </div>
 
@@ -175,7 +177,7 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                 {/* Bouton d'action Réserver */}
                 <div className="mt-4 pt-3 border-t border-black/[0.05] dark:border-white/[0.06] flex items-center justify-between">
                   <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Billet électronique avec QR Code sécurisé
+                    {t('events', 'detail.tickets.secureTicket')}
                   </span>
 
                   <button
@@ -185,7 +187,7 @@ export const EventTicketsList: React.FC<EventTicketsListProps> = ({
                     className="min-h-[44px] px-5 rounded-full bg-[#6600FF] hover:bg-[#5200cc] text-white text-xs font-bold transition-all shadow-md shadow-[#6600FF]/25 active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1.5"
                   >
                     <Ticket className="w-3.5 h-3.5" />
-                    <span>{isSoldOut ? 'Épuisé' : 'Réserver ce pass'}</span>
+                    <span>{t('events', isSoldOut ? 'detail.tickets.soldOut' : 'detail.tickets.reservePass')}</span>
                   </button>
                 </div>
               </div>

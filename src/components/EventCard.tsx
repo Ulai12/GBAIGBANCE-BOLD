@@ -19,6 +19,7 @@ import { shareEventNative } from '@/utils/share';
 import { ShareModal } from '@/components/ShareModal';
 import { prefetchEventDetail } from '@/utils/prefetchRoutes';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
+import { useApp } from '@/hooks/useApp';
 
 interface EventCardProps {
   event: Event;
@@ -26,12 +27,12 @@ interface EventCardProps {
   onShare?: (event: Event) => void;
 }
 
-function formatDate(dateString?: string | null) {
+function formatDate(dateString?: string | null, language: string = 'fr') {
   if (!dateString) return '';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -43,22 +44,24 @@ function formatDate(dateString?: string | null) {
 }
 
 function formatAttendees(count?: number | null) {
-  const n = typeof count === 'number' && !isNaN(count) ? Math.max(0, count) : 0;
+  if (typeof count !== 'number' || !Number.isFinite(count)) return '—';
+  const n = Math.max(0, Math.floor(count));
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();
 }
 
 export const EventCard = memo(function EventCard({ event, onClick, onShare }: EventCardProps) {
+  const { language, t } = useApp();
   const prefersReducedMotion = useReducedMotion();
   const [showShareModal, setShowShareModal] = useState(false);
 
   const formattedPrice =
     event.price_min === 0
-      ? 'Gratuit'
+      ? t('events', 'free')
       : event.price_min != null
-        ? `${Number(event.price_min).toLocaleString('fr-FR')} FCFA`
-        : 'Gratuit';
+        ? `${Number(event.price_min).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')} FCFA`
+        : t('events', 'free');
 
   const terminated = isEventTerminated(event);
   const isCancelled = event.status === 'cancelled';
@@ -74,7 +77,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
       onShare(event);
       return;
     }
-    const status = await shareEventNative(event);
+    const status = await shareEventNative(event, undefined, language);
     if (status !== 'shared' && status !== 'cancelled') {
       setShowShareModal(true);
     }
@@ -133,7 +136,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
               ">
                 <CalendarDays className="h-3 w-3 shrink-0 text-white/90" />
                 <span className="truncate text-[10px] sm:text-[11px] font-semibold text-white">
-                  {formatDate(event.starts_at)}
+                  {formatDate(event.starts_at, language)}
                 </span>
               </div>
 
@@ -142,8 +145,8 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
                 {/* SHARE */}
                 <motion.button
                   type="button"
-                  aria-label={`Partager ${event.title}`}
-                  title="Partager"
+                  aria-label={`${t('events', 'share')} ${event.title}`}
+                  title={t('events', 'share')}
                   whileTap={{ scale: 0.88 }}
                   whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
                   onClick={handleShare}
@@ -169,15 +172,15 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
             {isCancelled ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-red-400/50 bg-red-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-red-100">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping mr-0.5" />
-                Annulé
+                {t('events', 'cardStatus.cancelled')}
               </div>
             ) : isPostponed ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-amber-100">
-                Reporté
+                {t('events', 'cardStatus.postponed')}
               </div>
             ) : terminated ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/50 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/70">
-                Terminé
+                {t('events', 'cardStatus.ended')}
               </div>
             ) : isHot ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-orange-400/60 bg-gradient-to-r from-orange-500/40 to-red-500/40 px-2 backdrop-blur-md self-start text-[10px] font-black text-orange-200 shadow-xs">
@@ -187,30 +190,30 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
             ) : event.access_type === 'whatsapp' ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-600/50 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100 shadow-xs">
                 <MessageCircle className="h-2.5 w-2.5 text-emerald-300" />
-                Sur réservation
+                {t('events', 'cardStatus.reservation')}
               </div>
             ) : event.access_type === 'external' ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-blue-400/60 bg-blue-600/50 px-2 backdrop-blur-md self-start text-[10px] font-bold text-blue-100 shadow-xs">
                 <ExternalLink className="h-2.5 w-2.5 text-blue-300" />
-                Site officiel
+                {t('events', 'cardStatus.official')}
               </div>
             ) : event.access_type === 'free' || event.price_min === 0 ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100">
-                Entrée libre
+                {t('events', 'cardStatus.freeEntry')}
               </div>
             ) : event.is_featured ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-[#8B5CF6]/50 bg-[#6600FF]/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-purple-100">
                 <Sparkles className="h-2.5 w-2.5 text-yellow-300" />
-                Tendance
+                {t('events', 'trending')}
               </div>
             ) : event.price_min === 0 ? (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-600/40 px-2 backdrop-blur-md self-start text-[10px] font-bold text-emerald-100">
-                Gratuit
+                {t('events', 'free')}
               </div>
             ) : (
               <div className="inline-flex h-5 items-center gap-1 rounded-full border border-white/20 bg-black/25 px-2 backdrop-blur-md self-start text-[10px] font-semibold text-white/90">
                 <Zap className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
-                Populaire
+                {t('events', 'hot')}
               </div>
             )}
           </div>
@@ -222,7 +225,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
           <div className="flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]"/>
             <span className="truncate text-[11px] font-medium leading-tight text-white/90">
-              {event.location_name || event.city || 'Lieu à confirmer'}
+              {event.location_name || event.city || t('events', 'locationToConfirm')}
             </span>
           </div>
 
@@ -259,7 +262,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
           <button
             type="button"
             onClick={onClick}
-            aria-label={`Découvrir ${event.title}`}
+            aria-label={t('events', 'discoverEvent').replace('{title}', event.title)}
             className="absolute inset-0 z-10 cursor-pointer rounded-[1.5rem] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-[#6600FF]"
           />
         )}

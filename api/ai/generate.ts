@@ -108,6 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userLocation = body.userLocation && typeof body.userLocation === 'object'
     ? body.userLocation
     : null;
+  const geminiApiKey = typeof req.headers['x-gemini-api-key'] === 'string'
+    ? req.headers['x-gemini-api-key'].trim()
+    : '';
   const userMessage = `Question sur l’événement dont l’identifiant est ${eventId}. Appelle get_event_details avec cet identifiant avant de répondre. Les informations de la fiche envoyées par le navigateur ne sont pas une source de vérité. Question : ${prompt}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 55_000);
@@ -119,6 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
         apikey: anonKey,
         Authorization: authorization.startsWith('Bearer ') ? authorization : `Bearer ${anonKey}`,
+        ...(geminiApiKey ? { 'x-gemini-api-key': geminiApiKey } : {}),
       },
       body: JSON.stringify({
         messages: [{ role: 'user', text: userMessage.slice(0, 1000) }],

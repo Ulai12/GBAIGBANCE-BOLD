@@ -14,8 +14,18 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Mic,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
-import { testGeminiApiKey } from '@/services/gemini';
+import {
+  getUserGeminiApiKey,
+  removeUserGeminiApiKey,
+  setUserGeminiApiKey,
+  testGeminiApiKey,
+} from '@/services/gemini';
 import { useApp } from '@/hooks/useApp';
 
 /* =====================================================================
@@ -23,8 +33,10 @@ import { useApp } from '@/hooks/useApp';
    ===================================================================== */
 
 interface AISettings {
-  model: 'gemini-4-hydrogen' | 'gemini-3.1-flash-lite';
-  enableMapsGrounding: boolean;
+  model: string;
+  temperature: number;
+  maxOutputTokens: number;
+  thinking: 'auto' | 'low' | 'high';
   answerStyle: 'concise' | 'balanced' | 'detailed';
   shareLocation: boolean;
 }
@@ -32,27 +44,23 @@ interface AISettings {
 const SETTINGS_KEY = 'gbaigbance_ai_settings_v1';
 
 const DEFAULT_SETTINGS: AISettings = {
-  model: 'gemini-4-hydrogen',
-  enableMapsGrounding: true,
+  model: 'gemini-2.5-flash',
+  temperature: 0.7,
+  maxOutputTokens: 2048,
+  thinking: 'auto',
   answerStyle: 'balanced',
   shareLocation: true,
 };
 
+const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
 function loadSettings(): AISettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Partial<AISettings>) : {};
-    const validModel: AISettings['model'] =
-      parsed.model === 'gemini-3.1-flash-lite' ? 'gemini-3.1-flash-lite' : 'gemini-4-hydrogen';
-    return {
-      model: validModel,
-      enableMapsGrounding: parsed.enableMapsGrounding !== false,
-      answerStyle:
-        parsed.answerStyle === 'concise' || parsed.answerStyle === 'detailed'
-          ? parsed.answerStyle
-          : 'balanced',
-      shareLocation: parsed.shareLocation !== false,
-    };
+    const merged = { ...DEFAULT_SETTINGS, ...(raw ? (JSON.parse(raw) as Partial<AISettings>) : {}) };
+    merged.temperature = clamp(Number(merged.temperature) || 0, 0, 2);
+    merged.maxOutputTokens = clamp(Number(merged.maxOutputTokens) || 2048, 256, 8192);
+    return merged;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -62,7 +70,6 @@ function saveSettings(patch: Partial<AISettings>): AISettings {
   const next = { ...loadSettings(), ...patch };
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event('gbaigbance_gemini_config_updated'));
   } catch {
     // Session fallback
   }
@@ -72,7 +79,6 @@ function saveSettings(patch: Partial<AISettings>): AISettings {
 function resetSettings(): AISettings {
   try {
     localStorage.removeItem(SETTINGS_KEY);
-    window.dispatchEvent(new Event('gbaigbance_gemini_config_updated'));
   } catch {
     // Ignoré
   }
@@ -131,6 +137,10 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
   const { userLocation } = useApp();
 
   const [settings, setSettings] = useState<AISettings>(loadSettings);
+  const [apiKey, setApiKey] = useState(getUserGeminiApiKey);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeySaved, setApiKeySaved] = useState(Boolean(getUserGeminiApiKey()));
+  const [storedApiKey, setStoredApiKey] = useState(Boolean(getUserGeminiApiKey()));
   const [serverStatus, setServerStatus] = useState<{
     loading: boolean;
     online: boolean;
@@ -139,7 +149,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
   }>({
     loading: true,
     online: false,
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-2.5-flash',
     message: 'Vérification du service serveur...',
   });
 
@@ -151,7 +161,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
     setServerStatus({
       loading: false,
       online: res.success,
-      model: res.model || 'gemini-4-hydrogen',
+      model: res.model || 'gemini-2.5-flash',
       message: res.message,
     });
   };
@@ -166,6 +176,44 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
   const handleReset = () => {
     setSettings(resetSettings());
     onToast?.({ message: 'Préférences IA réinitialisées aux valeurs par défaut.', type: 'success' });
+  };
+
+  const handleSaveApiKey = async () => {
+    try {
+      if (apiKey.trim()) {
+        setUserGeminiApiKey(apiKey);
+        setApiKey(apiKey.trim());
+        setApiKeySaved(true);
+        setStoredApiKey(true);
+        onToast?.({ message: 'Clé Gemini enregistrée sur cet appareil.', type: 'success' });
+      } else {
+        removeUserGeminiApiKey();
+        setApiKeySaved(false);
+        setStoredApiKey(false);
+        onToast?.({ message: 'La clé personnelle a été supprimée.', type: 'success' });
+      }
+      await checkStatus();
+    } catch {
+      onToast?.({ message: 'Impossible d’enregistrer la clé dans le stockage local.', type: 'error' });
+    }
+  };
+
+  const handleRemoveApiKey = () => {
+    try {
+      removeUserGeminiApiKey();
+      setApiKey('');
+      setApiKeySaved(false);
+      setStoredApiKey(false);
+      setServerStatus({
+        loading: false,
+        online: false,
+        model: 'gemini-2.5-flash',
+        message: 'La clé personnelle a été supprimée. Le serveur utilisera sa clé par défaut si elle est configurée.',
+      });
+      onToast?.({ message: 'La clé personnelle a été supprimée de cet appareil.', type: 'success' });
+    } catch {
+      onToast?.({ message: 'Impossible de supprimer la clé du stockage local.', type: 'error' });
+    }
   };
 
   const cardClass = 'p-5 rounded-3xl bg-white dark:bg-[#181822] border border-black/[0.06] dark:border-white/5 space-y-4 shadow-xs';
@@ -203,20 +251,95 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
                 type="button"
                 onClick={checkStatus}
                 disabled={serverStatus.loading}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-bold transition-colors cursor-pointer ${
+                  serverStatus.online
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25'
+                    : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-white/5 dark:border-white/10 dark:text-zinc-300'
+                }`}
               >
                 {serverStatus.loading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="w-3 h-3" />
+                  serverStatus.online
+                    ? <CheckCircle2 className="w-3 h-3" />
+                    : <AlertCircle className="w-3 h-3" />
                 )}
-                <span>{serverStatus.online ? 'Serveur Actif' : 'Vérification'}</span>
+                <span>{serverStatus.loading ? 'Vérification' : serverStatus.online ? 'Disponible' : 'À vérifier'}</span>
                 <RefreshCw className="w-3 h-3 ml-0.5 opacity-60" />
               </button>
             </div>
             <p className="text-xs text-gray-600 dark:text-zinc-400 leading-relaxed">
-              Modèle optimisé : <strong>{serverStatus.model}</strong>. Traitement en streaming temps réel, mode voix basse latence et vérification dynamique des événements.
+              {serverStatus.message} {serverStatus.online && <>Modèle disponible : <strong>{serverStatus.model}</strong>.</>}
             </p>
+          </div>
+        </div>
+
+        <div className={cardClass}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#6600FF]/10 text-[#6600FF] flex items-center justify-center shrink-0">
+              <KeyRound className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Votre clé Google Gemini</h3>
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Facultative — elle remplace la clé serveur pour vos requêtes. Sans clé personnelle, le serveur utilise sa clé par défaut si elle est configurée.</p>
+            </div>
+          </div>
+          <label htmlFor="gemini-api-key" className="block text-xs font-bold text-gray-700 dark:text-zinc-300">
+            Clé API Gemini {storedApiKey && apiKeySaved && <span className="font-medium text-emerald-600 dark:text-emerald-400">· enregistrée sur cet appareil</span>}
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="gemini-api-key"
+              type={showApiKey ? 'text' : 'password'}
+              autoComplete="off"
+              spellCheck={false}
+              value={apiKey}
+              onChange={(event) => {
+                setApiKey(event.target.value);
+                setApiKeySaved(false);
+              }}
+              placeholder="Collez votre clé Google AI Studio"
+              className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-black/20 border border-black/10 dark:border-white/10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6600FF]/30"
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey((visible) => !visible)}
+              className="px-3 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-zinc-300"
+              aria-label={showApiKey ? 'Masquer la clé API' : 'Afficher la clé API'}
+            >
+              {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-500 dark:text-zinc-400 leading-relaxed">
+            La clé est conservée uniquement dans le stockage local de ce navigateur, jamais dans votre profil. Lors d’une requête, elle est transmise au service IA Gbaigbance puis à Google. Une clé Google AI Studio peut être soumise aux quotas et conditions de Google.
+          </p>
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-xs font-semibold text-[#6600FF] dark:text-[#C084FC] underline underline-offset-2"
+          >
+            Créer ou gérer une clé Google AI Studio
+          </a>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSaveApiKey}
+              disabled={!apiKey.trim() && !apiKeySaved}
+              className="px-3.5 py-2 rounded-xl bg-[#6600FF] text-white text-xs font-bold disabled:opacity-40"
+            >
+              Enregistrer et vérifier
+            </button>
+            {storedApiKey && (
+              <button
+                type="button"
+                onClick={handleRemoveApiKey}
+                className="px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 text-xs font-bold inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Supprimer
+              </button>
+            )}
           </div>
         </div>
 
@@ -265,21 +388,6 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Modèle Gemini actif</p>
-            <Segmented<AISettings['model']>
-              value={settings.model}
-              onChange={(v) => update('model', v)}
-              options={[
-                { value: 'gemini-4-hydrogen', label: 'Hydrogen · Maps' },
-                { value: 'gemini-3.1-flash-lite', label: 'Flash Lite · Rapide' },
-              ]}
-            />
-            <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-              Hydrogen combine les outils Gbaigbance et Google Maps Grounding ; Flash Lite privilégie la latence minimale.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
             <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Style des réponses</p>
             <Segmented<AISettings['answerStyle']>
               value={settings.answerStyle}
@@ -292,17 +400,37 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <Sparkles className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Google Maps Grounding en direct</p>
-                <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-                  Enrichit les réponses avec des adresses, avis et liens Google Maps vérifiés.
-                </p>
-              </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Créativité (température)</p>
+              <span className="text-xs font-mono text-[#6600FF] dark:text-[#A855F7]">{settings.temperature.toFixed(1)}</span>
             </div>
-            <Toggle checked={settings.enableMapsGrounding} onChange={(v) => update('enableMapsGrounding', v)} />
+            <input
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.1}
+              value={settings.temperature}
+              onChange={(e) => update('temperature', Number(e.target.value))}
+              className="w-full accent-[#6600FF]"
+            />
+            <p className="text-[11px] text-gray-400 dark:text-zinc-500">
+              Bas = rigoureux et factuel. Haut = suggestions plus imagées et expressives.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Longueur maximale de réponse</p>
+            <Segmented<string>
+              value={String(settings.maxOutputTokens)}
+              onChange={(v) => update('maxOutputTokens', Number(v))}
+              options={[
+                { value: '512', label: 'Courte' },
+                { value: '1024', label: 'Standard' },
+                { value: '2048', label: 'Longue' },
+                { value: '4096', label: 'Complète' },
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
@@ -311,7 +439,7 @@ export const AISettingsScreen: React.FC<AISettingsScreenProps> = ({ onBack, onTo
               <div>
                 <p className="text-xs font-bold text-gray-700 dark:text-zinc-300">Partager ma position avec l’assistant</p>
                 <p className="text-[11px] text-gray-400 dark:text-zinc-500">
-                  {userLocation ? 'Permet de recommander automatiquement les événements et lieux les plus proches.' : 'Position GPS inactive.'}
+                  {userLocation ? 'Permet de recommander automatiquement les événements les plus proches de vous.' : 'Position GPS inactive.'}
                 </p>
               </div>
             </div>

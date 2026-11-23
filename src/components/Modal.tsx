@@ -19,12 +19,15 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { haptic } from '@/hooks/useHaptics';
 import { GlassPanel } from '@/components/glass';
+import { GlassContext, useGlassContext } from '@/components/glass/GlassContext';
+import { useApp } from '@/hooks/useApp';
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   title?: string;
+  ariaLabel?: string;
   /** Permet de surcharger la largeur maximale (ex. max-w-lg) */
   maxWidthClass?: string;
 }
@@ -50,7 +53,9 @@ function releaseScrollLock() {
   }
 }
 
-export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-md' }: ModalProps) {
+export function Modal({ open, onClose, children, title, ariaLabel, maxWidthClass = 'max-w-md' }: ModalProps) {
+  const { t, theme } = useApp();
+  const glassContext = useGlassContext();
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
@@ -149,6 +154,7 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? titleId : undefined}
+          aria-label={!title ? ariaLabel || t('common', 'dialog') : undefined}
         >
           {/* Arrière-plan assombri avec flou progressif */}
           <motion.div
@@ -191,48 +197,50 @@ export function Modal({ open, onClose, children, title, maxWidthClass = 'max-w-m
               - WebGPU : Réfraction physique des couches d'arrière-plan
               - Repli : Glassmorphism Apple ultra-fluide
             */}
-            <GlassPanel
-              radius={32}
-              interactive={false}
-              className="w-full h-full p-6 pt-3 sm:pt-6 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2.5rem))] rounded-t-[32px] sm:rounded-3xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl overflow-y-auto no-scrollbar"
-            >
-              {/* Barre de préhension iOS pour fermeture au glisser (seul déclencheur du geste drag pour préserver le clavier) */}
-              <div
-                className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing"
-                onPointerDown={(e) => dragControls.start(e)}
+            <GlassContext.Provider value={{ ...glassContext, appearance: theme }}>
+              <GlassPanel
+                radius={32}
+                interactive={false}
+                className="w-full h-full p-6 pt-3 sm:pt-6 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2.5rem))] rounded-t-[32px] sm:rounded-3xl border-t sm:border border-black/[0.08] dark:border-white/[0.12] shadow-2xl overflow-y-auto no-scrollbar"
               >
-                <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
-              </div>
+                {/* Barre de préhension iOS pour fermeture au glisser (seul déclencheur du geste drag pour préserver le clavier) */}
+                <div
+                  className="flex justify-center pb-3 pt-1 touch-none sm:hidden cursor-grab active:cursor-grabbing"
+                  onPointerDown={(e) => dragControls.start(e)}
+                >
+                  <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600/90 transition-transform active:scale-95" />
+                </div>
 
-              {title ? (
-                <div className="flex items-center justify-between mb-4">
-                  <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white tracking-tight">
-                    {title}
-                  </h2>
+                {title ? (
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 id={titleId} className="text-lg font-bold text-[#1A1A2E] dark:text-white tracking-tight">
+                      {title}
+                    </h2>
+                    <button
+                      ref={closeButtonRef}
+                      type="button"
+                      onClick={handleDismiss}
+                      aria-label={t('common', 'closeDialog')}
+                      className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
+                    >
+                      <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+                    </button>
+                  </div>
+                ) : (
                   <button
                     ref={closeButtonRef}
                     type="button"
                     onClick={handleDismiss}
-                    aria-label="Fermer la boîte de dialogue"
-                    className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
+                    aria-label={t('common', 'closeDialog')}
+                    className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
                   >
                     <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
                   </button>
-                </div>
-              ) : (
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  onClick={handleDismiss}
-                  aria-label="Fermer la boîte de dialogue"
-                  className="absolute right-4 top-4 z-10 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] cursor-pointer"
-                >
-                  <X className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-                </button>
-              )}
+                )}
 
-              {children}
-            </GlassPanel>
+                {children}
+              </GlassPanel>
+            </GlassContext.Provider>
           </motion.div>
         </div>
       )}
