@@ -149,13 +149,17 @@ export function FeaturedCarousel({
   // Une seule carte est visible à la fois : aucune pile ni attente du chargement d'image.
   const variants = {
     enter: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '100%' : '-100%',
-      opacity: 1,
+      x: slideDirection >= 0 ? '108%' : '-108%',
+      rotateY: slideDirection >= 0 ? -13 : 13,
+      scale: 0.94,
+      opacity: 0.92,
     }),
-    center: { x: '0%', opacity: 1 },
+    center: { x: '0%', rotateY: 0, scale: 1, opacity: 1 },
     exit: (slideDirection: number) => ({
-      x: slideDirection >= 0 ? '-100%' : '100%',
-      opacity: 1,
+      x: slideDirection >= 0 ? '-108%' : '108%',
+      rotateY: slideDirection >= 0 ? 13 : -13,
+      scale: 0.94,
+      opacity: 0.92,
     }),
   };
 
@@ -163,14 +167,14 @@ export function FeaturedCarousel({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-[2rem] shadow-xl group select-none"
+      className="relative w-full [perspective:1400px] group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] bg-transparent">
         {/* Static color wash avoids a duplicate cover download and an animated blur layer. */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-500/15 via-transparent to-fuchsia-500/10 pointer-events-none" />
 
@@ -183,9 +187,10 @@ export function FeaturedCarousel({
             animate="center"
             exit="exit"
             transition={{
-              duration: prefersReducedMotion ? 0.01 : 0.22,
+              duration: prefersReducedMotion ? 0.01 : 0.32,
               ease: [0.22, 1, 0.36, 1],
             }}
+            style={{ transformPerspective: 1400, transformStyle: 'preserve-3d' }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.12}
@@ -200,7 +205,7 @@ export function FeaturedCarousel({
                 prevSlide();
               }
             }}
-            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 overflow-hidden rounded-[2rem] border border-white/15 bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22] shadow-[0_24px_60px_rgba(12,7,24,0.34)] cursor-grab active:cursor-grabbing will-change-transform"
             onClick={() => onEventClick(currentEvent)}
           >
             {/* BACKGROUND COVER IMAGE */}
