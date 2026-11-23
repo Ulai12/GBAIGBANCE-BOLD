@@ -155,6 +155,11 @@ function getErrorMessage(error: unknown) {
 export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
   const { user, t, language } = useApp();
   const [step, setStep] = useState<Step>('Infos');
+
+  // Chaque étape repart en haut : le header sticky ne masque jamais les champs du nouvel écran.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -712,71 +717,22 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 px-5 pt-safe-header pb-2">
-        <div className="max-w-md mx-auto rounded-[28px] border border-black/[0.06] bg-white/92 px-4 pb-3 pt-4 shadow-sm backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#14121E]/92">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => {
-                if (stepIndex > 0) {
-                  previous();
-                } else {
-                  onBack();
-                }
-              }}
-              aria-label={t('common', 'back')}
-              className="w-10 h-10 rounded-full glass-surface flex items-center justify-center active:scale-95 transition-transform shrink-0 cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5 text-[#171726] dark:text-white" />
-            </button>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA] font-black">
-                {t('events', 'creation.wizard.eyebrow')}
-              </p>
-              <h1 className="text-2xl font-black tracking-tight text-[#171726] dark:text-white truncate">
-                {t('events', `creation.wizard.steps.${STEP_TRANSLATION_KEYS[step]}`)}
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {t('events', 'creation.wizard.stepIndicator').replace('{current}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))}
-              </p>
-            </div>
+      <header className="sticky top-0 z-30 px-4 pt-safe-header pb-2">
+        <div className="mx-auto max-w-md rounded-[24px] border border-black/[0.06] bg-white/95 px-3.5 py-3 shadow-sm dark:border-white/[0.08] dark:bg-[#14121E]/95">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <button type="button" onClick={() => { if (stepIndex > 0) previous(); else onBack(); }} aria-label={t('common', 'back')} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-black/[0.03] transition-transform active:scale-95 dark:border-white/[0.08] dark:bg-white/[0.06]"><ChevronLeft className="h-5 w-5 text-[#171726] dark:text-white" /></button>
+            <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6600FF] dark:text-[#A78BFA]">{t('events', 'creation.wizard.eyebrow')}</p>
+              <h1 className="truncate text-xl font-black tracking-tight text-[#171726] dark:text-white sm:text-2xl">{t('events', `creation.wizard.steps.${STEP_TRANSLATION_KEYS[step]}`)}</h1>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('events', 'creation.wizard.stepIndicator').replace('{current}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))}</p></div>
+            <button type="button" onClick={() => setShowPreviewModal(true)} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#6600FF]/10 px-3 text-[11px] font-bold text-[#6600FF] transition-colors active:bg-[#6600FF]/20 dark:text-purple-300" title={t('events', 'creation.wizard.previewTitle')}><Eye className="h-3.5 w-3.5" /><span>{t('events', 'creation.wizard.preview')}</span></button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowPreviewModal(true)}
-            className="px-3.5 py-2 rounded-full bg-[#6600FF]/10 hover:bg-[#6600FF]/20 text-[#6600FF] dark:text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
-            title={t('events', 'creation.wizard.previewTitle')}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>{t('events', 'creation.wizard.preview')}</span>
-          </button>
-        </div>
-
-        {/* Progression par grandes phases */}
-        <div className="max-w-md mx-auto mt-4 grid grid-cols-3 gap-2">
-          {phaseKeys.map((phase, index) => (
-            <div key={phase} className={`min-w-0 text-center text-[10px] font-bold transition-colors ${index === phaseIndex ? 'text-[#6600FF] dark:text-purple-300' : index < phaseIndex ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>
-              <span className={`mx-auto mb-1 flex h-1.5 w-full rounded-full ${index <= phaseIndex ? 'bg-[#6600FF] dark:bg-purple-400' : 'bg-gray-200 dark:bg-white/10'}`} />
-              <span className="block truncate">{t('events', `creation.wizard.phases.${phase}`)}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Progress Bar détaillée des neuf étapes */}
-        <div className="max-w-md mx-auto mt-2 flex gap-1.5">
-          {STEPS.map((item, index) => (
-            <div
-              key={item}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                index <= stepIndex ? 'bg-[#6600FF]' : 'bg-gray-200 dark:bg-white/10'
-              }`}
-            />
-          ))}
+          <div className="mt-3 grid grid-cols-3 gap-2">{phaseKeys.map((phase, index) => <div key={phase} className={"min-w-0 truncate text-center text-[9px] font-bold " + (index === phaseIndex ? "text-[#6600FF] dark:text-purple-300" : index < phaseIndex ? "text-gray-500 dark:text-gray-400" : "text-gray-400 dark:text-gray-600")} aria-current={index === phaseIndex ? "step" : undefined}>{t('events', `creation.wizard.phases.${phase}`)}</div>)}</div>
+          <div className="mt-2 flex gap-1" role="progressbar" aria-label={t('events', 'creation.wizard.stepIndicator').replace('{current}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))} aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={stepIndex + 1}>
+            {STEPS.map((item, index) => <span key={item} className={"h-1.5 min-w-0 flex-1 rounded-full " + (index <= stepIndex ? "bg-[#6600FF] dark:bg-purple-400" : "bg-gray-200 dark:bg-white/10")} />)}</div>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-5 mt-6">
+      <main className="mx-auto mt-4 max-w-md px-5">
         {error && (
           <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 rounded-2xl text-xs font-semibold text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/40">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -1094,7 +1050,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="date"
-                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
+                      className={`${fieldClass} !min-h-12 !w-full !min-w-0 !max-w-full appearance-none px-3 py-3 text-sm`}
                       value={getSplitDateTime(form.starts_at).date}
                       onChange={(e) => {
                         const newDate = e.target.value;
@@ -1106,8 +1062,8 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="time"
-                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
-                      value={getSplitDateTime(form.starts_at).time || '20:00'}
+                      className={`${fieldClass} !min-h-12 !w-full !min-w-0 !max-w-full appearance-none px-3 py-3 text-sm`}
+                      value={getSplitDateTime(form.starts_at).time}
                       onChange={(e) => {
                         const newTime = e.target.value || '20:00';
                         const currDate = getSplitDateTime(form.starts_at).date || getLocalDateInputValue();
@@ -1129,7 +1085,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       const d = String(today.getDate()).padStart(2, '0');
                       updateForm('starts_at', `${y}-${m}-${d}T20:00`);
                     }}
-                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                    className="inline-flex min-h-10 items-center rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-[#6600FF]/10 dark:bg-white/5 dark:text-gray-300"
                   >
                     {t('events', 'creation.wizard.location.tonight')}
                   </button>
@@ -1143,7 +1099,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       const d = String(tomorrow.getDate()).padStart(2, '0');
                       updateForm('starts_at', `${y}-${m}-${d}T20:00`);
                     }}
-                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                    className="inline-flex min-h-10 items-center rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-[#6600FF]/10 dark:bg-white/5 dark:text-gray-300"
                   >
                     {t('events', 'creation.wizard.location.tomorrow')}
                   </button>
@@ -1160,7 +1116,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                       const d = String(saturday.getDate()).padStart(2, '0');
                       updateForm('starts_at', `${y}-${m}-${d}T21:00`);
                     }}
-                    className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-[#6600FF]/10 text-[10px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                    className="inline-flex min-h-10 items-center rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-[#6600FF]/10 dark:bg-white/5 dark:text-gray-300"
                   >
                     {t('events', 'creation.wizard.location.saturday')}
                   </button>
@@ -1188,7 +1144,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="date"
-                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
+                      className={`${fieldClass} !min-h-12 !w-full !min-w-0 !max-w-full appearance-none px-3 py-3 text-sm`}
                       value={getSplitDateTime(form.ends_at).date}
                       onChange={(e) => {
                         const newDate = e.target.value;
@@ -1200,7 +1156,7 @@ export function CreateEventWizardScreen({ onBack, onCreated, onToast }: Props) {
                   <div className="relative min-w-0">
                     <input
                       type="time"
-                      className={`${fieldClass} !w-full !min-w-0 !max-w-full appearance-none px-2.5 py-3 text-[11px] sm:text-xs`}
+                      className={`${fieldClass} !min-h-12 !w-full !min-w-0 !max-w-full appearance-none px-3 py-3 text-sm`}
                       value={getSplitDateTime(form.ends_at).time || (form.ends_at ? '23:00' : '')}
                       onChange={(e) => {
                         const newTime = e.target.value;
