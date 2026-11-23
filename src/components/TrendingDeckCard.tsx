@@ -101,6 +101,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         </span>
         <button
           type="button"
+          disabled={!active}
           aria-label={liked ? t('events', 'removeFavorite') : t('events', 'addFavorite')}
           onClick={(e) => {
             e.stopPropagation();
@@ -145,6 +146,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
           </div>
           <button
             type="button"
+            disabled={!active}
             onClick={(eventClick) => {
               eventClick.stopPropagation();
               onBook();
