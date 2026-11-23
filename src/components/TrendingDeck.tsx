@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import type { Event } from '@/types';
@@ -9,6 +9,8 @@ interface TrendingDeckProps { events: Event[]; onEventClick: (event: Event) => v
 
 export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeckProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const prefersReducedMotion = useReducedMotion();
   const { t } = useApp();
   const visibleEvents = useMemo(() => {
     const now = Date.now();
@@ -16,12 +18,15 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
   }, [events]);
   useEffect(() => { setActiveIndex((current) => Math.min(current, Math.max(visibleEvents.length - 1, 0))); }, [visibleEvents.length]);
   const safeIndex = Math.min(activeIndex, Math.max(visibleEvents.length - 1, 0));
-  const advance = useCallback(() => setActiveIndex((current) => (current + 1) % visibleEvents.length), [visibleEvents.length]);
-  const previous = useCallback(() => setActiveIndex((current) => (current - 1 + visibleEvents.length) % visibleEvents.length), [visibleEvents.length]);
+  const advance = useCallback((step: 1 | -1 = 1) => {
+    setDirection(step);
+    setActiveIndex((current) => (current + step + visibleEvents.length) % visibleEvents.length);
+  }, [visibleEvents.length]);
+  const previous = useCallback(() => advance(-1), [advance]);
   if (visibleEvents.length === 0) return null;
   const currentEvent = visibleEvents[safeIndex];
   if (!currentEvent) return null;
-  const nextEvent = visibleEvents.length > 1 ? visibleEvents[(safeIndex + 1) % visibleEvents.length] : null;
+  const stackEvent = visibleEvents.length > 1 ? visibleEvents[(safeIndex + direction + visibleEvents.length) % visibleEvents.length] : null;
   const positionLabel = t('events', 'eventPosition').replace('{current}', String(safeIndex + 1)).replace('{total}', String(visibleEvents.length));
   return (
     <section className="w-full" aria-label={t('events', 'trending')} onKeyDown={(event) => {
@@ -39,15 +44,23 @@ export function TrendingDeck({ events, onEventClick, onBookEvent }: TrendingDeck
         </div>
       </div>
       <div className="relative h-[min(26rem,72svh)] min-h-[21rem] touch-pan-y" aria-live="polite" aria-atomic="true">
-        {nextEvent && <TrendingDeckCard key={nextEvent.id} event={nextEvent} index={1} active={false} onOpen={() => onEventClick(nextEvent)} onBook={() => onBookEvent(nextEvent)} onAdvance={advance} />}
-        <AnimatePresence initial={false} mode="sync">
+        {stackEvent && <TrendingDeckCard key={stackEvent.id} event={stackEvent} index={1} active={false} onOpen={() => onEventClick(stackEvent)} onBook={() => onBookEvent(stackEvent)} onAdvance={advance} />}
+        <AnimatePresence initial={false} mode="sync" custom={direction}>
           <TrendingDeckCard key={currentEvent.id} event={currentEvent} index={0} active onOpen={() => onEventClick(currentEvent)} onBook={() => onBookEvent(currentEvent)} onAdvance={advance} />
         </AnimatePresence>
       </div>
       <div className="mt-5 flex items-center justify-center gap-1.5" role="group" aria-label={positionLabel}>
         {visibleEvents.slice(0, 7).map((event, index) => {
           const isActive = index === safeIndex;
-          return <button key={event.id} type="button" onClick={() => setActiveIndex(index)} aria-label={t('events', 'showEvent').replace('{title}', event.title)} aria-current={isActive ? 'true' : undefined} className={'h-1.5 rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ' + (isActive ? 'w-7 bg-[#17131d] dark:bg-white' : 'w-1.5 bg-black/20 dark:bg-white/25')} />;
+          return <button key={event.id} type="button" onClick={() => { setDirection(index >= safeIndex ? 1 : -1); setActiveIndex(index); }} aria-label={t('events', 'showEvent').replace('{title}', event.title)} aria-current={isActive ? 'true' : undefined} className="flex h-6 w-7 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF]"
+            >
+              <motion.span
+                className="block h-1.5 w-7 origin-center rounded-full bg-[#17131d] dark:bg-white"
+                initial={false}
+                animate={{ scaleX: isActive ? 1 : 0.22, opacity: isActive ? 1 : 0.28 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </button>;
         })}
         {visibleEvents.length > 7 && <span className="ml-1 text-[10px] font-semibold tabular-nums text-black/45 dark:text-white/45">{safeIndex + 1}/{visibleEvents.length}</span>}
       </div>
