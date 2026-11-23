@@ -5,6 +5,8 @@
 - Après chaque commit : relecture distante + tailles. Rétrécissement >20 % non voulu → ARRÊT + restauration.
 - Fichiers >25 ko : risque de troncature via connecteur ; préférer git local / API complète.
 
+- Ne jamais modifier « Explorer par catégorie » (catégories principales, sous-catégories, grille, cartes, proportions, styles, interactions et hiérarchie) sans demande explicite de l'utilisateur.
+
 ## Projet
 - Dépôt : https://github.com/Ulai12/GBAIGBANCE-BOLD
 - Branche : `FRONTEND-iA`
@@ -38,6 +40,6 @@ P2 : États loading/empty.
 
 Fichiers : `src/screens/OrganizerDashboardScreen.tsx`, `src/locales/index.ts`, nouveaux JSON FR/EN, `FRONTEND_MEMORY.md`.
 
-Vérifications : contrôle statique des références et clés de traduction effectué; JSON sérialisé/parsable. Le premier build Vercel a révélé un `>` manquant sur le bouton Retour (ligne 185); correction appliquée dans le commit de suivi. Nouveau build Vercel en attente. Typecheck/lint et rendu navigateur non exécutés. Les composants enfants (`OrganizerMetricsChart`, `OrganizerRefundsTab`, `TicketScannerModal`, `EventManagementModal`) peuvent encore avoir des libellés à localiser.
+Vérifications : contrôle statique des références et clés de traduction effectué; JSON sérialisé/parsable. Premier build Vercel échoué sur un `>` manquant au bouton Retour (ligne 185), corrigé dans le commit `41508e2`. Build Vite + génération PWA/preview ensuite réussi; déploiement Preview `READY` pour `41508e2`. Typecheck, lint et rendu visuel navigateur non exécutés. Les composants enfants (`OrganizerMetricsChart`, `OrganizerRefundsTab`, `TicketScannerModal`, `EventManagementModal`) peuvent encore avoir des libellés à localiser.
 
 Prochaine priorité : localiser progressivement ces composants enfants et harmoniser les états loading/empty, sans modifier Explorer par catégorie.
