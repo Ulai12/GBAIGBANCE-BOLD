@@ -50,7 +50,7 @@ export function FeaturedCarousel({
     () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
   );
   const [direction, setDirection] = useState<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefersReducedMotion = useReducedMotion();
   const { language, t } = useApp();
 
@@ -90,18 +90,17 @@ export function FeaturedCarousel({
     return () => document.removeEventListener('visibilitychange', updateVisibility);
   }, []);
 
-  // Stoppe l'autoplay lorsque l'onglet est masqué ou que l'utilisateur réduit les animations.
+  // Un seul timer est armé à la fois. Il repart après chaque changement manuel/automatique,
+  // et reste suspendu pendant l'interaction ou lorsque l'onglet est masqué.
   useEffect(() => {
-    if (isPaused || prefersReducedMotion || !isDocumentVisible || total <= 1) return;
+    if (isPaused || !isDocumentVisible || total <= 1) return;
 
-    timerRef.current = setInterval(() => {
-      nextSlide();
-    }, 5000);
-
+    timerRef.current = setTimeout(nextSlide, 6000);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
     };
-  }, [isPaused, isDocumentVisible, prefersReducedMotion, total, nextSlide]);
+  }, [currentIndex, isPaused, isDocumentVisible, total, nextSlide]);
 
   if (featuredList.length === 0) return null;
 
@@ -142,18 +141,18 @@ export function FeaturedCarousel({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_22px_60px_rgba(19,10,38,0.24)] ring-1 ring-black/5 group select-none"
+      className="relative w-full overflow-hidden rounded-[2rem] shadow-xl group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
       {/* SLIDE CONTAINER WITH DRAG / SWIPE */}
-      <div className="relative aspect-[4/5] sm:aspect-[21/10] w-full min-h-[410px] sm:min-h-[350px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/10] w-full min-h-[330px] sm:min-h-[350px] overflow-hidden bg-gradient-to-br from-[#2D1B4E] via-[#1E172E] to-[#120E22]">
         {/* Static color wash avoids a duplicate cover download and an animated blur layer. */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-500/15 via-transparent to-fuchsia-500/10 pointer-events-none" />
 
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+        <AnimatePresence initial={false} custom={direction} mode="sync">
           <motion.div
             key={currentEvent.id}
             custom={direction}
@@ -163,12 +162,16 @@ export function FeaturedCarousel({
             exit="exit"
             transition={{
               x: { type: 'spring', stiffness: 320, damping: 32 },
-              opacity: { duration: 0.22 },
+              opacity: { duration: prefersReducedMotion ? 0.01 : 0.18 },
+              ...(prefersReducedMotion ? { x: { duration: 0.01 } } : {}),
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
+            dragElastic={0.12}
+            dragMomentum={false}
+            onDragStart={() => setIsPaused(true)}
             onDragEnd={(_, info) => {
+              setIsPaused(false);
               const swipeThreshold = 50;
               if (info.offset.x < -swipeThreshold) {
                 nextSlide();
@@ -191,7 +194,7 @@ export function FeaturedCarousel({
             />
 
             {/* LIGHT AND OPTICAL GRADIENT OVERLAY */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/15 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20 pointer-events-none" />
 
             {/* TOP BADGES & ACTIONS */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
@@ -247,7 +250,7 @@ export function FeaturedCarousel({
                   <span className="text-[10px] sm:text-xs text-white/80 uppercase tracking-wider font-semibold drop-shadow-sm">
                     {t('events', 'entryPrice')}
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-[#C4B5FD] drop-shadow-md shadow-white">
+                  <span className="text-lg sm:text-2xl font-black text-[#A78BFA] drop-shadow-md shadow-white">
                     {formattedPrice}
                   </span>
                 </div>
