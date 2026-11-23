@@ -135,3 +135,12 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Référence de conception : Apple Human Interface Guidelines — Motion (mouvement utile, bref, précis, facultatif et non bloquant) : https://developer.apple.com/design/human-interface-guidelines/motion ; WWDC23 Explore SwiftUI animation (ressorts Smooth/Snappy) : https://developer.apple.com/videos/play/wwdc2023/10156/.
 - Commit : `49a7d4f7d92b45c5f58d577a8156333a845d9e91` sur `FRONTEND-iA`.
 - Validation : changement appliqué via GitHub et commit enregistré. Build du nouveau commit, QA visuelle iPhone/Safari et vérification du rendu final encore à effectuer. Le précédent déploiement READY correspondait à l'ancien commit `e7f682f`, pas à cette correction.
+
+
+## 2026-11-23 — « À la une » : sortie réelle hors du viewport mobile
+- Retour utilisateur : le slide était encore coupé par le cadre de la carte ; on voyait la carte disparaître à la limite de son petit conteneur au lieu de quitter l'écran.
+- `src/components/FeaturedCarousel.tsx` : le wrapper du carrousel devient une fenêtre de clipping pleine largeur (`w-screen max-w-[100vw] overflow-x-clip`) centrée par rapport à la section ; la scène intérieure garde ses marges visuelles de 20 px mais passe en `overflow-visible` et ne rogne plus la translation.
+- Les positions d'entrée/sortie sont désormais calculées à l'échelle du viewport (`±110vw`) : la carte complète (image, conteneur arrondi, contenu, badges, boutons et ombre) traverse le téléphone et disparaît au-delà du bord de l'écran. Le déplacement horizontal, le sens avant/arrière, le swipe et le respect de `prefers-reduced-motion` sont conservés. Aucun changement dans « Explorer par catégorie ».
+- Référence technique : le clipping doit être porté par le viewport plein écran et non par le petit cadre interne ; `overflow: hidden` sur un parent coupe les transformations de ses descendants. Références : CSS Overflow Module Level 3 et Apple HIG Motion (mouvement bref, précis et cohérent avec le geste).
+- Commit code : 1ce95e80451ceffbc099a66e0abe86e1f0a25122 sur `FRONTEND-iA`.
+- Validation restante : build/typecheck/lint, déploiement preview et QA tactile sur Safari iPhone ; ces validations ne sont pas encore déclarées réussies.
