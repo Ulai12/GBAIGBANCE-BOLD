@@ -2,4 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* RESTORED - full content follows in next commits if needed */
+@import './styles/theme-base.css';
+@import './styles/theme-components.css';
+@import './styles/theme-utilities.css';
+@import './styles/perf-mobile.css';
