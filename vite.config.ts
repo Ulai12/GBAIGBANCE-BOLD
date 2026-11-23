@@ -3,25 +3,41 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+const { generate: generateBrandIcons } = require('./scripts/generate-pwa-icons.cjs');
+
+const brandIconGenerator = {
+  name: 'gbaigbance-brand-icon-generator',
+  enforce: 'pre',
+  async buildStart() {
+    await generateBrandIcons(path.join(__dirname, 'public'));
+  },
+};
 
 export default defineConfig({
   envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   plugins: [
+    brandIconGenerator,
     react(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'favicon-32x32.png', 'apple-touch-icon.png', 'icon.svg'],
+      includeAssets: ['favicon.ico', 'favicon-32x32.png', 'apple-touch-icon.png', 'apple-touch-icon-dark.png', 'icon.svg', 'icon-dark.svg'],
       manifest: {
         id: '/',
         name: "Gbaigbance — L'événementiel africain",
         short_name: 'Gbaigbance',
         description: 'Découvrez, réservez et participez aux meilleurs événements en Afrique de l’Ouest.',
-        theme_color: '#6600FF',
-        background_color: '#F4F3F9',
+        theme_color: '#FFFFFF',
+        background_color: '#F8F5FF',
+        color_scheme_dark: {
+          theme_color: '#08060D',
+          background_color: '#08060D',
+        },
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

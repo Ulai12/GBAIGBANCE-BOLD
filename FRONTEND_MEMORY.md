@@ -112,3 +112,37 @@ Polish responsive des cartes date/heure et barre CTA sticky sur EventDetailScree
 P1 : Vérifications build + rendu visuel EventDetailScreen.
 P2 : États loading/empty/error sur écrans principaux.
 P3 : Accessibilité (contrastes, cibles).
+
+
+## 2026-11-23 — Refonte identité icône iOS / PWA Liquid Glass
+
+### Décision validée
+- Direction retenue : concept 01, G en ruban replié; conserver sa silhouette et la géométrie du tracé.
+- Palette de marque : violet principal #6600FF, accent #A885FF.
+- Variante claire : surface blanche/nacrée, halos chromatiques lavande, G violet avec reflets de verre.
+- Variante sombre : fond noir/violet profond, G violet lumineux, reflets et ombres adaptés au contraste.
+- Aucun ticket illustratif, texte, ou motif événementiel générique.
+
+### Implémentation
+- Remplacement des SVG source PWA par des versions vectorielles Liquid Glass clair/sombre.
+- Ajout de variantes maskable clair/sombre avec zone de sécurité (symbole réduit à 78%).
+- Génération des PNG iOS/PWA/favicon avec Sharp depuis les SVG au démarrage du build Vite, afin que les PNG distribués soient toujours synchronisés avec les sources.
+- Détection de prefers-color-scheme pour les liens favicon et Apple Touch Icon; thème clair par défaut et métadonnées de couleur sombre dans le manifeste.
+- Aucun changement de dépendance, lockfile, backend/API, données ou parcours « Explorer par catégorie ».
+
+### Fichiers touchés
+- public/icon.svg
+- public/icon-dark.svg (nouveau)
+- public/icon-maskable.svg
+- public/icon-maskable-dark.svg (nouveau)
+- scripts/generate-pwa-icons.cjs
+- vite.config.ts
+- index.html
+- FRONTEND_MEMORY.md
+
+### Validation
+- SVG clair/sombre et rendus PNG 180×180 générés localement avec Sharp et inspectés visuellement.
+- Le script de génération raster a réussi localement.
+- Build complet Vite, lint, typecheck, test PWA installable et validation sur iOS 27 réel : non exécutés à cette étape.
+- Le manifeste Web ne garantit pas la sélection d'une image selon le thème; les liens HTML Apple Touch Icon/favicon déclarent les variantes via prefers-color-scheme. L'icône PWA de manifeste reste le visuel clair par défaut.
+- Branche FRONTEND-iA confirmée avant écriture; pas de PR.

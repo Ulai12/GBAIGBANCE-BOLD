@@ -2,11 +2,13 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
     <link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-dark.png" media="(prefers-color-scheme: dark)" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f5f0" />
+    <meta name="theme-color" content="#FFFFFF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -26,7 +28,7 @@
         root.style.colorScheme = dark ? 'dark' : 'light';
         root.dataset.themeMode = mode;
         document.querySelector('meta[name="theme-color"]')
-          ?.setAttribute('content', dark ? '#141216' : '#f7f5f0');
+          ?.setAttribute('content', dark ? '#08060D' : '#FFFFFF');
       })();
     </script>
     <meta name="description" content="Gbaigbance — La plateforme événementielle africaine premium. Découvrez, réservez et participez aux meilleurs événements au Togo, Bénin et en Afrique francophone." />
