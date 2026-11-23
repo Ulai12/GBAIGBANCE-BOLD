@@ -27,6 +27,10 @@ import { GlassPanel } from '@/components/glass';
  *   Intégration de Liquid Glass via <GlassPanel radius="capsule" interactive>
  *   offrant une réfraction GPU physique sur les terminaux compatibles et un
  *   repli CSS Apple (backdrop-filter haute saturation) sur les autres appareils.
+ *
+ * Responsive 320px :
+ *   Labels et padding réduits sous 360px pour éviter le débordement
+ *   en grille 5 colonnes, tout en gardant les zones tactiles ≥ 44px.
  */
 
 export type Tab =
@@ -210,10 +214,10 @@ export function BottomNav({
           )}
         </div>
 
-        {/* Micro-label ergonomique haute lisibilité */}
+        {/* Micro-label ergonomique — taille réduite sous 360px pour grilles 5 cols */}
         <span
           className={[
-            'relative z-10 mt-0.5 text-[11px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-1',
+            'relative z-10 mt-0.5 text-[10px] min-[360px]:text-[11px] font-bold tracking-tight transition-all duration-300 leading-none truncate max-w-full px-0.5 min-[360px]:px-1',
             isActive
               ? 'text-[#6600FF] dark:text-purple-300 font-extrabold'
               : 'text-gray-500 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-white',
@@ -229,7 +233,7 @@ export function BottomNav({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-4 transition-all duration-300 ${
+      className={`fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none px-2 min-[360px]:px-4 transition-all duration-300 ${
         isModalOpen ? 'opacity-0 invisible pointer-events-none translate-y-12' : 'opacity-100 visible'
       }`}
       aria-hidden={isModalOpen ? 'true' : undefined}
@@ -298,7 +302,7 @@ export function BottomNav({
                   onPointerLeave={() => setPressed(null)}
                   aria-label={createLabel}
                   className={[
-                    'group relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer select-none',
+                    'group relative w-10 h-10 min-[360px]:w-11 min-[360px]:h-11 rounded-full flex items-center justify-center cursor-pointer select-none',
                     'transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#6600FF] motion-reduce:transition-none',
                     pressed === 'create'
                       ? 'scale-[0.88] brightness-90'
@@ -328,7 +332,7 @@ export function BottomNav({
                   />
                 </button>
 
-                <span className="text-[10px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none">
+                <span className="text-[9px] min-[360px]:text-[10px] font-extrabold tracking-tight text-[#6600FF] dark:text-purple-300 mt-0.5 leading-none truncate max-w-full">
                   {createLabel}
                 </span>
               </div>
