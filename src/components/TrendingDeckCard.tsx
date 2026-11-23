@@ -26,12 +26,11 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const { language, t } = useApp();
   const liked = isLiked(event.id);
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-260, 0, 260], [-10, 0, 10]);
+  const rotate = useTransform(x, [-260, 0, 260], [-7, 0, 7]);
   const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
   const dragging = useRef(false);
   const offset = index;
-  const isBehind = !active;
 
   // Visual stack styling for depth
   const stackScale = 1 - Math.min(offset, 2) * 0.05;
