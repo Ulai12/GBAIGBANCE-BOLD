@@ -95,10 +95,10 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
         className="
           gba-feed-item gba-contain-content
           group relative isolate w-full
-          aspect-[0.78] sm:aspect-[0.82]
-          overflow-hidden rounded-[1.5rem]
+          aspect-[0.76] sm:aspect-[0.82]
+          overflow-hidden rounded-[1.75rem] border border-white/10
           bg-neutral-100 dark:bg-[#1E172E] text-white
-          shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+          shadow-[0_14px_36px_rgba(18,12,32,0.16)]
         "
       >
         {/* IMAGE */}
@@ -119,10 +119,10 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
         </motion.div>
 
         {/* GRADIENT OVERLAY */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
         {/* CONTENT LAYER */}
-        <div className="absolute inset-0 flex flex-col justify-between p-3">
+        <div className="absolute inset-0 flex flex-col justify-between p-3.5 sm:p-4">
 
           {/* TOP LAYER */}
           <div className="flex flex-col gap-1.5">
@@ -223,7 +223,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
 
           {/* LOCATION */}
           <div className="flex min-w-0 items-center gap-1">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#a78dfa]"/>
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#C4B5FD]"/>
             <span className="truncate text-[11px] font-medium leading-tight text-white/90">
               {event.location_name || event.city || t('events', 'locationToConfirm')}
             </span>
