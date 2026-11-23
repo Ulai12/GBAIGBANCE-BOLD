@@ -15,11 +15,8 @@ import { SmartImage } from '@/components/SmartImage';
 import { OptimisticHeartButton } from '@/components/OptimisticHeartButton';
 import { getDefaultEventCover } from '@/utils/defaultImages';
 import { formatCurrency } from '@/utils/format';
-import { buildResponsiveImageSources } from '@/utils/imageOptimizer';
+import { preloadResponsiveImages } from '@/utils/preloadResponsiveImages';
 import { useDataSaver } from '@/hooks/useDataSaver';
-
-// Évite de relancer le préchargement d'une même couverture à chaque rendu.
-const preloadedFeaturedImages = new Set<string>();
 
 interface FeaturedCarouselProps {
   events: Event[];
@@ -108,51 +105,27 @@ export function FeaturedCarousel({
     };
   }, [currentIndex, isPaused, isDocumentVisible, total, nextSlide]);
 
-  // Précharger uniquement les deux couvertures voisines, à basse priorité.
-  // Le changement de slide n'attend jamais le réseau ni le décodage de l'image.
+  // Précharger les couvertures voisines sans jamais retarder le changement de carte.
   useEffect(() => {
-    if (!isDocumentVisible || total <= 1 || typeof window === 'undefined') return;
+    if (!isDocumentVisible || total <= 1) return;
 
     const adjacentIndexes = [
       (safeIndex + 1) % total,
       (safeIndex - 1 + total) % total,
     ];
-    const pendingImages: HTMLImageElement[] = [];
-
-    adjacentIndexes.forEach((index) => {
+    const adjacentUrls = adjacentIndexes.map((index) => {
       const event = featuredList[index];
-      if (!event) return;
-      const url = event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title);
-      if (!url) return;
-
-      const sources = buildResponsiveImageSources(
-        url,
-        isDataSaverActive ? [240, 480] : [480, 768, 1080, 1440],
-        '(max-width: 768px) 100vw, 90vw',
-        isDataSaverActive
-      );
-      const cacheKey = sources.src || url;
-      if (preloadedFeaturedImages.has(cacheKey)) return;
-      preloadedFeaturedImages.add(cacheKey);
-
-      const image = new window.Image();
-      pendingImages.push(image);
-      image.decoding = 'async';
-      image.fetchPriority = 'low';
-      image.sizes = sources.sizes;
-      if (sources.srcSetWebp) image.srcset = sources.srcSetWebp;
-      image.src = sources.src;
-      image.decode().catch(() => {
-        // Le composant visible conserve son propre fallback en cas d'échec.
-        preloadedFeaturedImages.delete(cacheKey);
-      });
+      return event
+        ? event.cover_url || event.images?.[0] || getDefaultEventCover(event.id, event.category, event.title)
+        : null;
     });
 
-    return () => {
-      // Ne pas annuler les téléchargements : le cache navigateur pourra les réutiliser
-      // si l'utilisateur passe à la slide préchargée.
-      pendingImages.length = 0;
-    };
+    preloadResponsiveImages(adjacentUrls, {
+      widths: isDataSaverActive ? [240, 480] : [480, 768, 1080, 1440],
+      sizes: '(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1200px',
+      dataSaver: isDataSaverActive,
+      limit: 2,
+    });
   }, [safeIndex, featuredList, total, isDocumentVisible, isDataSaverActive]);
 
   if (featuredList.length === 0) return null;
@@ -172,11 +145,18 @@ export function FeaturedCarousel({
       ? categoryTranslation
       : rawCategory || t('events', 'event');
 
-  // Le contenu bascule vite ; l'image arrive indépendamment en arrière-plan.
+  // Une carte sort à gauche pendant que la suivante entre depuis la droite (et inversement).
+  // Une seule carte est visible à la fois : aucune pile ni attente du chargement d'image.
   const variants = {
-    enter: { x: 0, opacity: 0 },
-    center: { x: 0, opacity: 1 },
-    exit: { x: 0, opacity: 0 },
+    enter: (slideDirection: number) => ({
+      x: slideDirection >= 0 ? '100%' : '-100%',
+      opacity: 1,
+    }),
+    center: { x: '0%', opacity: 1 },
+    exit: (slideDirection: number) => ({
+      x: slideDirection >= 0 ? '-100%' : '100%',
+      opacity: 1,
+    }),
   };
 
   const coverUrl = currentEvent.cover_url || currentEvent.images?.[0] || getDefaultEventCover(currentEvent.id, currentEvent.category, currentEvent.title);
@@ -203,8 +183,8 @@ export function FeaturedCarousel({
             animate="center"
             exit="exit"
             transition={{
-              duration: prefersReducedMotion ? 0.01 : 0.12,
-              ease: 'easeOut',
+              duration: prefersReducedMotion ? 0.01 : 0.22,
+              ease: [0.22, 1, 0.36, 1],
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
