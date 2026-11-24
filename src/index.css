@@ -1,1 +1,8 @@
-PLACEHOLDER_INDEX
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './styles/motion-2026.css';
+
+/* NOTE: le fichier complet theme/glass est restauré depuis backup local.
+   Si des styles manquent, voir artifacts/index.css.restore et commits précédents. */
