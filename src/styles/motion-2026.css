@@ -1,1 +1,149 @@
-PLACEHOLDER_MOTION
+/* ==========================================================================
+   GBAIGBANCE — Motion & Perf 2026
+   Scroll-driven animations (0 JS) + View Transitions + content-visibility fort
+   Refs: CSS Scroll-Driven Animations, View Transitions API, CWV 2026
+   ========================================================================== */
+
+/* --- View Transitions (SPA / navigation fluide) --- */
+@supports (view-transition-name: none) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  ::view-transition-group(*) {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+.gba-vt-card {
+  view-transition-name: gba-card;
+}
+.gba-vt-header {
+  view-transition-name: gba-header;
+}
+
+/* --- Scroll-driven reveal (compositor, zéro JS) --- */
+@keyframes gba-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .gba-reveal {
+    animation: gba-reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 28%;
+  }
+
+  .gba-reveal-stagger > * {
+    animation: gba-reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 32%;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+}
+
+@supports not (animation-timeline: view()) {
+  .gba-reveal {
+    animation: gba-reveal-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+/* --- content-visibility renforcé (syntaxe 2026) --- */
+.gba-feed-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+  contain-intrinsic-block-size: auto 260px;
+}
+
+.gba-feed-item:nth-child(-n + 3) {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+  contain-intrinsic-block-size: none;
+}
+
+@media (max-width: 640px) {
+  .gba-feed-item {
+    contain-intrinsic-size: auto 280px;
+    contain-intrinsic-block-size: auto 280px;
+  }
+}
+
+.gba-section-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 360px;
+  contain-intrinsic-block-size: auto 360px;
+}
+
+.gba-contain-content {
+  contain: content;
+}
+
+.gba-contain-paint {
+  contain: layout paint style;
+}
+
+/* --- Mobile GPU budget (glass) --- */
+@media (max-width: 640px) {
+  :root {
+    --glass-intensity: 0.42;
+    --glass-blur: 8px;
+    --glass-saturate: 112%;
+  }
+
+  .liquid-glass-header,
+  .glass-surface,
+  .glass,
+  .glass-card,
+  .glass-ios,
+  .glass-floating-bar,
+  .search-bar,
+  .form-surface,
+  .bottom-nav {
+    backdrop-filter: blur(8px) saturate(112%);
+    -webkit-backdrop-filter: blur(8px) saturate(112%);
+  }
+
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-shimmer-text,
+  .animate-laser-scan {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --glass-blur: 6px;
+  }
+}
+
+/* --- Accessibilité mouvement --- */
+@media (prefers-reduced-motion: reduce) {
+  .gba-reveal,
+  .gba-reveal-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* --- Data saver : couper blur + anims --- */
+.gba-data-saver .gba-reveal,
+.gba-data-saver .gba-reveal-stagger > * {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
