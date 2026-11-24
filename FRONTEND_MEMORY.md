@@ -152,3 +152,18 @@ Prochaine priorité : localiser progressivement ces composants enfants et harmon
 - Aucun changement dans `HomeScreen` ni dans « Explorer par catégorie ».
 - Commit code : d6b75dc14e93efa4e86250854808098925503a8b sur `FRONTEND-iA`.
 - Validation : code source restauré depuis le commit de référence puis retouché de façon ciblée ; QA visuelle iPhone/Safari et test du build restent à effectuer.
+
+## 2026-11-24 — Localisation Metrics Chart et Refunds Tab (P2)
+- Tâche poursuivie : localisation progressive du tableau de bord organisateur.
+- Objectif : rendre bilingues (FR/EN) les composants enfants clés du dashboard — graphiques de performances et onglet remboursements — pour une expérience cohérente selon la langue active.
+- Ajout des clés `metrics.*` et `refunds.*` dans `src/locales/fr/organizer.json` et `src/locales/en/organizer.json`.
+- `OrganizerMetricsChart.tsx` : import de `useApp`, remplacement de tous les libellés hardcodés (titre, KPIs, périodes, tooltips, états vide/chargement/erreur, hints) par `t('organizer', 'metrics.xxx')` avec `.replace` pour les interpolations `{count}` / `{price}`.
+- `OrganizerRefundsTab.tsx` : même approche pour titres, boutons, toasts, modal de refus, états loading/empty.
+- Aucun changement de logique métier, backend, styles ou « Explorer par catégorie ».
+- Commits : e1d0a3e (FR JSON), 6f494d9 (EN JSON), 68075fc (Metrics), 3c8a0d8 (Refunds) sur FRONTEND-iA.
+- Vérification distante : fichiers relus, tailles augmentées (Metrics ~17.8ko → 18.3ko, Refunds ~11.0ko → 11.3ko), contenu réel avec `t()` présent, pas de troncature.
+- Non vérifié : build/typecheck/lint, switch de langue en runtime, rendu visuel mobile.
+- Prochaine étape : localiser TicketScannerModal et EventManagementModal par petits commits, ou harmoniser les états loading/empty restants.
+
+## Tâche active
+Localisation des composants enfants du OrganizerDashboard (suite).
