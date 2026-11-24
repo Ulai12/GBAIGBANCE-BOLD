@@ -777,18 +777,18 @@ export function HomeScreen({
 
       {/* SECTION 3: Tendances de la semaine (placé sous la section catégorie) */}
       {loading && trending.length === 0 ? (
-        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
+        <section className="mt-8 px-5 gba-section-defer" aria-label={t('events', 'trending')}>
           <TrendingDeckSkeleton />
         </section>
       ) : trending.length > 0 ? (
-        <section className="mt-8 px-5" aria-label={t('events', 'trending')}>
+        <section className="mt-8 px-5 gba-section-defer" aria-label={t('events', 'trending')}>
           <TrendingDeck events={trending} onEventClick={onEventClick} onBookEvent={onBookEvent || onEventClick} />
         </section>
       ) : null}
 
       {/* SECTION 4: Proximité / Sorties locales (Strictement masqué si la localisation n'est pas autorisée) */}
       {userLocation.isActual && nearbySectionData.events.length > 0 && (
-        <section className="mt-8 px-5" aria-label={nearbySectionData.title}>
+        <section className="mt-8 px-5 gba-section-defer" aria-label={nearbySectionData.title}>
           {/* En-tête aérée et ergonomique (iOS 27 - Zéro troncature) */}
           <div className="flex flex-col gap-1.5 mb-3.5">
             <div className="flex items-center justify-between gap-2">
@@ -820,7 +820,7 @@ export function HomeScreen({
           </div>
 
           {/* Tuiles défilables horizontales modernes compactes */}
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5">
+          <div className="flex gap-3.5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1.5 gba-scroll-fade">
             {nearbySectionData.events.map((event) => (
               <NearbyEventTile
                 key={event.id}
@@ -836,7 +836,7 @@ export function HomeScreen({
 
       {/* SECTION 5: Recommandé pour vous (Algorithme fondé sur les goûts, affinités et tendances) */}
       {recommendedEvents.length > 0 && (
-        <section className="mt-9 px-5" aria-label={t('events', 'recommended')}>
+        <section className="mt-9 px-5 gba-section-defer" aria-label={t('events', 'recommended')}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-[#6600FF] dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">

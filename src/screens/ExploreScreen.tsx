@@ -476,7 +476,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
       </div>
 
       {/* Contenu principal : Grille Événements OU Liste Participants */}
-      <div className="px-5 mt-5">
+      <div className="px-5 mt-5 gba-section-defer">
         {searchMode === 'events' ? (
           loading && events.length === 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
@@ -503,7 +503,7 @@ export function ExploreScreen({ onEventClick, onUserClick }: ExploreScreenProps)
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 gba-reveal-stagger">
               {events.map((event) => (
                 <EventCard
                   key={event.id}

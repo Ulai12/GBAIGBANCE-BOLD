@@ -197,7 +197,7 @@ function AppContent() {
         </Routes>
       </Suspense>
       {isTabScreen && (
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} ticketCount={liveTicketCount} canCreate={!!(user && (user.role === 'organizer' || user.role === 'artist'))} onCreateClick={() => navigate('/create')} />
+        <BottomNav active={activeTab} onNavigate={handleTabChange} ticketCount={liveTicketCount} canCreate={!!(user && (user.role === 'organizer' || user.role === 'artist'))} onCreate={() => navigate('/create')} />
       )}
       <ToastContainer toasts={toasts} onClose={closeToast} />
       <EdgeSwipeBack onBack={handleSmartBack} />
