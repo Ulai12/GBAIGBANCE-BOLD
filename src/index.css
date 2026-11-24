@@ -697,7 +697,15 @@ body.gba-modal-open [aria-label="Navigation principale"] {
 }
 
 
-/* Icônes de recherche lisibles dans tous les champs et panneaux en thème sombre. */
-.dark svg.lucide-search {
+/* Les icônes de recherche de la navigation conservent leurs couleurs d'origine (actif/inactif). */
+.dark nav svg.lucide-search {
+  color: #9ca3af;
+}
+.dark nav button[aria-current="page"] svg.lucide-search {
+  color: #d8b4fe;
+}
+
+/* Les autres icônes de recherche restent lisibles dans les panneaux en thème sombre. */
+.dark svg.lucide-search:not(nav svg.lucide-search) {
   color: #C4B5FD;
 }
