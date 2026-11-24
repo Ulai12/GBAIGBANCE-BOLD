@@ -71,13 +71,15 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
       drag={active ? 'x' : false}
       dragConstraints={{ left: -280, right: 280 }}
-      dragElastic={0.22}
-      dragSnapToOrigin
+      dragDirectionLock
+      dragElastic={0.18}
+      dragMomentum={false}
       onDragStart={() => { dragging.current = true; }}
       onDragEnd={(_, info) => {
-        const shouldAdvance = Math.abs(info.offset.x) > 80 || Math.abs(info.velocity.x) > 500;
+        const shouldAdvance = Math.abs(info.offset.x) > 56 || Math.abs(info.velocity.x) > 420;
         if (shouldAdvance) onAdvance();
-        window.setTimeout(() => { dragging.current = false; }, 0);
+        // Bloque le clic synthétique après le geste pour ne pas ouvrir la carte par erreur.
+        window.setTimeout(() => { dragging.current = false; }, 180);
       }}
       onClick={() => {
         if (!dragging.current) onOpen();
@@ -110,7 +112,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
             e.stopPropagation();
             toggleLike(event.id);
           }}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/30 backdrop-blur-xl transition-transform hover:scale-110 active:scale-90 text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/65 transition-colors hover:bg-black/80 active:scale-90 text-white"
         >
           <Heart className={`h-5 w-5 transition-colors ${liked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
         </button>
