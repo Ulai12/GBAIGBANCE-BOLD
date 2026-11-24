@@ -4,35 +4,35 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Correction des favoris (toggle_event_like + cohérence likes_count).
+Durcissement sécurité : REVOKE EXECUTE FROM anon sur les RPCs restantes qui exigent auth ou sont internes.
 
 ## Objectif
-Rendre le like/favori fiable : compteur basé sur la table source `event_likes`, pas de double-comptage, pas d'écrasement des compteurs seed des démos.
+Empêcher les appels anonymes aux fonctions book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification et fonctions internes (triggers).
 
 ## Progression
-- Diagnostic : ancienne RPC avait une condition `NOT EXISTS` après INSERT qui empêchait le +1 ; un recount partiel suivait. Données seed démo : likes_count affiché ≠ 0 lignes réelles (volontaire marketing).
-- Migration 20261123130000 appliquée et versionnée.
-- Nouvelle logique : DELETE ou INSERT ON CONFLICT DO NOTHING, puis COUNT(*) comme source de vérité ; UPDATE likes_count seulement si `is_demo = false`.
-- GRANT authenticated + service_role ; REVOKE anon (déjà en place).
-- Client existant (`toggleEventLike` → RPC, FavoritesContext optimiste) inchangé côté front.
+- Advisors security : plusieurs SECURITY DEFINER encore callable par anon.
+- Vérification des corps : book_ticket / cancel_ticket / accept_collaboration / submit_event_report testent auth.uid() ; create_notification et triggers internes ne doivent pas être appelés via RPC public.
+- Migration 20261124120000 appliquée sur Supabase + versionnée.
+- ACL confirmée : plus de grant anon, seulement authenticated + service_role.
 
 ## Fichiers concernés
-- supabase/migrations/20261123130000_fix_toggle_event_like_and_likes_count.sql
+- supabase/migrations/20261124120000_revoke_anon_execute_remaining_auth_functions.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-23 — Fix toggle_event_like + versionnement. Mémoire mise à jour.
+2026-11-24 — Migration revoke anon EXECUTE sur RPCs restantes appliquée et versionnée. Mémoire mise à jour.
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 - Tester un like réel sur un événement non-démo (likes_count doit suivre).
+- Revue progressive des grants authenticated sur SECURITY DEFINER.
 
 ## Vérifications
-- Fonction distante = nouvelle définition. OK.
-- Fichier migration distant présent (~1.9 ko). OK.
+- Migration appliquée (success). OK.
+- ACL post-migration : pas de anon. OK.
+- Fichier migration distant présent (816 o). OK.
 - Aucune troncature cette session.
-- Table event_likes : PK (event_id, user_id), RLS select public / insert-delete own.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
@@ -57,6 +57,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261124120000_revoke_anon_execute_remaining_auth_functions (appliquée 2026-11-24)
 - 20261123130000_fix_toggle_event_like_and_likes_count (appliquée 2026-11-23)
 - 20261123120000_revoke_anon_execute_on_auth_required_functions (appliquée 2026-11-23)
 - 20261123010000_fix_event_view_daily_rls_and_duplicate_index (appliquée 2026-11-23)
@@ -90,6 +91,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Revue grants SECURITY DEFINER authenticated.
 
 ## Historique
+- 2026-11-24 : Revoke EXECUTE anon sur RPCs restantes (book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification + internes).
 - 2026-11-23 : Fix toggle_event_like (compteur fiable, protection is_demo).
 - 2026-11-23 : Revoke EXECUTE anon sur fonctions auth-required (batch ~22).
 - 2026-11-23 : Policy RLS event_view_daily + drop index dupliqué tickets.
@@ -109,7 +111,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Indexes FK complétés.
 - RLS auth initplan optimisée.
 - event_view_daily : policy service_role en place.
-- EXECUTE anon révoqué sur les RPCs qui exigent auth.uid().
+- EXECUTE anon révoqué sur les RPCs qui exigent auth.uid() (batch complété).
 
 ## Taches À faire
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
