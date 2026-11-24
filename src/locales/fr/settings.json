@@ -81,7 +81,15 @@
     "iosShare": "Touchez le bouton Partager dans la barre du navigateur Safari.",
     "iosAdd": "Faites défiler puis choisissez « Sur l'écran d'accueil ».",
     "iosConfirm": "Touchez Ajouter en haut à droite pour confirmer.",
-    "understood": "J'ai compris !"
+    "understood": "J'ai compris !",
+    "checkForUpdates": "Rechercher une mise à jour",
+    "checkingUpdates": "Vérification en cours…",
+    "manualUpdateDescription": "Vérifie et installe la dernière version disponible.",
+    "upToDate": "L'application est déjà à jour.",
+    "updatePreparing": "Nouvelle version détectée. Téléchargement en cours ; elle sera proposée dès qu'elle sera prête.",
+    "updateOffline": "Connecte-toi à Internet pour rechercher une mise à jour.",
+    "updateUnavailable": "Le service de mise à jour n'est pas encore disponible. Réessaie dans un instant.",
+    "updateCheckFailed": "Impossible de vérifier les mises à jour. Réessaie plus tard."
   },
   "notifSettings": {
     "title": "Réglages notifications",
