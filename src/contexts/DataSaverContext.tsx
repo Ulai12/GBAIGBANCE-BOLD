@@ -100,6 +100,15 @@ export const DataSaverProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return isSaveDataHeaderDetected || isRestrictedConnection;
   }, [preference, isSaveDataHeaderDetected, isRestrictedConnection]);
 
+  // Active les optimisations CSS associées au mode économie sur toute l'application.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('gba-data-saver', isDataSaverActive);
+    return () => {
+      document.documentElement.classList.remove('gba-data-saver');
+    };
+  }, [isDataSaverActive]);
+
   const setPreference = useCallback((pref: DataSaverPreference) => {
     setPreferenceState(pref);
     try {
