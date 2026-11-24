@@ -18,9 +18,15 @@ export interface GateScanRecord {
   isOffline?: boolean;
 }
 
+export type GateValidationMessageKey =
+  | 'emptyQr' | 'qrEngine' | 'noEvents' | 'validOnline' | 'alreadyUsedOnline'
+  | 'cancelledOnline' | 'wrongEvent' | 'invalidOnline' | 'alreadyUsedOffline'
+  | 'cancelledOffline' | 'validOffline' | 'verifiedOffline' | 'unknownQrOnline' | 'unknownQrOffline';
+
 export interface GateValidationResult {
   status: 'valid' | 'already_used' | 'invalid' | 'wrong_event' | 'cancelled';
   message: string;
+  messageKey?: GateValidationMessageKey;
   participantName?: string;
   ticketType?: string;
   seatInfo?: string | null;
@@ -213,6 +219,7 @@ export async function processTicketGateValidation(params: {
     return {
       status: 'invalid',
       message: 'Code QR vide ou illisible',
+      messageKey: 'emptyQr',
     };
   }
 
@@ -225,6 +232,7 @@ export async function processTicketGateValidation(params: {
     return {
       status: qrCheck.reason?.includes('autre événement') ? 'wrong_event' : 'invalid',
       message: qrCheck.reason || 'Billet invalide ou contrefait (Moteur Rust)',
+      messageKey: qrCheck.reason?.includes('autre événement') ? 'wrongEvent' : 'qrEngine',
     };
   }
 
@@ -266,6 +274,7 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'invalid',
           message: 'Aucun événement disponible pour valider ce billet',
+          messageKey: 'noEvents',
         };
       }
     }
@@ -278,7 +287,8 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'valid',
           message: res.message || 'Billet validé avec succès ! Entrée accordée 🎉',
-          participantName: res.participant_name || 'Participant',
+          messageKey: 'validOnline',
+          participantName: res.participant_name || undefined,
           ticketType: ticket?.ticket_type ? ticket.ticket_type.toUpperCase() : 'STANDARD',
           seatInfo: ticket?.seat_info || null,
           ticket,
@@ -294,7 +304,8 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'already_used',
           message: 'Billet déjà scanné et utilisé à l’entrée !',
-          participantName: res.participant_name || 'Participant',
+          messageKey: 'alreadyUsedOnline',
+          participantName: res.participant_name || undefined,
           ticketType: ticket?.ticket_type ? ticket.ticket_type.toUpperCase() : undefined,
           ticket,
           eventTitle: targetEvent?.title,
@@ -306,6 +317,7 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'cancelled',
           message: 'Ce billet a été annulé ou remboursé',
+          messageKey: 'cancelledOnline',
           eventTitle: targetEvent?.title,
           isOffline: false,
         };
@@ -324,6 +336,7 @@ export async function processTicketGateValidation(params: {
           return {
             status: 'wrong_event',
             message: `Billet valide mais prévu pour un autre événement : "${otherEv?.title || 'Autre date'}"`,
+            messageKey: 'wrongEvent',
             eventTitle: otherEv?.title,
             isOffline: false,
           };
@@ -335,6 +348,7 @@ export async function processTicketGateValidation(params: {
       return {
         status: 'invalid',
         message: res.error || 'Billet introuvable ou invalide pour cet événement',
+        messageKey: 'invalidOnline',
         eventTitle: targetEvent?.title,
         isOffline: false,
       };
@@ -369,6 +383,7 @@ export async function processTicketGateValidation(params: {
           return {
             status: 'already_used',
             message: 'Billet déjà validé (détecté hors-ligne)',
+            messageKey: 'alreadyUsedOffline',
             participantName: match.participant_name,
             ticketType: match.ticket_type.toUpperCase(),
             seatInfo: match.seatInfo,
@@ -379,6 +394,7 @@ export async function processTicketGateValidation(params: {
           return {
             status: 'cancelled',
             message: 'Billet annulé (base hors-ligne)',
+            messageKey: 'cancelledOffline',
             isOffline: true,
           };
         }
@@ -395,6 +411,7 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'valid',
           message: 'Billet validé hors-ligne ⚡ (Synchronisation dès retour du réseau)',
+          messageKey: 'validOffline',
           participantName: match.participant_name,
           ticketType: match.ticket_type.toUpperCase(),
           seatInfo: match.seatInfo,
@@ -411,6 +428,7 @@ export async function processTicketGateValidation(params: {
         return {
           status: 'already_used',
           message: 'Pass cryptographique déjà scanné hors-ligne à ce guichet !',
+          messageKey: 'alreadyUsedOffline',
           ticketType: (qrCheck.tier || 'standard').toUpperCase(),
           isOffline: true,
         };
@@ -426,7 +444,8 @@ export async function processTicketGateValidation(params: {
       return {
         status: 'valid',
         message: 'Pass vérifié hors-ligne par signature Rust 🔐 (Sync auto en attente)',
-        participantName: 'Participant vérifié',
+        messageKey: 'verifiedOffline',
+        participantName: undefined,
         ticketType: (qrCheck.tier || 'standard').toUpperCase(),
         isOffline: true,
       };
@@ -438,6 +457,7 @@ export async function processTicketGateValidation(params: {
     message: isOnline
       ? 'Code QR non reconnu comme billet Gbaïgbancê'
       : 'Billet non trouvé dans le cache local hors-ligne',
+    messageKey: isOnline ? 'unknownQrOnline' : 'unknownQrOffline',
     isOffline: !isOnline,
   };
 }

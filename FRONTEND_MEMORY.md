@@ -182,3 +182,16 @@ Localisation des composants enfants du OrganizerDashboard (suite).
 
 ## Tâche active
 Localisation des composants enfants du OrganizerDashboard (suite) — TicketScannerModal.
+
+
+## 2026-11-24 — Localisation complète du scanner de billets (P2)
+- Poursuite du chantier documenté : TicketScannerModal, après Metrics, Refunds et EventManagementModal.
+- `src/components/TicketScannerModal.tsx` : textes visibles, états réseau, actions, titres, aides, erreurs caméra, toasts, saisie manuelle et historique localisés via le domaine `organizer`. Les boutons à icône reçoivent des `aria-label`; le sélecteur d'événement et les champs de saisie/recherche sont nommés pour les technologies d'assistance.
+- Les heures d'historique suivent la langue active FR/EN. Les anciens enregistrements avec valeurs de secours françaises (« Participant », « Participant vérifié ») sont affichés dans la langue courante.
+- `src/services/ticketScannerService.ts` : ajout d'un `messageKey` typé aux 14 issues de validation (en ligne/hors ligne, billet valide, déjà utilisé, annulé, mauvais événement, QR illisible/inconnu). La logique de validation, les appels RPC, le cache et la synchronisation restent inchangés. Les noms de secours sont gérés par l'interface.
+- Ajout des traductions FR/EN `scannerModal.*` dans `src/locales/fr/organizer.json` et `src/locales/en/organizer.json`.
+- Aucun changement backend/API, schéma Supabase, dépendance, lockfile ou « Explorer par catégorie ».
+- UIAudit/Superdesign : workflows non exposés dans les outils disponibles; aucun audit ou draft non effectué n'est revendiqué.
+- Vérifications statiques : JSON parsable, clés FR/EN identiques, 14 messageKey couvertes par les deux langues, aucune chaîne visible française restante dans le composant.
+- Non vérifié à ce stade : build/typecheck/lint, rendu visuel, test caméra réel, saisie manuelle, import photo, états réseau et changement de langue sur mobile.
+- Prochaine priorité : build Preview puis QA du scanner sur mobile (caméra, saisie, photo, online/offline, historique et bascule FR/EN).

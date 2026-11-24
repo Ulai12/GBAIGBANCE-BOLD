@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import jsQR from 'jsqr';
 import { haptic } from '@/hooks/useHaptics';
+import { useApp } from '@/hooks/useApp';
 import {
   gateAudio,
   processTicketGateValidation,
@@ -54,12 +55,13 @@ export function TicketScannerModal({
   initialEventId,
   onToast,
 }: TicketScannerModalProps) {
+  const { t, language } = useApp();
   const [selectedEventId, setSelectedEventId] = useState<string>(initialEventId || (events[0]?.id ?? 'all'));
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
-  const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
+  const [cameraPermissionError, setCameraPermissionError] = useState<'cameraUnsupported' | 'cameraDenied' | 'cameraStartFailed' | null>(null);
 
   // Scan state
   const [isScanning, setIsScanning] = useState(true);
@@ -111,24 +113,24 @@ export function TicketScannerModal({
     const { synced, failed } = await syncOfflineGateQueue();
     setIsSyncing(false);
     if (synced > 0) {
-      onToast({ message: `${synced} billet(s) synchronisé(s) avec succès !`, type: 'success' });
+      onToast({ message: t('organizer', 'scannerModal.messages.synced').replace('{count}', String(synced)), type: 'success' });
       loadStats();
     }
     if (failed > 0) {
-      onToast({ message: `${failed} billet(s) en attente de synchronisation`, type: 'info' });
+      onToast({ message: t('organizer', 'scannerModal.messages.syncPending').replace('{count}', String(failed)), type: 'info' });
     }
-  }, [loadStats, onToast]);
+  }, [loadStats, onToast, t]);
 
   // Online / Offline listener
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      onToast({ message: 'Connexion rétablie ! Synchronisation du guichet...', type: 'info' });
+      onToast({ message: t('organizer', 'scannerModal.messages.connectionRestored'), type: 'info' });
       triggerSync();
     };
     const handleOffline = () => {
       setIsOnline(false);
-      onToast({ message: 'Mode Guichet Hors-Ligne activé ⚡', type: 'info' });
+      onToast({ message: t('organizer', 'scannerModal.messages.offlineMode'), type: 'info' });
     };
 
     window.addEventListener('online', handleOnline);
@@ -137,7 +139,7 @@ export function TicketScannerModal({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [onToast, triggerSync]);
+  }, [onToast, triggerSync, t]);
 
   useEffect(() => {
     if (open) {
@@ -158,7 +160,7 @@ export function TicketScannerModal({
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setCameraPermissionError("Votre navigateur ne permet pas l'accès direct à la caméra.");
+        setCameraPermissionError('cameraUnsupported');
         return;
       }
 
@@ -190,11 +192,7 @@ export function TicketScannerModal({
     } catch (err) {
       console.error('Camera access error:', err);
       const isDenied = (err as Error)?.name === 'NotAllowedError' || (err as Error)?.name === 'PermissionDeniedError';
-      setCameraPermissionError(
-        isDenied
-          ? "Accès caméra refusé. Autorisez l'accès dans vos paramètres pour scanner."
-          : "Impossible de démarrer la caméra. Utilisez la saisie manuelle ou l'import photo."
-      );
+      setCameraPermissionError(isDenied ? 'cameraDenied' : 'cameraStartFailed');
       setCameraActive(false);
     }
   }, [cameraFacing]);
@@ -226,7 +224,7 @@ export function TicketScannerModal({
         setTorchOn(nextState);
         haptic.selection();
       } catch {
-        onToast({ message: 'Torche indisponible sur cet appareil', type: 'info' });
+        onToast({ message: t('organizer', 'scannerModal.messages.torchUnavailable'), type: 'info' });
       }
     }
   };
@@ -286,12 +284,12 @@ export function TicketScannerModal({
         qrCode: code,
         ticketId: result.ticket?.id,
         eventId: selectedEventId,
-        eventTitle: result.eventTitle || currentEvent?.title || 'Événement',
+        eventTitle: (result.eventTitle && result.eventTitle !== 'Événement' ? result.eventTitle : currentEvent?.title) || t('organizer', 'scannerModal.unknownEvent'),
         status: result.status,
-        participantName: result.participantName || 'Participant',
+        participantName: result.participantName || t('organizer', 'scannerModal.unknownParticipant'),
         ticketType: result.ticketType,
         seatInfo: result.seatInfo,
-        scannedAt: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        scannedAt: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : 'fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         isOffline: result.isOffline,
       };
 
@@ -325,7 +323,7 @@ export function TicketScannerModal({
 
       setIsProcessing(false);
     },
-    [isProcessing, selectedEventId, events]
+    [isProcessing, selectedEventId, events, language, t]
   );
 
   const resumeScanning = () => {
@@ -418,10 +416,10 @@ export function TicketScannerModal({
             inversionAttempts: 'attemptBoth',
           });
           if (code && code.data) {
-            onToast({ message: 'QR Code détecté sur la photo !', type: 'info' });
+            onToast({ message: t('organizer', 'scannerModal.messages.qrDetected'), type: 'info' });
             handleValidateCode(code.data);
           } else {
-            onToast({ message: 'Aucun QR code lisible sur cette image', type: 'error' });
+            onToast({ message: t('organizer', 'scannerModal.messages.qrUnreadable'), type: 'error' });
             haptic.error();
           }
         }
@@ -445,6 +443,17 @@ export function TicketScannerModal({
 
   const percentScanned =
     stats.totalTickets > 0 ? Math.round((stats.scannedCount / stats.totalTickets) * 100) : 0;
+
+  const localizedScanMessage = lastScannedResult
+    ? lastScannedResult.messageKey
+      ? t('organizer', `scannerModal.messages.${lastScannedResult.messageKey}`).replace(
+          '{event}',
+          lastScannedResult.eventTitle && lastScannedResult.eventTitle !== 'Événement'
+            ? lastScannedResult.eventTitle
+            : t('organizer', 'scannerModal.unknownEvent')
+        )
+      : lastScannedResult.message
+    : '';
 
   const filteredHistory = historyList.filter(
     (item) =>
@@ -472,13 +481,13 @@ export function TicketScannerModal({
             <button
               onClick={onClose}
               className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center backdrop-blur-md transition-all cursor-pointer"
-              aria-label="Fermer le scanner"
+              aria-label={t('organizer', 'scannerModal.closeScanner')}
             >
               <X className="w-5 h-5 text-white" />
             </button>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10">
               <Camera className="w-4 h-4 text-[#A855F7]" />
-              <span className="text-xs font-bold tracking-wide">Scanner de Billets</span>
+              <span className="text-xs font-bold tracking-wide"{t('organizer', 'scannerModal.title')}</span>
             </div>
           </div>
 
@@ -492,7 +501,7 @@ export function TicketScannerModal({
               }`}
             >
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              <span>{isOnline ? 'En ligne' : 'Hors-ligne'}</span>
+              <span>{isOnline ? t('organizer', 'scannerModal.online') : t('organizer', 'scannerModal.offline')}</span>
             </div>
 
             {/* Sync button for offline logs */}
@@ -500,7 +509,8 @@ export function TicketScannerModal({
               <button
                 onClick={triggerSync}
                 disabled={isSyncing}
-                title="Synchroniser les scans locaux"
+                title={t('organizer', 'scannerModal.syncLocalScans')}
+                aria-label={t('organizer', 'scannerModal.syncLocalScans')}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all cursor-pointer"
               >
                 <RefreshCw className={`w-4 h-4 text-white ${isSyncing ? 'animate-spin text-[#A855F7]' : ''}`} />
@@ -515,6 +525,7 @@ export function TicketScannerModal({
             <div className="relative flex-1 min-w-0">
               <select
                 value={selectedEventId}
+                aria-label={t('organizer', 'scannerModal.selectEvent')}
                 onChange={(e) => {
                   setSelectedEventId(e.target.value);
                   haptic.selection();
@@ -527,7 +538,7 @@ export function TicketScannerModal({
                   </option>
                 ))}
                 <option value="all" className="bg-zinc-900 text-white font-medium">
-                  🌐 Tous mes événements (Auto-détection)
+                  🌐 {t('organizer', 'scannerModal.allEvents')}
                 </option>
               </select>
               <ChevronDown className="w-4 h-4 text-white/60 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -572,22 +583,22 @@ export function TicketScannerModal({
             <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Accès Caméra</h3>
-            <p className="text-sm text-gray-300 max-w-xs mb-6">{cameraPermissionError}</p>
+            <h3 className="text-lg font-bold text-white mb-2"{t('organizer', 'scannerModal.cameraAccess')}</h3>
+            <p className="text-sm text-gray-300 max-w-xs mb-6">{cameraPermissionError && t('organizer', `scannerModal.messages.${cameraPermissionError}`)}</p>
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
                 onClick={startCamera}
                 className="w-full py-3 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 shadow-purple"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>Réessayer la caméra</span>
+                <span{t('organizer', 'scannerModal.retryCamera')}</span>
               </button>
               <button
                 onClick={() => setShowManualInput(true)}
                 className="w-full py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm active:scale-98 transition-all flex items-center justify-center gap-2"
               >
                 <Keyboard className="w-4 h-4" />
-                <span>Saisie manuelle du code</span>
+                <span{t('organizer', 'scannerModal.manualEntry')}</span>
               </button>
             </div>
           </div>
@@ -613,7 +624,7 @@ export function TicketScannerModal({
               <div className="absolute -bottom-10 left-0 right-0 text-center">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-medium text-white/80 border border-white/10">
                   <Sparkles className="w-3.5 h-3.5 text-[#A855F7] animate-spin" />
-                  Pointez le QR code du participant
+                  {t('organizer', 'scannerModal.pointQr')}
                 </span>
               </div>
             </div>
@@ -669,21 +680,21 @@ export function TicketScannerModal({
                     : 'text-rose-400'
                 }`}
               >
-                {lastScannedResult.status === 'valid' && 'Entrée Accordée 🎉'}
-                {lastScannedResult.status === 'already_used' && 'Billet Déjà Validé !'}
-                {lastScannedResult.status === 'wrong_event' && 'Mauvais Événement'}
-                {lastScannedResult.status === 'invalid' && 'Billet Invalide'}
-                {lastScannedResult.status === 'cancelled' && 'Billet Annulé'}
+                {lastScannedResult.status === 'valid' && t('organizer', 'scannerModal.resultTitle.valid')}
+                {lastScannedResult.status === 'already_used' && t('organizer', 'scannerModal.resultTitle.alreadyUsed')}
+                {lastScannedResult.status === 'wrong_event' && t('organizer', 'scannerModal.resultTitle.wrongEvent')}
+                {lastScannedResult.status === 'invalid' && t('organizer', 'scannerModal.resultTitle.invalid')}
+                {lastScannedResult.status === 'cancelled' && t('organizer', 'scannerModal.resultTitle.cancelled')}
               </h2>
 
-              <p className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{lastScannedResult.message}</p>
+              <p className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{localizedScanMessage}</p>
 
               {/* Attendee Details Card */}
               {lastScannedResult.participantName && (
                 <div className="w-full bg-white/5 rounded-2xl p-4 border border-white/10 mb-5 flex flex-col gap-2.5 text-left">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-purple-400" /> Participant
+                      <User className="w-3.5 h-3.5 text-purple-400" /> {t('organizer', 'scannerModal.attendee')}
                     </span>
                     <span className="font-bold text-white text-sm">
                       {lastScannedResult.participantName}
@@ -693,7 +704,7 @@ export function TicketScannerModal({
                   {lastScannedResult.ticketType && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
                       <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                        <TicketIcon className="w-3.5 h-3.5 text-purple-400" /> Formule
+                        <TicketIcon className="w-3.5 h-3.5 text-purple-400" /> {t('organizer', 'scannerModal.ticketType')}
                       </span>
                       <span className="font-extrabold text-xs px-2.5 py-0.5 rounded-full bg-[#6600FF]/20 text-purple-300 border border-[#6600FF]/40">
                         {lastScannedResult.ticketType}
@@ -703,7 +714,7 @@ export function TicketScannerModal({
 
                   {lastScannedResult.seatInfo && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Place / Siège</span>
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider"{t('organizer', 'scannerModal.seat')}</span>
                       <span className="font-mono text-xs text-white font-semibold">
                         {lastScannedResult.seatInfo}
                       </span>
@@ -712,9 +723,9 @@ export function TicketScannerModal({
 
                   {lastScannedResult.eventTitle && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Événement</span>
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider"{t('organizer', 'scannerModal.event')}</span>
                       <span className="text-xs text-gray-300 truncate max-w-[160px]">
-                        {lastScannedResult.eventTitle}
+                        {lastScannedResult.eventTitle === 'Événement' ? t('organizer', 'scannerModal.unknownEvent') : lastScannedResult.eventTitle}
                       </span>
                     </div>
                   )}
@@ -726,7 +737,7 @@ export function TicketScannerModal({
                 onClick={resumeScanning}
                 className="w-full py-3.5 rounded-2xl bg-white text-zinc-950 font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
               >
-                <span>Scanner le billet suivant</span>
+                <span{t('organizer', 'scannerModal.scanNext')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -741,7 +752,8 @@ export function TicketScannerModal({
           <button
             onClick={toggleTorch}
             disabled={!cameraActive || !torchAvailable}
-            title={torchAvailable ? "Allumer / Éteindre la torche" : "Torche non disponible sur cette caméra"}
+            title={torchAvailable ? t('organizer', 'scannerModal.toggleTorch') : t('organizer', 'scannerModal.torchUnavailableTitle')}
+            aria-label={torchAvailable ? t('organizer', 'scannerModal.toggleTorch') : t('organizer', 'scannerModal.torchUnavailableTitle')}
             className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
               !torchAvailable ? 'opacity-40 cursor-not-allowed' : ''
             } ${
@@ -757,7 +769,8 @@ export function TicketScannerModal({
           <button
             onClick={flipCamera}
             disabled={!cameraActive}
-            title="Basculer caméra avant / arrière"
+            title={t('organizer', 'scannerModal.switchCamera')}
+            aria-label={t('organizer', 'scannerModal.switchCamera')}
             className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white/80 hover:bg-white/10 transition-all cursor-pointer"
           >
             <RefreshCw className="w-5 h-5" />
@@ -769,7 +782,8 @@ export function TicketScannerModal({
               haptic.selection();
               setShowManualInput(true);
             }}
-            title="Saisie manuelle du code"
+            title={t('organizer', 'scannerModal.manualEntry')}
+            aria-label={t('organizer', 'scannerModal.manualEntry')}
             className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white/80 hover:bg-white/10 transition-all cursor-pointer"
           >
             <Keyboard className="w-5 h-5" />
@@ -781,7 +795,8 @@ export function TicketScannerModal({
               haptic.selection();
               fileInputRef.current?.click();
             }}
-            title="Importer une photo de QR Code"
+            title={t('organizer', 'scannerModal.importPhoto')}
+            aria-label={t('organizer', 'scannerModal.importPhoto')}
             className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white/80 hover:bg-white/10 transition-all cursor-pointer"
           >
             <ImageIcon className="w-5 h-5" />
@@ -793,7 +808,8 @@ export function TicketScannerModal({
               haptic.selection();
               setShowHistory(true);
             }}
-            title="Historique des scans du guichet"
+            title={t('organizer', 'scannerModal.scanHistory')}
+            aria-label={t('organizer', 'scannerModal.scanHistory')}
             className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white/80 hover:bg-white/10 transition-all cursor-pointer relative"
           >
             <History className="w-5 h-5" />
@@ -811,10 +827,11 @@ export function TicketScannerModal({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Keyboard className="w-5 h-5 text-[#A855F7]" />
-                <h3 className="font-bold text-white text-base">Saisie Manuelle du Billet</h3>
+                <h3 className="font-bold text-white text-base"{t('organizer', 'scannerModal.manualTitle')}</h3>
               </div>
               <button
                 onClick={() => setShowManualInput(false)}
+                aria-label={t('organizer', 'scannerModal.close')}
                 className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
@@ -822,7 +839,7 @@ export function TicketScannerModal({
             </div>
 
             <p className="text-xs text-gray-400 mb-4">
-              Si le QR Code est illisible ou que l'écran du participant est fissuré, saisissez le code alphanumérique imprimé sous le pass (ex: <span className="font-mono text-purple-300">GBC-A1B2C3D4</span>).
+              {t('organizer', 'scannerModal.manualHelp')} (<span className="font-mono text-purple-300">GBC-A1B2C3D4</span>).
             </p>
 
             <form onSubmit={handleManualSubmit} className="space-y-4">
@@ -830,7 +847,8 @@ export function TicketScannerModal({
                 type="text"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-                placeholder="Ex: GBC-984F72A1"
+                placeholder={t('organizer', 'scannerModal.manualPlaceholder')}
+                aria-label={t('organizer', 'scannerModal.manualEntry')}
                 autoFocus
                 className="w-full px-4 py-3.5 bg-black/60 border border-white/20 rounded-2xl text-white font-mono text-center tracking-wider text-lg uppercase focus:outline-none focus:ring-2 focus:ring-[#6600FF]"
               />
@@ -841,14 +859,14 @@ export function TicketScannerModal({
                   onClick={() => setShowManualInput(false)}
                   className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm"
                 >
-                  Annuler
+                  {t('organizer', 'scannerModal.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={!manualCode.trim()}
                   className="flex-1 py-3 rounded-2xl bg-[#6600FF] hover:bg-[#5200cc] text-white font-bold text-sm disabled:opacity-40 transition-all shadow-purple"
                 >
-                  Valider le pass
+                  {t('organizer', 'scannerModal.validatePass')}
                 </button>
               </div>
             </form>
@@ -863,7 +881,7 @@ export function TicketScannerModal({
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-[#A855F7]" />
-                <h3 className="font-bold text-white text-base">Historique des Scans ({historyList.length})</h3>
+                <h3 className="font-bold text-white text-base">{t('organizer', 'scannerModal.historyTitle').replace('{count}', String(historyList.length))}</h3>
               </div>
               <div className="flex items-center gap-2">
                 {historyList.length > 0 && (
@@ -871,9 +889,10 @@ export function TicketScannerModal({
                     onClick={() => {
                       clearGateScanHistory();
                       setHistoryList([]);
-                      onToast({ message: 'Historique effacé', type: 'info' });
+                      onToast({ message: t('organizer', 'scannerModal.messages.historyCleared'), type: 'info' });
                     }}
-                    title="Vider l'historique"
+                    title={t('organizer', 'scannerModal.clearHistory')}
+                    aria-label={t('organizer', 'scannerModal.clearHistory')}
                     className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -881,6 +900,7 @@ export function TicketScannerModal({
                 )}
                 <button
                   onClick={() => setShowHistory(false)}
+                  aria-label={t('organizer', 'scannerModal.close')}
                   className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
@@ -895,7 +915,8 @@ export function TicketScannerModal({
                 type="text"
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                placeholder="Rechercher un participant ou code..."
+                placeholder={t('organizer', 'scannerModal.historySearch')}
+                aria-label={t('organizer', 'scannerModal.historySearch')}
                 className="w-full pl-10 pr-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#6600FF]"
               />
             </div>
@@ -905,7 +926,7 @@ export function TicketScannerModal({
               {filteredHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500">
                   <TicketIcon className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-xs font-semibold">Aucun scan enregistré pour le moment</p>
+                  <p className="text-xs font-semibold"{t('organizer', 'scannerModal.historyEmpty')}</p>
                 </div>
               ) : (
                 filteredHistory.map((item) => (
@@ -932,11 +953,11 @@ export function TicketScannerModal({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-white truncate">{item.participantName}</p>
+                        <p className="font-bold text-white truncate">{item.participantName === 'Participant' || item.participantName === 'Participant vérifié' ? t('organizer', 'scannerModal.unknownParticipant') : item.participantName}</p>
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                           <span className="font-mono text-purple-300">{item.qrCode}</span>
                           {item.ticketType && <span>· {item.ticketType}</span>}
-                          {item.isOffline && <span className="text-amber-400">⚡ Hors-ligne</span>}
+                          {item.isOffline && <span className="text-amber-400">⚡ {t('organizer', 'scannerModal.offline')}</span>}
                         </div>
                       </div>
                     </div>
