@@ -153,7 +153,7 @@ export const EventCard = memo(function EventCard({ event, onClick, onShare }: Ev
                   className="
                     flex h-7 w-7 shrink-0 items-center justify-center
                     rounded-full border border-white/30 bg-black/65 shadow-md
-                    backdrop-blur-md transition-all hover:bg-white/25 active:scale-90 text-white shadow-xs
+                    transition-colors hover:bg-black/75 active:scale-90 text-white shadow-xs
                   "
                 >
                   <Share2 className="h-3.5 w-3.5" />
