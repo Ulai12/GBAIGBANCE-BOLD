@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronRight,
   Inbox,
+  RefreshCw,
 } from 'lucide-react';
 import { useApp } from '@/hooks/useApp';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -37,6 +38,24 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const { user, theme, themeMode, setThemeMode, language, setLanguage, signOut, t } = useApp();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateCheckResult, setUpdateCheckResult] = useState<'updated' | 'current' | 'preparing' | 'offline' | 'unavailable' | 'error' | null>(null);
+
+  const handleManualUpdateCheck = async () => {
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    setUpdateCheckResult(null);
+    const result = await new Promise<'updated' | 'current' | 'preparing' | 'offline' | 'unavailable' | 'error'>((resolve) => {
+      const timeout = window.setTimeout(() => resolve('unavailable'), 8000);
+      const respond = (status: 'updated' | 'current' | 'preparing' | 'offline' | 'unavailable' | 'error') => {
+        window.clearTimeout(timeout);
+        resolve(status);
+      };
+      window.dispatchEvent(new CustomEvent('gba-pwa-manual-check', { detail: { respond } }));
+    });
+    setUpdateCheckResult(result);
+    setIsCheckingUpdate(false);
+  };
 
   useEffect(() => {
     if (!isOpen || typeof document === 'undefined') return;
@@ -356,6 +375,19 @@ export function SettingsModal({
                 <span className="font-bold text-[#17131D] dark:text-white bg-purple-50 dark:bg-purple-900/30 text-[#6600FF] dark:text-purple-300 px-2.5 py-0.5 rounded-full text-[11px]">
                   {t('settings', 'appModal.versionValue')}
                 </span>
+              </div>
+              <div className="rounded-2xl border border-[#6600FF]/10 dark:border-white/10 bg-[#6600FF]/[0.035] dark:bg-white/[0.035] p-3 space-y-2">
+                <button type="button" onClick={handleManualUpdateCheck} disabled={isCheckingUpdate} className="flex w-full items-center justify-between gap-3 text-left disabled:opacity-60">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#6600FF]/10 text-[#6600FF] dark:text-[#C4B5FD]"><RefreshCw className={`h-4 w-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} /></span>
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-[#17131D] dark:text-white">{isCheckingUpdate ? t('settings', 'pwa.checkingUpdates') : t('settings', 'pwa.checkForUpdates')}</span>
+                      <span className="block text-[10px] text-gray-500 dark:text-gray-400">{t('settings', 'pwa.manualUpdateDescription')}</span>
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                </button>
+                {updateCheckResult && <p role="status" aria-live="polite" className="pl-11 text-[11px] font-medium text-gray-500 dark:text-gray-300">{t('settings', `pwa.${updateCheckResult === 'current' ? 'upToDate' : updateCheckResult === 'preparing' ? 'updatePreparing' : updateCheckResult === 'offline' ? 'updateOffline' : updateCheckResult === 'unavailable' ? 'updateUnavailable' : updateCheckResult === 'error' ? 'updateCheckFailed' : 'updateComplete'}`)}</p>}
               </div>
               <div className="flex justify-between items-center py-0.5">
                 <span className="text-gray-500 dark:text-gray-400 font-medium">{t('settings', 'appModal.translation')}</span>
