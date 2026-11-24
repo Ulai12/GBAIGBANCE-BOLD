@@ -1,14 +1,18 @@
 /* ==========================================================================
-   GBAIGBANCE — Motion & Perf 2026
-   Scroll-driven animations (0 JS) + View Transitions + content-visibility fort
-   Refs: CSS Scroll-Driven Animations, View Transitions API, CWV 2026
+   GBAIGBANCE — Motion & Perf 2026 (v2 — résultats époustouflants)
+   Sources 2026 :
+   - Chrome Modern Web Guidance (content-visibility, scroll-driven, motion)
+   - MDN content-visibility + contain-intrinsic-size: auto
+   - CSS Scroll-Driven Animations (animation-timeline: view())
+   - View Transitions API
+   - Glassmorphism 2.0 : blur ≤ 8–10px mobile, ≤ 2–3 layers actives
    ========================================================================== */
 
-/* --- View Transitions (SPA / navigation fluide) --- */
+/* ---------- 1. View Transitions (navigation SPA fluide) ---------- */
 @supports (view-transition-name: none) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 280ms;
+    animation-duration: 260ms;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
   ::view-transition-group(*) {
@@ -16,18 +20,20 @@
   }
 }
 
-.gba-vt-card {
-  view-transition-name: gba-card;
-}
-.gba-vt-header {
-  view-transition-name: gba-header;
-}
+/* Surfaces nommées → morph doux entre écrans (carte → détail) */
+.gba-vt-card   { view-transition-name: gba-card; }
+.gba-vt-header { view-transition-name: gba-header; }
+.gba-vt-hero   { view-transition-name: gba-hero; }
 
-/* --- Scroll-driven reveal (compositor, zéro JS) --- */
+/* ---------- 2. Scroll-driven reveal (0 JS, compositor only) ----------
+   Règle d’or 2026 : animer UNIQUEMENT opacity + transform.
+   animation-timeline: view() = l’élément lui-même pilote la timeline.
+   Progressive enhancement : le contenu est toujours lisible par défaut.
+*/
 @keyframes gba-reveal-up {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.98);
+    transform: translateY(20px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -35,34 +41,70 @@
   }
 }
 
-@supports (animation-timeline: view()) {
+@keyframes gba-reveal-soft {
+  from {
+    opacity: 0.35;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* État final par défaut (fallback + reduced-motion) */
+.gba-reveal,
+.gba-reveal-soft {
+  opacity: 1;
+  transform: none;
+}
+
+@supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) {
   .gba-reveal {
     animation: gba-reveal-up linear both;
     animation-timeline: view();
-    animation-range: entry 0% cover 28%;
+    /* Démarre dès que le haut de la carte entre, se termine à 30 % de couverture */
+    animation-range: entry 0% cover 30%;
   }
 
+  .gba-reveal-soft {
+    animation: gba-reveal-soft linear both;
+    animation-timeline: view();
+    animation-range: entry 5% cover 40%;
+  }
+
+  /* Stagger léger sur une grille (chaque enfant peut avoir --i: 0,1,2…) */
   .gba-reveal-stagger > * {
     animation: gba-reveal-up linear both;
     animation-timeline: view();
-    animation-range: entry 0% cover 32%;
-    animation-delay: calc(var(--i, 0) * 40ms);
+    animation-range: entry 0% cover 34%;
+    animation-delay: calc(var(--i, 0) * 35ms);
   }
 }
 
+/* Fallback navigateurs sans scroll-driven : entrée courte une fois */
 @supports not (animation-timeline: view()) {
   .gba-reveal {
-    animation: gba-reveal-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: gba-reveal-up 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .gba-reveal-soft {
+    animation: gba-reveal-soft 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }
 
-/* --- content-visibility renforcé (syntaxe 2026) --- */
+/* ---------- 3. content-visibility 2026 (la plus grande victoire perf) ----------
+   - auto = le navigateur saute layout + paint hors viewport
+   - contain-intrinsic-size: auto <estimate> = mémorise la vraie hauteur après 1er rendu
+   - On EXEMPTE les 3 premiers enfants (LCP / above-the-fold)
+   - Ne pas mettre sur l’élément LCP lui-même
+*/
 .gba-feed-item {
   content-visibility: auto;
   contain-intrinsic-size: auto 260px;
   contain-intrinsic-block-size: auto 260px;
 }
 
+/* Skip les 3 premiers (souvent visibles au premier paint) */
 .gba-feed-item:nth-child(-n + 3) {
   content-visibility: visible;
   contain-intrinsic-size: none;
@@ -71,29 +113,68 @@
 
 @media (max-width: 640px) {
   .gba-feed-item {
-    contain-intrinsic-size: auto 280px;
-    contain-intrinsic-block-size: auto 280px;
+    contain-intrinsic-size: auto 290px;
+    contain-intrinsic-block-size: auto 290px;
   }
 }
 
+/* Sections longues (Home « Tendances », Explore résultats, etc.) */
 .gba-section-defer {
   content-visibility: auto;
-  contain-intrinsic-size: auto 360px;
-  contain-intrinsic-block-size: auto 360px;
+  contain-intrinsic-size: auto 380px;
+  contain-intrinsic-block-size: auto 380px;
 }
 
+/* Conteneurs de grille / liste horizontale */
+.gba-grid-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
+/* ---------- 4. CSS Containment (isolation layout/paint) ---------- */
 .gba-contain-content {
-  contain: content;
+  contain: content; /* layout + paint + style — sûr pour cartes */
 }
 
 .gba-contain-paint {
   contain: layout paint style;
 }
 
-/* --- Mobile GPU budget (glass) --- */
+.gba-contain-strict {
+  contain: strict;
+}
+
+/* ---------- 5. Affordance de scroll horizontal (fade edges, 0 JS) ----------
+   Chrome Modern Web Guidance 2026 — mask + scroll-driven
+*/
+@supports (animation-timeline: scroll()) {
+  .gba-scroll-fade {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 4%,
+      #000 96%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 4%,
+      #000 96%,
+      transparent 100%
+    );
+  }
+}
+
+/* ---------- 6. Mobile GPU budget — glassmorphism discipliné ----------
+   Best practice 2026 :
+   - blur ≤ 8–10px sur mobile
+   - max 2–3 couches glass actives simultanément
+   - jamais animer backdrop-filter
+*/
 @media (max-width: 640px) {
   :root {
-    --glass-intensity: 0.42;
+    --glass-intensity: 0.40;
     --glass-blur: 8px;
     --glass-saturate: 112%;
   }
@@ -111,6 +192,7 @@
     -webkit-backdrop-filter: blur(8px) saturate(112%);
   }
 
+  /* Animations infinies coûteuses → off */
   .animate-float,
   .animate-pulse-glow,
   .animate-shimmer-text,
@@ -122,12 +204,14 @@
 @media (max-width: 400px) {
   :root {
     --glass-blur: 6px;
+    --glass-intensity: 0.32;
   }
 }
 
-/* --- Accessibilité mouvement --- */
+/* ---------- 7. Accessibilité (obligatoire) ---------- */
 @media (prefers-reduced-motion: reduce) {
   .gba-reveal,
+  .gba-reveal-soft,
   .gba-reveal-stagger > * {
     animation: none !important;
     opacity: 1 !important;
@@ -140,10 +224,44 @@
   }
 }
 
-/* --- Data saver : couper blur + anims --- */
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass-header,
+  .glass-surface,
+  .glass,
+  .glass-card,
+  .glass-ios,
+  .glass-floating-bar,
+  .bottom-nav,
+  .search-bar,
+  .form-surface {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ---------- 8. Data Saver (réseau / batterie / GPU faible) ---------- */
 .gba-data-saver .gba-reveal,
+.gba-data-saver .gba-reveal-soft,
 .gba-data-saver .gba-reveal-stagger > * {
   animation: none !important;
   opacity: 1 !important;
   transform: none !important;
+}
+
+.gba-data-saver {
+  --glass-blur: 0px !important;
+  --glass-intensity: 0 !important;
+}
+
+.gba-data-saver .liquid-glass-header,
+.gba-data-saver .glass-surface,
+.gba-data-saver .glass,
+.gba-data-saver .glass-card,
+.gba-data-saver .glass-ios,
+.gba-data-saver .glass-floating-bar,
+.gba-data-saver .bottom-nav,
+.gba-data-saver .search-bar,
+.gba-data-saver .form-surface {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

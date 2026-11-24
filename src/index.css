@@ -3,6 +3,151 @@
 @tailwind utilities;
 
 @import './styles/motion-2026.css';
+@import './styles/perf-mobile.css';
 
-/* NOTE: le fichier complet theme/glass est restauré depuis backup local.
-   Si des styles manquent, voir artifacts/index.css.restore et commits précédents. */
+@layer base {
+  :root {
+    --bg: #f7f5f0;
+    --bg-2: #efede6;
+    --safe-area-bg: #f7f5f0;
+    --bg-3: #fbfaf7;
+    --card: rgba(255, 255, 255, 0.72);
+    --card-solid: #FFFFFF;
+    --card-dark: #191b2d;
+    --purple: #6600FF;
+    --purple-2: #7c3aed;
+    --purple-3: #a78dfa;
+    --purple-light: #f1ebff;
+    --purple-muted: #d7c8ff;
+    --text: #242126;
+    --text-soft: #57515a;
+    --text-muted: #817b83;
+    --text-on-dark: #FFFFFF;
+    --border: rgba(102, 0, 255, 0.12);
+
+    --glass-intensity: 0.72;
+    --glass-blur: calc(14px * var(--glass-intensity));
+    --glass-saturate: calc(100% + 60% * var(--glass-intensity));
+
+    --glass-tint: rgba(255, 255, 255, 0.42);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-highlight: rgba(255, 255, 255, 0.75);
+    --glass-highlight-soft: rgba(255, 255, 255, 0.35);
+    --glass-shadow-ambient: rgba(107, 33, 168, 0.16);
+    --glass-shadow-contact: rgba(46, 16, 94, 0.22);
+  }
+
+  .dark {
+    --bg: #141216;
+    --bg-2: #1c191f;
+    --safe-area-bg: #141216;
+    --bg-3: #100e12;
+    --card: rgba(35, 31, 38, 0.82);
+    --card-solid: #231f26;
+    --card-dark: #171419;
+    --purple: #7a1aff;
+    --purple-2: #8b5cf6;
+    --purple-3: #c4b5fd;
+    --purple-light: rgba(122, 26, 255, 0.18);
+    --purple-muted: rgba(196, 181, 253, 0.25);
+    --text: #f4f0f4;
+    --text-soft: #d3cbd5;
+    --text-muted: #a69da9;
+    --text-on-dark: #FFFFFF;
+    --border: rgba(196, 181, 253, 0.14);
+
+    --glass-tint: rgba(22, 18, 35, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.15);
+    --glass-highlight-soft: rgba(255, 255, 255, 0.08);
+    --glass-shadow-ambient: rgba(0, 0, 0, 0.4);
+    --glass-shadow-contact: rgba(0, 0, 0, 0.6);
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+    background-color: var(--safe-area-bg);
+    background-image: linear-gradient(180deg, var(--safe-area-bg) 0, var(--bg) 260px);
+    background-repeat: no-repeat;
+    min-height: 100%;
+  }
+
+  .dark html,
+  html.dark {
+    background-color: var(--safe-area-bg);
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--safe-area-bg);
+    background: var(--bg);
+    background-repeat: no-repeat;
+    color: var(--text);
+    font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+    letter-spacing: -0.015em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body {
+      transition: none;
+    }
+  }
+
+  .dark body {
+    background-color: var(--safe-area-bg);
+    background: var(--bg);
+    background-repeat: no-repeat;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  h1, h2 { font-weight: 700; }
+  h3 { font-weight: 600; }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: rgba(102, 0, 255, 0.22);
+    color: var(--text);
+  }
+
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+}
+
+/* NOTE: styles glass + theme complets sont dans les imports motion-2026 + perf-mobile.
+   Si des utilitaires manquent, les theme-*.css modulaires restent disponibles. */
