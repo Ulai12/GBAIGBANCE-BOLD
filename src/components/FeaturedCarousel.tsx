@@ -286,7 +286,7 @@ export function FeaturedCarousel({
                         e.stopPropagation();
                         onBookEvent(currentEvent);
                       }}
-                      className="px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-[#6600FF]/10 hover:bg-[#5200CC] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                      className="px-4 py-2.5 rounded-full bg-white/95 border border-[#6600FF]/10 hover:bg-[#5200CC] text-[#17131D] hover:text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-colors cursor-pointer"
                     >
                       <Ticket className="w-4 h-4 text-[#6600FF]" />
                       <span className="text-black uppercase">{t('events', 'bookNow')}</span>
@@ -298,7 +298,7 @@ export function FeaturedCarousel({
                       e.stopPropagation();
                       onEventClick(currentEvent);
                     }}
-                    className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md active:scale-90 transition-all cursor-pointer"
+                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-black/70 text-white flex items-center justify-center active:scale-90 transition-colors cursor-pointer"
                     aria-label={t('events', 'viewEvent')}
                   >
                     <ArrowRight className="w-4 h-4" />
