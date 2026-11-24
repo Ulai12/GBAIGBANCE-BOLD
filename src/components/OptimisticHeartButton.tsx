@@ -41,8 +41,8 @@ export function OptimisticHeartButton({
   }[size];
 
   const variantClasses = {
-    card: 'rounded-full border border-white/20 bg-black/35 backdrop-blur-md text-white hover:bg-white/25 active:scale-90 shadow-xs',
-    glass: 'rounded-full border border-white/25 bg-black/40 backdrop-blur-xl text-white hover:bg-black/60 active:scale-90 shadow-lg',
+    card: 'rounded-full border border-white/20 bg-black/70 text-white hover:bg-black/80 active:scale-90 shadow-xs',
+    glass: 'rounded-full border border-white/25 bg-black/65 text-white hover:bg-black/75 active:scale-90 shadow-lg',
     floating: 'rounded-full bg-white/90 dark:bg-[#1A1829]/90 border border-black/10 dark:border-white/15 text-[#1A1A2E] dark:text-white shadow-md active:scale-90',
     plain: 'rounded-full active:scale-90 text-white',
   }[variant];
