@@ -81,7 +81,15 @@
     "iosShare": "Tap the Share button in Safari's browser toolbar.",
     "iosAdd": "Scroll down and choose “Add to Home Screen.”",
     "iosConfirm": "Tap Add in the top-right corner to confirm.",
-    "understood": "Got it!"
+    "understood": "Got it!",
+    "checkForUpdates": "Check for updates",
+    "checkingUpdates": "Checking…",
+    "manualUpdateDescription": "Check for and install the latest available version.",
+    "upToDate": "The app is already up to date.",
+    "updatePreparing": "A new version was found and is downloading. You'll be prompted when it's ready.",
+    "updateOffline": "Connect to the internet to check for updates.",
+    "updateUnavailable": "The update service is not available yet. Try again shortly.",
+    "updateCheckFailed": "Could not check for updates. Please try again later."
   },
   "notifSettings": {
     "title": "Notification settings",
