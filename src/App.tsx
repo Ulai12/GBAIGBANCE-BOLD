@@ -79,6 +79,16 @@ function OtpRoute() {
 function AppContent() {
   const { loading, session, user, t } = useApp();
   const navigate = useNavigate();
+  const navigateVT = useCallback((to: Parameters<typeof navigate>[0], options?: Parameters<typeof navigate>[1]) => {
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => unknown;
+    };
+    if (typeof doc.startViewTransition === 'function') {
+      doc.startViewTransition(() => navigate(to, options));
+      return;
+    }
+    navigate(to, options);
+  }, [navigate]);
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
@@ -397,15 +407,15 @@ function AppContent() {
   }, [addToast]);
 
   const handleEventClick = (event: Event) => {
-    navigate(`/events/${event.id}`, { state: { event } });
+    navigateVT(`/events/${event.id}`, { state: { event } });
   };
 
   const handleArtistClick = (artist: Artist) => {
-    navigate(`/artists/${artist.id}`, { state: { artist } });
+    navigateVT(`/artists/${artist.id}`, { state: { artist } });
   };
 
   const handleOrganizationClick = (org: Organization) => {
-    navigate(`/organizers/${org.id}`, { state: { organization: org } });
+    navigateVT(`/organizers/${org.id}`, { state: { organization: org } });
   };
 
   const handleBookEvent = useCallback((event: Event, initialOptionId?: string | null) => {
@@ -468,8 +478,8 @@ function AppContent() {
   };
 
   const handleTabChange = (tab: Tab) => {
-    if (tab === 'home') navigate('/');
-    else navigate(`/${tab}`);
+    if (tab === 'home') navigateVT('/');
+    else navigateVT(`/${tab}`);
   };
 
   if (loading) {
