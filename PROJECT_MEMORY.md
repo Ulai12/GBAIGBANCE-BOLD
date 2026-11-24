@@ -4,38 +4,47 @@ Mémoire de travail de GBAIGBANCE-BOLD.
 
 ## Tâche active
 
-**P0** — Restaurer HomeScreen.tsx **intégral** depuis commit `7387901` (blob `ba5e0ad6`).
+**P2** — Localisation progressive des composants enfants du OrganizerDashboard (FR/EN).
 
-## Contexte
+## Objectif
 
-- Dernière version complète (~49,5 ko / 1117 lignes) : **7387901** (`src/screens/HomeScreen.tsx`).
-- Les commits i18n 7d917cc3 / c1ba934e n’ont touché que les JSON locales.
-- Le commit 7964b19 a tronqué le TS (placeholder).
-- Le connecteur GitHub plafonne ~17 ko par push de fichier → impossible de re-pousser les 50 ko via l’API outil.
+Rendre bilingue l'ensemble du tableau de bord organisateur pour une expérience cohérente selon la langue active.
 
-## Restauration manuelle (propriétaire)
+## Progression
 
-```bash
-git fetch origin FRONTEND-iA
-git checkout FRONTEND-iA
-git checkout 7387901 -- src/screens/HomeScreen.tsx
-git commit -m "fix(home): restaurer HomeScreen intégral depuis 7387901"
-git push origin FRONTEND-iA
-```
+- OrganizerDashboardScreen : localisé (23 nov).
+- OrganizerMetricsChart + OrganizerRefundsTab : localisés (24 nov).
+- EventManagementModal : localisé (24 nov, commits c774f08, 93ae4ae, 49a7cf6).
 
-Fichier local de secours (sandbox) : `artifacts/HomeScreen.tsx.full_from_7387901`
+## Fichiers concernés
 
-## État actuel distant
+- src/locales/fr/organizer.json
+- src/locales/en/organizer.json
+- src/components/EventManagementModal.tsx
+- src/components/TicketScannerModal.tsx (prochain)
 
-Version stabilité ~16–17 ko (salutations + sections principales + catégories explorer + chargement). **Pas** le fichier complet d’origine.
+## Dernière action
+
+2026-11-24 — Localisation EventManagementModal (programme, live, sponsors, cycle de vie). Clés manage.* ajoutées. Aucune troncature.
 
 ## Prochaine étape
 
-1. Propriétaire : exécuter les 5 commandes git ci-dessus.
-2. Ensuite seulement : re-appliquer i18n des salutations/en-têtes sans tronquer.
+Localiser TicketScannerModal par petits commits (clés scanner.* déjà présentes, à brancher).
+
+## Vérifications
+
+- Relecture distante des fichiers modifiés : tailles augmentées, t() présent.
+- Pas de build/typecheck/lint cette session.
+
+## Backlog
+
+- TicketScannerModal i18n.
+- Harmonisation états loading/empty restants.
+- Tests runtime switch langue.
 
 ## Historique
 
-- 2026-11-19 — Tentatives de restore via connecteur (limite taille).
-- 2026-11-19 — Clés homeScreen FR/EN OK.
-- 2026-11-18 — ProfileScreen / TicketsScreen.
+- 2026-11-24 : EventManagementModal localisé.
+- 2026-11-24 : Metrics + Refunds localisés.
+- 2026-11-23 : OrganizerDashboardScreen localisé.
+- Précédent : HomeScreen, Profile, Tickets, Explore, etc.
