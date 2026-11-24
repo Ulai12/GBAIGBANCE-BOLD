@@ -259,3 +259,36 @@
     -webkit-backdrop-filter: none !important;
   }
 }
+
+
+/* ---------- Optimisation des écrans secondaires (mobile, tablette, desktop) ---------- */
+/* Les sections longues restent montées et accessibles ; le navigateur diffère leur rendu
+   hors écran sans retarder le contenu initial ni modifier la navigation. */
+.gba-screen-optimized section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+
+@media (max-width: 640px) {
+  .gba-screen-optimized section {
+    contain-intrinsic-size: auto 240px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .gba-screen-optimized section {
+    contain-intrinsic-size: auto 300px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gba-screen-optimized section {
+    contain-intrinsic-size: auto 340px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gba-screen-optimized section {
+    scroll-behavior: auto;
+  }
+}

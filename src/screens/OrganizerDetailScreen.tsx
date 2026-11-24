@@ -140,7 +140,7 @@ export function OrganizerDetailScreen({
   const followersCount = (displayOrg.followers_count || 0) + (following ? 1 : 0);
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 gba-screen-optimized">
       {/* Cover Header */}
       <div className="relative h-56 sm:h-64 lg:h-72 overflow-hidden bg-zinc-900">
         <img

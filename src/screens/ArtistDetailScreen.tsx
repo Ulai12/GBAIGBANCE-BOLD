@@ -128,7 +128,7 @@ export function ArtistDetailScreen({ artist, onBack, onEventClick, onToast, onLo
   const displayFollowers = (fullArtist.followers_count || 0) + (following ? 1 : 0);
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 gba-screen-optimized">
       {/* Cover Header */}
       <div className="relative h-64 sm:h-72 lg:h-80 overflow-hidden bg-zinc-900">
         <img

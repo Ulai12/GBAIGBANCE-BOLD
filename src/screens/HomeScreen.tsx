@@ -80,7 +80,7 @@ export function HomeScreen({
   onOpenSettings,
   onToast,
 }: HomeScreenProps) {
-  const { user, t } = useApp();
+  const { user, theme, t } = useApp();
   const { likedEventIds, followedArtistIds, followedOrgIds } = useFavorites();
 
   // Instant 0ms cache loading: read synchronously from memory or storage (exclure immédiatement tout événement terminé à la une)
@@ -559,7 +559,7 @@ export function HomeScreen({
   {/* ✅ Retour au logo w-9 h-9 et aux textes 15px / 9px d'origine */}
   <div className="flex items-center gap-2.5 mb-3.5">
     <img
-      src="/icon.svg"
+      src={theme === 'dark' ? '/icon-dark.svg' : '/icon.svg'}
       alt="Gbaigbance"
       className="w-9 h-9 rounded-2xl shadow-xs object-contain ring-1 ring-black/5 dark:ring-white/10"
     />

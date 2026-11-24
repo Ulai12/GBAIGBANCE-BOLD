@@ -302,7 +302,7 @@ export function TicketsScreen({ onEventClick, onLogin, onToast }: TicketsScreenP
       : pastTickets;
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto gba-screen-optimized">
       {/* Header compact & élégant */}
       <div className="px-5 pt-safe-header pb-2">
         <div className="flex items-center justify-between">

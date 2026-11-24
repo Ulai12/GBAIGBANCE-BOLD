@@ -140,7 +140,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
 
   if (!user) {
     return (
-      <div className="min-h-screen pb-32">
+      <div className="min-h-screen pb-32 gba-screen-optimized">
         {/* Header harmonisé style Favoris & Tickets */}
         <div className="max-w-2xl mx-auto px-5 pt-safe-header pb-2">
           <div className="flex items-center justify-between">
