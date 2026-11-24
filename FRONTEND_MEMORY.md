@@ -201,3 +201,13 @@ Localisation des composants enfants du OrganizerDashboard (suite) — TicketScan
 - Le premier build Vercel du commit `5d76a51` a échoué à `TicketScannerModal.tsx:490` : neuf remplacements de libellés avaient omis le séparateur `>` entre les attributs JSX et l'expression traduite.
 - Les neuf balises concernées sont corrigées; vérification statique : 9 cas repérés avant correction, 0 après. Aucun changement de logique de scan ou de réservation.
 - Le build doit être relancé sur le commit correctif avant de déclarer la localisation validée.
+
+
+## 2026-11-24 — Validation du scanner après correction JSX
+- Preview Vercel `dpl_62dg4AumVCP5gJMFDGk2eM1CXgqX` pour le commit code `16b59a30e0e5180aa8a8ede424af4d8cb091706d` : état `READY`.
+- Build Vite terminé en 4,85 s; génération PWA terminée et 14 fichiers statiques de Preview synchronisés. Statut GitHub Vercel : `success`.
+- Le premier build du commit précédent avait échoué sur neuf balises JSX; les séparateurs manquants ont été corrigés avant le build READY.
+- `npm run typecheck` et `npm run lint` non exécutés : le clone local a échoué car l'environnement ne résout pas `github.com`; aucun contournement ni modification de lockfile.
+- QA visuelle/tactile non effectuée : le navigateur connecté n'a pas fourni de contexte de navigation accessible. Ne pas confondre build READY avec test réel de caméra ou validation mobile.
+- Le commit code testé reste `16b59a3`; ce complément de mémoire sera un commit documentaire séparé.
+- Prochaine priorité : test mobile avec les deux langues, caméra autorisée/refusée, validation online/offline, saisie manuelle, import photo et historique; exécuter typecheck/lint depuis un environnement de développement connecté.
