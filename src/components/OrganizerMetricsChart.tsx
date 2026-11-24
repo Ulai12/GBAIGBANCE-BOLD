@@ -20,6 +20,7 @@ import {
   Info,
 } from 'lucide-react';
 import { formatNumber } from '@/utils/format';
+import { useApp } from '@/hooks/useApp';
 
 export interface PerformanceTimePoint {
   date: string;
@@ -68,6 +69,7 @@ export function OrganizerMetricsChart({
   timeRange,
   onTimeRangeChange,
 }: OrganizerMetricsChartProps) {
+  const { t } = useApp();
   const [metricMode, setMetricMode] = useState<MetricMode>('sales');
 
   const { timeSeries, categoryBreakdown, summary } = data;
@@ -89,16 +91,16 @@ export function OrganizerMetricsChart({
           <p className="font-bold text-gray-400">{point.label || label}</p>
           <div className="flex items-center justify-between gap-4 pt-1 border-t border-white/10">
             <span className="text-gray-300 flex items-center gap-1.5">
-              <Ticket className="w-3.5 h-3.5 text-[#6600FF]" /> Billets :
+              <Ticket className="w-3.5 h-3.5 text-[#6600FF]" /> {t('organizer', 'metrics.tooltipTickets')}
             </span>
             <span className="font-black text-white">{point.ticketsSold}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-gray-300 flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> Revenus :
+              <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> {t('organizer', 'metrics.tooltipRevenue')}
             </span>
             <span className="font-black text-emerald-400">
-              {point.revenue.toLocaleString('fr-FR')} F
+              {point.revenue.toLocaleString('fr-FR')} {t('organizer', 'metrics.currency')}
             </span>
           </div>
         </div>
@@ -117,18 +119,18 @@ export function OrganizerMetricsChart({
               <TrendingUp className="w-4 h-4" />
             </div>
             <h2 className="text-base font-black text-[#17131D] dark:text-white tracking-tight">
-              Performances des ventes
+              {t('organizer', 'metrics.title')}
             </h2>
           </div>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium ml-10">
-            Données réelles issues de vos billetteries
+            {t('organizer', 'metrics.subtitle')}
           </p>
         </div>
 
         {/* Time range selector pill */}
         <div
           role="group"
-          aria-label="Période des performances"
+          aria-label={t('organizer', 'metrics.periodAria')}
           className="inline-flex p-1 bg-gray-100 dark:bg-white/10 rounded-full shrink-0 self-start sm:self-auto"
         >
           <button
@@ -141,7 +143,7 @@ export function OrganizerMetricsChart({
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'
             }`}
           >
-            7 jours
+            {t('organizer', 'metrics.range7d')}
           </button>
           <button
             type="button"
@@ -153,7 +155,7 @@ export function OrganizerMetricsChart({
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'
             }`}
           >
-            30 jours
+            {t('organizer', 'metrics.range30d')}
           </button>
           <button
             type="button"
@@ -165,7 +167,7 @@ export function OrganizerMetricsChart({
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'
             }`}
           >
-            Tout
+            {t('organizer', 'metrics.rangeAll')}
           </button>
         </div>
       </div>
@@ -184,14 +186,14 @@ export function OrganizerMetricsChart({
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Billets</span>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{t('organizer', 'metrics.tickets')}</span>
             <Ticket className={`w-3.5 h-3.5 ${metricMode === 'sales' ? 'text-[#6600FF]' : 'text-gray-400'}`} />
           </div>
           <p className="text-xl font-black text-[#17131D] dark:text-white">
             {formatNumber(summary.totalTickets)}
           </p>
           <span className="text-[10px] font-semibold text-gray-400">
-            {summary.activeEvents} événement(s) actif(s)
+            {t('organizer', 'metrics.activeEvents').replace('{count}', String(summary.activeEvents))}
           </span>
         </button>
 
@@ -207,28 +209,28 @@ export function OrganizerMetricsChart({
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Revenus</span>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{t('organizer', 'metrics.revenue')}</span>
             <DollarSign className={`w-3.5 h-3.5 ${metricMode === 'revenue' ? 'text-emerald-500' : 'text-gray-400'}`} />
           </div>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {summary.totalRevenue.toLocaleString('fr-FR')} <span className="text-xs font-bold">F</span>
+            {summary.totalRevenue.toLocaleString('fr-FR')} <span className="text-xs font-bold">{t('organizer', 'metrics.currency')}</span>
           </p>
           <span className="text-[10px] font-semibold text-gray-400">
-            Moy. {summary.averageTicketPrice.toLocaleString('fr-FR')} F
+            {t('organizer', 'metrics.avgPrice').replace('{price}', summary.averageTicketPrice.toLocaleString('fr-FR'))}
           </span>
         </button>
 
         {/* Vues totales */}
         <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.055] border border-black/5 dark:border-white/10">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Vues</span>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{t('organizer', 'metrics.views')}</span>
             <Eye className="w-3.5 h-3.5 text-gray-400" />
           </div>
           <p className="text-xl font-black text-[#17131D] dark:text-white">
             {formatNumber(summary.totalViews)}
           </p>
           <span className="text-[10px] font-semibold text-gray-400">
-            {summary.totalEvents} événements créés
+            {t('organizer', 'metrics.totalEventsCreated').replace('{count}', String(summary.totalEvents))}
           </span>
         </div>
 
@@ -244,14 +246,14 @@ export function OrganizerMetricsChart({
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Conversion</span>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{t('organizer', 'metrics.conversion')}</span>
             <Layers className={`w-3.5 h-3.5 ${metricMode === 'breakdown' ? 'text-purple-500' : 'text-gray-400'}`} />
           </div>
           <p className="text-xl font-black text-[#17131D] dark:text-white">
             {summary.conversionRate.toFixed(1)}%
           </p>
           <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-0.5">
-            <span>Par catégorie</span>
+            <span>{t('organizer', 'metrics.byCategory')}</span>
             <ArrowUpRight className="w-3 h-3" />
           </span>
         </button>
@@ -262,12 +264,12 @@ export function OrganizerMetricsChart({
         {loading ? (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
             <div className="w-6 h-6 rounded-full border-2 border-[#6600FF]/20 border-t-[#6600FF] animate-spin" />
-            <span>Chargement des métriques...</span>
+            <span>{t('organizer', 'metrics.loading')}</span>
           </div>
         ) : error ? (
           <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] px-5 text-center dark:bg-amber-400/[0.06]">
             <Info className="mb-2 h-5 w-5 text-amber-600 dark:text-amber-300" />
-            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">Statistiques indisponibles</p>
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{t('organizer', 'metrics.unavailableTitle')}</p>
             <p className="mt-1 max-w-sm text-xs leading-relaxed text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : metricMode === 'breakdown' ? (
@@ -285,7 +287,7 @@ export function OrganizerMetricsChart({
                       return (
                         <div className="rounded-xl bg-zinc-900 text-white p-2.5 text-xs shadow-xl border border-white/10">
                           <p className="font-bold">{item.name}</p>
-                          <p className="text-gray-400 mt-0.5">{item.count} billet(s) vendus</p>
+                          <p className="text-gray-400 mt-0.5">{t('organizer', 'metrics.ticketsSold').replace('{count}', String(item.count))}</p>
                           <p className="text-emerald-400 font-bold">{item.revenue.toLocaleString('fr-FR')} FCFA</p>
                         </div>
                       );
@@ -300,10 +302,10 @@ export function OrganizerMetricsChart({
             <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
               <Info className="w-6 h-6 text-gray-400 mb-1" />
               <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                Aucune catégorie de billet enregistrée pour le moment
+                {t('organizer', 'metrics.noCategoriesTitle')}
               </p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Créez des billets standard, VIP ou VVIP pour visualiser la répartition.
+                {t('organizer', 'metrics.noCategoriesHint')}
               </p>
             </div>
           )
@@ -312,9 +314,9 @@ export function OrganizerMetricsChart({
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6600FF]/10 text-[#6600FF] dark:bg-[#8B5CF6]/20 dark:text-violet-300">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">Aucune vente sur cette période</p>
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{t('organizer', 'metrics.noSalesTitle')}</p>
             <p className="mt-1 max-w-xs text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Les statistiques apparaîtront ici dès qu’un billet confirmé sera enregistré pour vos événements.
+              {t('organizer', 'metrics.noSalesHint')}
             </p>
           </div>
         ) : (
@@ -350,7 +352,7 @@ export function OrganizerMetricsChart({
                 <Area
                   type="monotone"
                   dataKey="ticketsSold"
-                  name="Billets vendus"
+                  name={t('organizer', 'metrics.tickets')}
                   stroke="#6600FF"
                   strokeWidth={2.5}
                   fillOpacity={1}
@@ -362,7 +364,7 @@ export function OrganizerMetricsChart({
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  name="Revenus (FCFA)"
+                  name={t('organizer', 'metrics.revenue')}
                   stroke="#10B981"
                   strokeWidth={2.5}
                   fillOpacity={1}
@@ -380,7 +382,7 @@ export function OrganizerMetricsChart({
         <div className="mt-3 p-3 rounded-2xl bg-[#6600FF]/[0.04] dark:bg-[#6600FF]/10 border border-[#6600FF]/10 flex items-start gap-2.5">
           <Info className="w-4 h-4 text-[#6600FF] shrink-0 mt-0.5" />
           <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
-            Dès qu’un utilisateur réservera ou achètera un billet pour vos événements, les courbes de ventes et de revenus s'actualiseront automatiquement en temps réel.
+            {t('organizer', 'metrics.realtimeHint')}
           </p>
         </div>
       )}
