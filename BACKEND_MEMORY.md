@@ -4,34 +4,34 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Durcissement sécurité : REVOKE EXECUTE FROM anon sur les RPCs restantes qui exigent auth ou sont internes.
+Durcissement sécurité : REVOKE EXECUTE sur les fonctions internes / trigger SECURITY DEFINER qui ne doivent pas être appelables via RPC.
 
 ## Objectif
-Empêcher les appels anonymes aux fonctions book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification et fonctions internes (triggers).
+Empêcher les utilisateurs authentifiés (et anon/public) d'appeler directement des helpers internes et des fonctions de trigger via PostgREST.
 
 ## Progression
-- Advisors security : plusieurs SECURITY DEFINER encore callable par anon.
-- Vérification des corps : book_ticket / cancel_ticket / accept_collaboration / submit_event_report testent auth.uid() ; create_notification et triggers internes ne doivent pas être appelés via RPC public.
-- Migration 20261124120000 appliquée sur Supabase + versionnée.
-- ACL confirmée : plus de grant anon, seulement authenticated + service_role.
+- Revue progressive des grants authenticated sur SECURITY DEFINER commencée.
+- Fonctions internes identifiées : increment/decrement_likes_count, update_event_price_range (trigger), rls_auto_enable (event trigger), create_notification.
+- Migration 20261124130000 appliquée sur Supabase + versionnée.
+- ACL confirmée : plus de grant PUBLIC/anon/authenticated, seulement postgres + service_role.
 
 ## Fichiers concernés
-- supabase/migrations/20261124120000_revoke_anon_execute_remaining_auth_functions.sql
+- supabase/migrations/20261124130000_revoke_execute_internal_security_definer.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-24 — Migration revoke anon EXECUTE sur RPCs restantes appliquée et versionnée. Mémoire mise à jour.
+2026-11-24 — Migration revoke EXECUTE sur fonctions internes SECURITY DEFINER appliquée et versionnée (commit e23fdb1d). Mémoire mise à jour.
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 - Tester un like réel sur un événement non-démo (likes_count doit suivre).
-- Revue progressive des grants authenticated sur SECURITY DEFINER.
+- Continuer la revue des grants authenticated sur les autres SECURITY DEFINER (ceux qui sont légitimes pour le front restent).
 
 ## Vérifications
 - Migration appliquée (success). OK.
-- ACL post-migration : pas de anon. OK.
-- Fichier migration distant présent (816 o). OK.
+- ACL post-migration : pas de PUBLIC/anon/authenticated. OK.
+- Fichier migration distant présent (2186 o, SHA 45f30597). OK.
 - Aucune troncature cette session.
 
 ## Cartographie des données
@@ -57,6 +57,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261124130000_revoke_execute_internal_security_definer (appliquée 2026-11-24)
 - 20261124120000_revoke_anon_execute_remaining_auth_functions (appliquée 2026-11-24)
 - 20261123130000_fix_toggle_event_like_and_likes_count (appliquée 2026-11-23)
 - 20261123120000_revoke_anon_execute_on_auth_required_functions (appliquée 2026-11-23)
@@ -75,7 +76,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Tester un like sur un événement réel (non démo) et vérifier likes_count.
 
 ## Dette backend
-- Nombreux SECURITY DEFINER callable par authenticated — revue progressive des grants (beaucoup sont nécessaires).
+- Nombreux SECURITY DEFINER callable par authenticated — revue progressive des grants (beaucoup sont nécessaires pour le front).
 - Extension pg_net in public.
 - Quelques multiple permissive policies (event_comments, event_questions, etc.).
 - Indexes unused (info, normal en faible trafic).
@@ -88,9 +89,10 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Vérification end-to-end des nouvelles RPCs.
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
-- Revue grants SECURITY DEFINER authenticated.
+- Continuer la revue grants SECURITY DEFINER authenticated.
 
 ## Historique
+- 2026-11-24 : Revoke EXECUTE (PUBLIC/anon/authenticated) sur fonctions internes SECURITY DEFINER (increment/decrement_likes_count, update_event_price_range, rls_auto_enable, create_notification).
 - 2026-11-24 : Revoke EXECUTE anon sur RPCs restantes (book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification + internes).
 - 2026-11-23 : Fix toggle_event_like (compteur fiable, protection is_demo).
 - 2026-11-23 : Revoke EXECUTE anon sur fonctions auth-required (batch ~22).
@@ -112,12 +114,13 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - RLS auth initplan optimisée.
 - event_view_daily : policy service_role en place.
 - EXECUTE anon révoqué sur les RPCs qui exigent auth.uid() (batch complété).
+- EXECUTE révoqué sur les helpers internes et fonctions trigger (increment/decrement_likes_count, update_event_price_range, rls_auto_enable, create_notification).
 
 ## Taches À faire
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
 - [Vercel] Confirmer le proxy /api/ai/assistant/stream en production.
 - [Backend] Tester les RPCs restaurées + un like réel non-démo.
-- [Backend] Revue progressive des grants SECURITY DEFINER (authenticated).
+- [Backend] Continuer la revue progressive des grants SECURITY DEFINER (authenticated).
 - [Automatisation frontend] Continuer la localisation des écrans restants (OrganizerDashboard, etc.).
 
 ## 2026-11-24 — Note pour automatisations
