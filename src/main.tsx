@@ -5,6 +5,8 @@ import * as Sentry from '@sentry/react';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+import './styles/motion-2026.css';
+import './styles/perf-mobile.css';
 
 window.addEventListener('vite:preloadError', (event) => {
   const retryKey = 'gba-vite-preload-retry-at';
