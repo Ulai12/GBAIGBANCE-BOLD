@@ -195,3 +195,9 @@ Localisation des composants enfants du OrganizerDashboard (suite) — TicketScan
 - Vérifications statiques : JSON parsable, clés FR/EN identiques, 14 messageKey couvertes par les deux langues, aucune chaîne visible française restante dans le composant.
 - Non vérifié à ce stade : build/typecheck/lint, rendu visuel, test caméra réel, saisie manuelle, import photo, états réseau et changement de langue sur mobile.
 - Prochaine priorité : build Preview puis QA du scanner sur mobile (caméra, saisie, photo, online/offline, historique et bascule FR/EN).
+
+
+## 2026-11-24 — Correction JSX du scanner après premier build Preview
+- Le premier build Vercel du commit `5d76a51` a échoué à `TicketScannerModal.tsx:490` : neuf remplacements de libellés avaient omis le séparateur `>` entre les attributs JSX et l'expression traduite.
+- Les neuf balises concernées sont corrigées; vérification statique : 9 cas repérés avant correction, 0 après. Aucun changement de logique de scan ou de réservation.
+- Le build doit être relancé sur le commit correctif avant de déclarer la localisation validée.

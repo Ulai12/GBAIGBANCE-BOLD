@@ -487,7 +487,7 @@ export function TicketScannerModal({
             </button>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10">
               <Camera className="w-4 h-4 text-[#A855F7]" />
-              <span className="text-xs font-bold tracking-wide"{t('organizer', 'scannerModal.title')}</span>
+              <span className="text-xs font-bold tracking-wide">{t('organizer', 'scannerModal.title')}</span>
             </div>
           </div>
 
@@ -583,7 +583,7 @@ export function TicketScannerModal({
             <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2"{t('organizer', 'scannerModal.cameraAccess')}</h3>
+            <h3 className="text-lg font-bold text-white mb-2">{t('organizer', 'scannerModal.cameraAccess')}</h3>
             <p className="text-sm text-gray-300 max-w-xs mb-6">{cameraPermissionError && t('organizer', `scannerModal.messages.${cameraPermissionError}`)}</p>
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
@@ -591,14 +591,14 @@ export function TicketScannerModal({
                 className="w-full py-3 rounded-2xl bg-[#6600FF] text-white font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 shadow-purple"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span{t('organizer', 'scannerModal.retryCamera')}</span>
+                <span>{t('organizer', 'scannerModal.retryCamera')}</span>
               </button>
               <button
                 onClick={() => setShowManualInput(true)}
                 className="w-full py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm active:scale-98 transition-all flex items-center justify-center gap-2"
               >
                 <Keyboard className="w-4 h-4" />
-                <span{t('organizer', 'scannerModal.manualEntry')}</span>
+                <span>{t('organizer', 'scannerModal.manualEntry')}</span>
               </button>
             </div>
           </div>
@@ -714,7 +714,7 @@ export function TicketScannerModal({
 
                   {lastScannedResult.seatInfo && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider"{t('organizer', 'scannerModal.seat')}</span>
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.seat')}</span>
                       <span className="font-mono text-xs text-white font-semibold">
                         {lastScannedResult.seatInfo}
                       </span>
@@ -723,7 +723,7 @@ export function TicketScannerModal({
 
                   {lastScannedResult.eventTitle && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider"{t('organizer', 'scannerModal.event')}</span>
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.event')}</span>
                       <span className="text-xs text-gray-300 truncate max-w-[160px]">
                         {lastScannedResult.eventTitle === 'Événement' ? t('organizer', 'scannerModal.unknownEvent') : lastScannedResult.eventTitle}
                       </span>
@@ -737,7 +737,7 @@ export function TicketScannerModal({
                 onClick={resumeScanning}
                 className="w-full py-3.5 rounded-2xl bg-white text-zinc-950 font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
               >
-                <span{t('organizer', 'scannerModal.scanNext')}</span>
+                <span>{t('organizer', 'scannerModal.scanNext')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -827,7 +827,7 @@ export function TicketScannerModal({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Keyboard className="w-5 h-5 text-[#A855F7]" />
-                <h3 className="font-bold text-white text-base"{t('organizer', 'scannerModal.manualTitle')}</h3>
+                <h3 className="font-bold text-white text-base">{t('organizer', 'scannerModal.manualTitle')}</h3>
               </div>
               <button
                 onClick={() => setShowManualInput(false)}
@@ -926,7 +926,7 @@ export function TicketScannerModal({
               {filteredHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500">
                   <TicketIcon className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-xs font-semibold"{t('organizer', 'scannerModal.historyEmpty')}</p>
+                  <p className="text-xs font-semibold">{t('organizer', 'scannerModal.historyEmpty')}</p>
                 </div>
               ) : (
                 filteredHistory.map((item) => (
