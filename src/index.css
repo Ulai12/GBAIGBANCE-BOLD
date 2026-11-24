@@ -695,3 +695,9 @@ body.gba-modal-open [aria-label="Navigation principale"] {
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
 }
+
+
+/* Icônes de recherche lisibles dans tous les champs et panneaux en thème sombre. */
+.dark svg.lucide-search {
+  color: #C4B5FD;
+}
