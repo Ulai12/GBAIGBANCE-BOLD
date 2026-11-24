@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GBAIGBANCE — Motion & Perf 2026 (v2 — résultats époustouflants)
+   GBAIGBANCE — Motion & Perf 2026 (v3 — full integration)
    Sources 2026 :
    - Chrome Modern Web Guidance (content-visibility, scroll-driven, motion)
    - MDN content-visibility + contain-intrinsic-size: auto
@@ -145,25 +145,42 @@
 }
 
 /* ---------- 5. Affordance de scroll horizontal (fade edges, 0 JS) ----------
-   Chrome Modern Web Guidance 2026 — mask + scroll-driven
+   Soft edge fade so users understand there is more content.
+   Always on (cheap); no scroll listener needed.
 */
-@supports (animation-timeline: scroll()) {
-  .gba-scroll-fade {
-    mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      #000 4%,
-      #000 96%,
-      transparent 100%
-    );
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      #000 4%,
-      #000 96%,
-      transparent 100%
-    );
-  }
+.gba-scroll-fade {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 3%,
+    #000 97%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 3%,
+    #000 97%,
+    transparent 100%
+  );
+}
+
+/* Variante plus marquée pour les longues rangées de chips */
+.gba-scroll-fade-strong {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
 }
 
 /* ---------- 6. Mobile GPU budget — glassmorphism discipliné ----------
