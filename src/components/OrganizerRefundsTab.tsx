@@ -3,6 +3,7 @@ import { Check, X, Phone, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 import { reviewRefund } from '@/features/tickets/service';
 import type { TicketRefund } from '@/types';
+import { useApp } from '@/hooks/useApp';
 
 interface OrganizerRefundsTabProps {
   organizerUserId: string;
@@ -10,6 +11,7 @@ interface OrganizerRefundsTabProps {
 }
 
 export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organizerUserId, onToast }) => {
+  const { t } = useApp();
   const [refunds, setRefunds] = useState<TicketRefund[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -48,13 +50,13 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
         action: 'approve',
       });
       if (res.success) {
-        onToast({ message: 'Remboursement approuvé ! Le crédit Mobile Money a été déclenché.', type: 'success' });
+        onToast({ message: t('organizer', 'refunds.toastApproved'), type: 'success' });
         loadRefunds();
       } else {
-        onToast({ message: res.error || 'Erreur lors de l’approbation', type: 'error' });
+        onToast({ message: res.error || t('organizer', 'refunds.toastApproveError'), type: 'error' });
       }
     } catch {
-      onToast({ message: 'Erreur inattendue', type: 'error' });
+      onToast({ message: t('organizer', 'refunds.toastUnexpected'), type: 'error' });
     } finally {
       setProcessingId(null);
     }
@@ -67,18 +69,18 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
       const res = await reviewRefund({
         refundId: rejectionModalRefund.id,
         action: 'reject',
-        rejectionReason: rejectReason.trim() || 'Demande non conforme à la politique de l’organisateur.',
+        rejectionReason: rejectReason.trim() || t('organizer', 'refunds.defaultRejectReason'),
       });
       if (res.success) {
-        onToast({ message: 'Demande de remboursement refusée. Le ticket a été réactivé.', type: 'info' });
+        onToast({ message: t('organizer', 'refunds.toastRejected'), type: 'info' });
         setRejectionModalRefund(null);
         setRejectReason('');
         loadRefunds();
       } else {
-        onToast({ message: res.error || 'Erreur lors du refus', type: 'error' });
+        onToast({ message: res.error || t('organizer', 'refunds.toastRejectError'), type: 'error' });
       }
     } catch {
-      onToast({ message: 'Erreur inattendue', type: 'error' });
+      onToast({ message: t('organizer', 'refunds.toastUnexpected'), type: 'error' });
     } finally {
       setProcessingId(null);
     }
@@ -90,7 +92,7 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
   if (loading) {
     return (
       <div className="py-12 flex justify-center text-xs text-gray-500">
-        Chargement des demandes de remboursement...
+        {t('organizer', 'refunds.loading')}
       </div>
     );
   }
@@ -102,14 +104,14 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm text-[#1A1A2E] dark:text-white flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-amber-500" />
-            Demandes en attente ({pendingRefunds.length})
+            {t('organizer', 'refunds.pendingTitle').replace('{count}', String(pendingRefunds.length))}
           </h3>
-          <span className="text-[11px] text-gray-500">Validation sous 48h recommandée</span>
+          <span className="text-[11px] text-gray-500">{t('organizer', 'refunds.validationHint')}</span>
         </div>
 
         {pendingRefunds.length === 0 ? (
           <div className="p-6 rounded-2xl bg-gray-50 dark:bg-white/5 text-center text-gray-400">
-            Aucune demande de remboursement en attente.
+            {t('organizer', 'refunds.noPending')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -121,10 +123,10 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="font-bold text-[#1A1A2E] dark:text-white block text-sm">
-                      Billet #{ref.ticket_id.slice(0, 8)}
+                      {t('organizer', 'refunds.ticketLabel').replace('{id}', ref.ticket_id.slice(0, 8))}
                     </span>
                     <span className="text-gray-500 dark:text-gray-400">
-                      Motif : <strong className="text-[#6600FF]">{ref.reason_type}</strong>
+                      {t('organizer', 'refunds.reason')} <strong className="text-[#6600FF]">{ref.reason_type}</strong>
                     </span>
                   </div>
                   <div className="text-right">
@@ -156,7 +158,7 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
                     onClick={() => setRejectionModalRefund(ref)}
                     className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-700 dark:text-gray-300 font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
                   >
-                    <X className="w-3.5 h-3.5" /> Refuser
+                    <X className="w-3.5 h-3.5" /> {t('organizer', 'refunds.reject')}
                   </button>
                   <button
                     type="button"
@@ -164,7 +166,7 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
                     onClick={() => handleApprove(ref)}
                     className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm"
                   >
-                    <Check className="w-3.5 h-3.5" /> Approuver le remboursement
+                    <Check className="w-3.5 h-3.5" /> {t('organizer', 'refunds.approve')}
                   </button>
                 </div>
               </div>
@@ -177,7 +179,7 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
       {pastRefunds.length > 0 && (
         <div className="space-y-3 pt-2">
           <h3 className="font-bold text-sm text-[#1A1A2E] dark:text-white">
-            Historique traité ({pastRefunds.length})
+            {t('organizer', 'refunds.historyTitle').replace('{count}', String(pastRefunds.length))}
           </h3>
           <div className="space-y-2">
             {pastRefunds.map((ref) => (
@@ -187,7 +189,7 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
               >
                 <div>
                   <span className="font-bold text-gray-800 dark:text-gray-200 block">
-                    Billet #{ref.ticket_id.slice(0, 8)}
+                    {t('organizer', 'refunds.ticketLabel').replace('{id}', ref.ticket_id.slice(0, 8))}
                   </span>
                   <span className="text-[10px] text-gray-400">
                     {ref.refund_phone} ({ref.payment_provider?.toUpperCase()})
@@ -202,9 +204,9 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
                     }`}
                   >
                     {ref.status === 'refunded' ? (
-                      <><CheckCircle2 className="w-3 h-3" /> Remboursé</>
+                      <><CheckCircle2 className="w-3 h-3" /> {t('organizer', 'refunds.statusRefunded')}</>
                     ) : ref.status === 'rejected' ? (
-                      <><XCircle className="w-3 h-3" /> Refusé</>
+                      <><XCircle className="w-3 h-3" /> {t('organizer', 'refunds.statusRejected')}</>
                     ) : (
                       ref.status
                     )}
@@ -223,14 +225,14 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
       {rejectionModalRefund && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-sm bg-zinc-900 border border-white/10 rounded-3xl p-5 text-white space-y-4">
-            <h4 className="font-bold text-sm">Refuser la demande de remboursement</h4>
+            <h4 className="font-bold text-sm">{t('organizer', 'refunds.rejectModalTitle')}</h4>
             <p className="text-xs text-white/60">
-              Veuillez indiquer la raison du refus (visible par le client). Le billet sera automatiquement redégelé et réactivé.
+              {t('organizer', 'refunds.rejectModalHint')}
             </p>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Ex: Demande hors délai, événement maintenu sans changement majeur..."
+              placeholder={t('organizer', 'refunds.rejectPlaceholder')}
               rows={3}
               className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none resize-none focus:border-[#6600FF]"
             />
@@ -240,14 +242,14 @@ export const OrganizerRefundsTab: React.FC<OrganizerRefundsTabProps> = ({ organi
                 onClick={() => setRejectionModalRefund(null)}
                 className="flex-1 py-2 rounded-xl bg-white/10 text-white/70 font-semibold"
               >
-                Annuler
+                {t('organizer', 'refunds.cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmReject}
                 className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold"
               >
-                Confirmer le refus
+                {t('organizer', 'refunds.confirmReject')}
               </button>
             </div>
           </div>
