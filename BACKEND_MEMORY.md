@@ -117,3 +117,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - [Backend] Tester les RPCs restaurées + un like réel non-démo.
 - [Backend] Revue progressive des grants SECURITY DEFINER (authenticated).
 - [Automatisation frontend] Continuer la localisation des écrans restants (OrganizerDashboard, etc.).
+
+## 2026-11-24 — Note pour automatisations
+- [Automatisation frontend] Localisation EventManagementModal terminée (clés manage.*). Prochaine : TicketScannerModal. Ne pas toucher Explorer par catégories.
