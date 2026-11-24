@@ -28,6 +28,7 @@ window.addEventListener('vite:preloadError', (event) => {
 
 // Enregistrement PWA avec mise à jour disponible à la demande.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  let pwaRegistration: ServiceWorkerRegistration | null = null;
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
@@ -39,6 +40,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
+      pwaRegistration = registration;
 
       let lastCheck = 0;
       const checkForUpdate = () => {
@@ -64,6 +66,26 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     onOfflineReady() {
       console.log('[PWA] Prêt pour le mode hors ligne.');
     },
+  });
+
+  window.addEventListener('gba-pwa-manual-check', async (event) => {
+    const respond = (event as CustomEvent<{ respond?: (status: 'updated' | 'current' | 'preparing' | 'offline' | 'unavailable' | 'error') => void }>).detail?.respond;
+    if (!respond) return;
+    if (!navigator.onLine) { respond('offline'); return; }
+    if (!pwaRegistration) { respond('unavailable'); return; }
+    try {
+      await pwaRegistration.update();
+      if (pwaRegistration.waiting) {
+        await updateSW(true);
+        respond('updated');
+      } else if (pwaRegistration.installing) {
+        respond('preparing');
+      } else {
+        respond('current');
+      }
+    } catch {
+      respond('error');
+    }
   });
 }
 
