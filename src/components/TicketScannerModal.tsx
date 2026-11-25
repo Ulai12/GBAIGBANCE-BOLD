@@ -973,7 +973,7 @@ export function TicketScannerModal({
               onClick={() => setShowHistory(false)}
               className="mt-3 w-full py-3 rounded-2xl bg-white/10 text-white font-bold text-xs"
             >
-              Fermer
+              {t('organizer', 'scannerModal.close')}
             </button>
           </div>
         </div>
@@ -981,3 +981,4 @@ export function TicketScannerModal({
     </div>
   );
 }
+
