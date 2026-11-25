@@ -329,3 +329,11 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - La RPC contient désormais une vérification défensive du claim JWT `role=service_role`; EXECUTE est révoqué à `PUBLIC`, `anon` et `authenticated`, et accordé uniquement à `service_role`.
 - Vérification SQL live : anon=false, authenticated=false, service_role=true; la garde service_role est présente dans la définition active.
 - Aucun paiement ni billet réel n'a été modifié pendant cette intervention.
+
+
+## 2026-11-25 — Profils publics : projection synchronisée protégée par RLS (P1)
+- La première implémentation `public_profiles` sous forme de vue a été rejetée après contrôle : l'advisor Supabase signalait `security_definer_view` en ERROR. Elle a été remplacée immédiatement par une table de projection publique, sans PII, protégée par RLS.
+- Migration live : `20261125122000_replace_public_profiles_view_with_rls_table`.
+- `public_profiles` est maintenant une table avec RLS activé et forcé; SELECT est le seul privilège accordé à `anon` et `authenticated`, sans INSERT/UPDATE/DELETE. Un trigger `SECURITY DEFINER` non exécutable par les clients synchronise les champs publics depuis `profiles` à chaque INSERT/UPDATE/DELETE.
+- Le backfill initial a été exécuté. La table `profiles` ne contenait aucune ligne au moment du contrôle, donc le trigger n'a pas encore pu être validé sur un compte réel.
+- Recontrôle Supabase : l'alerte ERROR `security_definer_view` a disparu; les seules fonctions SECURITY DEFINER encore accessibles à anon sont `get_platform_stats`, `increment_event_views` et `record_event_view`, conservées publiques pour les statistiques/compteurs d'événements. L'avertissement `pg_net` dans le schéma public reste non traité.
