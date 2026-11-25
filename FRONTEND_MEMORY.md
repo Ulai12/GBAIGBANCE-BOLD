@@ -253,3 +253,14 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Fichiers : `src/AppContent.tsx`, `src/screens/AuthScreen.tsx`.
 - Aucun changement backend/API, dépendance, lockfile ou « Explorer par catégorie ».
 - Validation statique des ancres et des callbacks effectuée avant écriture. Build, typecheck, lint et tests navigateur/mobile restent à exécuter.
+
+
+## 2026-11-25 — Guards d'accès créateur et navigation de retour (P1)
+- Ajout de `CreatorAccessRoute` : attend la fin de restauration de session Supabase, exige une session active et un rôle autorisé par `canManageEvents` avant d'afficher les espaces de création, le dashboard organisateur ou l'édition d'événement. Les politiques RLS restent l'autorité pour les opérations de données et la propriété des événements.
+- Les accès directs à `/create`, `/organizer/dashboard` et `/events/:id/edit` redirigent les visiteurs non connectés vers Connexion avec un `returnTo` interne; les comptes sans rôle créateur voient une porte d'accès avec retour adapté.
+- Ajout de `getSafeInternalPath` pour n'accepter que des chemins internes (pas d'URL externe, de protocole relatif ou de boucle vers les écrans d'authentification). Les retours après connexion/inscription et OTP utilisent cette validation.
+- Correction de la conservation de `location.state` depuis Inscription vers Mot de passe oublié. Le bouton Créer de la navigation basse transmet désormais `returnTo: /create`.
+- Harmonisation du retour arrière : `AppContent`, les wrappers de routes et le swipe de bord utilisent `safeNavigateBack`. Le retour ne se fie plus au referrer navigateur comme preuve d'une entrée SPA; sans index React Router valide, il applique un fallback interne déterministe.
+- Fichiers : `src/navigation/CreatorAccessRoute.tsx`, `src/utils/navigation.ts`, `src/AppContent.tsx`, `src/navigation/RouteWrappers.tsx`, `FRONTEND_MEMORY.md`.
+- Aucun changement backend/API, schéma Supabase, dépendance, lockfile ou « Explorer par catégorie ».
+- Contrôle statique des remplacements effectué pendant l'édition; build, typecheck, lint, tests de routes et QA navigateur/mobile restent à exécuter.
