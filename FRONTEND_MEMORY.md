@@ -406,3 +406,10 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Les événements non publiés ou de démonstration ne sont toujours pas comptabilisés.
 - Vérification SQL : wrapper public SECURITY INVOKER; le schéma `private` n'est pas dans `pgrst.db_schemas`; droits de la fonction interne limités à l'appel du wrapper. Test d'incrément réel non exécuté, car aucun événement réel n'est présent dans la base au moment du contrôle.
 - Deux entrées de migration identiques pour le quota IA existaient dans l'historique Supabase (`20261125124033` et `20261125124109`); le second fichier idempotent a été ajouté au dépôt pour réconcilier l'historique et la branche.
+
+
+## 2026-11-25 — Collaborations : acceptation sans réactivation ni publication automatique (P1)
+- Migration live appliquée et versionnée : `20261125124605_prevent_collaboration_reactivation_and_auto_publish`.
+- `accept_collaboration` exige maintenant une session, verrouille l'invitation et n'accepte que le statut `pending`. Une invitation déjà acceptée est idempotente; une invitation refusée/retirée ne peut plus être réactivée par son ancien destinataire.
+- Suppression de la publication automatique de l'événement quand toutes les invitations sont acceptées. L'acceptation d'une collaboration ne peut plus contourner le flux de validation/publication de l'événement; l'organisateur/admin conserve la décision via le flux de statut.
+- Les policies RLS de collaboration restent en place; aucun événement n'a été publié ni modifié pendant la migration.
