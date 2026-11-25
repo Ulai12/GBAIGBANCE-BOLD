@@ -286,3 +286,12 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Aucun changement backend/API, schéma Supabase, dépendance, lockfile, données métier ou « Explorer par catégorie ». UIAudit/Superdesign non disponibles dans les outils exposés.
 - Vérification statique : garde d'identité, invalidation des requêtes obsolètes et chemins de déconnexion présents; aucune modification des écrans de catégories. Build Preview à exécuter après push; typecheck, lint, tests automatisés et QA mobile multi-comptes non exécutés à ce stade.
 - Prochaine priorité : valider sur Preview un passage compte créateur → compte participant, le sens inverse, une déconnexion pendant le chargement et l'accès direct aux routes /create, /organizer/dashboard et /events/:id/edit.
+
+
+## 2026-11-25 — Billets : annulation transactionnelle et visibilité des participants (P1)
+- Deuxième migration live appliquée et versionnée : `20261125121023_secure_ticket_mutations_and_attendee_access`.
+- La RPC `cancel_ticket` accepte les statuts réels `active` et `valid`, vérifie le propriétaire du billet, verrouille la ligne, annule transactionnellement le billet, libère la quantité correspondante dans l'option et ajuste le compteur de participants.
+- `src/features/tickets/service.ts` ne modifie plus directement la table `tickets` pour annuler. Il appelle la RPC, vérifie le retour serveur et ne retire le billet du cache local qu'après confirmation; les erreurs sont maintenant remontées au lieu d'être masquées.
+- Ajout de la politique `tickets_select_secure` : détenteur, organisateur de l'événement, collaborateur accepté ou administrateur. Cela permet aux métriques organisateur de lire les billets de leurs événements tout en conservant la lecture personnelle des participants.
+- `get_event_attendees` n'expose plus la liste des participants d'un événement privé/pending à n'importe quel compte connecté; les événements publiés restent consultables pour préserver la découverte sociale. Les billets en attente de paiement sont exclus du décompte des participants.
+- Vérifications build et tests fonctionnels à exécuter sur Preview avant de supprimer les anciennes politiques directes INSERT/UPDATE/DELETE de `tickets`. Elles restent temporairement en place pour éviter de casser une version frontend encore non déployée.
