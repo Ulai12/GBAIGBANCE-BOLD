@@ -313,3 +313,19 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - `isRealProfile` reconnaît le booléen `is_demo`; les sélections publiques nécessaires le récupèrent. Les lectures privées de son propre profil dans `src/services/auth.ts` et dans l'assistant IA restent sur `profiles`.
 - Transition en deux temps : la policy publique sur `profiles` reste active pour l'instant. La migration finale sera appliquée seulement après Preview READY; elle supprimera cette policy et limitera l'accès direct à la ligne personnelle/admin.
 - Build et QA profil/favoris/abonnements restent à confirmer.
+
+
+## 2026-11-25 — Profils : fermeture de la lecture directe des données personnelles (P1)
+- Migration live appliquée et versionnée : `20261125121719_lockdown_private_profile_reads`, après Preview READY du code utilisant `public_profiles`.
+- Suppression de `profiles_select_public`; la table `profiles` ne peut être lue directement que par son propriétaire ou un administrateur via `is_platform_admin()`.
+- Révocation de SELECT sur `profiles` pour `PUBLIC` et `anon`; les visiteurs gardent uniquement l'accès à `public_profiles`, qui ne contient ni email ni téléphone.
+- Vérification live : `anon_profiles_select=false`, `anon_public_view_select=true`, `authenticated_profiles_select=true` avec policy owner/admin. La vue expose uniquement les colonnes prévues. La table profiles contenait 0 ligne au moment du contrôle; le rendu avec des profils réels reste donc à tester dès que des comptes de test existent.
+- Les lectures personnelles via `src/services/auth.ts` et l'assistant IA restent autorisées par la policy propriétaire.
+
+## 2026-11-25 — Paiements : confirmation réservée au webhook signé (P0)
+- Migration live appliquée et versionnée : `20261125121822_restrict_payment_confirmation_to_signed_webhook`.
+- Découverte : `confirm_ticket_payment` était exécutable par `authenticated` et ne vérifiait pas l'identité du service appelant; un compte connecté pouvait tenter de confirmer un paiement en attente sans preuve PSP et déclencher l'émission de billets.
+- L'Edge Function `payment-webhook` est le seul appelant applicatif observé; elle vérifie `x-gba-signature` avec `PAYMENT_WEBHOOK_SECRET` puis utilise `SUPABASE_SERVICE_ROLE_KEY`.
+- La RPC contient désormais une vérification défensive du claim JWT `role=service_role`; EXECUTE est révoqué à `PUBLIC`, `anon` et `authenticated`, et accordé uniquement à `service_role`.
+- Vérification SQL live : anon=false, authenticated=false, service_role=true; la garde service_role est présente dans la définition active.
+- Aucun paiement ni billet réel n'a été modifié pendant cette intervention.
