@@ -230,3 +230,16 @@ Localisation des composants enfants du OrganizerDashboard (suite) — TicketScan
 
 ## Backlog mis à jour
 P2 : transition d'onglets billets, polish cartes wallet.
+
+
+## 2026-11-25 — P0 : restauration de l'application après troncature du split App
+- Diagnostic : `src/AppContent.tsx` distant était tronqué à 20 593 octets et se terminait par un ancien arbre de routes simplifié. Plusieurs parcours Home/Profile/notifications et les props de navigation avaient disparu ou n'étaient plus transmis. `src/App.tsx` était bien un shell léger, mais l'ordre des providers différait de l'ordre historique.
+- L'utilisateur confirme vouloir conserver la séparation App/AppContent et les améliorations scroll/swipe.
+- Restauration de `src/AppContent.tsx` depuis la version complète vérifiée du commit `55b537a98787df461e4254820a20ecb283a5a603` (blob `20f26c79b68da233b0dcd9322b167512bdf8c662`), puis réintégration du hook `unlockDocumentScroll` et de sa restauration double requestAnimationFrame depuis la version récente. Le composant est exporté nommé pour le shell.
+- La route Home transmet à nouveau `onOpenSettings={() => setSettingsModalOpen(true)}`; les routes d'authentification, détails, notifications, paramètres, abonnements, dashboard organisateur et création sont restaurées. Les modales Booking, AI Assistant et Settings, toasts, realtime tickets et EdgeSwipeBack sont présents.
+- `src/App.tsx` reste un shell séparé, rétablit l'ordre historique `AppProvider > FavoritesProvider > DataSaverProvider`, conserve le mode GlassSpike et enveloppe AppContent dans Suspense/ErrorBoundary/BrowserRouter.
+- Les fichiers ont été écrits uniquement sur `FRONTEND-iA`. Relecture distante effectuée : AppContent 29 471 caractères, App 1 287 caractères; pas de placeholder ni `return null`; Settings Home présent; routes et composants globaux présents.
+- Commits : `f42734a64f44663f14ad06ba26a58ec6e2d3136e` (AppContent), `718b089c1c69171e98884d009feb3992c9b0e2b9` (App shell). Aucun PR, aucun changement sur main, aucun backend/API ou dépendance.
+- Preview Vercel `dpl_Cp9ngx4MPWVkPXEmGf21W4Qd5QzG` pour `718b089c` : QUEUED au dernier contrôle; build non encore confirmé. Typecheck/lint et QA visuelle mobile non exécutés.
+- Aucun changement sur « Explorer par catégorie ». Les corrections TrendingDeck/FeaturedCarousel existantes sont conservées.
+- Prochaine priorité : attendre le build Preview; corriger les erreurs de compilation éventuelles, puis tester navigation Home, bouton Paramètres, Profile, notifications, authentification, détail événement, réservation, retour/scroll et swipes rapides sur mobile.
