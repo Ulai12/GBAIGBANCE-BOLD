@@ -790,8 +790,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     let userId: string | null = null;
     let isAuthenticated = false;
-    let userEmail: string | null = null;
-    let userRole = 'guest';
 
     const isAnonOrPublishable = Boolean(
       token && (token === SUPABASE_ANON_KEY || token.startsWith('sb_publishable_'))
@@ -812,15 +810,10 @@ const handler = async (req: Request): Promise<Response> => {
         } else if (userData?.user) {
           userId = userData.user.id;
           isAuthenticated = true;
-          userEmail = userData.user.email || null;
-          userRole =
-            userData.user.app_metadata?.role || userData.user.user_metadata?.role || 'participant';
           log(
             reqId,
             'AUTH',
-            `✅ JWT VALIDATED! Authenticated user: uid=${userId}, role=${userRole}, email=${
-              userEmail ? userEmail.slice(0, 3) + '***' : '(unspecified)'
-            }`
+            'JWT validated for authenticated user.'
           );
         } else {
           warn(reqId, 'AUTH', 'getUser returned success but user object is empty.');
@@ -839,7 +832,7 @@ const handler = async (req: Request): Promise<Response> => {
       log(
         reqId,
         'RLS',
-        `🔐 PROPAGATING JWT TO USERCLIENT: "Authorization: Bearer ${maskToken(token)}". Postgres auth.uid() will be "${userId}".`
+        'Propagating validated JWT to the scoped user client.'
       );
     } else {
       log(reqId, 'RLS', '🌐 Initializing userClient with default anon credentials (guest mode: auth.uid() is null).');
