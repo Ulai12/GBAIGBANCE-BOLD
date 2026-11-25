@@ -276,3 +276,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Le projet comptait 0 profil `admin` au moment de l'audit; aucun compte administrateur n'a été créé ni promu automatiquement.
 - Risques restant à traiter dans une passe séparée, après adaptation et validation du frontend : les politiques directes INSERT/UPDATE/DELETE de `tickets` permettent encore des mutations hors RPC; la table `profiles` expose encore une lecture publique incluant des colonnes personnelles. Préparer d'abord les usages frontend et une vue publique sans PII avant de resserrer ces accès.
 - Aucun changement sur `main`, dépendances, lockfiles ou « Explorer par catégorie ». Branche de code ciblée : `FRONTEND-iA`.
+
+
+## 2026-11-25 — Synchronisation de session et protection contre les profils obsolètes (P1)
+- Diagnostic sur src/contexts/AppContext.tsx : lors d'un changement de compte, l'ancien profil pouvait rester en mémoire pendant le chargement du nouveau; deux lectures de profils concurrentes pouvaient aussi se terminer dans le mauvais ordre. Une réponse tardive pouvait donc réinjecter le rôle du compte précédent après un changement de session ou une déconnexion.
+- AppProvider : le changement d'identité efface immédiatement le profil précédent et active isSessionResolving; les chargements sont identifiés, dédupliqués par utilisateur et ignorés s'ils ne correspondent plus au compte courant. Les lectures en cours sont invalidées à la déconnexion et à l'absence de session. refreshProfile vérifie aussi l'identité avant d'appliquer sa réponse.
+- CreatorAccessRoute : vérifie explicitement que user.id === session.user.id avant d'autoriser l'espace créateur; les données de profil d'un autre compte ne peuvent plus ouvrir cette route.
+- Fichiers : src/contexts/AppContext.tsx, src/navigation/CreatorAccessRoute.tsx, FRONTEND_MEMORY.md.
+- Aucun changement backend/API, schéma Supabase, dépendance, lockfile, données métier ou « Explorer par catégorie ». UIAudit/Superdesign non disponibles dans les outils exposés.
+- Vérification statique : garde d'identité, invalidation des requêtes obsolètes et chemins de déconnexion présents; aucune modification des écrans de catégories. Build Preview à exécuter après push; typecheck, lint, tests automatisés et QA mobile multi-comptes non exécutés à ce stade.
+- Prochaine priorité : valider sur Preview un passage compte créateur → compte participant, le sens inverse, une déconnexion pendant le chargement et l'accès direct aux routes /create, /organizer/dashboard et /events/:id/edit.

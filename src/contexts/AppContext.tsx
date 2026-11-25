@@ -186,6 +186,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activeUserIdRef = useRef<string | null>(getLocalProfile()?.id || null);
+  const profileRequestIdRef = useRef(0);
+  const profileLoadInFlightRef = useRef<{ userId: string; requestId: number } | null>(null);
 
   useEffect(() => {
     applyDocumentTheme(theme, themeMode);
@@ -212,21 +214,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const loadProfileForUser = async (userObj: { id: string; user_metadata?: Record<string, unknown> }, isSilent = false) => {
-      if (activeUserIdRef.current === userObj.id && isSilent) {
+      const requestUserId = userObj.id;
+      if (activeUserIdRef.current === requestUserId && isSilent) {
         return;
       }
-      activeUserIdRef.current = userObj.id;
+      if (profileLoadInFlightRef.current?.userId === requestUserId) {
+        return;
+      }
+
+      // Un ancien profil ne doit jamais conserver ses droits pendant le changement de compte.
+      if (activeUserIdRef.current !== requestUserId) {
+        setIsSessionResolving(true);
+        setUser(null);
+      }
+      activeUserIdRef.current = requestUserId;
+
+      const requestId = ++profileRequestIdRef.current;
+      profileLoadInFlightRef.current = { userId: requestUserId, requestId };
 
       try {
-        const profile = await fetchProfile(userObj.id);
+        const profile = await fetchProfile(requestUserId);
+        if (activeUserIdRef.current !== requestUserId || profileRequestIdRef.current !== requestId) {
+          return;
+        }
         setUser(profile);
         saveCachedProfile(profile).catch(() => {});
         syncGeminiConfigFromAccount(userObj.user_metadata, profile?.gemini_config);
       } catch {
-        // Keep cached profile if offline
+        // Conserve uniquement le cache déjà associé à ce même compte en cas de panne réseau.
       } finally {
-        setLoading(false);
-        setIsSessionResolving(false);
+        if (profileLoadInFlightRef.current?.requestId === requestId) {
+          profileLoadInFlightRef.current = null;
+        }
+        // Une réponse tardive d'un ancien compte ne doit pas terminer le chargement du compte courant.
+        if (activeUserIdRef.current === requestUserId && profileRequestIdRef.current === requestId) {
+          setLoading(false);
+          setIsSessionResolving(false);
+        }
       }
     };
 
@@ -237,6 +261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadProfileForUser(initialSession.user);
       } else {
         const prevId = activeUserIdRef.current;
+        profileRequestIdRef.current += 1;
+        profileLoadInFlightRef.current = null;
         activeUserIdRef.current = null;
         if (prevId) {
           performSignOutCleanup(prevId);
@@ -261,11 +287,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } else {
         const prevUserId = activeUserIdRef.current;
+        profileRequestIdRef.current += 1;
+        profileLoadInFlightRef.current = null;
+        activeUserIdRef.current = null;
         if (prevUserId) {
-          activeUserIdRef.current = null;
           performSignOutCleanup(prevUserId);
-          setUser(null);
         }
+        setUser(null);
+        setIsSessionResolving(false);
       }
     });
 
@@ -294,25 +323,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return;
     }
-    if (session?.user) {
-      try {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
-        saveCachedProfile(profile).catch(() => {});
-        syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
-      } catch {
-        // Keep cached
+    const requestedUserId = session?.user.id;
+    if (!requestedUserId || activeUserIdRef.current !== requestedUserId) {
+      return;
+    }
+    try {
+      const profile = await fetchProfile(requestedUserId);
+      if (activeUserIdRef.current !== requestedUserId) {
+        return;
       }
+      setUser(profile);
+      saveCachedProfile(profile).catch(() => {});
+      syncGeminiConfigFromAccount(session.user.user_metadata, profile?.gemini_config);
+    } catch {
+      // Keep cached only for the same account.
     }
   }, [session]);
 
   const handleSignOut = useCallback(async () => {
     const currentUserId = user?.id || activeUserIdRef.current;
+    // Invalide toute lecture de profil encore en vol avant de purger le compte.
+    profileRequestIdRef.current += 1;
+    profileLoadInFlightRef.current = null;
+    activeUserIdRef.current = null;
     // 1. Immediate sync purge of memory and storage (0ms UI reset)
     performSignOutCleanup(currentUserId);
-    activeUserIdRef.current = null;
     setUser(null);
     setSession(null);
+    setIsSessionResolving(false);
 
     // 2. Perform backend Supabase sign out
     try {

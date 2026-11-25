@@ -27,7 +27,7 @@ export function CreatorAccessRoute({ children, fallbackPath = '/' }: CreatorAcce
     return <Navigate to="/login" replace state={{ returnTo }} />;
   }
 
-  if (!user || !canManageEvents(user.role)) {
+  if (!user || user.id !== session.user.id || !canManageEvents(user.role)) {
     return <UnauthorizedCreateGate onBack={() => navigate(fallbackPath, { replace: true })} />;
   }
 
