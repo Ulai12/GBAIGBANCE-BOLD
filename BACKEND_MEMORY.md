@@ -125,3 +125,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 
 ## 2026-11-24 — Note pour automatisations
 - [Automatisation frontend] Localisation EventManagementModal terminée (clés manage.*). Prochaine : TicketScannerModal. Ne pas toucher Explorer par catégories.
+
+## 2026-11-25 — Note pour automatisations
+- [Automatisation frontend] TicketScannerModal : dernier libellé hardcodé "Fermer" du drawer historique remplacé par t() (commit 40066d53). Clés scannerModal.* déjà branchées. Prochaine étape suggérée : vérifier exhaustivement les autres composants organizer pour d'éventuels hardcodes restants, puis états loading/empty. Ne pas toucher Explorer par catégories.
