@@ -4,7 +4,6 @@ import { unlockDocumentScroll } from '@/utils/scrollUnlock';
 import { safeNavigateBack, getSafeInternalPath } from '@/utils/navigation';
 import { canManageEvents } from '@/security/rbac';
 import { CreatorAccessRoute } from '@/navigation/CreatorAccessRoute';
-import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { BookingModal } from '@/components/BookingModal';
 import { useApp } from '@/hooks/useApp';
 import { BottomNav } from '@/components/BottomNav';
