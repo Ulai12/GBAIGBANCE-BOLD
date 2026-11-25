@@ -346,3 +346,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - `increment_event_views(uuid)` est retirée des privilèges client; seul `service_role` peut encore l'appeler. Les deux usages frontend non dédupliqués (télémétrie générale et fallback de l'interaction événement) sont supprimés. Le seul compteur client restant est `record_event_view`, qui limite l'enregistrement à un événement publié/non démo et déduplique par visiteur/jour.
 - Les privilèges directs de `profiles` sont nettoyés : aucun INSERT/UPDATE/DELETE pour `PUBLIC` ou `anon`; les opérations restent accordées à `authenticated` et filtrées par les policies owner/admin.
 - Build Vercel, déploiement Edge Function, tests 401/403/200 avec comptes réels et QA mobile à effectuer avant de considérer le flux validé.
+
+
+## 2026-11-25 — Billetterie gratuite et défi de présence : règles serveur restaurées (P0)
+- Migration live appliquée et versionnée : `20261125122943_harden_ticket_booking_and_presence_challenge`.
+- `book_ticket` ne peut plus créer de billet payant sans Mobile Money; quantité bornée de 1 à 10; vérifications serveur du statut publié, option active, fenêtre de vente, stock et capacité. Le montant enregistré est forcé à 0 pour ce parcours gratuit.
+- `purchase_tickets_multi` conserve son rôle gratuit uniquement, refuse les prix négatifs/payants et vérifie aussi l'activation de l'option, les dates de vente, le stock et la capacité côté serveur.
+- Défaut critique corrigé dans `complete_presence_challenge` : l'ancienne version acceptait toute chaîne de 3 caractères, ignorait la fenêtre de 15 minutes et marquait le billet comme `used`, ce qui pouvait empêcher son scan d'entrée. La version restaurée impose 3 essais, la fenêtre `starts_at → starts_at + 15 minutes`, et ne modifie plus le statut d'admission.
+- Les secrets de motif sont maintenant conservés dans `ticket_presence_challenges`, table avec RLS forcé et aucun privilège client. Un trigger serveur crée un secret par billet; le motif attendu est un ordre déterministe des quatre nœuds, compatible avec l'interface tactile existante. Les billets existants sont backfillés.
+- Vérifications SQL live : les deux RPC de réservation conservent EXECUTE authenticated; anon n'a pas EXECUTE sur `book_ticket`; les secrets ne sont lisibles ni par anon ni par authenticated; la fonction utilise bien la vérification de motif, la fenêtre et la limite de trois essais, et ne marque plus le billet `used`. Le trigger est actif. La table tickets était vide lors du contrôle, donc le déclenchement sur une vraie insertion reste à tester.
+- Aucun paiement, billet, stock ou badge réel n'a été modifié. Tests end-to-end avec billets de test et QA mobile restent à effectuer.
