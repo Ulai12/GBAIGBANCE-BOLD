@@ -61,6 +61,7 @@ export interface Profile {
   name: string;
   email: string | null;
   phone: string | null;
+  is_demo?: boolean;
   avatar_url: string | null;
   cover_url?: string | null;
   role: UserRole;
@@ -73,7 +74,7 @@ export interface Profile {
   updated_at: string;
 }
 
-export type PublicProfile = Pick<Profile, 'id' | 'name' | 'avatar_url' | 'role'>;
+export type PublicProfile = Pick<Profile, 'id' | 'name' | 'avatar_url' | 'role'> & Partial<Pick<Profile, 'city' | 'country' | 'bio' | 'cover_url' | 'preferred_genres' | 'created_at' | 'updated_at' | 'is_demo'>>;
 
 export interface Organization {
   id: string;
