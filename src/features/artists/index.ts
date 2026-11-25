@@ -12,7 +12,7 @@ export async function fetchFeaturedArtists(): Promise<Artist[]> {
   try {
     const [artistsRes, profilesRes, eventsRes, followsRes] = await Promise.all([
       supabase.from('artists').select('*').limit(30),
-      supabase.from('profiles').select('*').eq('role', 'artist').limit(30),
+      supabase.from('public_profiles').select('*').eq('role', 'artist').limit(30),
       supabase.from('events').select('id, organizer_user_id, status').eq('status', 'published'),
       supabase.from('artist_follows').select('artist_id'),
     ]);
@@ -79,7 +79,7 @@ export async function fetchArtistById(artistId: string): Promise<Artist | null> 
     const { data: artistData } = await supabase.from('artists').select('*').eq('id', artistId).maybeSingle();
     if (artistData && isRealArtist(artistData)) return artistData as Artist;
 
-    const { data: profileData } = await supabase.from('profiles').select('*').eq('id', artistId).maybeSingle();
+    const { data: profileData } = await supabase.from('public_profiles').select('*').eq('id', artistId).maybeSingle();
     if (profileData && isRealProfile(profileData)) {
       return {
         id: profileData.id,
@@ -165,8 +165,8 @@ export async function searchArtists(query: string): Promise<Artist[]> {
     .limit(20);
   if (err1) throw err1;
   const { data: profileArtists, error: err2 } = await supabase
-    .from('profiles')
-    .select('id, name, bio, avatar_url, city, country, created_at')
+    .from('public_profiles')
+    .select('id, name, bio, avatar_url, city, country, created_at, is_demo')
     .eq('role', 'artist')
     .ilike('name', `%${sanitized}%`)
     .limit(20);
