@@ -147,9 +147,6 @@ export async function rpcClaimTicketByToken(rawToken: string) {
     const { data, error } = await supabase.rpc('claim_ticket_by_token', {
       p_raw_claim_token: rawToken,
     });
-    if (error && isMissingRpcError(error)) {
-      return { success: true as const, message: 'Billet réclamé avec succès (mode local) !' };
-    }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la réclamation');
     if (isRpcSuccess(parsed)) {
       return {
@@ -160,9 +157,6 @@ export async function rpcClaimTicketByToken(rawToken: string) {
     }
     return parsed;
   } catch (err) {
-    if (isMissingRpcError(err)) {
-      return { success: true as const, message: 'Billet réclamé avec succès (mode local) !' };
-    }
     return handleRpcResult(err, null, 'Erreur lors de la réclamation') as RpcNormalizedError;
   }
 }
@@ -172,9 +166,6 @@ export async function rpcRegenerateClaimLink(ticketId: string) {
     const { data, error } = await supabase.rpc('regenerate_claim_link', {
       p_ticket_id: ticketId,
     });
-    if (error && isMissingRpcError(error)) {
-      return { success: true as const, claim_token: Math.random().toString(36).slice(2, 16) };
-    }
     const parsed = handleRpcResult(error, data, 'Impossible de régénérer le lien');
     if (isRpcSuccess(parsed)) {
       return {
@@ -184,9 +175,6 @@ export async function rpcRegenerateClaimLink(ticketId: string) {
     }
     return parsed;
   } catch (err) {
-    if (isMissingRpcError(err)) {
-      return { success: true as const, claim_token: Math.random().toString(36).slice(2, 16) };
-    }
     return handleRpcResult(err, null, 'Impossible de régénérer le lien') as RpcNormalizedError;
   }
 }
@@ -204,9 +192,6 @@ export async function rpcRequestTicketRefund(params: {
       p_custom_refund_phone: params.refundPhone || null,
       p_custom_payment_provider: params.paymentProvider || null,
     });
-    if (error && isMissingRpcError(error)) {
-      return { success: true as const, message: 'Demande de remboursement soumise avec succès (mode local).' };
-    }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la demande de remboursement');
     if (isRpcSuccess(parsed)) {
       return {
@@ -218,9 +203,6 @@ export async function rpcRequestTicketRefund(params: {
     }
     return parsed;
   } catch (err) {
-    if (isMissingRpcError(err)) {
-      return { success: true as const, message: 'Demande de remboursement soumise avec succès (mode local).' };
-    }
     return handleRpcResult(err, null, 'Erreur lors de la demande') as RpcNormalizedError;
   }
 }
@@ -236,12 +218,6 @@ export async function rpcReviewRefund(params: {
       p_action: params.action,
       p_rejection_reason: params.rejectionReason || null,
     });
-    if (error && isMissingRpcError(error)) {
-      return {
-        success: true as const,
-        message: `Demande ${params.action === 'approve' ? 'approuvée' : 'refusée'} (mode local)`,
-      };
-    }
     const parsed = handleRpcResult(error, data, 'Erreur lors de la revue');
     if (isRpcSuccess(parsed)) {
       return {
@@ -251,12 +227,6 @@ export async function rpcReviewRefund(params: {
     }
     return parsed;
   } catch (err) {
-    if (isMissingRpcError(err)) {
-      return {
-        success: true as const,
-        message: `Demande ${params.action === 'approve' ? 'approuvée' : 'refusée'} (mode local)`,
-      };
-    }
     return handleRpcResult(err, null, 'Erreur lors de la revue') as RpcNormalizedError;
   }
 }
@@ -270,13 +240,6 @@ export async function rpcCompletePresenceChallenge(params: {
       p_ticket_id: params.ticketId,
       p_submitted_pattern: params.submittedPattern,
     });
-    if (error && isMissingRpcError(error)) {
-      return {
-        success: true as const,
-        badge_name: 'Pionnier du Live',
-        message: 'Bravo ! Défi validé en mode local.',
-      };
-    }
     const parsed = handleRpcResult(error, data, 'Erreur de communication avec le serveur');
     if (isRpcSuccess(parsed)) {
       return {
@@ -288,13 +251,6 @@ export async function rpcCompletePresenceChallenge(params: {
     }
     return parsed;
   } catch (err) {
-    if (isMissingRpcError(err)) {
-      return {
-        success: true as const,
-        badge_name: 'Pionnier du Live',
-        message: 'Bravo ! Défi validé en mode local.',
-      };
-    }
     return handleRpcResult(err, null, 'Erreur de communication avec le serveur') as RpcNormalizedError;
   }
 }
