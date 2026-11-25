@@ -356,3 +356,11 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Les secrets de motif sont maintenant conservés dans `ticket_presence_challenges`, table avec RLS forcé et aucun privilège client. Un trigger serveur crée un secret par billet; le motif attendu est un ordre déterministe des quatre nœuds, compatible avec l'interface tactile existante. Les billets existants sont backfillés.
 - Vérifications SQL live : les deux RPC de réservation conservent EXECUTE authenticated; anon n'a pas EXECUTE sur `book_ticket`; les secrets ne sont lisibles ni par anon ni par authenticated; la fonction utilise bien la vérification de motif, la fenêtre et la limite de trois essais, et ne marque plus le billet `used`. Le trigger est actif. La table tickets était vide lors du contrôle, donc le déclenchement sur une vraie insertion reste à tester.
 - Aucun paiement, billet, stock ou badge réel n'a été modifié. Tests end-to-end avec billets de test et QA mobile restent à effectuer.
+
+
+## 2026-11-25 — Liens cadeaux : réclamation et régénération sécurisées (P1)
+- Migration live appliquée et versionnée : `20261125123419_secure_gift_ticket_claim_and_link_regeneration`.
+- `claim_ticket_by_token` refuse désormais les billets annulés, remboursés, expirés ou non transférables; seuls les cadeaux non réclamés en statut valide/actif peuvent être pris. Si le billet est déjà attribué à un compte distinct de l'acheteur, seul ce compte peut le réclamer.
+- `regenerate_claim_link` est réservé à l'acheteur et aux billets cadeaux encore non réclamés en statut valide/actif. Le bloc conditionnel précédent était sans effet et permettait de renouveler un lien après réclamation; il a été supprimé.
+- `src/features/tickets/rpc.ts` ne renvoie plus de faux succès local lorsqu'une RPC serveur est absente pour la réclamation, la régénération de lien, les remboursements ou le défi de présence. En mode Supabase configuré, une RPC manquante remonte une erreur explicite; le mode local reste géré au niveau service lorsque Supabase n'est pas configuré.
+- Vérification statique : les cinq fallbacks « mode local » ont disparu du transport RPC; les fonctions serveur ont été relues après application. Tests avec vrais comptes et vrais liens non effectués.
