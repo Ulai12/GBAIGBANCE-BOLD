@@ -594,8 +594,12 @@ function AppContent() {
                 <AuthScreen
                   mode="login"
                   onSuccess={handleAuthSuccess}
-                  onToggleMode={() => navigate('/signup')}
-                  onForgotPassword={() => navigate('/forgot-password')}
+                  onGuestContinue={() => {
+                    const authState = location.state as { returnTo?: string } | null;
+                    navigate(authState?.returnTo || '/', { replace: true });
+                  }}
+                  onToggleMode={() => navigate('/signup', { state: location.state })}
+                  onForgotPassword={() => navigate('/forgot-password', { state: location.state })}
                   onToast={addToast}
                 />
               }
@@ -606,7 +610,11 @@ function AppContent() {
                 <AuthScreen
                   mode="signup"
                   onSuccess={handleAuthSuccess}
-                  onToggleMode={() => navigate('/login')}
+                  onGuestContinue={() => {
+                    const authState = location.state as { returnTo?: string } | null;
+                    navigate(authState?.returnTo || '/', { replace: true });
+                  }}
+                  onToggleMode={() => navigate('/login', { state: location.state })}
                   onForgotPassword={() => navigate('/forgot-password')}
                   onToast={addToast}
                 />
