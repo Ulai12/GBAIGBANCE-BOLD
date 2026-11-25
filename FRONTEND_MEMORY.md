@@ -364,3 +364,12 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - `regenerate_claim_link` est réservé à l'acheteur et aux billets cadeaux encore non réclamés en statut valide/actif. Le bloc conditionnel précédent était sans effet et permettait de renouveler un lien après réclamation; il a été supprimé.
 - `src/features/tickets/rpc.ts` ne renvoie plus de faux succès local lorsqu'une RPC serveur est absente pour la réclamation, la régénération de lien, les remboursements ou le défi de présence. En mode Supabase configuré, une RPC manquante remonte une erreur explicite; le mode local reste géré au niveau service lorsque Supabase n'est pas configuré.
 - Vérification statique : les cinq fallbacks « mode local » ont disparu du transport RPC; les fonctions serveur ont été relues après application. Tests avec vrais comptes et vrais liens non effectués.
+
+
+## 2026-11-25 — Rappels d'événements : endpoint cron privé (P1)
+- Migration live appliquée et versionnée : `20261125123618_protect_event_reminders_cron_endpoint`.
+- Le endpoint `event-reminders` était public sans authentification et utilisait `service_role` pour lire les billets et créer des notifications. Il vérifie maintenant un secret aléatoire stocké dans Supabase Vault via une RPC accessible uniquement à `service_role`.
+- Le job `event-reminders-hourly` envoie ce secret depuis Vault dans l'en-tête `x-cron-secret`; le secret n'est ni dans GitHub ni dans le frontend.
+- Le handler refuse les méthodes autres que POST, les appels sans secret et les secrets invalides. Il exclut les billets `pending` des rappels (seuls `valid` et `active` sont notifiés) et remonte les erreurs d'accès/écriture au lieu de les ignorer.
+- Le job cron a été mis à jour via `cron.alter_job` après vérification de son existence. La migration SQL et le code de l'Edge Function sont versionnés sur `FRONTEND-iA`.
+- Déploiement Edge Function et vérification d'une exécution cron réelle à confirmer après publication. Aucun rappel réel n'a été envoyé manuellement pendant cette intervention.
