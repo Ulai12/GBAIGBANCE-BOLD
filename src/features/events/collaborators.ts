@@ -6,8 +6,8 @@ async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProf
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return map;
   const { data } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url, role')
+    .from('public_profiles')
+    .select('id, name, avatar_url, role, is_demo')
     .in('id', unique);
   (data || []).forEach((p) => map.set(p.id, p as PublicProfile));
   return map;
