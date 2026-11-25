@@ -225,10 +225,7 @@ export async function incrementEventViews(eventId: string): Promise<void> {
       p_event_id: eventId,
       p_visitor_key: getAnalyticsVisitorKey(),
     });
-    if (error) {
-      // Fallback simple si la dedup daily echoue
-      await supabase.rpc('increment_event_views', { p_event_id: eventId });
-    }
+    if (error) throw error;
   } catch (error) {
     console.warn('[event-views] Unable to record view:', error);
   }
