@@ -149,14 +149,32 @@ export interface TicketRecipientInput {
 }
 
 export async function cancelTicket(ticketId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
-  removeLocalStoredTicket(ticketId, userId);
   if (isSupabaseConfigured && !ticketId.startsWith('tkt_')) {
     try {
-      await supabase.from('tickets').update({ status: 'cancelled' }).eq('id', ticketId);
-    } catch {
-      // Ignorer
+      const { data, error } = await supabase.rpc('cancel_ticket', {
+        p_ticket_id: ticketId,
+      });
+      if (error) {
+        return { success: false, error: error.message || "Impossible d'annuler ce billet." };
+      }
+
+      const result = data as { success?: boolean; error?: string } | null;
+      if (!result?.success) {
+        return {
+          success: false,
+          error: result?.error || "Le serveur n'a pas confirmé l'annulation du billet.",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Impossible d'annuler ce billet.",
+      };
     }
   }
+
+  // Ne retirer le billet du cache local qu'après confirmation du serveur.
+  removeLocalStoredTicket(ticketId, userId);
   return { success: true };
 }
 
