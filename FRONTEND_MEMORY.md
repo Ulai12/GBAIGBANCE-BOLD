@@ -295,3 +295,11 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Ajout de la politique `tickets_select_secure` : détenteur, organisateur de l'événement, collaborateur accepté ou administrateur. Cela permet aux métriques organisateur de lire les billets de leurs événements tout en conservant la lecture personnelle des participants.
 - `get_event_attendees` n'expose plus la liste des participants d'un événement privé/pending à n'importe quel compte connecté; les événements publiés restent consultables pour préserver la découverte sociale. Les billets en attente de paiement sont exclus du décompte des participants.
 - Vérifications build et tests fonctionnels à exécuter sur Preview avant de supprimer les anciennes politiques directes INSERT/UPDATE/DELETE de `tickets`. Elles restent temporairement en place pour éviter de casser une version frontend encore non déployée.
+
+
+## 2026-11-25 — Billets : verrouillage des mutations directes (P0)
+- Troisième migration live appliquée et versionnée : `20261125121213_lockdown_direct_ticket_table_mutations`.
+- Suppression des politiques RLS directes INSERT/UPDATE/DELETE et de l'ancienne policy SELECT personnelle de `tickets`; la policy `tickets_select_secure` est désormais la seule politique SELECT.
+- Révocation de tous les privilèges directs sur `tickets` pour `PUBLIC`, `anon` et `authenticated`, puis rétablissement de SELECT uniquement pour `authenticated`. Les rôles clients n'ont plus INSERT, UPDATE, DELETE ni TRUNCATE; les écritures passent par les RPC SECURITY DEFINER contrôlées.
+- Vérification SQL live : anon n'a aucun privilège sur tickets; authenticated conserve SELECT mais aucun droit INSERT/UPDATE/DELETE/TRUNCATE. La seule policy active sur tickets est `tickets_select_secure`.
+- Preview Vercel READY pour le commit frontend `e60ee70432e3ddf6cb1f9ee434737ddfa9f9f1a3`; build réussi. Le code d'annulation utilise maintenant la RPC et ne modifie plus directement la table. Pas de test d'annulation avec billet réel ni de QA iPhone effectués.
