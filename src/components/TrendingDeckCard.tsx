@@ -32,6 +32,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
   const dragging = useRef(false);
+  const advanceLocked = useRef(false);
   const offset = index;
   const isBehind = !active;
 
@@ -69,17 +70,36 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         transition: { duration: 0.28, ease: 'easeIn' },
       }}
       transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
-      drag={active ? 'x' : false}
+      drag={active && !advanceLocked.current ? 'x' : false}
       dragConstraints={{ left: -280, right: 280 }}
       dragDirectionLock
       dragElastic={0.18}
       dragMomentum={false}
-      onDragStart={() => { dragging.current = true; }}
+      onDragStart={() => {
+        if (advanceLocked.current) return;
+        dragging.current = true;
+      }}
       onDragEnd={(_, info) => {
+        if (advanceLocked.current) {
+          dragging.current = false;
+          x.set(0);
+          return;
+        }
         const shouldAdvance = Math.abs(info.offset.x) > 56 || Math.abs(info.velocity.x) > 420;
-        if (shouldAdvance) onAdvance();
-        // Bloque le clic synthétique après le geste pour ne pas ouvrir la carte par erreur.
-        window.setTimeout(() => { dragging.current = false; }, 180);
+        if (shouldAdvance) {
+          // Empêche les swipes en rafale de re-déclencher pendant la sortie de carte.
+          advanceLocked.current = true;
+          onAdvance();
+          window.setTimeout(() => {
+            advanceLocked.current = false;
+            dragging.current = false;
+            x.set(0);
+          }, 320);
+        } else {
+          // Snap immédiat au centre pour ne pas laisser le geste bloqué.
+          x.set(0);
+          window.setTimeout(() => { dragging.current = false; }, 120);
+        }
       }}
       onClick={() => {
         if (!dragging.current) onOpen();
