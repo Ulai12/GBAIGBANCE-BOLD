@@ -284,7 +284,7 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - CreatorAccessRoute : vérifie explicitement que user.id === session.user.id avant d'autoriser l'espace créateur; les données de profil d'un autre compte ne peuvent plus ouvrir cette route.
 - Fichiers : src/contexts/AppContext.tsx, src/navigation/CreatorAccessRoute.tsx, FRONTEND_MEMORY.md.
 - Aucun changement backend/API, schéma Supabase, dépendance, lockfile, données métier ou « Explorer par catégorie ». UIAudit/Superdesign non disponibles dans les outils exposés.
-- Vérification statique : garde d'identité, invalidation des requêtes obsolètes et chemins de déconnexion présents; aucune modification des écrans de catégories. Build Preview à exécuter après push; typecheck, lint, tests automatisés et QA mobile multi-comptes non exécutés à ce stade.
+- Vérification statique : garde d'identité, invalidation des requêtes obsolètes et chemins de déconnexion présents; aucune modification des écrans de catégories. Preview Vercel READY pour le commit 0e7d2f3a12f8e4d92fe8b616a4c2a0ef1a3f973d (dpl_Bs37TqW6UgtKgMAakhuV5gBfFFcM); build Vite réussi, 3335 modules transformés, génération PWA et synchronisation des 14 fichiers de preview réussies; statut Vercel success. Le déploiement de la tête actuelle de FRONTEND-iA (9798bdf9acbf66a2075ba97c8f7072b6ad199078) est également READY. Typecheck, lint, tests automatisés et QA mobile multi-comptes non exécutés. Clone local impossible dans cette session (résolution DNS de github.com indisponible); aucune dépendance ni lockfile modifié.
 - Prochaine priorité : valider sur Preview un passage compte créateur → compte participant, le sens inverse, une déconnexion pendant le chargement et l'accès direct aux routes /create, /organizer/dashboard et /events/:id/edit.
 
 
