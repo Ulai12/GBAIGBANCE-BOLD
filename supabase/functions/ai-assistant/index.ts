@@ -54,6 +54,7 @@ function err(reqId: string, tag: string, _message: string, _errorObj?: unknown) 
 // Origines CORS autorisées
 const ALLOWED_ORIGINS = [
   'https://gbaigbance-event.vercel.app',
+  'https://gbaigbance-event-git-frontend-ia-shogun10.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173',
   Deno.env.get('FRONTEND_URL'),
@@ -728,7 +729,17 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     // 0. Body et Clé API (priorité à la clé personnelle de l'utilisateur, sinon clé serveur)
     const userApiKey = req.headers.get('x-gemini-api-key')?.trim();
-    const body = await req.json().catch(() => ({}));
+    if (userApiKey && userApiKey.length > 256) {
+      return new Response(JSON.stringify({ error: 'Clé Gemini invalide.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+    const rawBody = await req.text();
+    if (rawBody.length > 24_000) {
+      return new Response(JSON.stringify({ error: 'Requête trop volumineuse.' }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+    let body: any = {};
+    try { body = rawBody ? JSON.parse(rawBody) : {}; } catch {
+      return new Response(JSON.stringify({ error: 'Corps de requête invalide.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
     const activeGeminiKey = userApiKey || GEMINI_API_KEY;
 
     log(
@@ -747,6 +758,11 @@ const handler = async (req: Request): Promise<Response> => {
           : 'MISSING'
       }`
     );
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      err(reqId, 'CONFIG', 'Supabase server configuration is incomplete.');
+      return new Response(JSON.stringify({ error: 'Configuration serveur incomplète.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
 
     if (!activeGeminiKey) {
       err(reqId, 'KEY', 'No Gemini API key available. Request rejected with 400.');
@@ -840,7 +856,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Quota is checked through a server-only RPC.
-    const clientIp = req.headers.get('cf-connecting-ip') || 'unknown';
+    const clientIp = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const ipDigest = Array.from(
       new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientIp)))
     ).map((byte) => byte.toString(16).padStart(2, '0')).join('');
