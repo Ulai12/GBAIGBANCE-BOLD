@@ -11,11 +11,11 @@ import {
   VISIBLE_TICKET_STATUSES,
   withinRadius,
 } from '../_shared/aiCatalog.ts';
-import { AI_SYSTEM_INSTRUCTION } from '../../../src/constants/aiSystemPrompt.ts';
+import { AI_SYSTEM_INSTRUCTION } from '../_shared/aiSystemPrompt.ts';
 import {
   getAIAnswerStyleInstruction,
   normalizeAIAssistantPreferences,
-} from '../../../src/constants/aiPreferences.ts';
+} from '../_shared/aiPreferences.ts';
 
 // ====================================================================
 // GBAIGBANCE — EDGE FUNCTION: ASSISTANT IA CONTEXTUEL & SÉCURISÉ
