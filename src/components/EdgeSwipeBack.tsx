@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { haptic } from '@/hooks/useHaptics';
 import { isRootTabPath, safeNavigateBack } from '@/utils/navigation';
+import { unlockDocumentScroll } from '@/utils/scrollUnlock';
 
 const EDGE_THRESHOLD_PX = 28;
 const SWIPE_SUCCESS_DISTANCE = 75;
@@ -78,7 +79,10 @@ export function EdgeSwipeBack() {
       if (isTrackingRef.current && isSwipingRef.current) {
         if (swipeDistanceRef.current >= SWIPE_SUCCESS_DISTANCE) {
           haptic.light();
+          unlockDocumentScroll();
           safeNavigateBack(navigate, { fallback: '/home' });
+          // Second unlock après le paint de la page précédente (iOS).
+          window.setTimeout(() => unlockDocumentScroll(), 80);
         }
       }
       isTrackingRef.current = false;
