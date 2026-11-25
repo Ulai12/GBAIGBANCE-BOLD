@@ -243,3 +243,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Preview Vercel `dpl_Cp9ngx4MPWVkPXEmGf21W4Qd5QzG` pour `718b089c` : QUEUED au dernier contrôle; build non encore confirmé. Typecheck/lint et QA visuelle mobile non exécutés.
 - Aucun changement sur « Explorer par catégorie ». Les corrections TrendingDeck/FeaturedCarousel existantes sont conservées.
 - Prochaine priorité : attendre le build Preview; corriger les erreurs de compilation éventuelles, puis tester navigation Home, bouton Paramètres, Profile, notifications, authentification, détail événement, réservation, retour/scroll et swipes rapides sur mobile.
+
+
+## 2026-11-25 — Navigation d'authentification et conservation de l'intention (P1)
+- Amélioration ciblée du flux de navigation Login/Signup/Forgot Password.
+- Le passage Connexion ↔ Inscription conserve désormais le `location.state`, donc le `returnTo` et une réservation en attente ne sont plus perdus lorsqu'un utilisateur change de formulaire.
+- L'ouverture de Mot de passe oublié conserve également cet état; le retour navigateur retrouve le formulaire de connexion avec le contexte initial.
+- Séparation du parcours « Continuer en invité » : ce bouton revient à la destination demandée sans appeler le callback de succès d'authentification. Cela évite de traiter un invité comme un utilisateur authentifié et de rouvrir par erreur une réservation protégée.
+- Fichiers : `src/AppContent.tsx`, `src/screens/AuthScreen.tsx`.
+- Aucun changement backend/API, dépendance, lockfile ou « Explorer par catégorie ».
+- Validation statique des ancres et des callbacks effectuée avant écriture. Build, typecheck, lint et tests navigateur/mobile restent à exécuter.
