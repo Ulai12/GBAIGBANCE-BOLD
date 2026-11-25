@@ -211,3 +211,22 @@ Localisation des composants enfants du OrganizerDashboard (suite) — TicketScan
 - QA visuelle/tactile non effectuée : le navigateur connecté n'a pas fourni de contexte de navigation accessible. Ne pas confondre build READY avec test réel de caméra ou validation mobile.
 - Le commit code testé reste `16b59a3`; ce complément de mémoire sera un commit documentaire séparé.
 - Prochaine priorité : test mobile avec les deux langues, caméra autorisée/refusée, validation online/offline, saisie manuelle, import photo et historique; exécuter typecheck/lint depuis un environnement de développement connecté.
+
+
+## 2026-11-25 — Polish responsive et accessibilité de l'écran Billets (P2)
+- Tâche : amélioration significative et visible du wallet billets sur mobile (cibles tactiles, focus, dark mode).
+- Objectif : les onglets et le bouton « Réclamer » respectent ≥44px, meilleur contraste dark, focus visible pour clavier.
+- Modifications sur `src/screens/TicketsScreen.tsx` :
+  - Bouton claim : min-h-[44px], focus-visible ring.
+  - Segmented control : conteneur min-h-[48px], fond dark zinc-800/80, chaque onglet min-h-[44px] + py-2.5 + focus-visible.
+  - Conteneur liste : classe gba-tickets-content + key={activeTab} pour futur transition.
+- Commit : 912c3569fef3e1c541aced7587868dbf3168ba19 sur FRONTEND-iA.
+- Incident : premier essai via connecteur a écrit « PLACEHOLDER_TO_BE_REPLACED » (26 octets). Restauration immédiate via gh api avec le contenu complet local (19837 octets). Fichier distant relu et confirmé complet avec les modifications.
+- Vérifications : relecture distante OK, taille avant ~19.4 ko → après 19.8 ko (augmentation voulue). Pas de build/typecheck/lint/rendu navigateur cette session (non vérifié).
+- Prochaine étape : ajouter une transition CSS légère sur .gba-tickets-content (opacity) respectant prefers-reduced-motion, ou polish WalletPosterTicket.
+
+## Incidents
+- 2026-11-25 : troncature accidentelle TicketsScreen.tsx via connecteur (placeholder). Restauré immédiatement via API gh. Cause : content argument mal formé dans l'appel outil.
+
+## Backlog mis à jour
+P2 : transition d'onglets billets, polish cartes wallet.
