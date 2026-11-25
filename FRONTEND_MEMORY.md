@@ -264,3 +264,15 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Fichiers : `src/navigation/CreatorAccessRoute.tsx`, `src/utils/navigation.ts`, `src/AppContent.tsx`, `src/navigation/RouteWrappers.tsx`, `FRONTEND_MEMORY.md`.
 - Aucun changement backend/API, schéma Supabase, dépendance, lockfile ou « Explorer par catégorie ».
 - Nettoyage post-relecture : retrait de l'import `UnauthorizedCreateGate` devenu inutilisé dans `AppContent` après centralisation des guards; build, typecheck, lint, tests de routes et QA navigateur/mobile restent à exécuter.
+
+
+## 2026-11-25 — Supabase : durcissement RLS créateurs et RPC authentifiées (P1)
+- Audit en lecture de la base Supabase active `lwwiolbofrqakvrdvbbj` : RLS était activé sur les 27 tables publiques recensées, mais plusieurs politiques et ACL restaient trop permissives.
+- Migration live appliquée et versionnée : `20261125120841_harden_rls_creator_and_auth_rpc_access`.
+- Ajout de triggers `SECURITY DEFINER` à `profiles`, `organizations` et `artists` : un utilisateur ne peut plus s'attribuer le rôle `admin`, se déclarer vérifié, ni falsifier directement les compteurs de followers/événements. Les rôles non-admin choisis par l'utilisateur restent possibles pour préserver le parcours d'inscription.
+- Les politiques INSERT/DELETE de `event_artists` sont maintenant limitées au propriétaire de l'événement, à un collaborateur accepté ou à un administrateur; la lecture publique est conservée.
+- Correction d'un défaut ACL : révoquer EXECUTE uniquement à `anon` ne suffisait pas, car `PUBLIC` accordait encore l'exécution. `accept_collaboration`, `book_ticket`, `cancel_ticket` et `submit_event_report` sont désormais explicitement interdits à `PUBLIC`/anon et autorisés à `authenticated` + `service_role`.
+- Vérifications live après migration : les 3 triggers sont présents; les 2 politiques `event_artists` portent les conditions attendues; les 4 RPC refusent EXECUTE à anon et PUBLIC tout en conservant authenticated/service_role. L'advisor Supabase ne signale plus ces 4 RPC parmi les fonctions SECURITY DEFINER exécutables par anon.
+- Le projet comptait 0 profil `admin` au moment de l'audit; aucun compte administrateur n'a été créé ni promu automatiquement.
+- Risques restant à traiter dans une passe séparée, après adaptation et validation du frontend : les politiques directes INSERT/UPDATE/DELETE de `tickets` permettent encore des mutations hors RPC; la table `profiles` expose encore une lecture publique incluant des colonnes personnelles. Préparer d'abord les usages frontend et une vue publique sans PII avant de resserrer ces accès.
+- Aucun changement sur `main`, dépendances, lockfiles ou « Explorer par catégorie ». Branche de code ciblée : `FRONTEND-iA`.
