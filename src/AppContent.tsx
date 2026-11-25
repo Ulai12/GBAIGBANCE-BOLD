@@ -1,6 +1,9 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, useSearchParams, useNavigationType, Navigate } from 'react-router-dom';
 import { unlockDocumentScroll } from '@/utils/scrollUnlock';
+import { safeNavigateBack, getSafeInternalPath } from '@/utils/navigation';
+import { canManageEvents } from '@/security/rbac';
+import { CreatorAccessRoute } from '@/navigation/CreatorAccessRoute';
 import { UnauthorizedCreateGate } from '@/components/UnauthorizedCreateGate';
 import { BookingModal } from '@/components/BookingModal';
 import { useApp } from '@/hooks/useApp';
@@ -57,7 +60,7 @@ function OtpRoute() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useApp();
-  const state = location.state as { email?: string; phone?: string } | undefined;
+  const state = location.state as { email?: string; phone?: string; returnTo?: string } | undefined;
   const email = state?.email || user?.email || undefined;
   const phone = state?.phone || undefined;
 
@@ -65,8 +68,8 @@ function OtpRoute() {
     <OtpScreen
       email={email}
       phone={phone}
-      onBack={() => navigate(-1)}
-      onVerify={() => navigate('/')}
+      onBack={() => safeNavigateBack(navigate, { fallback: '/login' })}
+      onVerify={() => navigate(getSafeInternalPath(state?.returnTo, '/'), { replace: true })}
     />
   );
 }
@@ -155,7 +158,7 @@ function AppContent() {
     };
   }, [user?.id]);
 
-  const canCreate = !!(user && (user.role === 'organizer' || user.role === 'artist'));
+  const canCreate = !!(session && user && canManageEvents(user.role));
 
   // Determine active tab based on current pathname
   const activeTab: Tab = (() => {
@@ -239,16 +242,7 @@ function AppContent() {
 
   // Retour arrière intelligent : utilise l'historique interne React Router s'il existe, sinon redirige vers la route de repli
   const handleSmartBack = useCallback((fallbackPath: string = '/') => {
-    if (
-      typeof window !== 'undefined' &&
-      window.history.state &&
-      typeof window.history.state.idx === 'number' &&
-      window.history.state.idx > 0
-    ) {
-      navigate(-1);
-    } else {
-      navigate(fallbackPath, { replace: true });
-    }
+    safeNavigateBack(navigate, { fallback: fallbackPath });
   }, [navigate]);
 
   // Un lien cadeau #claim=… doit ouvrir Mes billets, même s'il est collé sur une autre page.
@@ -474,14 +468,14 @@ function AppContent() {
     if (pendingBooking?.event) {
       setBookingInitialOptionId(pendingBooking.initialOptionId || null);
       setBookingEvent(pendingBooking.event);
-      navigate(authState?.returnTo || `/events/${pendingBooking.event.id}`, {
+      navigate(getSafeInternalPath(authState?.returnTo, `/events/${pendingBooking.event.id}`), {
         replace: true,
         state: { event: pendingBooking.event },
       });
       return;
     }
 
-    navigate(authState?.returnTo || '/', { replace: true });
+    navigate(getSafeInternalPath(authState?.returnTo, '/'), { replace: true });
   };
 
   const handleTabChange = (tab: Tab) => {
@@ -596,7 +590,7 @@ function AppContent() {
                   onSuccess={handleAuthSuccess}
                   onGuestContinue={() => {
                     const authState = location.state as { returnTo?: string } | null;
-                    navigate(authState?.returnTo || '/', { replace: true });
+                    navigate(getSafeInternalPath(authState?.returnTo, '/'), { replace: true });
                   }}
                   onToggleMode={() => navigate('/signup', { state: location.state })}
                   onForgotPassword={() => navigate('/forgot-password', { state: location.state })}
@@ -612,10 +606,10 @@ function AppContent() {
                   onSuccess={handleAuthSuccess}
                   onGuestContinue={() => {
                     const authState = location.state as { returnTo?: string } | null;
-                    navigate(authState?.returnTo || '/', { replace: true });
+                    navigate(getSafeInternalPath(authState?.returnTo, '/'), { replace: true });
                   }}
                   onToggleMode={() => navigate('/login', { state: location.state })}
-                  onForgotPassword={() => navigate('/forgot-password')}
+                  onForgotPassword={() => navigate('/forgot-password', { state: location.state })}
                   onToast={addToast}
                 />
               }
@@ -629,7 +623,14 @@ function AppContent() {
               path="/events/:id"
               element={<EventDetailRoute onToast={addToast} onBook={handleBookEvent} />}
             />
-            <Route path="/events/:id/edit" element={<EditEventRoute onToast={addToast} />} />
+            <Route
+              path="/events/:id/edit"
+              element={
+                <CreatorAccessRoute fallbackPath="/">
+                  <EditEventRoute onToast={addToast} />
+                </CreatorAccessRoute>
+              }
+            />
             <Route path="/artists/:id" element={<ArtistDetailRoute onToast={addToast} />} />
             <Route path="/organizers/:id" element={<OrganizerDetailRoute onToast={addToast} />} />
             <Route path="/users/:id" element={<UserProfileRoute onToast={addToast} />} />
@@ -656,18 +657,20 @@ function AppContent() {
             <Route
               path="/organizer/dashboard"
               element={
-                <OrganizerDashboardScreen
-                  onBack={() => handleSmartBack('/profile')}
-                  onEventClick={handleEventClick}
-                  onEditEvent={(e) => navigate(`/events/${e.id}/edit`)}
-                  onToast={addToast}
-                />
+                <CreatorAccessRoute fallbackPath="/profile">
+                  <OrganizerDashboardScreen
+                    onBack={() => handleSmartBack('/profile')}
+                    onEventClick={handleEventClick}
+                    onEditEvent={(e) => navigate(`/events/${e.id}/edit`)}
+                    onToast={addToast}
+                  />
+                </CreatorAccessRoute>
               }
             />
             <Route
               path="/create"
               element={
-                user?.role === 'organizer' || user?.role === 'artist' ? (
+                <CreatorAccessRoute fallbackPath="/">
                   <CreateEventScreen
                     onBack={() => handleSmartBack('/')}
                     onCreated={(event) => {
@@ -676,9 +679,7 @@ function AppContent() {
                     }}
                     onToast={addToast}
                   />
-                ) : (
-                  <UnauthorizedCreateGate onBack={() => handleSmartBack('/')} />
-                )
+                </CreatorAccessRoute>
               }
             />
             <Route
@@ -703,7 +704,7 @@ function AppContent() {
           onCreate={() => {
             if (!session) {
               addToast({ message: 'Connectez-vous pour créer un événement', type: 'info' });
-              navigate('/login');
+              navigate('/login', { state: { returnTo: '/create' } });
             } else {
               navigate('/create');
             }
