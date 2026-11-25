@@ -88,12 +88,13 @@ export async function fetchEventAttendees(
       country: string;
       bio: string | null;
       created_at: string;
+      is_demo?: boolean;
     };
     const profileMap = new Map<string, AttendeeProfileRow>();
     if (uniqueUserIds.length > 0) {
       const { data: ticketProfiles } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url, role, city, country, bio, created_at')
+        .from('public_profiles')
+        .select('id, name, avatar_url, role, city, country, bio, created_at, is_demo')
         .in('id', uniqueUserIds);
 
       ((ticketProfiles || []) as unknown as AttendeeProfileRow[]).forEach((p) => {
