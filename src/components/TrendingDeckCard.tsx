@@ -1,6 +1,6 @@
 import { motion, useMotionValue, useReducedMotion, useTransform, animate } from 'motion/react';
 import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket, Map } from 'lucide-react';
-import { forwardRef, useRef, useState, useEffect } from 'react';
+import { forwardRef, useRef, useState, useEffect, useCallback } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -14,13 +14,15 @@ interface TrendingDeckCardProps {
   index: number;
   total: number;
   active: boolean;
+  /** Verrou parent pendant un advance (empêche double-swipe). */
+  parentLocked?: boolean;
   onOpen: () => void;
   onBook: () => void;
   onAdvance: () => void;
 }
 
 export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(function TrendingDeckCard(
-  { event, index, total, active, onOpen, onBook, onAdvance }: TrendingDeckCardProps,
+  { event, index, total, active, parentLocked = false, onOpen, onBook, onAdvance }: TrendingDeckCardProps,
   ref
 ) {
   const { isLiked, toggleLike } = useFavorites();
@@ -32,21 +34,68 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
   const dragging = useRef(false);
-  // STATE (pas un ref) pour forcer le re-render et désactiver réellement le drag.
+  // STATE pour forcer le re-render et couper réellement le drag (ref seul ne suffit pas).
   const [dragEnabled, setDragEnabled] = useState(true);
+  // Lock synchrone (ref) : visible immédiatement dans onDragEnd, sans attendre le re-render.
+  const lockedRef = useRef(false);
   const offset = index;
   const isBehind = !active;
 
+  const canDrag = active && dragEnabled && !parentLocked && !lockedRef.current;
+
   // Quand la carte redevient active, réautorise le drag.
   useEffect(() => {
-    if (active) {
+    if (active && !parentLocked) {
+      lockedRef.current = false;
       setDragEnabled(true);
       x.set(0);
       dragging.current = false;
     } else {
+      lockedRef.current = true;
       setDragEnabled(false);
     }
-  }, [active, x]);
+  }, [active, parentLocked, x]);
+
+  const handleDragEnd = useCallback(
+    (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+      // Lecture synchrone : ignore si déjà en train d'avancer.
+      if (lockedRef.current || parentLocked || !dragEnabled) {
+        dragging.current = false;
+        return;
+      }
+
+      const shouldAdvance =
+        Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 500;
+
+      if (shouldAdvance) {
+        // 1) Lock synchrone IMMÉDIAT (avant tout setState / onAdvance).
+        lockedRef.current = true;
+        setDragEnabled(false);
+        dragging.current = true;
+        // 2) Snap x pour éviter un ghost drag pendant l'exit.
+        x.set(info.offset.x);
+        onAdvance();
+        // 3) Sécurité : si la carte reste montée (stack), réautorise après l'anim.
+        window.setTimeout(() => {
+          dragging.current = false;
+          // Ne réactive que si la carte est toujours "active" côté parent.
+          // Le useEffect [active] gère le vrai état.
+        }, 420);
+      } else {
+        // Snap animé au centre (plus fiable que x.set seul sur iOS Safari).
+        animate(x, 0, {
+          type: 'spring',
+          stiffness: 420,
+          damping: 36,
+          mass: 0.6,
+        });
+        window.setTimeout(() => {
+          dragging.current = false;
+        }, 160);
+      }
+    },
+    [dragEnabled, parentLocked, onAdvance, x]
+  );
 
   // Visual stack styling for depth
   const stackScale = 1 - Math.min(offset, 1) * 0.045;
@@ -65,8 +114,8 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         y: active ? 0 : stackY,
         zIndex: total - index,
         transformOrigin: '50% 90%',
-        pointerEvents: active ? 'auto' : 'none',
-        touchAction: active && dragEnabled ? 'pan-y' : 'auto',
+        pointerEvents: canDrag ? 'auto' : 'none',
+        touchAction: canDrag ? 'pan-y' : 'auto',
       }}
       initial={isBehind ? { opacity: 0.5, scale: stackScale * 0.96, y: stackY + 16 } : { opacity: 0, scale: 0.94, y: 24 }}
       animate={{
@@ -82,50 +131,19 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         transition: { duration: 0.28, ease: 'easeIn' },
       }}
       transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
-      drag={active && dragEnabled ? 'x' : false}
+      drag={canDrag ? 'x' : false}
       dragConstraints={{ left: -280, right: 280 }}
       dragDirectionLock
       dragElastic={0.12}
       dragMomentum={false}
       dragSnapToOrigin
       onDragStart={() => {
-        if (!dragEnabled) return;
+        if (!canDrag) return;
         dragging.current = true;
       }}
-      onDragEnd={(_, info) => {
-        if (!dragEnabled) {
-          dragging.current = false;
-          return;
-        }
-        // Seuils un peu plus stricts pour éviter les demi-gestes qui bloquent.
-        const shouldAdvance =
-          Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 500;
-        if (shouldAdvance) {
-          // Coupe le drag tout de suite (re-render) pendant la sortie de carte.
-          setDragEnabled(false);
-          dragging.current = true;
-          onAdvance();
-          // Sécurité : si la carte reste montée, réautorise après l'anim.
-          window.setTimeout(() => {
-            dragging.current = false;
-            setDragEnabled(true);
-            x.set(0);
-          }, 400);
-        } else {
-          // Snap animé au centre (plus fiable que x.set seul sur iOS).
-          animate(x, 0, {
-            type: 'spring',
-            stiffness: 420,
-            damping: 36,
-            mass: 0.6,
-          });
-          window.setTimeout(() => {
-            dragging.current = false;
-          }, 160);
-        }
-      }}
+      onDragEnd={handleDragEnd}
       onClick={() => {
-        if (!dragging.current) onOpen();
+        if (!dragging.current && canDrag) onOpen();
       }}
       role="group"
       aria-label={t('events', 'discoverEvent').replace('{title}', event.title)}
@@ -169,7 +187,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
       <div className="absolute inset-x-5 bottom-5 z-10">
         <div className="mb-2.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-white/85">
           <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/30 px-2.5 py-1 backdrop-blur-xl">
-            <CalendarDays className="h-3.5 w-3.5 text-[#A78BFA]" /> 
+            <CalendarDays className="h-3.5 w-3.5 text-[#A78BFA]" />
             {formatDate(event.starts_at, language)}
           </span>
           <span className="flex items-center gap-1 rounded-full border border-white/20 bg-black/30 px-2.5 py-1 backdrop-blur-xl">
