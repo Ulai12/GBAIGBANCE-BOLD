@@ -95,7 +95,7 @@ export function SubscriptionsScreen({
       Promise.all([
         artIds.length > 0 ? supabase.from('artists').select('*').in('id', artIds) : Promise.resolve({ data: [] }),
         orgIds.length > 0 ? supabase.from('organizations').select('*').in('id', orgIds) : Promise.resolve({ data: [] }),
-        uIds.length > 0 ? supabase.from('profiles').select('*').in('id', uIds) : Promise.resolve({ data: [] }),
+        uIds.length > 0 ? supabase.from('public_profiles').select('*').in('id', uIds) : Promise.resolve({ data: [] }),
       ])
         .then(([artRes, orgRes, uRes]) => {
           setArtists(((artRes.data as Artist[]) || []).filter(isRealArtist));
