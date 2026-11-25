@@ -263,4 +263,4 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Harmonisation du retour arrière : `AppContent`, les wrappers de routes et le swipe de bord utilisent `safeNavigateBack`. Le retour ne se fie plus au referrer navigateur comme preuve d'une entrée SPA; sans index React Router valide, il applique un fallback interne déterministe.
 - Fichiers : `src/navigation/CreatorAccessRoute.tsx`, `src/utils/navigation.ts`, `src/AppContent.tsx`, `src/navigation/RouteWrappers.tsx`, `FRONTEND_MEMORY.md`.
 - Aucun changement backend/API, schéma Supabase, dépendance, lockfile ou « Explorer par catégorie ».
-- Contrôle statique des remplacements effectué pendant l'édition; build, typecheck, lint, tests de routes et QA navigateur/mobile restent à exécuter.
+- Nettoyage post-relecture : retrait de l'import `UnauthorizedCreateGate` devenu inutilisé dans `AppContent` après centralisation des guards; build, typecheck, lint, tests de routes et QA navigateur/mobile restent à exécuter.
