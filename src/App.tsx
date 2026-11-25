@@ -11,7 +11,6 @@ import { AppContent } from '@/AppContent';
 const GlassSpike = lazy(() => import('@/components/glass/GlassSpike'));
 
 function App() {
-  // Détection du paramètre de test ?spike=1 (isolé et facilement retirable)
   const isSpikeRequested =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('spike') === '1';
@@ -28,13 +27,13 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AppProvider>
-          <DataSaverProvider>
-            <FavoritesProvider>
+          <FavoritesProvider>
+            <DataSaverProvider>
               <Suspense fallback={<AppLoadingScreen />}>
                 <AppContent />
               </Suspense>
-            </FavoritesProvider>
-          </DataSaverProvider>
+            </DataSaverProvider>
+          </FavoritesProvider>
         </AppProvider>
       </BrowserRouter>
     </ErrorBoundary>
