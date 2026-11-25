@@ -303,3 +303,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Révocation de tous les privilèges directs sur `tickets` pour `PUBLIC`, `anon` et `authenticated`, puis rétablissement de SELECT uniquement pour `authenticated`. Les rôles clients n'ont plus INSERT, UPDATE, DELETE ni TRUNCATE; les écritures passent par les RPC SECURITY DEFINER contrôlées.
 - Vérification SQL live : anon n'a aucun privilège sur tickets; authenticated conserve SELECT mais aucun droit INSERT/UPDATE/DELETE/TRUNCATE. La seule policy active sur tickets est `tickets_select_secure`.
 - Preview Vercel READY pour le commit frontend `e60ee70432e3ddf6cb1f9ee434737ddfa9f9f1a3`; build réussi. Le code d'annulation utilise maintenant la RPC et ne modifie plus directement la table. Pas de test d'annulation avec billet réel ni de QA iPhone effectués.
+
+
+## 2026-11-25 — Profils publics : vue sans données personnelles (P1)
+- Migration live appliquée et versionnée : `20261125121350_create_safe_public_profiles_view`.
+- Création de `public.public_profiles`, projection publique des champs de présentation (id, nom, avatar/couverture, rôle, ville/pays, bio, genres et dates), sans email ni téléphone. La vue expose un booléen `is_demo` calculé en base pour conserver le filtrage des comptes de test sans révéler leur adresse.
+- Lectures publiques basculées vers cette vue dans les services utilisateurs, artistes, organisateurs, favoris, abonnements, interactions, collaborateurs, participants et notifications.
+- `fetchProfileById` utilise désormais la vue publique et retourne explicitement `email: null`, `phone: null` et `gemini_config: null`.
+- `isRealProfile` reconnaît le booléen `is_demo`; les sélections publiques nécessaires le récupèrent. Les lectures privées de son propre profil dans `src/services/auth.ts` et dans l'assistant IA restent sur `profiles`.
+- Transition en deux temps : la policy publique sur `profiles` reste active pour l'instant. La migration finale sera appliquée seulement après Preview READY; elle supprimera cette policy et limitera l'accès direct à la ligne personnelle/admin.
+- Build et QA profil/favoris/abonnements restent à confirmer.
