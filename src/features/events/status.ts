@@ -99,10 +99,11 @@ export function isRealOrganization(org: Partial<Organization> | null | undefined
 /**
  * Validates if a user/participant profile is genuine and strictly excludes mock or test profiles.
  */
-export function isRealProfile<T extends { id?: string | null; name?: string | null; email?: string | null }>(
+export function isRealProfile<T extends { id?: string | null; name?: string | null; email?: string | null; is_demo?: boolean }>(
   profile: T | null | undefined
 ): profile is T {
   if (!profile || !profile.id) return false;
+  if (profile.is_demo === true) return false;
   const id = String(profile.id).trim().toLowerCase();
   const name = String(profile.name || '').trim().toLowerCase();
   const email = String(profile.email || '').trim().toLowerCase();
