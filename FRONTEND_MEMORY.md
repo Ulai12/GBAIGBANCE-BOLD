@@ -383,3 +383,9 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Le handler borne désormais le corps à 24 000 caractères, limite la clé Gemini utilisateur à 256 caractères, utilise `cf-connecting-ip` ou `x-forwarded-for` pour l'identité invitée, exige les clés Supabase serveur, et autorise le domaine stable Preview `FRONTEND-iA`.
 - Les journaux IA ne reprennent plus les emails, rôles metadata ni UUID utilisateur. Les rôles de metadata modifiables ne sont pas utilisés pour l'autorisation.
 - Déploiement Edge IA et tests de quotas 401/429/limites réelles à confirmer; les valeurs de quotas sont contrôlées côté serveur.
+
+
+## 2026-11-25 — Assistant IA : dépendances partagées compatibles Edge Runtime
+- Le premier déploiement de la version du dépôt a été refusé par le bundler, car les imports directs `../../../src/constants/*` sortaient du périmètre de la fonction Edge.
+- Le prompt système et les préférences IA ont été centralisés dans `supabase/functions/_shared/`; les modules frontend `src/constants/aiSystemPrompt.ts` et `aiPreferences.ts` les réexportent. L'Edge Function importe maintenant les mêmes sources via `../_shared`, évitant une copie divergente.
+- Aucun changement de contenu fonctionnel du prompt ou des préférences.
