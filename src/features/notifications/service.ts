@@ -28,7 +28,7 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 
   if (actorIds.length > 0) {
     const { data: actors } = await supabase
-      .from('profiles')
+      .from('public_profiles')
       .select('id, name, avatar_url')
       .in('id', actorIds);
 
