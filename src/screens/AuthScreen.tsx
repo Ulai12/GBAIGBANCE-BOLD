@@ -9,6 +9,7 @@ import type { ToastData } from '@/components/Toast';
 interface AuthScreenProps {
   mode: 'login' | 'signup';
   onSuccess: () => void;
+  onGuestContinue?: () => void;
   onToggleMode: () => void;
   onForgotPassword: () => void;
   onToast: (toast: Omit<ToastData, 'id'>) => void;
@@ -25,7 +26,7 @@ const fieldClass = (invalid: boolean) =>
       : 'border-black/[0.08] dark:border-white/[0.12]',
   ].join(' ');
 
-export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, onToast }: AuthScreenProps) {
+export function AuthScreen({ mode, onSuccess, onGuestContinue, onToggleMode, onForgotPassword, onToast }: AuthScreenProps) {
   const { t } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -249,7 +250,7 @@ export function AuthScreen({ mode, onSuccess, onToggleMode, onForgotPassword, on
         <div className="mt-1 text-center">
           <button
             type="button"
-            onClick={onSuccess}
+            onClick={onGuestContinue || onSuccess}
             className="inline-flex min-h-11 items-center text-sm font-medium text-gray-500 transition-colors hover:text-[#6600FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6600FF] focus-visible:ring-offset-2 motion-reduce:transition-none dark:text-gray-400 dark:hover:text-[#A78BFA] dark:focus-visible:ring-offset-[#14121E]"
           >
             {t('auth', 'guestContinue')}
