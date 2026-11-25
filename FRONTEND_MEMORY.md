@@ -337,3 +337,12 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - `public_profiles` est maintenant une table avec RLS activé et forcé; SELECT est le seul privilège accordé à `anon` et `authenticated`, sans INSERT/UPDATE/DELETE. Un trigger `SECURITY DEFINER` non exécutable par les clients synchronise les champs publics depuis `profiles` à chaque INSERT/UPDATE/DELETE.
 - Le backfill initial a été exécuté. La table `profiles` ne contenait aucune ligne au moment du contrôle, donc le trigger n'a pas encore pu être validé sur un compte réel.
 - Recontrôle Supabase : l'alerte ERROR `security_definer_view` a disparu; les seules fonctions SECURITY DEFINER encore accessibles à anon sont `get_platform_stats`, `increment_event_views` et `record_event_view`, conservées publiques pour les statistiques/compteurs d'événements. L'avertissement `pg_net` dans le schéma public reste non traité.
+
+
+## 2026-11-25 — Statistiques plateforme : authentification admin et compteur de vues dédupliqué (P0)
+- Migration live appliquée et versionnée sur `FRONTEND-iA` : `20261125122522_restrict_platform_stats_and_profile_writes`.
+- `get_platform_stats()` n'est plus exécutable par `PUBLIC`, `anon` ou `authenticated`; seul `service_role` peut l'appeler. L'Edge Function reste le seul chemin frontend vers ces agrégats.
+- Découverte critique : l'Edge Function `platform-stats` était déployée avec `verify_jwt=false` et ne contrôlait pas le rôle; la clé service_role lui permettait donc de renvoyer des statistiques privées à tout appelant. Le handler vérifie désormais le Bearer JWT auprès de Supabase Auth, lit le rôle du profil depuis la base avec le client serveur et renvoie 403 si le rôle n'est pas `admin`. `supabase/config.toml` fixe explicitement `verify_jwt=true`.
+- `increment_event_views(uuid)` est retirée des privilèges client; seul `service_role` peut encore l'appeler. Les deux usages frontend non dédupliqués (télémétrie générale et fallback de l'interaction événement) sont supprimés. Le seul compteur client restant est `record_event_view`, qui limite l'enregistrement à un événement publié/non démo et déduplique par visiteur/jour.
+- Les privilèges directs de `profiles` sont nettoyés : aucun INSERT/UPDATE/DELETE pour `PUBLIC` ou `anon`; les opérations restent accordées à `authenticated` et filtrées par les policies owner/admin.
+- Build Vercel, déploiement Edge Function, tests 401/403/200 avec comptes réels et QA mobile à effectuer avant de considérer le flux validé.
