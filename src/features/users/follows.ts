@@ -34,8 +34,8 @@ async function fetchProfilesByIds(ids: string[]): Promise<Map<string, PublicProf
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return map;
   const { data } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url, role')
+    .from('public_profiles')
+    .select('id, name, avatar_url, role, is_demo')
     .in('id', unique);
   (data || []).forEach((p) => map.set(p.id, p as PublicProfile));
   return map;
@@ -242,7 +242,8 @@ export async function fetchFollowedOrganizations(userId: string): Promise<Organi
 }
 
 export async function fetchProfileById(id: string): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('public_profiles').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
-  return data as Profile | null;
+  if (!data) return null;
+  return { ...data, email: null, phone: null, gemini_config: null } as Profile;
 }
