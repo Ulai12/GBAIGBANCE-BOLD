@@ -1,6 +1,6 @@
-import { motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { motion, useMotionValue, useReducedMotion, useTransform, animate } from 'motion/react';
 import { ArrowUpRight, CalendarDays, Heart, MapPin, Ticket, Map } from 'lucide-react';
-import { forwardRef, useRef } from 'react';
+import { forwardRef, useRef, useState, useEffect } from 'react';
 import type { Event } from '@/types';
 import { SmartImage } from '@/components/SmartImage';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -32,9 +32,21 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
   const likeOpacity = useTransform(x, [20, 130], [0, 1]);
   const prefersReducedMotion = useReducedMotion();
   const dragging = useRef(false);
-  const advanceLocked = useRef(false);
+  // STATE (pas un ref) pour forcer le re-render et désactiver réellement le drag.
+  const [dragEnabled, setDragEnabled] = useState(true);
   const offset = index;
   const isBehind = !active;
+
+  // Quand la carte redevient active, réautorise le drag.
+  useEffect(() => {
+    if (active) {
+      setDragEnabled(true);
+      x.set(0);
+      dragging.current = false;
+    } else {
+      setDragEnabled(false);
+    }
+  }, [active, x]);
 
   // Visual stack styling for depth
   const stackScale = 1 - Math.min(offset, 1) * 0.045;
@@ -54,7 +66,7 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         zIndex: total - index,
         transformOrigin: '50% 90%',
         pointerEvents: active ? 'auto' : 'none',
-        touchAction: active ? 'pan-y' : 'auto',
+        touchAction: active && dragEnabled ? 'pan-y' : 'auto',
       }}
       initial={isBehind ? { opacity: 0.5, scale: stackScale * 0.96, y: stackY + 16 } : { opacity: 0, scale: 0.94, y: 24 }}
       animate={{
@@ -70,35 +82,46 @@ export const TrendingDeckCard = forwardRef<HTMLElement, TrendingDeckCardProps>(f
         transition: { duration: 0.28, ease: 'easeIn' },
       }}
       transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 300, damping: 28, mass: 0.7 }}
-      drag={active && !advanceLocked.current ? 'x' : false}
+      drag={active && dragEnabled ? 'x' : false}
       dragConstraints={{ left: -280, right: 280 }}
       dragDirectionLock
-      dragElastic={0.18}
+      dragElastic={0.12}
       dragMomentum={false}
+      dragSnapToOrigin
       onDragStart={() => {
-        if (advanceLocked.current) return;
+        if (!dragEnabled) return;
         dragging.current = true;
       }}
       onDragEnd={(_, info) => {
-        if (advanceLocked.current) {
+        if (!dragEnabled) {
           dragging.current = false;
-          x.set(0);
           return;
         }
-        const shouldAdvance = Math.abs(info.offset.x) > 56 || Math.abs(info.velocity.x) > 420;
+        // Seuils un peu plus stricts pour éviter les demi-gestes qui bloquent.
+        const shouldAdvance =
+          Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 500;
         if (shouldAdvance) {
-          // Empêche les swipes en rafale de re-déclencher pendant la sortie de carte.
-          advanceLocked.current = true;
+          // Coupe le drag tout de suite (re-render) pendant la sortie de carte.
+          setDragEnabled(false);
+          dragging.current = true;
           onAdvance();
+          // Sécurité : si la carte reste montée, réautorise après l'anim.
           window.setTimeout(() => {
-            advanceLocked.current = false;
             dragging.current = false;
+            setDragEnabled(true);
             x.set(0);
-          }, 320);
+          }, 400);
         } else {
-          // Snap immédiat au centre pour ne pas laisser le geste bloqué.
-          x.set(0);
-          window.setTimeout(() => { dragging.current = false; }, 120);
+          // Snap animé au centre (plus fiable que x.set seul sur iOS).
+          animate(x, 0, {
+            type: 'spring',
+            stiffness: 420,
+            damping: 36,
+            mass: 0.6,
+          });
+          window.setTimeout(() => {
+            dragging.current = false;
+          }, 160);
         }
       }}
       onClick={() => {
