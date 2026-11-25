@@ -397,3 +397,12 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Contrôle des profils au moment de l'audit : 0 ligne dans `profiles`, donc aucun compte admin provisionné. `platform-stats` refusera correctement l'accès à tous les comptes tant qu'un administrateur n'aura pas été créé/provisionné par une procédure contrôlée; aucun rôle n'a été attribué automatiquement.
 - Point métier restant P1 : `review_refund` marque actuellement un remboursement comme `refunded` et le billet comme remboursé sans appel à un fournisseur de paiement. Aucun Edge Function de remboursement n'a été trouvé. Il faut séparer approbation, transfert réel et confirmation finale avant de présenter le flux comme un remboursement Mobile Money automatique.
 - QA navigateur, réservation réelle, scan QR, test de réclamation cadeau, rappel cron réel et vérification iPhone restent à effectuer.
+
+
+## 2026-11-25 — Analytics : compteur de vues déplacé hors de l'API publique
+- Migration live appliquée et versionnée : `20261125124452_move_event_view_definer_to_private_schema`.
+- Le compteur conserve la même signature publique pour ne pas casser le frontend, mais `public.record_event_view` est maintenant SECURITY INVOKER. La logique SECURITY DEFINER est déplacée dans `private.record_event_view_internal`, hors des schémas exposés par PostgREST.
+- La clé de déduplication ne dépend plus du UUID librement fourni par le navigateur : compte connecté = `auth.uid()`; invité = empreinte SHA-256 de l'IP proxy (`cf-connecting-ip`, puis `x-forwarded-for`). Une visite par événement et par jour.
+- Les événements non publiés ou de démonstration ne sont toujours pas comptabilisés.
+- Vérification SQL : wrapper public SECURITY INVOKER; le schéma `private` n'est pas dans `pgrst.db_schemas`; droits de la fonction interne limités à l'appel du wrapper. Test d'incrément réel non exécuté, car aucun événement réel n'est présent dans la base au moment du contrôle.
+- Deux entrées de migration identiques pour le quota IA existaient dans l'historique Supabase (`20261125124033` et `20261125124109`); le second fichier idempotent a été ajouté au dépôt pour réconcilier l'historique et la branche.
