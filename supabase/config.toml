@@ -2,5 +2,8 @@
 [functions.platform-stats]
 verify_jwt = true
 
+[functions.event-reminders]
+verify_jwt = false
+
 [functions.ai-assistant]
 verify_jwt = false
