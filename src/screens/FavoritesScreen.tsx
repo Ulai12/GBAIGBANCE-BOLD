@@ -140,8 +140,8 @@ export function FavoritesScreen({
     }
 
     supabase
-      .from('profiles')
-      .select('id, name, avatar_url, role, city, country, bio, created_at, updated_at, email, phone')
+      .from('public_profiles')
+      .select('id, name, avatar_url, role, city, country, bio, created_at, updated_at, is_demo')
       .in('id', ids)
       .then(({ data, error }) => {
         if (error) {
@@ -303,8 +303,8 @@ export function FavoritesScreen({
           ])];
           const profileArts = artistProfileIds.length
             ? await supabase
-              .from('profiles')
-              .select('id, name, bio, avatar_url, city, country, created_at')
+              .from('public_profiles')
+              .select('id, name, bio, avatar_url, city, country, created_at, is_demo')
               .in('id', artistProfileIds)
               .eq('role', 'artist')
             : { data: [] };
@@ -399,8 +399,8 @@ export function FavoritesScreen({
           ])];
           const profileOrgs = orgProfileIds.length
             ? await supabase
-              .from('profiles')
-              .select('id, name, bio, avatar_url, city, country, created_at')
+              .from('public_profiles')
+              .select('id, name, bio, avatar_url, city, country, created_at, is_demo')
               .in('id', orgProfileIds)
               .eq('role', 'organizer')
             : { data: [] };
