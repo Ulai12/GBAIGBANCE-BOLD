@@ -52,7 +52,7 @@ async function fetchTicketsForEvents(eventIds: string[]) {
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from('tickets')
-        .select('id, event_id, ticket_type, price_paid, quantity, status, created_at')
+        .select('id, event_id, ticket_type, price_paid, quantity, status, created_at, is_demo')
         .in('event_id', slice)
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -107,7 +107,7 @@ export async function fetchOrganizationById(id: string): Promise<Organization | 
     }
 
     // Check in profiles if organization was registered as user profile
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+    const { data: p } = await supabase.from('public_profiles').select('*').eq('id', id).maybeSingle();
     if (p && p.role === 'organizer') {
       return {
         id: p.id,
@@ -427,7 +427,7 @@ export async function fetchVerifiedOrganizations(): Promise<Organization[]> {
   try {
     const [orgsRes, profilesRes, eventsRes, followsRes] = await Promise.all([
       supabase.from('organizations').select('*').limit(30),
-      supabase.from('profiles').select('*').eq('role', 'organizer').limit(30),
+      supabase.from('public_profiles').select('*').eq('role', 'organizer').limit(30),
       supabase.from('events').select('id, organizer_id, organizer_user_id, status').eq('status', 'published'),
       supabase.from('organization_follows').select('organization_id'),
     ]);
@@ -535,8 +535,8 @@ export async function searchOrganizations(query: string): Promise<Organization[]
     .limit(20);
   if (err1) throw err1;
   const { data: profileOrgs, error: err2 } = await supabase
-    .from('profiles')
-    .select('id, name, bio, avatar_url, city, country, created_at')
+    .from('public_profiles')
+    .select('id, name, bio, avatar_url, city, country, created_at, is_demo')
     .eq('role', 'organizer')
     .ilike('name', `%${sanitized}%`)
     .limit(20);
