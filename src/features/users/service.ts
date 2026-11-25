@@ -11,8 +11,8 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
   const sanitized = sanitizeSearchInput(query);
   if (!sanitized) return [];
   const { data, error } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url, role, city, country, bio, created_at')
+    .from('public_profiles')
+    .select('id, name, avatar_url, role, city, country, bio, created_at, is_demo')
     .ilike('name', `%${sanitized}%`)
     .limit(30);
   if (error) throw error;
