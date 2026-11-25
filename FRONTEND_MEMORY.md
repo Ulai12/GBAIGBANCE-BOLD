@@ -373,3 +373,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Le handler refuse les méthodes autres que POST, les appels sans secret et les secrets invalides. Il exclut les billets `pending` des rappels (seuls `valid` et `active` sont notifiés) et remonte les erreurs d'accès/écriture au lieu de les ignorer.
 - Le job cron a été mis à jour via `cron.alter_job` après vérification de son existence. La migration SQL et le code de l'Edge Function sont versionnés sur `FRONTEND-iA`.
 - Déploiement Edge Function et vérification d'une exécution cron réelle à confirmer après publication. Aucun rappel réel n'a été envoyé manuellement pendant cette intervention.
+
+
+## 2026-11-25 — Assistant IA : quotas persistants et protection contre l'abus (P1)
+- Migration live appliquée et versionnée : `20261125124033_create_server_only_ai_request_quotas`.
+- Création de `ai_rate_limits` avec RLS forcé et aucun privilège Data API client. La RPC `check_and_increment_ai_quota(text, boolean)` est exécutable uniquement par `service_role`, valide le format de l'identifiant fourni par le serveur et stocke son SHA-256 plutôt que l'identifiant brut.
+- Limites atomiques : 20 requêtes/10 min et 60/24 h par compte; 5/10 min et 15/24 h pour les invités. Verrou transactionnel par identifiant pour éviter les dépassements concurrents.
+- Le code Edge IA existant consommait déjà cette RPC mais la table/fonction n'existait pas dans le projet live; la migration rétablit le contrat avant le déploiement du code.
+- Le handler borne désormais le corps à 24 000 caractères, limite la clé Gemini utilisateur à 256 caractères, utilise `cf-connecting-ip` ou `x-forwarded-for` pour l'identité invitée, exige les clés Supabase serveur, et autorise le domaine stable Preview `FRONTEND-iA`.
+- Les journaux IA ne reprennent plus les emails, rôles metadata ni UUID utilisateur. Les rôles de metadata modifiables ne sont pas utilisés pour l'autorisation.
+- Déploiement Edge IA et tests de quotas 401/429/limites réelles à confirmer; les valeurs de quotas sont contrôlées côté serveur.
