@@ -372,7 +372,7 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Le job `event-reminders-hourly` envoie ce secret depuis Vault dans l'en-tête `x-cron-secret`; le secret n'est ni dans GitHub ni dans le frontend.
 - Le handler refuse les méthodes autres que POST, les appels sans secret et les secrets invalides. Il exclut les billets `pending` des rappels (seuls `valid` et `active` sont notifiés) et remonte les erreurs d'accès/écriture au lieu de les ignorer.
 - Le job cron a été mis à jour via `cron.alter_job` après vérification de son existence. La migration SQL et le code de l'Edge Function sont versionnés sur `FRONTEND-iA`.
-- Déploiement Edge Function et vérification d'une exécution cron réelle à confirmer après publication. Aucun rappel réel n'a été envoyé manuellement pendant cette intervention.
+- Edge Function `event-reminders` v3 active avec `verify_jwt=false` protégé par le secret Vault; le job cron a été configuré et ses en-têtes vérifiés. Aucune exécution cron réelle ni notification réelle n'a été déclenchée manuellement.
 
 
 ## 2026-11-25 — Assistant IA : quotas persistants et protection contre l'abus (P1)
@@ -382,10 +382,18 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Le code Edge IA existant consommait déjà cette RPC mais la table/fonction n'existait pas dans le projet live; la migration rétablit le contrat avant le déploiement du code.
 - Le handler borne désormais le corps à 24 000 caractères, limite la clé Gemini utilisateur à 256 caractères, utilise `cf-connecting-ip` ou `x-forwarded-for` pour l'identité invitée, exige les clés Supabase serveur, et autorise le domaine stable Preview `FRONTEND-iA`.
 - Les journaux IA ne reprennent plus les emails, rôles metadata ni UUID utilisateur. Les rôles de metadata modifiables ne sont pas utilisés pour l'autorisation.
-- Déploiement Edge IA et tests de quotas 401/429/limites réelles à confirmer; les valeurs de quotas sont contrôlées côté serveur.
+- Edge Function `ai-assistant` v8 active avec mode invité conservé (`verify_jwt=false`) et quota serveur obligatoire. Test SQL transactionnel simulant le claim `service_role` réussi : `allowed=true`, 19 requêtes restantes sur la fenêtre, rollback effectué. Tests HTTP réels 401/429 et scénarios multi-utilisateurs non effectués.
 
 
 ## 2026-11-25 — Assistant IA : dépendances partagées compatibles Edge Runtime
 - Le premier déploiement de la version du dépôt a été refusé par le bundler, car les imports directs `../../../src/constants/*` sortaient du périmètre de la fonction Edge.
 - Le prompt système et les préférences IA ont été centralisés dans `supabase/functions/_shared/`; les modules frontend `src/constants/aiSystemPrompt.ts` et `aiPreferences.ts` les réexportent. L'Edge Function importe maintenant les mêmes sources via `../_shared`, évitant une copie divergente.
 - Aucun changement de contenu fonctionnel du prompt ou des préférences.
+
+
+## 2026-11-25 — Vérification des déploiements et points opérationnels restants
+- Edge Functions actives : `platform-stats` v6 (`verify_jwt=true`, contrôle du rôle admin), `event-reminders` v3 (secret Vault + job cron) et `ai-assistant` v8 (quota persistant).
+- Vercel Preview READY pour le commit `0e6b058b075cc8694b0154586a8b4cfa17003253` : `https://gbaigbance-event-xi7phav78-shogun10.vercel.app`. Vite a transformé 3 336 modules et terminé en 5,44 s. Le build n'est pas une QA fonctionnelle ou mobile.
+- Contrôle des profils au moment de l'audit : 0 ligne dans `profiles`, donc aucun compte admin provisionné. `platform-stats` refusera correctement l'accès à tous les comptes tant qu'un administrateur n'aura pas été créé/provisionné par une procédure contrôlée; aucun rôle n'a été attribué automatiquement.
+- Point métier restant P1 : `review_refund` marque actuellement un remboursement comme `refunded` et le billet comme remboursé sans appel à un fournisseur de paiement. Aucun Edge Function de remboursement n'a été trouvé. Il faut séparer approbation, transfert réel et confirmation finale avant de présenter le flux comme un remboursement Mobile Money automatique.
+- QA navigateur, réservation réelle, scan QR, test de réclamation cadeau, rappel cron réel et vérification iPhone restent à effectuer.
