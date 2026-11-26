@@ -413,3 +413,15 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - `accept_collaboration` exige maintenant une session, verrouille l'invitation et n'accepte que le statut `pending`. Une invitation déjà acceptée est idempotente; une invitation refusée/retirée ne peut plus être réactivée par son ancien destinataire.
 - Suppression de la publication automatique de l'événement quand toutes les invitations sont acceptées. L'acceptation d'une collaboration ne peut plus contourner le flux de validation/publication de l'événement; l'organisateur/admin conserve la décision via le flux de statut.
 - Les policies RLS de collaboration restent en place; aucun événement n'a été publié ni modifié pendant la migration.
+
+
+## 2026-11-26 — Localisation complète du tableau de bord organisateur (P2)
+- Tâche active reprise : finaliser l'i18n de OrganizerDashboardScreen qui avait encore de nombreux hardcodes malgré les clés existantes dans organizer.json.
+- Remplacement des libellés hardcodés par t('organizer', ...) pour : en-tête (titre artiste/dashboard, retour, bouton scanner), action rapide scanner, onglets, liste des événements, états (annulé/en attente/...), formulaire de création (labels, placeholders, submit), modal de suppression (titres, descriptions, compteurs, traitement), toasts de succès/erreur.
+- Utilisation exclusive des clés déjà présentes dans fr/en organizer.json. Aucun nouveau domaine.
+- Commit : ac6c6204e52092dcd159b8c2a664a42b7f586806 sur FRONTEND-iA.
+- Tailles : avant 33350 o, après 34143 o (+2,4 %, attendu). Relecture distante confirmée, contenu contient bien les appels t().
+- Incident : deux tentatives via connecteur ont écrit des placeholders (19 o puis 33 o). Restauration immédiate de la version saine via gh api, puis push propre de la version localisée. Cause : content argument mal formé dans l'appel outil. Consigné.
+- Vérifications : relecture distante OK, taille OK, pas de rétrécissement. Build/typecheck/lint/QA visuelle non exécutés cette session.
+- Prochaine étape : localiser les éléments restants du formulaire de création (types de billets, recherche collaborateurs) ou polish responsive du dashboard. Ne pas toucher Explorer par catégorie.
+- Aucun changement backend.
