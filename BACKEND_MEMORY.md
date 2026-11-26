@@ -128,3 +128,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 
 ## 2026-11-25 — Note pour automatisations
 - [Automatisation frontend] TicketScannerModal : dernier libellé hardcodé "Fermer" du drawer historique remplacé par t() (commit 40066d53). Clés scannerModal.* déjà branchées. Prochaine étape suggérée : vérifier exhaustivement les autres composants organizer pour d'éventuels hardcodes restants, puis états loading/empty. Ne pas toucher Explorer par catégories.
+
+## 2026-11-26 — Note pour automatisations
+- [Automatisation frontend] Localisation principale de OrganizerDashboardScreen terminée (commit ac6c6204). Prochaine : éléments restants du formulaire de création (billets, collaborateurs) ou polish responsive. Ne pas toucher Explorer par catégories.
+- Incident de troncature sur OrganizerDashboardScreen via connecteur résolu immédiatement via gh api.
