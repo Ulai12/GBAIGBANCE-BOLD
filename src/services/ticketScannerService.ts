@@ -150,23 +150,58 @@ export async function preloadEventTicketsForOffline(eventId: string): Promise<nu
   try {
     const { data: tickets, error } = await supabase
       .from('tickets')
-      .select('id, event_id, qr_code, status, ticket_type, seat_info, user_id, recipient_name, profiles(name, phone)')
+      .select('id, event_id, qr_code, status, ticket_type, seat_info, user_id, recipient_name')
       .eq('event_id', eventId);
 
     if (error || !tickets) return 0;
 
-    const cachePayload = tickets.map((t) => {
-      const profile = (t.profiles as unknown as { name?: string; phone?: string }) || {};
-      return {
-        id: t.id,
-        event_id: t.event_id,
-        qr_code: t.qr_code,
-        status: t.status,
-        ticket_type: t.ticket_type,
-        seat_info: t.seat_info,
-        participant_name: t.recipient_name || profile.name || 'Participant',
-      };
-    });
+    // Les billets pointent vers auth.users, pas directement vers profiles.
+    // On récupère donc les noms via la projection publique autorisée par RLS,
+    // sans exposer les numéros de téléphone du profil.
+    const userIds = Array.from(
+      new Set(
+        tickets
+          .map((ticket) => ticket.user_id)
+          .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
+      )
+    );
+    const profileNameById = new Map<string, string>();
+
+    // Petits lots pour éviter une URL PostgREST trop longue sur les grands événements.
+    const profileBatches = await Promise.all(
+      Array.from({ length: Math.ceil(userIds.length / 200) }, (_, index) =>
+        supabase
+          .from('public_profiles')
+          .select('id, name')
+          .in('id', userIds.slice(index * 200, (index + 1) * 200))
+      )
+    );
+
+    for (const batch of profileBatches) {
+      if (batch.error) {
+        console.warn('Erreur lors de la lecture des noms publics des participants:', batch.error);
+        continue;
+      }
+
+      for (const profile of batch.data || []) {
+        if (profile.id && profile.name?.trim()) {
+          profileNameById.set(profile.id, profile.name.trim());
+        }
+      }
+    }
+
+    const cachePayload = tickets.map((ticket) => ({
+      id: ticket.id,
+      event_id: ticket.event_id,
+      qr_code: ticket.qr_code,
+      status: ticket.status,
+      ticket_type: ticket.ticket_type,
+      seat_info: ticket.seat_info,
+      participant_name:
+        ticket.recipient_name?.trim() ||
+        profileNameById.get(ticket.user_id) ||
+        'Participant',
+    }));
 
     await set(`${OFFLINE_TICKETS_KEY_PREFIX}${eventId}`, cachePayload);
     return cachePayload.length;
