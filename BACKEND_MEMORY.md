@@ -4,34 +4,35 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Durcissement sécurité : REVOKE EXECUTE sur les fonctions internes / trigger SECURITY DEFINER qui ne doivent pas être appelables via RPC.
+Optimisation RLS : consolidation des policies permissives multiples restantes + policies explicites pour tables internes.
 
 ## Objectif
-Empêcher les utilisateurs authentifiés (et anon/public) d'appeler directement des helpers internes et des fonctions de trigger via PostgREST.
+Éliminer les warnings performance (multiple permissive policies) et sécurité (RLS enabled no policy) sur les tables concernées, sans casser les accès existants.
 
 ## Progression
-- Revue progressive des grants authenticated sur SECURITY DEFINER commencée.
-- Fonctions internes identifiées : increment/decrement_likes_count, update_event_price_range (trigger), rls_auto_enable (event trigger), create_notification.
-- Migration 20261124130000 appliquée sur Supabase + versionnée.
-- ACL confirmée : plus de grant PUBLIC/anon/authenticated, seulement postgres + service_role.
+- Revue progressive des grants authenticated sur SECURITY DEFINER terminée pour les internes (précédemment).
+- Migration 20261126120000 appliquée sur Supabase + versionnée.
+- Advisors performance : multiple_permissive_policies éliminé (0).
+- Advisors sécurité : rls_enabled_no_policy éliminé sur ai_rate_limits et ticket_presence_challenges.
 
 ## Fichiers concernés
-- supabase/migrations/20261124130000_revoke_execute_internal_security_definer.sql
+- supabase/migrations/20261126120000_fix_remaining_multiple_permissive_and_internal_tables_rls.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-24 — Migration revoke EXECUTE sur fonctions internes SECURITY DEFINER appliquée et versionnée (commit e23fdb1d). Mémoire mise à jour.
+2026-11-26 — Migration consolidation policies RLS appliquée et versionnée (commit bd0c8e1). Mémoire mise à jour. Advisors vérifiés.
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
 - Confirmer proxy Vercel AI et secret PAYMENT_WEBHOOK_SECRET.
 - Tester un like réel sur un événement non-démo (likes_count doit suivre).
-- Continuer la revue des grants authenticated sur les autres SECURITY DEFINER (ceux qui sont légitimes pour le front restent).
+- Continuer la revue des grants authenticated sur les SECURITY DEFINER légitimes (documenter les nécessaires).
+- Éventuellement déplacer pg_net hors de public (dette).
 
 ## Vérifications
 - Migration appliquée (success). OK.
-- ACL post-migration : pas de PUBLIC/anon/authenticated. OK.
-- Fichier migration distant présent (2186 o, SHA 45f30597). OK.
+- Advisors post-migration : multiple permissive = 0, rls no policy = 0. OK.
+- Fichier migration distant présent (2675 o, SHA 3ba7d2b1). OK.
 - Aucune troncature cette session.
 
 ## Cartographie des données
@@ -45,6 +46,7 @@ Tables principales (public, RLS activée) :
 - ticket_options, event_collaborators, event_comments, etc.
 - platform_settings (1 ligne)
 - event_view_daily (table interne, policy service_role ajoutée 2026-11-23)
+- ai_rate_limits, ticket_presence_challenges (policies service_role ajoutées 2026-11-26)
 - ~~example~~ (supprimée 2026-11-18)
 
 Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur tables exposées.
@@ -57,6 +59,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261126120000_fix_remaining_multiple_permissive_and_internal_tables_rls (appliquée 2026-11-26)
 - 20261124130000_revoke_execute_internal_security_definer (appliquée 2026-11-24)
 - 20261124120000_revoke_anon_execute_remaining_auth_functions (appliquée 2026-11-24)
 - 20261123130000_fix_toggle_event_like_and_likes_count (appliquée 2026-11-23)
@@ -78,7 +81,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 ## Dette backend
 - Nombreux SECURITY DEFINER callable par authenticated — revue progressive des grants (beaucoup sont nécessaires pour le front).
 - Extension pg_net in public.
-- Quelques multiple permissive policies (event_comments, event_questions, etc.).
 - Indexes unused (info, normal en faible trafic).
 - likes_count des événements is_demo = valeurs seed (volontaire, non synchronisées avec event_likes).
 
@@ -90,8 +92,10 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Audit liaisons restantes (notifications, follows).
 - Vérification compute_ticket_fees.
 - Continuer la revue grants SECURITY DEFINER authenticated.
+- Déplacer pg_net hors public.
 
 ## Historique
+- 2026-11-26 : Consolidation policies permissives multiples (notification_preferences, event_presence_badges) + policies service_role explicites sur ai_rate_limits et ticket_presence_challenges. Advisors nettoyés.
 - 2026-11-24 : Revoke EXECUTE (PUBLIC/anon/authenticated) sur fonctions internes SECURITY DEFINER (increment/decrement_likes_count, update_event_price_range, rls_auto_enable, create_notification).
 - 2026-11-24 : Revoke EXECUTE anon sur RPCs restantes (book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification + internes).
 - 2026-11-23 : Fix toggle_event_like (compteur fiable, protection is_demo).
@@ -115,6 +119,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - event_view_daily : policy service_role en place.
 - EXECUTE anon révoqué sur les RPCs qui exigent auth.uid() (batch complété).
 - EXECUTE révoqué sur les helpers internes et fonctions trigger (increment/decrement_likes_count, update_event_price_range, rls_auto_enable, create_notification).
+- Policies permissives multiples consolidées (2026-11-26).
 
 ## Taches À faire
 - [Propriétaire] Configurer PAYMENT_WEBHOOK_SECRET et tester le flux initiate/confirm/webhook en staging.
