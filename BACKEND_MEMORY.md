@@ -132,3 +132,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 ## 2026-11-26 — Note pour automatisations
 - [Automatisation frontend] Localisation principale de OrganizerDashboardScreen terminée (commit ac6c6204). Prochaine : éléments restants du formulaire de création (billets, collaborateurs) ou polish responsive. Ne pas toucher Explorer par catégories.
 - Incident de troncature sur OrganizerDashboardScreen via connecteur résolu immédiatement via gh api.
+
+## 2026-11-26 (suite) — Note pour automatisations
+- [Automatisation frontend] Clés i18n ajoutées pour le formulaire de création d'événement (ticketsLabel, addTicket, types de billets, search collab, programSponsorsAria, coverUrlLabel, chooseAction) dans organizer.json FR/EN. Remplacements des hardcodes préparés dans OrganizerDashboardScreen.tsx. Prochaine : pousser le TSX complet et vérifier le switch de langue. Ne pas toucher Explorer par catégories.
