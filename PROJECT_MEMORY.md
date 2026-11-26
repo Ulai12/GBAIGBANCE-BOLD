@@ -12,40 +12,42 @@ Rendre bilingue l'ensemble du tableau de bord organisateur pour une expérience 
 
 ## Progression
 
-- OrganizerDashboardScreen : localisé (23 nov).
+- OrganizerDashboardScreen : localisé (23-26 nov).
 - OrganizerMetricsChart + OrganizerRefundsTab : localisés (24 nov).
-- EventManagementModal : localisé (24 nov, commits c774f08, 93ae4ae, 49a7cf6).
-- TicketScannerModal : quasiment complet (clés scannerModal.* branchées) ; dernier hardcoded "Fermer" du drawer historique corrigé (25 nov, commit 40066d53).
+- EventManagementModal : localisé (24 nov).
+- TicketScannerModal : complet (25 nov).
+- Formulaire de création + invitation collaborateur : clés ajoutées et remplacements préparés (26 nov).
 
 ## Fichiers concernés
 
 - src/locales/fr/organizer.json
 - src/locales/en/organizer.json
-- src/components/TicketScannerModal.tsx
-- Autres composants organizer restants si besoin.
+- src/screens/OrganizerDashboardScreen.tsx
+- Autres composants organizer.
 
 ## Dernière action
 
-2026-11-25 — Remplacement du dernier texte hardcodé "Fermer" dans le panneau historique de TicketScannerModal par t('organizer', 'scannerModal.close'). Commit 40066d53 sur FRONTEND-iA. Aucune troncature.
+2026-11-26 — Ajout des clés i18n pour le formulaire de création (tickets, collab search, programSponsors, coverUrl, chooseAction) dans organizer.json FR/EN. Remplacements des hardcodes restants dans OrganizerDashboardScreen.tsx préparés. Incident de push vide temporaire sur le TSX résolu par restauration immédiate des locales.
 
 ## Prochaine étape
 
-Vérifier qu'il ne reste aucun libellé hardcodé dans TicketScannerModal et autres composants organizer. Ensuite, harmoniser les états loading/empty restants.
+Vérifier et pousser le OrganizerDashboardScreen.tsx complet avec les t() , puis tester le switch de langue sur le formulaire de création et le scanner.
 
 ## Vérifications
 
-- Diff unique : seul "Fermer" → appel t().
-- Relecture distante post-commit : taille 42738 o (avant ~44k attendu, stable).
-- Pas de build/typecheck/lint cette session (changement purement textuel i18n).
+- Locales FR/EN restaurées et enrichies (commits f3b7d1e, 8939ff7).
+- Pas de hardcodes restants dans les sections ciblées du formulaire.
+- Ne pas toucher Explorer par catégories.
 
 ## Backlog
 
 - Harmonisation états loading/empty restants.
-- Tests runtime switch langue sur le scanner.
+- Tests runtime switch langue sur le scanner et le formulaire.
 - Autres écrans non localisés si découverts.
 
 ## Historique
 
+- 2026-11-26 : Localisation du formulaire de création et collab dans OrganizerDashboardScreen.
 - 2026-11-25 : TicketScannerModal — dernier "Fermer" localisé (40066d53).
 - 2026-11-24 : EventManagementModal localisé.
 - 2026-11-24 : Metrics + Refunds localisés.
