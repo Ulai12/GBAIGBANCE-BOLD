@@ -1,1 +1,417 @@
-RESTORING_FROM_ORIGINAL_SEE_BELOW
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Users, Eye, BarChart3, Search, X, Music2, Building2, Ticket as TicketIcon, Trash2, AlertTriangle, XCircle, Info, Settings, Edit3, RotateCcw, Camera, ScanLine } from 'lucide-react';
+import { Skeleton } from '@/components/Skeleton';
+import { EmptyState } from '@/components/EmptyState';
+import { Modal } from '@/components/Modal';
+import { SmartImage } from '@/components/SmartImage';
+import { OrganizerMetricsChart, type OrganizerPerformanceData } from '@/components/OrganizerMetricsChart';
+import { OrganizerRefundsTab } from '@/components/OrganizerRefundsTab';
+import { TicketScannerModal } from '@/components/TicketScannerModal';
+import { useApp } from '@/hooks/useApp';
+import { supabase } from '@/services/supabase';
+import { EVENT_CATEGORIES } from '@/constants';
+import { formatNumber } from '@/utils/format';
+import { createEventWithCollaborators, searchArtists, searchOrganizations, fetchEventDeletionInfo, cancelEvent, deleteEvent, fetchOrganizerPerformanceMetrics, subscribeToOrganizerMetricsLive } from '@/services/events';
+import { EventManagementModal } from '@/components/EventManagementModal';
+import type { Event, EventCategory, Artist, Organization } from '@/types';
+import type { ToastData } from '@/components/Toast';
+
+interface OrganizerDashboardScreenProps {
+  onBack: () => void;
+  onEventClick: (event: Event) => void;
+  onEditEvent?: (event: Event) => void;
+  onToast: (toast: Omit<ToastData, 'id'>) => void;
+}
+type CollabType = 'artist' | 'organizer';
+interface SelectedCollab { user_id: string; name: string; role: 'co_organizer' | 'performer'; type: CollabType; }
+
+export function OrganizerDashboardScreen({ onBack, onEventClick, onEditEvent, onToast }: OrganizerDashboardScreenProps) {
+  const { user, t } = useApp();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', category: 'concert' as EventCategory, location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
+  const [creating, setCreating] = useState(false);
+  const [ticketOptions, setTicketOptions] = useState([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]);
+  const [collaborators, setCollaborators] = useState<SelectedCollab[]>([]);
+  const [showCollabSearch, setShowCollabSearch] = useState(false);
+  const [collabSearch, setCollabSearch] = useState('');
+  const [collabRole, setCollabRole] = useState<'co_organizer' | 'performer'>('performer');
+  const [searchResults, setSearchResults] = useState<{ artists: Artist[]; orgs: Organization[] }>({ artists: [], orgs: [] });
+  const [searching, setSearching] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
+  const [deleteInfo, setDeleteInfo] = useState<{ ticketsCount: number; collaboratorsCount: number; ticketOptionsCount: number; likesCount: number } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'cancel' | 'delete'>('cancel');
+  const [manageTarget, setManageTarget] = useState<Event | null>(null);
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'events' | 'refunds'>('events');
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerEventId, setScannerEventId] = useState<string | undefined>(undefined);
+  // Par défaut, afficher l'historique disponible plutôt qu'une fenêtre 7 jours souvent vide.
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('all');
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [perfData, setPerfData] = useState<OrganizerPerformanceData>({
+    timeSeries: [],
+    categoryBreakdown: [],
+    summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
+  });
+
+  const loadEvents = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase.from('events').select('*').eq('organizer_user_id', user.id).order('created_at', { ascending: false });
+    setEvents((data as Event[]) || []);
+    setLoading(false);
+  }, [user]);
+
+  const loadMetrics = useCallback(async () => {
+    if (!user) return;
+    setMetricsLoading(true);
+    setMetricsError(null);
+    try {
+      const data = await fetchOrganizerPerformanceMetrics(user.id, timeRange);
+      setPerfData(data);
+    } catch (error) {
+      setMetricsError(error instanceof Error ? error.message : 'Impossible de charger les statistiques.');
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [user, timeRange]);
+
+  useEffect(() => {
+    const handleSignedOut = () => {
+      setEvents([]);
+      // Réinitialisation conforme à l'interface OrganizerPerformanceData
+      setPerfData({
+        timeSeries: [],
+        categoryBreakdown: [],
+        summary: { totalTickets: 0, totalRevenue: 0, totalViews: 0, conversionRate: 0, averageTicketPrice: 0, activeEvents: 0, totalEvents: 0 },
+      });
+      onBack();
+    };
+    window.addEventListener('gba-user-signed-out', handleSignedOut);
+    return () => window.removeEventListener('gba-user-signed-out', handleSignedOut);
+  }, [onBack]);
+
+  useEffect(() => {
+    if (!user) {
+      setEvents([]);
+      return;
+    }
+    loadEvents();
+    loadMetrics();
+  }, [user, loadEvents, loadMetrics]);
+
+  // Real-time live synchronization for organizer metrics and sales
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToOrganizerMetricsLive(user.id, () => {
+      loadMetrics();
+      loadEvents();
+    });
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadMetrics();
+        loadEvents();
+      }
+    }, 30000);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearInterval(interval);
+    };
+  }, [user, loadEvents, loadMetrics]);
+
+  useEffect(() => {
+    if (!collabSearch.trim()) {
+      setSearchResults({ artists: [], orgs: [] });
+      return;
+    }
+    setSearching(true);
+    Promise.all([searchArtists(collabSearch), searchOrganizations(collabSearch)])
+      .then(([artists, orgs]) => setSearchResults({ artists, orgs }))
+      .catch(() => setSearchResults({ artists: [], orgs: [] }))
+      .finally(() => setSearching(false));
+  }, [collabSearch]);
+
+  const addCollaborator = (id: string, name: string, type: CollabType) => { if (collaborators.some((c) => c.user_id === id)) return; setCollaborators([...collaborators, { user_id: id, name, role: collabRole, type }]); setShowCollabSearch(false); setCollabSearch(''); };
+  const removeCollaborator = (userId: string) => { setCollaborators(collaborators.filter((c) => c.user_id !== userId)); };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!user || !form.title || !form.starts_at) return; setCreating(true);
+    try {
+      const validTickets = ticketOptions.filter((tk) => tk.label.trim() && tk.quantity_total).map((tk) => ({ ticket_type: tk.ticket_type, label: tk.label, price: parseFloat(tk.price) || 0, quantity_total: parseInt(tk.quantity_total) || 100, description: tk.description || undefined }));
+      const validCollabs = collaborators.map((c) => ({ user_id: c.user_id, role: c.role }));
+      const createdByRole = user.role === 'artist' ? 'artist' : 'organizer';
+      const event = await createEventWithCollaborators({ title: form.title, description: form.description, category: form.category, location_name: form.location_name || 'Lieu à définir', city: form.city, starts_at: form.starts_at, price_min: parseFloat(form.price_min) || 0, cover_url: form.cover_url, capacity: form.capacity ? parseInt(form.capacity) : undefined, created_by_role: createdByRole }, validCollabs, validTickets, user.id);
+      if (!event) throw new Error('Échec de création');
+      onToast({ message: 'Événement créé !', type: 'success' }); setShowCreate(false);
+      setForm({ title: '', description: '', category: 'concert', location_name: '', city: 'Lomé', starts_at: '', price_min: '0', cover_url: '', capacity: '' });
+      setTicketOptions([{ ticket_type: 'standard', label: 'Standard', price: '0', quantity_total: '100', description: '' }]); setCollaborators([]); loadEvents(); loadMetrics();
+    } catch { onToast({ message: 'Erreur lors de la création', type: 'error' }); } finally { setCreating(false); }
+  };
+
+  const isArtist = user?.role === 'artist';
+  const openDeleteModal = async (event: Event) => { setDeleteTarget(event); setDeleteInfo(null); setDeleteMode('cancel'); const info = await fetchEventDeletionInfo(event.id); setDeleteInfo(info); };
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      if (deleteMode === 'cancel') {
+        await cancelEvent(deleteTarget.id);
+        onToast({ message: 'Événement annulé.', type: 'success' });
+      } else {
+        await deleteEvent(deleteTarget.id);
+        onToast({ message: 'Événement supprimé.', type: 'success' });
+      }
+      window.dispatchEvent(new CustomEvent('gba-refresh-events'));
+      setDeleteTarget(null);
+      loadEvents();
+      loadMetrics();
+    } catch (err) {
+      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as { message: string }).message : 'Erreur';
+      onToast({ message: msg, type: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pb-32">
+      <div className="sticky top-0 z-30 px-5 pt-safe-header pb-4 bg-[#F7F5F0]/85 dark:bg-[#141216]/85 backdrop-blur-lg border-b border-black/5 dark:border-white/5">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <button onClick={onBack} className="text-sm text-gray-500 font-medium">Retour</button>
+          <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white">{isArtist ? 'Espace artiste' : 'Dashboard'}</h1>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setScannerEventId(undefined);
+                setScannerOpen(true);
+              }}
+              className="h-9 px-3 rounded-full bg-gradient-to-r from-[#6600FF] to-[#8B5CF6] flex items-center gap-1.5 text-white shadow-purple active:scale-95 transition-all text-xs font-bold cursor-pointer"
+              title="Scanner de billets caméra"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Scanner</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="w-9 h-9 rounded-full bg-[#6600FF] flex items-center justify-center text-white shadow-purple active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-5 mt-6">
+        {/* Recharts Performance Trends & Sales Visualization */}
+        <OrganizerMetricsChart
+          data={perfData}
+          loading={metricsLoading}
+          error={metricsError}
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+        />
+
+        {/* Quick Action: Scanner de Billets Caméra */}
+        <div className="card p-3.5 mb-5 bg-gradient-to-br from-[#6600FF]/10 via-purple-500/5 to-transparent border border-[#6600FF]/25 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#6600FF] to-[#A855F7] flex items-center justify-center text-white shrink-0 shadow-purple">
+              <ScanLine className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-[#1A1A2E] dark:text-white text-xs sm:text-sm">Scanner de Billets (Caméra)</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Guichet d'accès en direct & contrôle hors-ligne</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setScannerEventId(undefined);
+              setScannerOpen(true);
+            }}
+            className="btn-purple py-2 px-3 text-xs shrink-0 flex items-center gap-1.5 shadow-purple active:scale-95 transition-all cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Ouvrir</span>
+          </button>
+        </div>
+
+        {/* Tab switch Mes événements / Remboursements */}
+        <div className="flex bg-gray-200/70 dark:bg-white/10 p-1 rounded-2xl mb-5">
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab('events')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDashboardTab === 'events'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            Mes événements ({events.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab('refunds')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activeDashboardTab === 'refunds'
+                ? 'bg-white dark:bg-[#6600FF] text-[#17131D] dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Remboursements
+          </button>
+        </div>
+
+        {activeDashboardTab === 'refunds' ? (
+          <OrganizerRefundsTab organizerUserId={user?.id || ''} onToast={onToast} />
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-[#1A1A2E] dark:text-white">
+                <BarChart3 className="w-5 h-5 text-[#6600FF]" /> Liste des événements
+              </h2>
+              <span className="text-sm text-gray-500">{events.length}</span>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="card p-4 flex gap-3">
+                    <Skeleton className="w-16 h-16 rounded-xl" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : events.length === 0 ? (
+              <EmptyState
+                title="Aucun événement"
+                description={isArtist ? "Créez votre premier événement pour suivre vos statistiques en temps réel" : "Créez votre premier événement pour suivre vos statistiques en temps réel"}
+                action={<button onClick={() => setShowCreate(true)} className="btn-purple px-6 py-2.5 text-sm">Créer</button>}
+              />
+            ) : (
+              <div className="space-y-3">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="card p-4 flex items-center gap-3 cursor-pointer hover:shadow-card-hover transition-all"
+                    onClick={() => onEventClick(event)}
+                  >
+                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
+                      <SmartImage
+                        src={event.cover_url}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                        sizes="56px"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-[#1A1A2E] dark:text-white text-sm line-clamp-1">{event.title}</h3>
+                      <p className="text-xs text-gray-500">{t('events', `categories.${event.category}`)} · {event.city}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatNumber(event.attendees_count)}</span>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(event.views_count)}</span>
+                        {event.status === 'cancelled' && <span className="text-red-500 font-semibold">Annulé</span>}
+                        {event.status === 'pending' && <span className="text-amber-500 font-semibold">En attente</span>}
+                        {event.status === 'suspended' && <span className="text-orange-500 font-semibold">Suspendu</span>}
+                        {event.status === 'postponed' && <span className="text-indigo-500 font-semibold">Reporté</span>}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setScannerEventId(event.id);
+                        setScannerOpen(true);
+                      }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#6600FF] bg-[#6600FF]/10 hover:bg-[#6600FF]/20 transition-all shrink-0 cursor-pointer"
+                      aria-label="Scanner les billets de cet événement"
+                      title="Scanner les billets au guichet"
+                    >
+                      <ScanLine className="w-4 h-4" />
+                    </button>
+                    {onEditEvent && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onEditEvent(event); }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                        aria-label="Modifier l'événement"
+                        title="Modifier l'événement"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setManageTarget(event); }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-[#6600FF] hover:bg-[#6600FF]/10 transition-all shrink-0 cursor-pointer"
+                      aria-label="Programme et Sponsors"
+                      title="Programme et Sponsors"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openDeleteModal(event); }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={isArtist ? 'Créer un événement (artiste)' : 'Créer un événement'}>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Titre *</label><input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Nom de l'événement" required /></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40 min-h-24 resize-none" placeholder="Décrivez votre événement" /></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</label><div className="flex flex-wrap gap-2">{EVENT_CATEGORIES.map((cat) => (<button key={cat.value} type="button" onClick={() => setForm({ ...form, category: cat.value })} className={`chip ${form.category === cat.value ? 'chip-active' : 'chip-inactive'}`}>{t('events', `categories.${cat.value}`)}</button>))}</div></div>
+          <div className="grid grid-cols-2 gap-3"><div><label className="block text-sm font-medium text-gray-700 mb-1.5">Lieu</label><input type="text" value={form.location_name} onChange={(e) => setForm({ ...form, location_name: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Grand Place" /></div><div><label className="block text-sm font-medium text-gray-700 mb-1.5">Ville</label><input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Lomé" /></div></div>
+          <div className="grid grid-cols-2 gap-3"><div><label className="block text-sm font-medium text-gray-700 mb-1.5">Date *</label><input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1.5">Capacité</label><input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="100" /></div></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1.5">URL Image</label><input type="url" value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="https://..." /></div>
+          <div className="border-t pt-4"><div className="flex items-center justify-between mb-3"><label className="flex items-center gap-1.5 text-sm font-semibold text-[#1A1A2E]"><TicketIcon className="w-4 h-4 text-[#6600FF]" /> Options de billets</label><button type="button" onClick={() => setTicketOptions([...ticketOptions, { ticket_type: 'vip', label: '', price: '0', quantity_total: '50', description: '' }])} className="text-sm text-[#6600FF] font-semibold">+ Ajouter</button></div><div className="space-y-3">{ticketOptions.map((opt, idx) => (<div key={idx} className="p-3 bg-gray-50 rounded-2xl space-y-2"><div className="flex items-center justify-between"><select value={opt.ticket_type} onChange={(e) => { const u = [...ticketOptions]; u[idx].ticket_type = e.target.value; setTicketOptions(u); }} className="px-3 py-2 bg-white rounded-xl text-sm text-[#1A1A2E] focus:outline-none"><option value="free">Gratuit</option><option value="standard">Standard</option><option value="vip">VIP</option><option value="vvip">VVIP</option></select>{ticketOptions.length > 1 && (<button type="button" onClick={() => setTicketOptions(ticketOptions.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>)}</div><input type="text" value={opt.label} onChange={(e) => { const u = [...ticketOptions]; u[idx].label = e.target.value; setTicketOptions(u); }} className="w-full px-3 py-2 bg-white rounded-xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Nom du billet" /><div className="grid grid-cols-2 gap-2"><input type="number" value={opt.price} onChange={(e) => { const u = [...ticketOptions]; u[idx].price = e.target.value; setTicketOptions(u); }} className="px-3 py-2 bg-white rounded-xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Prix (FCFA)" /><input type="number" value={opt.quantity_total} onChange={(e) => { const u = [...ticketOptions]; u[idx].quantity_total = e.target.value; setTicketOptions(u); }} className="px-3 py-2 bg-white rounded-xl text-sm text-[#1A1A2E] focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" placeholder="Quantité" /></div></div>))}</div></div>
+          <div className="border-t pt-4"><label className="flex items-center gap-1.5 text-sm font-semibold text-[#1A1A2E] mb-3"><Users className="w-4 h-4 text-[#6600FF]" /> Collaborateurs</label>{collaborators.length > 0 && (<div className="space-y-2 mb-3">{collaborators.map((c) => (<div key={c.user_id} className="flex items-center justify-between p-3 bg-[#6600FF]/5 rounded-2xl"><div className="flex items-center gap-2">{c.type === 'artist' ? <Music2 className="w-4 h-4 text-[#6600FF]" /> : <Building2 className="w-4 h-4 text-[#6600FF]" />}<span className="text-sm font-medium text-[#1A1A2E]">{c.name}</span><span className="text-xs text-gray-500 px-2 py-0.5 bg-white rounded-full">{c.role === 'performer' ? 'Artiste' : 'Co-organisateur'}</span></div><button type="button" onClick={() => removeCollaborator(c.user_id)} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button></div>))}</div>)}<button type="button" onClick={() => setShowCollabSearch(true)} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-sm text-gray-500 hover:border-[#6600FF] hover:text-[#6600FF] transition-all">+ Inviter un collaborateur</button></div>
+          <button type="submit" disabled={creating} className="btn-purple w-full py-4 mt-2">{creating ? 'Création...' : "Créer l'événement"}</button>
+        </form>
+      </Modal>
+
+      <Modal open={showCollabSearch} onClose={() => setShowCollabSearch(false)} title="Inviter un collaborateur">
+        <div className="space-y-4">
+          <div><p className="text-sm font-semibold text-[#1A1A2E] mb-2">Rôle</p><div className="flex gap-2"><button onClick={() => setCollabRole('performer')} className={`chip flex-1 justify-center ${collabRole === 'performer' ? 'chip-active' : 'chip-inactive'}`}><Music2 className="w-4 h-4" /> Artiste</button><button onClick={() => setCollabRole('co_organizer')} className={`chip flex-1 justify-center ${collabRole === 'co_organizer' ? 'chip-active' : 'chip-inactive'}`}><Building2 className="w-4 h-4" /> Co-organisateur</button></div></div>
+          <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={collabSearch} onChange={(e) => setCollabSearch(e.target.value)} placeholder="Rechercher..." className="w-full pl-12 pr-4 py-3.5 bg-white rounded-full text-[#1A1A2E] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6600FF]/40" autoFocus /></div>
+          <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">{searching ? (<p className="text-center text-sm text-gray-500 py-4">Recherche...</p>) : collabSearch.trim() === '' ? (<p className="text-center text-sm text-gray-400 py-4">Tapez pour rechercher</p>) : searchResults.artists.length === 0 && searchResults.orgs.length === 0 ? (<p className="text-center text-sm text-gray-400 py-4">Aucun résultat</p>) : (<>{searchResults.artists.map((artist) => (<button key={artist.id} onClick={() => addCollaborator(artist.user_id || artist.id, artist.name, 'artist')} className="w-full p-3 bg-white rounded-2xl flex items-center gap-3 hover:bg-[#6600FF]/5 transition-all text-left"><img src={artist.photo_url || ''} alt="" className="w-10 h-10 rounded-full object-cover" /><div className="flex-1 min-w-0"><p className="font-semibold text-[#1A1A2E] text-sm">{artist.name}</p><p className="text-xs text-gray-500">{artist.city} · Artiste</p></div><Plus className="w-5 h-5 text-[#6600FF]" /></button>))}{searchResults.orgs.map((org) => (<button key={org.id} onClick={() => addCollaborator(org.owner_id || '', org.name, 'organizer')} className="w-full p-3 bg-white rounded-2xl flex items-center gap-3 hover:bg-[#6600FF]/5 transition-all text-left"><img src={org.logo_url || ''} alt="" className="w-10 h-10 rounded-full object-cover" /><div className="flex-1 min-w-0"><p className="font-semibold text-[#1A1A2E] text-sm">{org.name}</p><p className="text-xs text-gray-500">{org.city} · Organisateur</p></div><Plus className="w-5 h-5 text-[#6600FF]" /></button>))}</>)}</div>
+        </div>
+      </Modal>
+
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Gérer l'événement">
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl"><AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" /><div><p className="text-sm font-semibold text-[#1A1A2E]">{deleteTarget?.title}</p><p className="text-xs text-gray-500 mt-0.5">Choisissez l'action appropriée.</p></div></div>
+          {!deleteInfo ? (<div className="flex items-center justify-center py-4"><div className="w-8 h-8 rounded-full border-3 border-[#6600FF]/30 border-t-[#6600FF] animate-spin" /></div>) : (<><div className="grid grid-cols-2 gap-3"><div className="p-3 bg-gray-50 rounded-2xl text-center"><p className="text-2xl font-extrabold text-[#1A1A2E]">{deleteInfo.ticketsCount}</p><p className="text-xs text-gray-500">Billets actifs</p></div><div className="p-3 bg-gray-50 rounded-2xl text-center"><p className="text-2xl font-extrabold text-[#1A1A2E]">{deleteInfo.collaboratorsCount}</p><p className="text-xs text-gray-500">Collaborateurs</p></div><div className="p-3 bg-gray-50 rounded-2xl text-center"><p className="text-2xl font-extrabold text-[#1A1A2E]">{deleteInfo.ticketOptionsCount}</p><p className="text-xs text-gray-500">Types de billets</p></div><div className="p-3 bg-gray-50 rounded-2xl text-center"><p className="text-2xl font-extrabold text-[#1A1A2E]">{deleteInfo.likesCount}</p><p className="text-xs text-gray-500">J'aime</p></div></div>{deleteInfo.ticketsCount > 0 && (<div className="flex items-start gap-2 p-3 bg-blue-50 rounded-2xl"><Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /><p className="text-xs text-blue-700">{deleteInfo.ticketsCount} participant(s) ont déjà un billet. L'annulation est recommandée.</p></div>)}<div className="space-y-2"><button onClick={() => setDeleteMode('cancel')} className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${deleteMode === 'cancel' ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'}`}><div className="flex items-center gap-2 mb-1"><XCircle className={`w-5 h-5 ${deleteMode === 'cancel' ? 'text-amber-500' : 'text-gray-400'}`} /><span className="font-semibold text-[#1A1A2E] text-sm">Annuler l'événement</span></div><p className="text-xs text-gray-500 ml-7">L'événement reste visible mais marqué comme annulé.</p></button><button onClick={() => setDeleteMode('delete')} className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${deleteMode === 'delete' ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}><div className="flex items-center gap-2 mb-1"><Trash2 className={`w-5 h-5 ${deleteMode === 'delete' ? 'text-red-500' : 'text-gray-400'}`} /><span className="font-semibold text-[#1A1A2E] text-sm">Supprimer définitivement</span></div><p className="text-xs text-gray-500 ml-7">Toutes les données seront effacées. Action irréversible.</p></button></div>{deleteMode === 'delete' && deleteInfo.ticketsCount > 0 && (<div className="flex items-start gap-2 p-3 bg-red-50 rounded-2xl"><AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /><p className="text-xs text-red-600">Attention: {deleteInfo.ticketsCount} billet(s) actif(s) seront supprimés.</p></div>)}<button onClick={confirmDelete} disabled={deleteLoading} className={`w-full py-4 rounded-2xl font-bold text-white transition-all disabled:opacity-50 ${deleteMode === 'cancel' ? 'bg-amber-500' : 'bg-red-500'}`}>{deleteLoading ? 'Traitement...' : deleteMode === 'cancel' ? "Annuler l'événement" : 'Supprimer définitivement'}</button></>)}
+        </div>
+      </Modal>
+
+      <EventManagementModal event={manageTarget} onClose={() => setManageTarget(null)} onToast={onToast} />
+
+      <TicketScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        events={events}
+        initialEventId={scannerEventId}
+        onToast={onToast}
+      />
+    </div>
+  );
+}
+
