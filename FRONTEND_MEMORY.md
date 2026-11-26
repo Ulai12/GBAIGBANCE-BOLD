@@ -425,3 +425,14 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Vérifications : relecture distante OK, taille OK, pas de rétrécissement. Build/typecheck/lint/QA visuelle non exécutés cette session.
 - Prochaine étape : localiser les éléments restants du formulaire de création (types de billets, recherche collaborateurs) ou polish responsive du dashboard. Ne pas toucher Explorer par catégorie.
 - Aucun changement backend.
+
+
+## 2026-11-26 — Scanner hors-ligne : préchargement compatible avec la projection publique (P1)
+- Diagnostic vérifié : `preloadEventTicketsForOffline` utilisait une jointure `profiles(name, phone)` depuis `tickets`. L'inspection live des contraintes confirme que `tickets.user_id` référence `auth.users(id)`, sans clé étrangère directe vers `profiles`; la relation imbriquée demandée n'est donc pas disponible. En parallèle, la lecture de `profiles` est désormais limitée au propriétaire/admin, tandis que `public_profiles` expose uniquement les champs publics avec SELECT accordé à anon/authenticated et une policy RLS de lecture.
+- Correction dans `src/services/ticketScannerService.ts` : sélection des seules colonnes utiles du billet; récupération séparée des noms via `public_profiles(id, name)`, par lots de 200 identifiants; priorité au nom de destinataire (`recipient_name`), puis au nom public, puis au libellé neutre « Participant ». Le téléphone n'est plus demandé ni mis en cache.
+- Aucun changement sur « Explorer par catégorie », les autres parcours, le backend, les migrations, le schéma, les API, les données, les dépendances ou les lockfiles.
+- Commit code : `e5bc583872819195b3f28687ac323a99d64464e5` sur `FRONTEND-iA`.
+- Validation : relecture distante du fichier après commit; ancienne jointure privée absente et nouvelle projection publique présente. Inspection Supabase live des colonnes, clés étrangères, privilèges et policies RLS confirmée. La base ne contenait aucune ligne de billet/profil lors du contrôle : test réel avec événement et compte organisateur impossible à effectuer dans cette passe.
+- Preview Vercel pour le commit code : READY, URL https://gbaigbance-event-60o9oexs6-shogun10.vercel.app. Build Vite réussi (2 938 modules, 4,31 s), génération PWA réussie (79 entrées de précache) et 14 fichiers de preview synchronisés; statut Vercel success. Le script build ne lance pas le typecheck : `npm run typecheck` et `npm run lint` non exécutés.
+- QA mobile hors-ligne, test d'un scan réel, synchronisation de la file au retour du réseau et validation visuelle navigateur non exécutés. Le navigateur connecté n'était pas accessible; UIAudit et Superdesign ne sont pas exposés parmi les outils disponibles.
+- Prochaine priorité : tester sur un événement de démonstration avec un compte organisateur/collaborateur, précharger les billets en ligne, passer hors-ligne, contrôler les états valide/déjà utilisé/annulé, puis vérifier la synchronisation sans doublon au retour du réseau.
