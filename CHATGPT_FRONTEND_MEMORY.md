@@ -131,3 +131,15 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Commits sur `FRONTEND-iA` : `bf9d4d5`, `d2e4fd4`, `f3dc788`, `7eaf96a`.
 - Aucun changement de « Explorer par catégorie », navigation, logique de réservation, API, schéma Supabase, dépendance ou lockfile.
 - Validation restant à faire : build Preview, typecheck/lint et QA visuelle/tactile réelle sur mobile. Ne pas déclarer les modifications validées avant ces contrôles.
+
+
+## 2026-11-27 — Likes / follows / notifications audit and repair
+- Branch: `FRONTEND-iA` only. No changes to `main`, no merge/PR, and no edits to `PROJECT_MEMORY.md`.
+- Supabase project `GBAIGBANCE EVENTS` was inspected directly. The deployed RPCs already create `artist_follow`, `organization_follow`, and `user_follow` notifications and return server-computed follow counts. Anonymous execution is revoked; authenticated execution is granted.
+- Critical backend defect found: `notifications_type_check` did not allow those three follow types. A follow RPC could therefore fail when inserting its notification. Added the three values while preserving all existing notification types; migration applied and verified in the active Supabase project.
+- `notification_preferences` currently only contains `event_reminders` and `marketing`; there is no social-follow preference. No preference behavior was invented or silently changed.
+- `src/features/organizers/service.ts` had been left as a placeholder despite a prior restoration claim. Restored the complete service from the repository's intact `main` implementation and changed its organization-follow action to call `toggle_organization_follow`.
+- `src/features/events/interactions.ts`: artist and organization follow actions now call their atomic RPCs and verify the authenticated session matches the supplied user ID. Direct table mutation paths were removed.
+- `src/features/artists/index.ts` already called `toggle_artist_follow`; no duplicate change was needed there.
+- Added the matching SQL migration source file to keep the Git branch aligned with the already-applied database change.
+- Remaining validation: run the frontend build/typecheck and Supabase security advisors; perform authenticated end-to-end tests with two real test accounts. No production follow/like test rows were created in this audit.
