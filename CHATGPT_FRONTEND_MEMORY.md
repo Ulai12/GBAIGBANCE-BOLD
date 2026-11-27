@@ -154,3 +154,7 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Follow-up frontend wiring: `src/features/users/follows.ts#setUserFollow` previously mutated `user_follows` directly, bypassing the server notification RPC. It now checks the signed-in owner and routes actual state changes through `toggle_user_follow`; no-op requests remain no-ops.
 - `src/screens/NotificationsScreen.tsx` now recognizes the three social follow notification types and routes organization notifications to the organizer profile instead of falling through to an event URL.
 - Existing notification bell already listens to filtered Realtime INSERT/UPDATE events and refreshes the unread badge; no duplicate subscription was added.
+
+
+- Realtime audit found that the hosted `supabase_realtime` publication existed but contained none of the five tables required by the current client subscriptions. Added `notifications`, `event_likes`, `artist_follows`, `organization_follows`, and `user_follows`; RLS remains enabled and authenticated SELECT grants were verified.
+- This restores the database publication prerequisite for the existing filtered notification-badge and favorites/follows Postgres Changes listeners. The current app still has a 20-second favorites resync fallback; DELETE payload limitations may delay some cross-device removals until that resync. Broadcast-based delivery remains a future scaling improvement, not part of this tranche.
