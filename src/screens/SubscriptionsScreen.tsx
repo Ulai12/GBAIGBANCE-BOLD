@@ -46,9 +46,15 @@ export function SubscriptionsScreen({
 }: SubscriptionsScreenProps) {
   const { user, t } = useApp();
   const [searchParams] = useSearchParams();
-  const queryTab = searchParams.get('tab') as Tab | null;
+  const requestedTab = searchParams.get('tab');
+  const validTabs: Tab[] = ['artists', 'organizers', 'users', 'followers'];
+  const queryTab: Tab | null = requestedTab && validTabs.includes(requestedTab as Tab)
+    ? (requestedTab as Tab)
+    : null;
   const { followedArtistIds, followedOrgIds, followedUserIds } = useFavorites();
-  const [tab, setTab] = useState<Tab>(() => queryTab || initialTab || 'artists');
+  const [tab, setTab] = useState<Tab>(() =>
+    queryTab || (initialTab && validTabs.includes(initialTab) ? initialTab : 'artists'),
+  );
 
   const cachedSub = user ? getCachedSubscriptionsMemory(user.id) : null;
   const hasCache = Boolean(cachedSub);
@@ -161,18 +167,21 @@ export function SubscriptionsScreen({
       refreshSubscriptions();
     };
 
-    window.addEventListener('focus', handleFocusSync);
-    window.addEventListener('visibilitychange', () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') handleFocusSync();
-    });
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [refreshSubscriptions]);
 
-  if (!user && artists.length === 0 && orgs.length === 0 && !loading) {
+  if (!user && artists.length === 0 && orgs.length === 0 && users.length === 0 && followers.length === 0 && !loading) {
     return (
       <div className="min-h-screen pb-32">
         <div className="sticky top-0 z-20 bg-white/85 dark:bg-[#14121E]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.08]">
