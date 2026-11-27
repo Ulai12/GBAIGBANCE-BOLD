@@ -192,6 +192,7 @@
     "close": "Fermer",
     "online": "En ligne",
     "offline": "Hors ligne",
+    "offlineCheckPending": "Contrôle hors ligne — confirmation serveur en attente",
     "syncLocalScans": "Synchroniser les scans locaux",
     "selectEvent": "Choisir un événement",
     "allEvents": "Tous mes événements (détection automatique)",
