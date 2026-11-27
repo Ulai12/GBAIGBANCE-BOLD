@@ -190,25 +190,22 @@ export async function searchArtists(query: string): Promise<Artist[]> {
   return merged as Artist[];
 }
 
-export async function toggleArtistFollow(artistId: string, userId: string): Promise<boolean> {
-  const { data: existing } = await supabase
-    .from('artist_follows')
-    .select('artist_id, user_id')
-    .eq('artist_id', artistId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase
-      .from('artist_follows')
-      .delete()
-      .eq('artist_id', artistId)
-      .eq('user_id', userId);
-    return false;
-  } else {
-    await supabase.from('artist_follows').insert({ artist_id: artistId, user_id: userId });
-    return true;
+/** Abonnement artiste via RPC atomique (compteur + notification côté serveur). */
+export async function toggleArtistFollow(artistId: string, _userId?: string): Promise<boolean> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData.session?.user?.id) {
+    throw new Error('Connectez-vous pour suivre un artiste.');
   }
+
+  const { data, error } = await supabase.rpc('toggle_artist_follow', {
+    p_artist_id: artistId,
+  });
+  if (error) throw new Error(error.message || 'Impossible de mettre à jour l’abonnement');
+  const rec = data as { success?: boolean; following?: boolean; error?: string } | null;
+  if (!rec || rec.success === false) {
+    throw new Error(typeof rec?.error === 'string' ? rec.error : 'Impossible de mettre à jour l’abonnement');
+  }
+  return rec.following === true;
 }
 
 export async function isFollowingArtist(artistId: string, userId: string): Promise<boolean> {
