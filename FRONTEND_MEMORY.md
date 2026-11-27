@@ -462,3 +462,16 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Relecture distante : tailles OK (organizer FR 11815, EN 10835, TSX 45209). Contenu vérifié (pendingSyncCount présent).
 - Vérifications : pas de typecheck/lint/build exécuté dans cette session. Rendu non contrôlé en navigateur.
 - Prochaine étape : polish du overlay de résultat (cibles tactiles plus grandes, meilleur contraste) ou états empty/loading du scanner.
+
+
+## 2026-11-27 — Scanner : overlay de résultat responsive et accessible (P2)
+- Chantier ciblé hors « Explorer par catégorie », laissé strictement intact conformément à la consigne utilisateur.
+- `src/components/TicketScannerModal.tsx` : carte de résultat limitée à la hauteur disponible dans le viewport caméra et scrollable sur les écrans courts; marges adaptées mobile; noms de participants, formules, sièges, horodatages et titres d’événement autorisés à revenir à la ligne sans déborder; action « Scanner le billet suivant » conserve une cible d’au moins 48 px et reçoit un focus visible.
+- Le titre et le message de résultat sont annoncés par les régions live ARIA. L’animation de rebond du succès respecte `prefers-reduced-motion`.
+- Le libellé du contrôle hors ligne en attente de confirmation serveur est désormais traduit via `scannerModal.offlineCheckPending` dans `src/locales/fr/organizer.json` et `src/locales/en/organizer.json`.
+- Commits code sur `FRONTEND-iA` : `19c2f8334c04922279a85552d13fb834ddc8d800` (overlay et wrapping), `44bbbe8a86ca542b3d12037bf10b48ebca0d57da` (FR), `fc12ee060dfbe55e78de9518f9903918df9d957d` (EN), `de311b23437b55ab676046ef9f89b5c966b62cfe` (hauteur relative au viewport caméra et annonces ARIA).
+- Relecture distante des trois fichiers après écriture : tailles exactes confirmées (TSX 45 794 caractères, FR 11 623, EN 10 894); JSON FR/EN parsables et clés `scannerModal` alignées.
+- Preview Vercel READY pour `de311b23437b55ab676046ef9f89b5c966b62cfe` : https://gbaigbance-event-m70ta4qz5-shogun10.vercel.app. Build Vite a transformé 2 938 modules; génération et synchronisation PWA à confirmer dans les logs finaux. Typecheck et lint non exécutés.
+- QA visuelle mobile/iPhone et tests caméra, résultat en ligne/hors ligne non exécutés : clone local impossible (DNS GitHub) et contexte navigateur connecté indisponible. Ne pas présenter ces contrôles comme réussis.
+- Aucun changement backend/API, migration, donnée métier, dépendance ou lockfile; aucun PR.
+- Prochaine priorité : contrôle visuel sur petit viewport iPhone et test réel des résultats validés/refusés, puis états empty/loading du scanner si la QA confirme le layout.
