@@ -143,3 +143,9 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - `src/features/artists/index.ts` already called `toggle_artist_follow`; no duplicate change was needed there.
 - Added the matching SQL migration source file to keep the Git branch aligned with the already-applied database change.
 - Remaining validation: run the frontend build/typecheck and Supabase security advisors; perform authenticated end-to-end tests with two real test accounts. No production follow/like test rows were created in this audit.
+
+
+- Follow-up consistency repair: the deployed `notifications_type_check` originally rejected `artist_follow`, `organization_follow`, and `user_follow`, so the existing follow RPCs could roll back when trying to notify. The allowed type constraint now includes those values.
+- Second mismatch found: deployed `notification_preferences` had only `event_reminders` and `marketing`, while the existing settings UI expects seven additional fields. Added `new_comments`, `comment_replies`, `new_questions`, `question_answered`, `new_followers`, `invite_accepted`, and `push_enabled`.
+- Updated `create_notification` to honor the corresponding in-app notification preference; social follows use `new_followers`. Missing preference rows default to enabled. `push_enabled` remains a push-delivery setting and does not suppress in-app notification records.
+- Both additive database migrations were applied to the active project and their resulting schema/function definitions were read back. Authenticated end-to-end delivery remains untested because no test accounts were used.
