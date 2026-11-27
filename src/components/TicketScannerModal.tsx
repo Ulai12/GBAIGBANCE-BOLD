@@ -118,9 +118,7 @@ export function TicketScannerModal({
     }
     if (conflicts > 0) {
       onToast({
-        message: language === 'en'
-          ? `${conflicts} offline admission(s) could not be confirmed; check the scan history.`
-          : `${conflicts} validation(s) hors ligne n’ont pas été confirmées. Vérifiez l’historique.`,
+        message: t('organizer', 'scannerModal.messages.offlineConflicts').replace('{count}', String(conflicts)),
         type: 'error',
       });
     }
@@ -463,6 +461,8 @@ export function TicketScannerModal({
 
   const percentScanned =
     stats.totalTickets > 0 ? Math.round((stats.scannedCount / stats.totalTickets) * 100) : 0;
+  const pendingSyncCount = historyList.filter(item => item.syncStatus === 'pending').length;
+
 
   const localizedScanMessage = lastScannedResult
     ? lastScannedResult.messageKey
@@ -521,7 +521,14 @@ export function TicketScannerModal({
               }`}
             >
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              <span>{isOnline ? t('organizer', 'scannerModal.online') : t('organizer', 'scannerModal.offline')}</span>
+              <span>
+                {isOnline ? t('organizer', 'scannerModal.online') : t('organizer', 'scannerModal.offline')}
+                {!isOnline && pendingSyncCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/30 text-amber-200 text-[10px] font-bold">
+                    {pendingSyncCount}
+                  </span>
+                )}
+              </span>
             </div>
 
             {/* Sync button for offline logs */}
@@ -748,7 +755,7 @@ export function TicketScannerModal({
 
                   {lastScannedResult.checkedInAt && (
                     <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{language === 'en' ? 'Checked in' : 'Validé le'}</span>
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.checkedIn')}</span>
                       <time className="text-xs text-gray-200 font-mono">{new Date(lastScannedResult.checkedInAt).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}</time>
                     </div>
                   )}
@@ -990,9 +997,9 @@ export function TicketScannerModal({
                           <span className="font-mono text-purple-300">{item.qrCode}</span>
                           {item.ticketType && <span>· {item.ticketType}</span>}
                           {item.isOffline && <span className="text-amber-400">⚡ {t('organizer', 'scannerModal.offline')}</span>}
-                          {item.syncStatus === 'pending' && <span className="text-amber-300">· {language === 'en' ? 'Pending sync' : 'En attente'}</span>}
-                          {item.syncStatus === 'synced' && <span className="text-emerald-300">· {language === 'en' ? 'Synced' : 'Synchronisé'}</span>}
-                          {item.syncStatus === 'conflict' && <span className="text-rose-300">· {language === 'en' ? 'Conflict' : 'Conflit'}</span>}
+                          {item.syncStatus === 'pending' && <span className="text-amber-300">· {t('organizer', 'scannerModal.pendingSync')}</span>}
+                          {item.syncStatus === 'synced' && <span className="text-emerald-300">· {t('organizer', 'scannerModal.synced')}</span>}
+                          {item.syncStatus === 'conflict' && <span className="text-rose-300">· {t('organizer', 'scannerModal.conflict')}</span>}
                         </div>
                       </div>
                     </div>
