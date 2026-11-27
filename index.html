@@ -32,6 +32,59 @@
           ?.setAttribute('content', dark ? '#08060D' : '#FFFFFF');
       })();
     </script>
+
+    <!-- Styles critiques : évite le flash des surfaces Liquid Glass avant le CSS applicatif. -->
+    <style>
+      .glass-surface, .glass, .glass-card {
+        -webkit-backdrop-filter: blur(12px) saturate(112%);
+        backdrop-filter: blur(12px) saturate(112%);
+      }
+      .glass-ios {
+        -webkit-backdrop-filter: blur(12px) saturate(125%);
+        backdrop-filter: blur(12px) saturate(125%);
+      }
+      .glass-floating-bar {
+        -webkit-backdrop-filter: blur(14px) saturate(125%);
+        backdrop-filter: blur(14px) saturate(125%);
+      }
+      .liquid-glass-header {
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
+        backdrop-filter: blur(22px) saturate(180%);
+      }
+      .search-bar {
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        backdrop-filter: blur(18px) saturate(1.2);
+      }
+      .form-surface {
+        -webkit-backdrop-filter: blur(14px) saturate(1.1);
+        backdrop-filter: blur(14px) saturate(1.1);
+      }
+      .bottom-nav {
+        -webkit-backdrop-filter: blur(var(--glass-blur, 10px)) saturate(var(--glass-saturate, 112%));
+        backdrop-filter: blur(var(--glass-blur, 10px)) saturate(var(--glass-saturate, 112%));
+      }
+      @media (max-width: 640px) {
+        .liquid-glass-header, .glass-surface, .glass, .glass-card, .glass-ios,
+        .glass-floating-bar, .search-bar, .form-surface, .bottom-nav {
+          -webkit-backdrop-filter: blur(8px) saturate(112%);
+          backdrop-filter: blur(8px) saturate(112%);
+        }
+      }
+      @media (max-width: 400px) {
+        .liquid-glass-header, .glass-surface, .glass, .glass-card, .glass-ios,
+        .glass-floating-bar, .search-bar, .form-surface, .bottom-nav {
+          -webkit-backdrop-filter: blur(6px) saturate(108%);
+          backdrop-filter: blur(6px) saturate(108%);
+        }
+      }
+      @media (prefers-reduced-transparency: reduce) {
+        .liquid-glass-header, .glass-surface, .glass, .glass-card, .glass-ios,
+        .glass-floating-bar, .search-bar, .form-surface, .bottom-nav {
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+      }
+    </style>
     <meta name="description" content="Gbaigbance — La plateforme événementielle africaine premium. Découvrez, réservez et participez aux meilleurs événements au Togo, Bénin et en Afrique francophone." />
     <meta property="og:title" content="Gbaigbance — L'événementiel africain" />
     <meta property="og:description" content="Gbaigbance — La plateforme événementielle africaine premium. Découvrez, réservez et participez aux meilleurs événements au Togo, Bénin et en Afrique francophone." />
@@ -52,8 +105,8 @@
     <link rel="preload" href="/pwa-192x192.png" as="image" type="image/png" />
 
     <!-- Performance: Preload Primary Font Stylesheet (Archivo) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=optional" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=optional" />
 
     <!-- AI & LLM Discovery (llmstxt.org standard) -->
     <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM Structured Information" />
