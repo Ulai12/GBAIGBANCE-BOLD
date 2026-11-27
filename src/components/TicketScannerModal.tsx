@@ -127,7 +127,7 @@ export function TicketScannerModal({
     if (failed > 0) {
       onToast({ message: t('organizer', 'scannerModal.messages.syncPending').replace('{count}', String(failed)), type: 'info' });
     }
-    if (synced > 0 || conflicts > 0) loadStats();
+    loadStats();
   }, [loadStats, onToast, t, language]);
 
   // Online / Offline listener
