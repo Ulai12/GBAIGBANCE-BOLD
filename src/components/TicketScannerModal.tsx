@@ -660,8 +660,13 @@ export function TicketScannerModal({
 
         {/* SCAN RESULT OVERLAY MODAL */}
         {lastScannedResult && (
-          <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex items-center justify-center p-5 animate-fade-in">
-            <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl border transition-all animate-scale-up relative overflow-hidden bg-zinc-900 border-white/15">
+          <div
+            className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-5 animate-fade-in"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-3xl p-5 sm:p-6 flex flex-col items-center text-center shadow-2xl border transition-all animate-scale-up relative bg-zinc-900 border-white/15">
               {/* Top Countdown Bar */}
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10">
                 <div
@@ -680,7 +685,7 @@ export function TicketScannerModal({
               <div
                 className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-transform ${
                   lastScannedResult.status === 'valid'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.3)] animate-bounce'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.3)] motion-safe:animate-bounce'
                     : lastScannedResult.status === 'already_used'
                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.3)]'
                     : lastScannedResult.status === 'wrong_event'
@@ -716,7 +721,7 @@ export function TicketScannerModal({
 
               {lastScannedResult.isOffline && (
                 <span className="mb-3 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-300">
-                  {language === 'en' ? 'Offline check — awaiting server sync' : 'Contrôle hors ligne — confirmation en attente'}
+                  {t('organizer', 'scannerModal.offlineCheckPending')}
                 </span>
               )}
               <p className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{localizedScanMessage}</p>
@@ -724,46 +729,46 @@ export function TicketScannerModal({
               {/* Attendee Details Card */}
               {lastScannedResult.participantName && (
                 <div className="w-full bg-white/5 rounded-2xl p-4 border border-white/10 mb-5 flex flex-col gap-2.5 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <span className="shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-purple-400" /> {t('organizer', 'scannerModal.attendee')}
                     </span>
-                    <span className="font-bold text-white text-sm">
+                    <span className="min-w-0 flex-1 text-right break-words font-bold text-white text-sm">
                       {lastScannedResult.participantName}
                     </span>
                   </div>
 
                   {lastScannedResult.ticketType && (
-                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                    <div className="flex min-w-0 items-start justify-between gap-3 border-t border-white/5 pt-2">
+                      <span className="shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                         <TicketIcon className="w-3.5 h-3.5 text-purple-400" /> {t('organizer', 'scannerModal.ticketType')}
                       </span>
-                      <span className="font-extrabold text-xs px-2.5 py-0.5 rounded-full bg-[#6600FF]/20 text-purple-300 border border-[#6600FF]/40">
+                      <span className="min-w-0 max-w-[60%] text-right whitespace-normal break-words font-extrabold text-xs px-2.5 py-0.5 rounded-full bg-[#6600FF]/20 text-purple-300 border border-[#6600FF]/40">
                         {lastScannedResult.ticketType}
                       </span>
                     </div>
                   )}
 
                   {lastScannedResult.seatInfo && (
-                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.seat')}</span>
-                      <span className="font-mono text-xs text-white font-semibold">
+                    <div className="flex min-w-0 items-start justify-between gap-3 border-t border-white/5 pt-2">
+                      <span className="shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.seat')}</span>
+                      <span className="min-w-0 max-w-[60%] text-right break-words font-mono text-xs text-white font-semibold">
                         {lastScannedResult.seatInfo}
                       </span>
                     </div>
                   )}
 
                   {lastScannedResult.checkedInAt && (
-                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.checkedIn')}</span>
-                      <time className="text-xs text-gray-200 font-mono">{new Date(lastScannedResult.checkedInAt).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}</time>
+                    <div className="flex min-w-0 items-start justify-between gap-3 border-t border-white/5 pt-2">
+                      <span className="shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.checkedIn')}</span>
+                      <time className="min-w-0 max-w-[60%] text-right break-words text-xs text-gray-200 font-mono">{new Date(lastScannedResult.checkedInAt).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}</time>
                     </div>
                   )}
 
                   {lastScannedResult.eventTitle && (
-                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.event')}</span>
-                      <span className="text-xs text-gray-300 truncate max-w-[160px]">
+                    <div className="flex min-w-0 items-start justify-between gap-3 border-t border-white/5 pt-2">
+                      <span className="shrink-0 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('organizer', 'scannerModal.event')}</span>
+                      <span className="min-w-0 max-w-[60%] text-right break-words text-xs text-gray-300">
                         {lastScannedResult.eventTitle === 'Événement' ? t('organizer', 'scannerModal.unknownEvent') : lastScannedResult.eventTitle}
                       </span>
                     </div>
@@ -774,7 +779,7 @@ export function TicketScannerModal({
               {/* Action Buttons */}
               <button
                 onClick={resumeScanning}
-                className="w-full py-3.5 rounded-2xl bg-white text-zinc-950 font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                className="w-full min-h-[48px] py-3.5 rounded-2xl bg-white text-zinc-950 font-bold text-sm active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
               >
                 <span>{t('organizer', 'scannerModal.scanNext')}</span>
                 <ArrowRight className="w-4 h-4" />
