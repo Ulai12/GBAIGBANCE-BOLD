@@ -140,3 +140,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 
 ## 2026-11-26 (suite) — Note pour automatisations
 - [Automatisation frontend] Clés i18n ajoutées pour le formulaire de création d'événement (ticketsLabel, addTicket, types de billets, search collab, programSponsorsAria, coverUrlLabel, chooseAction) dans organizer.json FR/EN. Remplacements des hardcodes préparés dans OrganizerDashboardScreen.tsx. Prochaine : pousser le TSX complet et vérifier le switch de langue. Ne pas toucher Explorer par catégories.
+
+## 2026-11-27 — Note pour automatisations
+- [Automatisation frontend] Localisation restante du TicketScannerModal terminée (labels de statut check-in / pending / synced / conflict + message conflits hors ligne). Badge compteur de file d'attente hors ligne ajouté sur l'indicateur. Commits 2868010 / d4fa953 / df0d092. Prochaine suggestion : polish overlay de résultat (cibles ≥44px, contraste) ou états empty du scanner. Ne pas toucher Explorer par catégories.
