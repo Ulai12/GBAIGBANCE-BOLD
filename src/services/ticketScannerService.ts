@@ -36,7 +36,6 @@ export interface GateValidationResult {
 }
 
 const OFFLINE_TICKETS_KEY_PREFIX = 'gba_gate_tickets_';
-const OFFLINE_SCANNED_IDS_KEY = 'gba_gate_offline_scanned_ids';
 const OFFLINE_QUEUE_KEY = 'gba_gate_offline_queue';
 const GATE_HISTORY_KEY = 'gba_gate_scan_history';
 
@@ -148,12 +147,30 @@ export const gateAudio = new GateAudioEngine();
  */
 export async function preloadEventTicketsForOffline(eventId: string): Promise<number> {
   try {
-    const { data: tickets, error } = await supabase
-      .from('tickets')
-      .select('id, event_id, qr_code, status, ticket_type, seat_info, user_id, recipient_name')
-      .eq('event_id', eventId);
+    const tickets: Array<{
+      id: string;
+      event_id: string;
+      qr_code: string | null;
+      status: string;
+      ticket_type: string;
+      seat_info: string | null;
+      user_id: string;
+      recipient_name: string | null;
+    }> = [];
 
-    if (error || !tickets) return 0;
+    // PostgREST limite les réponses; paginer évite de tronquer les grands événements.
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id, event_id, qr_code, status, ticket_type, seat_info, user_id, recipient_name')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + 499);
+
+      if (error || !data) return 0;
+      tickets.push(...data);
+      if (data.length < 500) break;
+    }
 
     // Les billets pointent vers auth.users, pas directement vers profiles.
     // On récupère donc les noms via la projection publique autorisée par RLS,
@@ -220,21 +237,21 @@ export async function fetchEventGateStats(eventId: string): Promise<{
   activeCount: number;
 }> {
   try {
-    const { data: tickets, error } = await supabase
-      .from('tickets')
-      .select('status')
-      .eq('event_id', eventId)
-      .neq('status', 'cancelled');
+    const [totalResult, scannedResult, activeResult] = await Promise.all([
+      supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('event_id', eventId).in('status', ['valid', 'active', 'used']),
+      supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'used'),
+      supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('event_id', eventId).in('status', ['valid', 'active']),
+    ]);
 
-    if (error || !tickets) {
+    if (totalResult.error || scannedResult.error || activeResult.error) {
       return { totalTickets: 0, scannedCount: 0, activeCount: 0 };
     }
 
-    const totalTickets = tickets.length;
-    const scannedCount = tickets.filter((t) => t.status === 'used').length;
-    const activeCount = tickets.filter((t) => t.status === 'valid' || t.status === 'active').length;
-
-    return { totalTickets, scannedCount, activeCount };
+    return {
+      totalTickets: totalResult.count || 0,
+      scannedCount: scannedResult.count || 0,
+      activeCount: activeResult.count || 0,
+    };
   } catch {
     return { totalTickets: 0, scannedCount: 0, activeCount: 0 };
   }
@@ -334,7 +351,7 @@ export async function processTicketGateValidation(params: {
 
       // Gestion des cas d'échec retournés par le RPC
       const err = res.error || '';
-      if (err.includes('déjà été validé') || err.includes('used')) {
+      if (res.code === 'ALREADY_USED' || err.includes('déjà été validé') || err.includes('used')) {
         const ticket = res.ticket as Partial<Ticket> | undefined;
         return {
           status: 'already_used',
@@ -348,7 +365,7 @@ export async function processTicketGateValidation(params: {
         };
       }
 
-      if (err.includes('annulé') || err.includes('cancelled')) {
+      if (res.code === 'CANCELLED' || err.includes('annulé') || err.includes('cancelled')) {
         return {
           status: 'cancelled',
           message: 'Ce billet a été annulé ou remboursé',
@@ -382,14 +399,25 @@ export async function processTicketGateValidation(params: {
 
       return {
         status: 'invalid',
-        message: res.error || 'Billet introuvable ou invalide pour cet événement',
+        message: res.code === 'EXPIRED'
+          ? 'Ce billet a expiré.'
+          : res.code === 'NOT_ADMITTABLE'
+          ? 'Ce billet n’est pas confirmé ou ne permet pas l’entrée.'
+          : res.error || 'Billet introuvable ou invalide pour cet événement',
         messageKey: 'invalidOnline',
         eventTitle: targetEvent?.title,
         isOffline: false,
       };
     } catch (apiErr) {
-      console.warn('Erreur appel RPC validateTicketQr, passage en secours local:', apiErr);
-      // En cas d'erreur réseau transitoire, bascule en vérification locale
+      console.warn('Erreur appel RPC validateTicketQr:', apiErr);
+      // Une panne RPC alors que le navigateur est en ligne ne vaut jamais une admission locale.
+      return {
+        status: 'invalid',
+        message: 'Validation serveur indisponible. Réessayez avant d’autoriser l’entrée.',
+        messageKey: 'invalidOnline',
+        eventTitle: targetEvent?.title,
+        isOffline: false,
+      };
     }
   }
 
@@ -425,7 +453,7 @@ export async function processTicketGateValidation(params: {
             isOffline: true,
           };
         }
-        if (match.status === 'cancelled') {
+        if (match.status === 'cancelled' || match.status === 'refunded') {
           return {
             status: 'cancelled',
             message: 'Billet annulé (base hors-ligne)',
@@ -434,14 +462,34 @@ export async function processTicketGateValidation(params: {
           };
         }
 
-        // Marquer comme scanné dans le cache local
+        if (match.status === 'expired') {
+          return {
+            status: 'invalid',
+            message: 'Billet expiré dans le cache hors-ligne.',
+            messageKey: 'invalidOnline',
+            isOffline: true,
+          };
+        }
+        if (match.status !== 'valid' && match.status !== 'active') {
+          return {
+            status: 'invalid',
+            message: 'Billet non confirmé dans le cache hors-ligne.',
+            messageKey: 'invalidOnline',
+            isOffline: true,
+          };
+        }
+
+        // Marquer localement comme utilisé; ce statut reste provisoire jusqu'à synchronisation.
         match.status = 'used';
         await set(`${OFFLINE_TICKETS_KEY_PREFIX}${targetId}`, cachedTickets);
 
-        // Enregistrer dans la file d'attente de synchronisation
+        // Une seule entrée de file par événement et code QR sur cet appareil.
         const queue = (await get<Array<{ qrCode: string; eventId: string; scannedAt: string }>>(OFFLINE_QUEUE_KEY)) || [];
-        queue.push({ qrCode: code, eventId: targetId, scannedAt: new Date().toISOString() });
-        await set(OFFLINE_QUEUE_KEY, queue);
+        const alreadyQueued = queue.some((item) => item.eventId === targetId && item.qrCode === code);
+        if (!alreadyQueued) {
+          queue.push({ qrCode: code, eventId: targetId, scannedAt: new Date().toISOString() });
+          await set(OFFLINE_QUEUE_KEY, queue);
+        }
 
         return {
           status: 'valid',
@@ -455,36 +503,6 @@ export async function processTicketGateValidation(params: {
       }
     }
 
-    // Admission cryptographique hors-ligne pour les billets signés GBA-1 non encore préchargés
-    if (qrCheck.valid && !qrCheck.legacy && qrCheck.ticket_id) {
-      const scannedIds = (await get<string[]>(OFFLINE_SCANNED_IDS_KEY)) || [];
-      const dedupeKey = `${targetId}:${qrCheck.ticket_id}`;
-      if (scannedIds.includes(dedupeKey)) {
-        return {
-          status: 'already_used',
-          message: 'Pass cryptographique déjà scanné hors-ligne à ce guichet !',
-          messageKey: 'alreadyUsedOffline',
-          ticketType: (qrCheck.tier || 'standard').toUpperCase(),
-          isOffline: true,
-        };
-      }
-
-      scannedIds.push(dedupeKey);
-      await set(OFFLINE_SCANNED_IDS_KEY, scannedIds);
-
-      const queue = (await get<Array<{ qrCode: string; eventId: string; scannedAt: string }>>(OFFLINE_QUEUE_KEY)) || [];
-      queue.push({ qrCode: code, eventId: targetId, scannedAt: new Date().toISOString() });
-      await set(OFFLINE_QUEUE_KEY, queue);
-
-      return {
-        status: 'valid',
-        message: 'Pass vérifié hors-ligne par signature Rust 🔐 (Sync auto en attente)',
-        messageKey: 'verifiedOffline',
-        participantName: undefined,
-        ticketType: (qrCheck.tier || 'standard').toUpperCase(),
-        isOffline: true,
-      };
-    }
   }
 
   return {
@@ -500,23 +518,32 @@ export async function processTicketGateValidation(params: {
 /**
  * Synchronise les validations stockées hors-ligne une fois la connexion rétablie
  */
-export async function syncOfflineGateQueue(): Promise<{ synced: number; failed: number }> {
+export async function syncOfflineGateQueue(): Promise<{ synced: number; failed: number; conflicts: number }> {
   try {
     const queue = (await get<Array<{ qrCode: string; eventId: string; scannedAt: string }>>(OFFLINE_QUEUE_KEY)) || [];
-    if (queue.length === 0) return { synced: 0, failed: 0 };
+    if (queue.length === 0) return { synced: 0, failed: 0, conflicts: 0 };
 
     let synced = 0;
     let failed = 0;
+    let conflicts = 0;
     const remaining: typeof queue = [];
 
     for (const item of queue) {
       try {
         const res = await validateTicketQr(item.qrCode, item.eventId);
-        if (res.success || res.error?.includes('used')) {
+        if (res.success) {
           synced++;
-        } else {
-          failed++;
+          continue;
         }
+
+        if (['ALREADY_USED', 'CANCELLED', 'EXPIRED', 'NOT_ADMITTABLE', 'INVALID_TICKET', 'EVENT_NOT_FOUND', 'FORBIDDEN'].includes(res.code || '')) {
+          conflicts++;
+          continue;
+        }
+
+        // Les erreurs temporaires restent en file pour une prochaine tentative.
+        remaining.push(item);
+        failed++;
       } catch {
         remaining.push(item);
         failed++;
@@ -524,9 +551,9 @@ export async function syncOfflineGateQueue(): Promise<{ synced: number; failed: 
     }
 
     await set(OFFLINE_QUEUE_KEY, remaining);
-    return { synced, failed };
+    return { synced, failed, conflicts };
   } catch {
-    return { synced: 0, failed: 0 };
+    return { synced: 0, failed: 0, conflicts: 0 };
   }
 }
 

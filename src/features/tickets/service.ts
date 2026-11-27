@@ -573,8 +573,10 @@ export async function validateTicketQr(
   eventId: string
 ): Promise<{
   success: boolean;
+  code?: string;
   error?: string;
   message?: string;
+  checked_in_at?: string;
   ticket?: Partial<Ticket>;
   participant_name?: string;
 }> {
@@ -585,8 +587,10 @@ export async function validateTicketQr(
   if (error) throw error;
   return data as {
     success: boolean;
+    code?: string;
     error?: string;
     message?: string;
+    checked_in_at?: string;
     ticket?: Partial<Ticket>;
     participant_name?: string;
   };

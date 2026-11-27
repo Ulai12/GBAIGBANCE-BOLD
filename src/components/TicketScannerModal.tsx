@@ -67,6 +67,7 @@ export function TicketScannerModal({
   const [isScanning, setIsScanning] = useState(true);
   const [lastScannedResult, setLastScannedResult] = useState<GateValidationResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = useRef(false);
   const [countdownPercent, setCountdownPercent] = useState(100);
 
   // Mode & Panels
@@ -110,15 +111,23 @@ export function TicketScannerModal({
 
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
-    const { synced, failed } = await syncOfflineGateQueue();
+    const { synced, failed, conflicts } = await syncOfflineGateQueue();
     setIsSyncing(false);
     if (synced > 0) {
       onToast({ message: t('organizer', 'scannerModal.messages.synced').replace('{count}', String(synced)), type: 'success' });
-      loadStats();
+    }
+    if (conflicts > 0) {
+      onToast({
+        message: language === 'en'
+          ? `${conflicts} offline admission(s) could not be confirmed; check the scan history.`
+          : `${conflicts} validation(s) hors ligne n’ont pas été confirmées. Vérifiez l’historique.`,
+        type: 'error',
+      });
     }
     if (failed > 0) {
       onToast({ message: t('organizer', 'scannerModal.messages.syncPending').replace('{count}', String(failed)), type: 'info' });
     }
+    if (synced > 0 || conflicts > 0) loadStats();
   }, [loadStats, onToast, t]);
 
   // Online / Offline listener
@@ -238,7 +247,8 @@ export function TicketScannerModal({
   // Process a detected QR code
   const handleValidateCode = useCallback(
     async (code: string) => {
-      if (isProcessing) return;
+      if (processingRef.current) return;
+      processingRef.current = true;
       setIsProcessing(true);
       setIsScanning(false);
 
@@ -246,6 +256,14 @@ export function TicketScannerModal({
         rawCode: code,
         selectedEventId,
         availableEvents: events,
+      }).catch((error) => {
+        console.error('Ticket scan validation failed:', error);
+        return {
+          status: 'invalid' as const,
+          message: 'Impossible de vérifier ce billet. Réessayez.',
+          messageKey: 'invalidOnline' as const,
+          isOffline: false,
+        };
       });
 
       setLastScannedResult(result);
@@ -322,8 +340,9 @@ export function TicketScannerModal({
       }, 40);
 
       setIsProcessing(false);
+      processingRef.current = false;
     },
-    [isProcessing, selectedEventId, events, language, t]
+    [selectedEventId, events, language, t]
   );
 
   const resumeScanning = () => {
