@@ -36,6 +36,9 @@ function getIcon(type: string) {
     case 'question_answered':
       return HelpCircle;
     case 'new_follower':
+    case 'artist_follow':
+    case 'organization_follow':
+    case 'user_follow':
       return UserPlus;
     case 'invite_accepted':
       return Check;
@@ -55,6 +58,9 @@ function getIconColor(type: string) {
     case 'question_answered':
       return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400';
     case 'new_follower':
+    case 'artist_follow':
+    case 'organization_follow':
+    case 'user_follow':
       return 'bg-pink-500/10 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400';
     default:
       return 'bg-[#6600FF]/10 text-[#6600FF] dark:bg-[#6600FF]/20 dark:text-[#A78BFA]';
@@ -127,7 +133,7 @@ export function NotificationsScreen({ onBack, onToast, onLogin }: NotificationsS
       navigate(`/users/${n.entity_id || n.actor_id}`);
     } else if (n.entity_type === 'artist' && n.entity_id) {
       navigate(`/artists/${n.entity_id}`);
-    } else if (n.entity_type === 'organizer' && n.entity_id) {
+    } else if ((n.entity_type === 'organizer' || n.entity_type === 'organization') && n.entity_id) {
       navigate(`/organizers/${n.entity_id}`);
     } else if (n.type.includes('ticket') || n.entity_type === 'ticket') {
       navigate('/tickets');
