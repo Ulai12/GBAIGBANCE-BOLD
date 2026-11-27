@@ -452,3 +452,13 @@ P2 : transition d'onglets billets, polish cartes wallet.
 
 - Dernière validation de déploiement : commit `bb06d33f6e28d0d42e5378584a482cd091c9cea2`; Vercel a confirmé la compilation Vite (3,77 s), la génération PWA (79 entrées) et la synchronisation de 14 fichiers preview. L'état final Vercel était encore BUILDING au dernier contrôle, donc ne pas annoncer READY pour ce commit sans nouveau contrôle.
 - Typecheck/lint non exécutés : tentative de clone local impossible pendant l'incident DNS GitHub (`Could not resolve host`). Le script `npm run build` ne lance pas `npm run typecheck` ni `npm run lint`.
+
+## 2026-11-27 — Scanner : localisation complète des labels de statut et badge de file d'attente hors ligne (P2)
+- Suppression des derniers ternaires de langue hardcodés dans `TicketScannerModal.tsx` (Checked in / Pending sync / Synced / Conflict + message de conflits hors ligne).
+- Ajout des clés `scannerModal.checkedIn`, `pendingSync`, `synced`, `conflict` et `messages.offlineConflicts` dans `organizer.json` FR et EN.
+- Amélioration visuelle : badge compteur de scans en attente de synchronisation affiché sur l'indicateur hors ligne (quand pending > 0). Plus clair pour l'opérateur de guichet sur mobile.
+- Aucun changement sur Explorer par catégorie, backend, paiements ou données.
+- Commits sur `FRONTEND-iA` : 2868010 (FR), d4fa953 (EN), df0d092 (TSX).
+- Relecture distante : tailles OK (organizer FR 11815, EN 10835, TSX 45209). Contenu vérifié (pendingSyncCount présent).
+- Vérifications : pas de typecheck/lint/build exécuté dans cette session. Rendu non contrôlé en navigateur.
+- Prochaine étape : polish du overlay de résultat (cibles tactiles plus grandes, meilleur contraste) ou états empty/loading du scanner.
