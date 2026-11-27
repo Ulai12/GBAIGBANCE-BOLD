@@ -47,8 +47,8 @@ export function isEventActive(event: Event | null | undefined): boolean {
 /**
  * Validates if an event is a genuine record.
  */
-export function isRealEvent(event: Partial<Event> | null | undefined): boolean {
-  if (!event || !event.id) return false;
+export function isRealEvent(event: (Partial<Event> & { is_demo?: boolean }) | null | undefined): boolean {
+  if (!event || !event.id || event.is_demo === true) return false;
   const id = String(event.id).trim();
   if (!id || id.startsWith('mock-')) return false;
   return true;
@@ -72,8 +72,8 @@ const FAKE_ORGANIZATION_NAMES = new Set([
   'grand place productions',
 ]);
 
-export function isRealArtist(artist: Partial<Artist> | null | undefined): boolean {
-  if (!artist || !artist.id) return false;
+export function isRealArtist(artist: (Partial<Artist> & { is_demo?: boolean }) | null | undefined): boolean {
+  if (!artist || !artist.id || artist.is_demo === true) return false;
   const id = String(artist.id).trim().toLowerCase();
   if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('b1000000-')) return false;
 
@@ -84,8 +84,8 @@ export function isRealArtist(artist: Partial<Artist> | null | undefined): boolea
   return true;
 }
 
-export function isRealOrganization(org: Partial<Organization> | null | undefined): boolean {
-  if (!org || !org.id) return false;
+export function isRealOrganization(org: (Partial<Organization> & { is_demo?: boolean }) | null | undefined): boolean {
+  if (!org || !org.id || org.is_demo === true) return false;
   const id = String(org.id).trim().toLowerCase();
   if (!id || id.startsWith('mock-') || id.startsWith('test-') || id.startsWith('a1000000-')) return false;
 
