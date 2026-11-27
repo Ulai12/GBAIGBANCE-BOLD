@@ -109,24 +109,37 @@ export async function setUserFollow(
     throw new Error('Identifiant de suivi invalide.');
   }
 
-  if (shouldFollow) {
-    const { error } = await supabase
-      .from('user_follows')
-      .upsert(
-        { follower_id: followerId, following_id: followingId },
-        { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
-      );
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase
-      .from('user_follows')
-      .delete()
-      .eq('follower_id', followerId)
-      .eq('following_id', followingId);
-    if (error) throw new Error(error.message);
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const authenticatedUserId = sessionData.session?.user?.id;
+  if (sessionError || !authenticatedUserId || authenticatedUserId !== followerId) {
+    throw new Error('Connectez-vous pour gérer vos abonnements.');
   }
 
-  return shouldFollow;
+  // La lecture évite de déclencher le RPC toggle lorsqu'aucun changement n'est nécessaire.
+  const { data: existing, error: readError } = await supabase
+    .from('user_follows')
+    .select('id')
+    .eq('follower_id', followerId)
+    .eq('following_id', followingId)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  if (Boolean(existing) === shouldFollow) return shouldFollow;
+
+  const { data, error } = await supabase.rpc('toggle_user_follow', {
+    p_following_id: followingId,
+  });
+  if (error) throw new Error(error.message);
+
+  const result = data as { success?: boolean; following?: boolean; error?: string } | null;
+  if (!result || result.success !== true) {
+    throw new Error(result?.error || 'Impossible de mettre à jour le suivi.');
+  }
+  if (result.following !== shouldFollow) {
+    throw new Error('Le statut du suivi a changé simultanément. Actualisez puis réessayez.');
+  }
+
+  return result.following;
 }
 
 export async function isFollowingUser(followerId: string, followingId: string): Promise<boolean> {
