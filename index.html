@@ -35,6 +35,21 @@
 
     <!-- Styles critiques : évite le flash des surfaces Liquid Glass avant le CSS applicatif. -->
     <style>
+      /* Précompose les panneaux Liquid Glass avant le premier rendu Safari/iOS. */
+      .gba-glass-panel {
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        transform: translate3d(0, 0, 0);
+        isolation: isolate;
+        will-change: transform;
+        transition-property: opacity, transform, background-color, border-color, box-shadow;
+      }
+      .glass-surface, .glass, .glass-card, .glass-ios, .glass-floating-bar,
+      .glass-btn-circle, .liquid-glass-header, .search-bar, .form-surface, .bottom-nav {
+        transform: translate3d(0, 0, 0);
+        isolation: isolate;
+        transition-property: opacity, transform, background-color, border-color, box-shadow;
+      }
       .glass-surface, .glass, .glass-card {
         -webkit-backdrop-filter: blur(12px) saturate(112%);
         backdrop-filter: blur(12px) saturate(112%);
