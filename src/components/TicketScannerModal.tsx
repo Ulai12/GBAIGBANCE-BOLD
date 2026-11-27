@@ -662,11 +662,8 @@ export function TicketScannerModal({
         {lastScannedResult && (
           <div
             className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-5 animate-fade-in"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
           >
-            <div className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-3xl p-5 sm:p-6 flex flex-col items-center text-center shadow-2xl border transition-all animate-scale-up relative bg-zinc-900 border-white/15">
+            <div className="w-full max-w-sm max-h-[calc(100%_-_2rem)] overflow-y-auto overscroll-contain rounded-3xl p-5 sm:p-6 flex flex-col items-center text-center shadow-2xl border transition-all animate-scale-up relative bg-zinc-900 border-white/15">
               {/* Top Countdown Bar */}
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10">
                 <div
@@ -702,6 +699,8 @@ export function TicketScannerModal({
 
               {/* Status Header Title */}
               <h2
+                aria-live="polite"
+                aria-atomic="true"
                 className={`text-2xl font-black uppercase tracking-tight mb-1 ${
                   lastScannedResult.status === 'valid'
                     ? 'text-emerald-400'
@@ -724,7 +723,7 @@ export function TicketScannerModal({
                   {t('organizer', 'scannerModal.offlineCheckPending')}
                 </span>
               )}
-              <p className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{localizedScanMessage}</p>
+              <p aria-live="polite" aria-atomic="true" className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{localizedScanMessage}</p>
 
               {/* Attendee Details Card */}
               {lastScannedResult.participantName && (
