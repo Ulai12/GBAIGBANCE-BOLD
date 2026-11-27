@@ -149,3 +149,8 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Second mismatch found: deployed `notification_preferences` had only `event_reminders` and `marketing`, while the existing settings UI expects seven additional fields. Added `new_comments`, `comment_replies`, `new_questions`, `question_answered`, `new_followers`, `invite_accepted`, and `push_enabled`.
 - Updated `create_notification` to honor the corresponding in-app notification preference; social follows use `new_followers`. Missing preference rows default to enabled. `push_enabled` remains a push-delivery setting and does not suppress in-app notification records.
 - Both additive database migrations were applied to the active project and their resulting schema/function definitions were read back. Authenticated end-to-end delivery remains untested because no test accounts were used.
+
+
+- Follow-up frontend wiring: `src/features/users/follows.ts#setUserFollow` previously mutated `user_follows` directly, bypassing the server notification RPC. It now checks the signed-in owner and routes actual state changes through `toggle_user_follow`; no-op requests remain no-ops.
+- `src/screens/NotificationsScreen.tsx` now recognizes the three social follow notification types and routes organization notifications to the organizer profile instead of falling through to an event URL.
+- Existing notification bell already listens to filtered Realtime INSERT/UPDATE events and refreshes the unread badge; no duplicate subscription was added.
