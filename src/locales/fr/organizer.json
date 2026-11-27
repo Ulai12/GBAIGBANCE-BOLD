@@ -245,7 +245,8 @@
       "validOffline": "Billet validé hors ligne ⚡ (synchronisation au retour du réseau)",
       "verifiedOffline": "Billet vérifié hors ligne par signature cryptographique 🔐 (synchronisation en attente)",
       "unknownQrOnline": "Ce QR code ne correspond pas à un billet GBAIGBANCE.",
-      "unknownQrOffline": "Billet introuvable dans le cache hors ligne."
+      "unknownQrOffline": "Billet introuvable dans le cache hors ligne.",
+      "offlineConflicts": "{count} validation(s) hors ligne n’ont pas été confirmées. Vérifiez l’historique."
     },
     "resultTitle": {
       "valid": "Entrée accordée 🎉",
@@ -253,6 +254,10 @@
       "wrongEvent": "Mauvais événement",
       "invalid": "Billet invalide",
       "cancelled": "Billet annulé"
-    }
+    },
+    "checkedIn": "Validé le",
+    "pendingSync": "En attente",
+    "synced": "Synchronisé",
+    "conflict": "Conflit"
   }
 }
