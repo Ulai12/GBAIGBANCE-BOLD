@@ -4,23 +4,22 @@ Branche : FRONTEND-iA.
 Projet Supabase : lwwiolbofrqakvrdvbbj (ACTIVE_HEALTHY)
 
 ## Tâche active
-Optimisation RLS : consolidation des policies permissives multiples restantes + policies explicites pour tables internes.
+Index manquant sur FK tickets.checked_in_by.
 
 ## Objectif
-Éliminer les warnings performance (multiple permissive policies) et sécurité (RLS enabled no policy) sur les tables concernées, sans casser les accès existants.
+Éliminer le dernier warning unindexed_foreign_keys (performance).
 
 ## Progression
-- Revue progressive des grants authenticated sur SECURITY DEFINER terminée pour les internes (précédemment).
-- Migration 20261126120000 appliquée sur Supabase + versionnée.
-- Advisors performance : multiple_permissive_policies éliminé (0).
-- Advisors sécurité : rls_enabled_no_policy éliminé sur ai_rate_limits et ticket_presence_challenges.
+- Migration 20261127120000 appliquée sur Supabase + versionnée (commit cb38a21).
+- Index tickets_checked_in_by_idx créé.
+- Advisors performance : unindexed_foreign_keys = 0.
 
 ## Fichiers concernés
-- supabase/migrations/20261126120000_fix_remaining_multiple_permissive_and_internal_tables_rls.sql
+- supabase/migrations/20261127120000_add_tickets_checked_in_by_index.sql
 - BACKEND_MEMORY.md
 
 ## Dernière action
-2026-11-26 — Migration consolidation policies RLS appliquée et versionnée (commit bd0c8e1). Mémoire mise à jour. Advisors vérifiés.
+2026-11-27 — Index FK tickets.checked_in_by ajouté et versionné. Advisors vérifiés (warning éliminé).
 
 ## Prochaine étape
 - Vérifier liaisons end-to-end (setEventStatus, validateTicketQr, initiate/confirm).
@@ -31,14 +30,15 @@ Optimisation RLS : consolidation des policies permissives multiples restantes + 
 
 ## Vérifications
 - Migration appliquée (success). OK.
-- Advisors post-migration : multiple permissive = 0, rls no policy = 0. OK.
-- Fichier migration distant présent (2675 o, SHA 3ba7d2b1). OK.
+- Index présent en base (tickets_checked_in_by_idx). OK.
+- Advisors post-migration : unindexed_foreign_keys = 0. OK.
+- Fichier migration distant présent (334 o, SHA bb7e2c6). OK.
 - Aucune troncature cette session.
 
 ## Cartographie des données
 Tables principales (public, RLS activée) :
 - profiles, organizations, artists, events (access_type, external_ticket_url, whatsapp_*, cycle de vie complet)
-- tickets (status, recipient_*, claim_token, payment_id, ticket_option_id)
+- tickets (status, recipient_*, claim_token, payment_id, ticket_option_id, checked_in_by indexé)
 - payments (ledger MM, idempotency_key)
 - ticket_refunds, event_presence_badges, comment_reactions
 - event_likes, artist_follows, user_follows, organization_follows
@@ -59,6 +59,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - À confirmer : proxy Vercel /api/ai/assistant/stream, secret PAYMENT_WEBHOOK_SECRET.
 
 ## Migrations appliquées récentes
+- 20261127120000_add_tickets_checked_in_by_index (appliquée 2026-11-27)
 - 20261126120000_fix_remaining_multiple_permissive_and_internal_tables_rls (appliquée 2026-11-26)
 - 20261124130000_revoke_execute_internal_security_definer (appliquée 2026-11-24)
 - 20261124120000_revoke_anon_execute_remaining_auth_functions (appliquée 2026-11-24)
@@ -95,6 +96,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Déplacer pg_net hors public.
 
 ## Historique
+- 2026-11-27 : Index manquant tickets.checked_in_by ajouté. Warning unindexed_foreign_keys éliminé.
 - 2026-11-26 : Consolidation policies permissives multiples (notification_preferences, event_presence_badges) + policies service_role explicites sur ai_rate_limits et ticket_presence_challenges. Advisors nettoyés.
 - 2026-11-24 : Revoke EXECUTE (PUBLIC/anon/authenticated) sur fonctions internes SECURITY DEFINER (increment/decrement_likes_count, update_event_price_range, rls_auto_enable, create_notification).
 - 2026-11-24 : Revoke EXECUTE anon sur RPCs restantes (book_ticket, cancel_ticket, accept_collaboration, submit_event_report, create_notification + internes).
@@ -114,7 +116,7 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - Paiements : secret webhook requis pour confirmer billets.
 - Favoris : RPC toggle_event_like corrigée ; le front (FavoritesContext) reste inchangé.
 - RPCs set_event_status et validate_ticket_qr présentes.
-- Indexes FK complétés.
+- Indexes FK complétés (y compris tickets.checked_in_by).
 - RLS auth initplan optimisée.
 - event_view_daily : policy service_role en place.
 - EXECUTE anon révoqué sur les RPCs qui exigent auth.uid() (batch complété).
@@ -128,18 +130,6 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 - [Backend] Continuer la revue progressive des grants SECURITY DEFINER (authenticated).
 - [Automatisation frontend] Continuer la localisation des écrans restants (OrganizerDashboard, etc.).
 
-## 2026-11-24 — Note pour automatisations
-- [Automatisation frontend] Localisation EventManagementModal terminée (clés manage.*). Prochaine : TicketScannerModal. Ne pas toucher Explorer par catégories.
-
-## 2026-11-25 — Note pour automatisations
-- [Automatisation frontend] TicketScannerModal : dernier libellé hardcodé "Fermer" du drawer historique remplacé par t() (commit 40066d53). Clés scannerModal.* déjà branchées. Prochaine étape suggérée : vérifier exhaustivement les autres composants organizer pour d'éventuels hardcodes restants, puis états loading/empty. Ne pas toucher Explorer par catégories.
-
-## 2026-11-26 — Note pour automatisations
-- [Automatisation frontend] Localisation principale de OrganizerDashboardScreen terminée (commit ac6c6204). Prochaine : éléments restants du formulaire de création (billets, collaborateurs) ou polish responsive. Ne pas toucher Explorer par catégories.
-- Incident de troncature sur OrganizerDashboardScreen via connecteur résolu immédiatement via gh api.
-
-## 2026-11-26 (suite) — Note pour automatisations
-- [Automatisation frontend] Clés i18n ajoutées pour le formulaire de création d'événement (ticketsLabel, addTicket, types de billets, search collab, programSponsorsAria, coverUrlLabel, chooseAction) dans organizer.json FR/EN. Remplacements des hardcodes préparés dans OrganizerDashboardScreen.tsx. Prochaine : pousser le TSX complet et vérifier le switch de langue. Ne pas toucher Explorer par catégories.
-
 ## 2026-11-27 — Note pour automatisations
+- [Backend] Index tickets.checked_in_by ajouté. Aucun impact frontend.
 - [Automatisation frontend] Localisation restante du TicketScannerModal terminée (labels de statut check-in / pending / synced / conflict + message conflits hors ligne). Badge compteur de file d'attente hors ligne ajouté sur l'indicateur. Commits 2868010 / d4fa953 / df0d092. Prochaine suggestion : polish overlay de résultat (cibles ≥44px, contraste) ou états empty du scanner. Ne pas toucher Explorer par catégories.
