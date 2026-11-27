@@ -258,9 +258,12 @@ export function GlassPanel({
         radius={radius}
         interactive={interactive}
         tint={tint}
-        className={className}
+        className={`gba-glass-panel ${className ?? ''}`.trim()}
         style={{
           pointerEvents: 'auto',
+          transform: 'translate3d(0, 0, 0)',
+          isolation: 'isolate',
+          willChange: 'transform',
           ...style,
         }}
       >
@@ -277,9 +280,12 @@ export function GlassPanel({
 
   return (
     <div
-      className={className}
+      className={`gba-glass-panel ${className ?? ''}`.trim()}
       style={{
         pointerEvents: 'auto',
+        transform: 'translate3d(0, 0, 0)',
+        isolation: 'isolate',
+        willChange: 'transform',
         borderRadius: translateRadiusToCss(radius),
         backgroundColor: appliedBg,
         WebkitBackdropFilter: 'blur(20px) saturate(140%)',
