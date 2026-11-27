@@ -163,3 +163,13 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 - Final verification 2026-11-27: Vercel preview for commit `5e884fd730eca1617d988dd8663f2084030b2a62` reached `READY`. Vite 8.3.8 transformed 2,938 modules, generated the PWA service worker, and completed the preview asset generation without a surfaced build error.
 - Supabase security advisor still reports 19 generic authenticated `SECURITY DEFINER` RPC warnings and one existing `pg_net`-in-public-schema warning. The three follow RPCs are intentionally callable by `authenticated`, explicitly reject missing auth in their bodies, and are not executable by `anon`; `create_notification` remains internal (no authenticated/anon EXECUTE).
 - Health advisor returned no findings. A real two-account follow/notification E2E and a standalone TypeScript typecheck were not performed in this run; do not claim those tests passed.
+
+
+## 2026-11-27 — Nettoyage des données de démonstration et abonnements
+- Supabase vérifié : 8 événements, 6 artistes et 3 organisations présents, tous marqués `is_demo=true`; aucune fiche réelle (`is_demo=false`) dans ces trois tables au moment du contrôle.
+- Tables d'interactions vérifiées après le nettoyage précédent : `event_view_daily`, `event_likes`, `artist_follows`, `organization_follows` et `user_follows` contiennent chacune 0 ligne. Aucun abonnement ou compteur réel n'a été supprimé.
+- `src/features/events/status.ts` : les gardes `isRealEvent`, `isRealArtist` et `isRealOrganization` excluent désormais explicitement les lignes `is_demo=true`.
+- `src/features/users/follows.ts` : les listes d'artistes et d'organisations suivis filtrent désormais les fiches de démonstration à la source.
+- `src/screens/SubscriptionsScreen.tsx` : validation des onglets issus de l'URL, correction du nettoyage du listener `visibilitychange`, et état vide invité tenant compte des abonnements utilisateurs et abonnés.
+- Commits : `e86bdf6`, `83cb9c3`, `449ba9a` sur `FRONTEND-iA` uniquement.
+- Relecture GitHub des trois fichiers modifiés : correctifs présents. Build, typecheck et tests fonctionnels non exécutés dans cette passe ; attendre et vérifier le Preview Vercel avant de déclarer la validation terminée.
