@@ -128,7 +128,7 @@ export function TicketScannerModal({
       onToast({ message: t('organizer', 'scannerModal.messages.syncPending').replace('{count}', String(failed)), type: 'info' });
     }
     if (synced > 0 || conflicts > 0) loadStats();
-  }, [loadStats, onToast, t]);
+  }, [loadStats, onToast, t, language]);
 
   // Online / Offline listener
   useEffect(() => {
@@ -309,6 +309,7 @@ export function TicketScannerModal({
         seatInfo: result.seatInfo,
         scannedAt: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : 'fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         isOffline: result.isOffline,
+        syncStatus: result.isOffline ? 'pending' : result.status === 'valid' ? 'synced' : undefined,
       };
 
       saveGateScanRecord(newRecord);
@@ -706,6 +707,11 @@ export function TicketScannerModal({
                 {lastScannedResult.status === 'cancelled' && t('organizer', 'scannerModal.resultTitle.cancelled')}
               </h2>
 
+              {lastScannedResult.isOffline && (
+                <span className="mb-3 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                  {language === 'en' ? 'Offline check — awaiting server sync' : 'Contrôle hors ligne — confirmation en attente'}
+                </span>
+              )}
               <p className="text-xs text-zinc-300 font-medium mb-4 max-w-xs">{localizedScanMessage}</p>
 
               {/* Attendee Details Card */}
@@ -737,6 +743,13 @@ export function TicketScannerModal({
                       <span className="font-mono text-xs text-white font-semibold">
                         {lastScannedResult.seatInfo}
                       </span>
+                    </div>
+                  )}
+
+                  {lastScannedResult.checkedInAt && (
+                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{language === 'en' ? 'Checked in' : 'Validé le'}</span>
+                      <time className="text-xs text-gray-200 font-mono">{new Date(lastScannedResult.checkedInAt).toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}</time>
                     </div>
                   )}
 
@@ -977,6 +990,9 @@ export function TicketScannerModal({
                           <span className="font-mono text-purple-300">{item.qrCode}</span>
                           {item.ticketType && <span>· {item.ticketType}</span>}
                           {item.isOffline && <span className="text-amber-400">⚡ {t('organizer', 'scannerModal.offline')}</span>}
+                          {item.syncStatus === 'pending' && <span className="text-amber-300">· {language === 'en' ? 'Pending sync' : 'En attente'}</span>}
+                          {item.syncStatus === 'synced' && <span className="text-emerald-300">· {language === 'en' ? 'Synced' : 'Synchronisé'}</span>}
+                          {item.syncStatus === 'conflict' && <span className="text-rose-300">· {language === 'en' ? 'Conflict' : 'Conflit'}</span>}
                         </div>
                       </div>
                     </div>

@@ -16,6 +16,7 @@ export interface GateScanRecord {
   seatInfo?: string | null;
   scannedAt: string;
   isOffline?: boolean;
+  syncStatus?: 'pending' | 'synced' | 'conflict';
 }
 
 export type GateValidationMessageKey =
@@ -33,6 +34,7 @@ export interface GateValidationResult {
   ticket?: Partial<Ticket>;
   eventTitle?: string;
   isOffline?: boolean;
+  checkedInAt?: string;
 }
 
 const OFFLINE_TICKETS_KEY_PREFIX = 'gba_gate_tickets_';
@@ -345,6 +347,7 @@ export async function processTicketGateValidation(params: {
           seatInfo: ticket?.seat_info || null,
           ticket,
           eventTitle: targetEvent?.title,
+          checkedInAt: res.checked_in_at,
           isOffline: false,
         };
       }
@@ -515,6 +518,20 @@ export async function processTicketGateValidation(params: {
   };
 }
 
+function updateOfflineGateHistory(qrCode: string, eventId: string, syncStatus: 'synced' | 'conflict', conflictCode?: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const updated = getSavedGateHistory().map((record) => {
+      if (record.qrCode !== qrCode || record.eventId !== eventId || !record.isOffline) return record;
+      if (syncStatus === 'synced') return { ...record, syncStatus };
+      return { ...record, syncStatus, status: conflictCode === 'ALREADY_USED' ? 'already_used' as const : 'invalid' as const };
+    });
+    localStorage.setItem(GATE_HISTORY_KEY, JSON.stringify(updated));
+  } catch {
+    // L'historique ne doit jamais bloquer la synchronisation serveur.
+  }
+}
+
 /**
  * Synchronise les validations stockées hors-ligne une fois la connexion rétablie
  */
@@ -532,11 +549,13 @@ export async function syncOfflineGateQueue(): Promise<{ synced: number; failed: 
       try {
         const res = await validateTicketQr(item.qrCode, item.eventId);
         if (res.success) {
+          updateOfflineGateHistory(item.qrCode, item.eventId, 'synced');
           synced++;
           continue;
         }
 
         if (['ALREADY_USED', 'CANCELLED', 'EXPIRED', 'NOT_ADMITTABLE', 'INVALID_TICKET', 'EVENT_NOT_FOUND', 'FORBIDDEN'].includes(res.code || '')) {
+          updateOfflineGateHistory(item.qrCode, item.eventId, 'conflict', res.code);
           conflicts++;
           continue;
         }
