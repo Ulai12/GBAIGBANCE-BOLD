@@ -245,7 +245,8 @@
       "validOffline": "Ticket validated offline ⚡ (will sync when the connection returns)",
       "verifiedOffline": "Ticket verified offline with a cryptographic signature 🔐 (sync pending)",
       "unknownQrOnline": "This QR code is not recognized as a GBAIGBANCE ticket.",
-      "unknownQrOffline": "Ticket not found in the offline cache."
+      "unknownQrOffline": "Ticket not found in the offline cache.",
+      "offlineConflicts": "{count} offline admission(s) could not be confirmed; check the scan history."
     },
     "resultTitle": {
       "valid": "Entry granted 🎉",
@@ -253,6 +254,10 @@
       "wrongEvent": "Wrong event",
       "invalid": "Invalid ticket",
       "cancelled": "Cancelled ticket"
-    }
+    },
+    "checkedIn": "Checked in",
+    "pendingSync": "Pending sync",
+    "synced": "Synced",
+    "conflict": "Conflict"
   }
 }
