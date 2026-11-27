@@ -449,3 +449,6 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - Aucun changement sur Explorer par catégorie, ni sur les données de billets existantes, les paiements, les dépendances ou les lockfiles. Branche FRONTEND-iA uniquement.
 
 - Suivi UI : l'heure serveur de check-in est affichée pour les validations en ligne; les scans hors ligne sont identifiés comme provisoires. L'historique distingue en attente, synchronisé et conflit; les conflits confirmés sont requalifiés.
+
+- Dernière validation de déploiement : commit `bb06d33f6e28d0d42e5378584a482cd091c9cea2`; Vercel a confirmé la compilation Vite (3,77 s), la génération PWA (79 entrées) et la synchronisation de 14 fichiers preview. L'état final Vercel était encore BUILDING au dernier contrôle, donc ne pas annoncer READY pour ce commit sans nouveau contrôle.
+- Typecheck/lint non exécutés : tentative de clone local impossible pendant l'incident DNS GitHub (`Could not resolve host`). Le script `npm run build` ne lance pas `npm run typecheck` ni `npm run lint`.
