@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase';
-import { isRealProfile } from '@/features/events/status';
+import { isRealArtist, isRealOrganization, isRealProfile } from '@/features/events/status';
 import { getFavoritesStorageKey } from '@/contexts/FavoritesContext';
 import type { Profile, PublicProfile, Artist, Organization } from '@/types';
 
@@ -239,7 +239,7 @@ export async function fetchFollowedArtists(userId: string): Promise<Artist[]> {
   const ids = (data || []).map((r: { artist_id: string }) => r.artist_id);
   if (ids.length === 0) return [];
   const { data: artists } = await supabase.from('artists').select('*').in('id', ids);
-  return (artists as Artist[]) || [];
+  return ((artists as Artist[]) || []).filter(isRealArtist);
 }
 
 export async function fetchFollowedOrganizations(userId: string): Promise<Organization[]> {
@@ -251,7 +251,7 @@ export async function fetchFollowedOrganizations(userId: string): Promise<Organi
   const ids = (data || []).map((r: { organization_id: string }) => r.organization_id);
   if (ids.length === 0) return [];
   const { data: orgs } = await supabase.from('organizations').select('*').in('id', ids);
-  return (orgs as Organization[]) || [];
+  return ((orgs as Organization[]) || []).filter(isRealOrganization);
 }
 
 export async function fetchProfileById(id: string): Promise<Profile | null> {
