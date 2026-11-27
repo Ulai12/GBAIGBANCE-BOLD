@@ -158,3 +158,8 @@ See `docs/CREATE_EVENT_UX_VISION.md` for the full product vision, verified curre
 
 - Realtime audit found that the hosted `supabase_realtime` publication existed but contained none of the five tables required by the current client subscriptions. Added `notifications`, `event_likes`, `artist_follows`, `organization_follows`, and `user_follows`; RLS remains enabled and authenticated SELECT grants were verified.
 - This restores the database publication prerequisite for the existing filtered notification-badge and favorites/follows Postgres Changes listeners. The current app still has a 20-second favorites resync fallback; DELETE payload limitations may delay some cross-device removals until that resync. Broadcast-based delivery remains a future scaling improvement, not part of this tranche.
+
+
+- Final verification 2026-11-27: Vercel preview for commit `5e884fd730eca1617d988dd8663f2084030b2a62` reached `READY`. Vite 8.3.8 transformed 2,938 modules, generated the PWA service worker, and completed the preview asset generation without a surfaced build error.
+- Supabase security advisor still reports 19 generic authenticated `SECURITY DEFINER` RPC warnings and one existing `pg_net`-in-public-schema warning. The three follow RPCs are intentionally callable by `authenticated`, explicitly reject missing auth in their bodies, and are not executable by `anon`; `create_notification` remains internal (no authenticated/anon EXECUTE).
+- Health advisor returned no findings. A real two-account follow/notification E2E and a standalone TypeScript typecheck were not performed in this run; do not claim those tests passed.
