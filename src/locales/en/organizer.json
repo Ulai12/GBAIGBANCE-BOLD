@@ -192,6 +192,7 @@
     "close": "Close",
     "online": "Online",
     "offline": "Offline",
+    "offlineCheckPending": "Offline check — awaiting server confirmation",
     "syncLocalScans": "Sync local scans",
     "selectEvent": "Select an event",
     "allEvents": "All my events (automatic detection)",
