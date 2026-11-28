@@ -475,3 +475,15 @@ P2 : transition d'onglets billets, polish cartes wallet.
 - QA visuelle mobile/iPhone et tests caméra, résultat en ligne/hors ligne non exécutés : clone local impossible (DNS GitHub) et contexte navigateur connecté indisponible. Ne pas présenter ces contrôles comme réussis.
 - Aucun changement backend/API, migration, donnée métier, dépendance ou lockfile; aucun PR.
 - Prochaine priorité : contrôle visuel sur petit viewport iPhone et test réel des résultats validés/refusés, puis états empty/loading du scanner si la QA confirme le layout.
+
+## 2026-11-28 — P0 Restauration OrganizerDashboardScreen.tsx
+- Constat : fichier distant sur FRONTEND-iA était PLACEHOLDER_TSX (troncature silencieuse).
+- Restauration depuis commit sain ac6c6204e52092dcd159b8c2a664a42b7f586806 (version localisée principale).
+- Commit de restauration : bda5a141c312ad6bf92a4cd4bd89d79576e4199d
+- Taille avant : ~15 o (placeholder), après : 34143 o. SHA blob 054433de26545733d3010a3cc8dc6e539da64cd3 confirmé.
+- Relecture distante : contenu réel (imports, t() pour titres/onglets/états), pas de placeholder.
+- Incident consigné. Aucune autre modification sur ce fichier cette session.
+- Prochaine étape : finir localisation des hardcodes restants (erreurs création) par petits commits, ou polish états empty/loading du dashboard.
+
+## Tâche active
+Restauration P0 terminée. Reprendre polish scanner ou localisation restante dashboard.
