@@ -102,3 +102,8 @@ Conventions : montants entiers XOF, dates UTC, numéros +228/+229, RLS sur table
 ## 2026-11-27 — Note pour automatisations
 - [Backend] Follows artistes/orgs : `followers_count` maintenant maintenu comme les likes. Aucun changement UI obligatoire.
 - [Automatisation frontend] Localisation TicketScannerModal / OrganizerDashboard : voir notes précédentes. Ne pas toucher Explorer par catégories.
+
+## 2026-11-28 — Note pour automatisations
+- [Automatisation frontend] P0 : OrganizerDashboardScreen.tsx restauré depuis ac6c6204 après troncature PLACEHOLDER_TSX. Commit bda5a141. Taille 34143 o OK.
+- Ne pas réécrire le fichier en entier via connecteur (risque troncature >25ko). Petites modifs ciblées uniquement.
+- [Backend] Aucune action requise. Follows et likes restent alignés.
