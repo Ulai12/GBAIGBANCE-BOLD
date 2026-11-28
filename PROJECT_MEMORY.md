@@ -12,11 +12,11 @@ Rendre bilingue l'ensemble du tableau de bord organisateur pour une expérience 
 
 ## Progression
 
-- OrganizerDashboardScreen : localisé (23-26 nov).
+- OrganizerDashboardScreen : localisé principal (23-26 nov).
 - OrganizerMetricsChart + OrganizerRefundsTab : localisés (24 nov).
 - EventManagementModal : localisé (24 nov).
 - TicketScannerModal : complet (25 nov).
-- Formulaire de création + invitation collaborateur : clés ajoutées et remplacements préparés (26 nov).
+- Formulaire de création + invitation collaborateur : clés ajoutées, remplacements appliqués localement (28 nov).
 
 ## Fichiers concernés
 
@@ -27,16 +27,16 @@ Rendre bilingue l'ensemble du tableau de bord organisateur pour une expérience 
 
 ## Dernière action
 
-2026-11-26 — Ajout des clés i18n pour le formulaire de création (tickets, collab search, programSponsors, coverUrl, chooseAction) dans organizer.json FR/EN. Remplacements des hardcodes restants dans OrganizerDashboardScreen.tsx préparés. Incident de push vide temporaire sur le TSX résolu par restauration immédiate des locales.
+2026-11-28 — Tentative de finalisation de la localisation du formulaire de création et invitation collaborateur. Locales FR/EN mises à jour avec collabRoleLabel (commit f9e7ec0e). Incident de troncature PLACEHOLDER sur OrganizerDashboardScreen.tsx lors du push (commits dc972bbe, b100d982). Restauration nécessaire.
 
 ## Prochaine étape
 
-Vérifier et pousser le OrganizerDashboardScreen.tsx complet avec les t() , puis tester le switch de langue sur le formulaire de création et le scanner.
+Restaurer OrganizerDashboardScreen.tsx depuis la version saine (bda5a141 ou local updated) avec les t() appliqués, vérifier taille >30ko, puis tester le switch de langue sur le formulaire de création et le scanner.
 
 ## Vérifications
 
-- Locales FR/EN restaurées et enrichies (commits f3b7d1e, 8939ff7).
-- Pas de hardcodes restants dans les sections ciblées du formulaire.
+- Locales FR/EN OK avec nouvelle clé (taille full).
+- TSX actuellement placeholder (taille ~17o) — à restaurer immédiatement.
 - Ne pas toucher Explorer par catégories.
 
 ## Backlog
@@ -47,6 +47,7 @@ Vérifier et pousser le OrganizerDashboardScreen.tsx complet avec les t() , puis
 
 ## Historique
 
+- 2026-11-28 : Localisation create/collab préparée + incident troncature TSX.
 - 2026-11-26 : Localisation du formulaire de création et collab dans OrganizerDashboardScreen.
 - 2026-11-25 : TicketScannerModal — dernier "Fermer" localisé (40066d53).
 - 2026-11-24 : EventManagementModal localisé.
