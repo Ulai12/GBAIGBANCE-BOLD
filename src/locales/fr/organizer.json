@@ -67,7 +67,12 @@
     "organizerBadge": "Organisateur",
     "programSponsorsAria": "Programme et Sponsors",
     "chooseAction": "Choisissez l'action appropriée.",
-    "coverUrlLabel": "URL Image"
+    "coverUrlLabel": "URL Image",
+    "collabPerformer": "Artiste",
+    "collabCoOrganizer": "Co-organisateur",
+    "removeCollaborator": "Retirer ce collaborateur",
+    "removeTicketOption": "Supprimer cette option de billet",
+    "ticketTypeLabel": "Type de billet"
   },
   "delete": {
     "title": "Gérer l'événement",

@@ -487,3 +487,15 @@ P2 : transition d'onglets billets, polish cartes wallet.
 
 ## Tâche active
 Restauration P0 terminée. Reprendre polish scanner ou localisation restante dashboard.
+
+
+## 2026-11-28 — P0 : nouvelle troncature du tableau de bord organisateur, restauration et i18n finale
+- Branche contrôlée avant intervention : `FRONTEND-iA`, HEAD initial `8dc7f9571aeaafcf19e46fa8592d5336cb456925`; dépôt accessible en lecture/écriture. La branche est restée la seule cible.
+- Après la restauration P0 consignée plus haut, une nouvelle vérification a révélé que `src/screens/OrganizerDashboardScreen.tsx` avait de nouveau été remplacé par `CONTENT_FROM_FILE` (17 caractères, blob `20c46a424f62f4f111c4d7e9ff0f52f5218c47dc`). L'historique récent montrait aussi une version `PLACEHOLDER_TSX` de 15 caractères. Les ressources FR/EN étaient restaurées sur la tête actuelle; elles ont été conservées et enrichies. Aucun contenu de `PROJECT_MEMORY.md` n'a été consulté.
+- Restauration du composant depuis la version saine `ac6c6204e52092dcd159b8c2a664a42b7f586806` (34 123 caractères, blob `054433de26545733d3010a3cc8dc6e539da64cd3`), puis réapplication des localisations manquantes dans le formulaire de création et l'invitation de collaborateurs.
+- `src/screens/OrganizerDashboardScreen.tsx` : options de billets, types Free/Standard/VIP/VVIP, placeholders, libellés de recherche, états vide/chargement, rôles artiste/co-organisateur, URL de couverture, programme/sponsors et description de confirmation utilisent les clés i18n. Le libellé Standard initialisé et réinitialisé suit la langue active. Ajout de noms accessibles aux actions créer, supprimer une option, retirer un collaborateur, gérer programme/sponsors et supprimer/gérer un événement; les actions icône de suppression ont aussi `type=button`.
+- `src/locales/fr/organizer.json` et `src/locales/en/organizer.json` : ajout aligné des clés `create.collabPerformer`, `create.collabCoOrganizer`, `create.removeCollaborator`, `create.removeTicketOption`, `create.ticketTypeLabel`.
+- Fichiers de cette intervention : `src/screens/OrganizerDashboardScreen.tsx`, les deux ressources `organizer.json`, `FRONTEND_MEMORY.md`.
+- Contrôles statiques avant commit : 33 remplacements exacts appliqués une seule fois; JSON FR/EN parsables; ensembles de clés FR/EN identiques; chaînes codées en dur ciblées absentes; taille du composant restauré et enrichi attendue ~35,4 ko (contre 17 caractères corrompus). Build, typecheck, lint, tests fonctionnels et QA visuelle navigateur/mobile restent à confirmer après déploiement.
+- Aucun changement backend/API, migration, données métier, dépendance, lockfile ou parcours « Explorer par catégorie ». Aucun PR. Aucun commit sur une autre branche.
+- Prochaine étape : vérifier le build Vercel de ce commit, puis contrôler le formulaire de création et l'invitation collaborateur en FR/EN sur mobile; ne pas toucher à « Explorer par catégorie ».
